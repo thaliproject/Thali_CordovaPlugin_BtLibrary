@@ -1,0 +1,3 @@
+include ':btconnectorlib2', ':btlib_testapp'
+gradle.ext.version = "0.0.0";
+gradle.ext.group = "org.thaliproject.p2p.btconnectorlib"
