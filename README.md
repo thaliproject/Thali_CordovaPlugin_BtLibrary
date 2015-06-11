@@ -14,3 +14,7 @@ get the library from: https://github.com/thaliproject/Thali_CordovaPlugin_BtLibr
 
 go to root of the library project and build with "gradlew build install" and the library should be visible in <user folder>\.m2\repository\org\thaliproject\p2p\btconnectorlib\btconnectorlib2\0.0.0
  
+ 
+### untested shortcut
+
+I would assume (not tested at all) that the build process simply looks for the files in right place, thus you can try extracting the .m2.zip into your user folder and see whether it works.
