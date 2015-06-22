@@ -15,6 +15,7 @@ import android.util.Log;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
@@ -27,13 +28,19 @@ import static android.net.wifi.p2p.WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION;
 
 public class WifiServiceSearcher {
 
+    public interface  DiscoveryInternalCallBack{
+        public void gotPeersList(Collection<WifiP2pDevice> list);
+        public void gotServicesList(List<ServiceItem> list);
+        public void foundService(ServiceItem item);
+    }
+
     WifiServiceSearcher that = this;
     private Context context = null;
     private BroadcastReceiver receiver = null;
     private IntentFilter filter = null;
     private String SERVICE_TYPE;
     private AESCrypt mAESCrypt = null;
-    private final WifiBase.WifiStatusCallBack callback;
+    private final DiscoveryInternalCallBack callback;
     private WifiP2pManager p2p = null;
     private WifiP2pManager.Channel channel = null;
     private WifiP2pManager.DnsSdServiceResponseListener serviceListener = null;
@@ -60,7 +67,7 @@ public class WifiServiceSearcher {
 
     CountDownTimer peerDiscoveryTimer = null;
 
-    public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, WifiBase.WifiStatusCallBack handler,String serviceType,AESCrypt encrypter) {
+    public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, DiscoveryInternalCallBack handler,String serviceType,AESCrypt encrypter) {
         this.context = Context;
         this.p2p = Manager;
         this.channel = Channel;

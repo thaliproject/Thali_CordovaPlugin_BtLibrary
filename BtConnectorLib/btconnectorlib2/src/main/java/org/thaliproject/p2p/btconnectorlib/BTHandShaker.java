@@ -21,8 +21,16 @@ import java.io.OutputStream;
 public class BTHandShaker {
 
     BTHandShaker that = this;
+
+    public interface  BtHandShakeCallback{
+        public void HandShakeOk(BluetoothSocket socket, boolean incoming,String peerId,String peerName,String peerAddress);
+        public void HandShakeFailed(String reason, boolean incoming,String peerId,String peerName,String peerAddress);
+    }
+
+    private BtHandShakeCallback callback;
+
     private BluetoothSocket mmSocket;
-    private BluetoothBase.BluetoothStatusChanged callback;
+
     private boolean isIncoming;
     AESCrypt mAESCrypt = null;
 
@@ -44,7 +52,7 @@ public class BTHandShaker {
         }
     };
 
-    public BTHandShaker(BluetoothSocket socket, BluetoothBase.BluetoothStatusChanged Callback, boolean incoming,AESCrypt encrypter) {
+    public BTHandShaker(BluetoothSocket socket, BtHandShakeCallback Callback, boolean incoming,AESCrypt encrypter) {
         printe_line("Creating BTHandShaker");
         callback = Callback;
         mmSocket = socket;
@@ -63,7 +71,7 @@ public class BTHandShaker {
         return peerAddress;
     }
 
-    public void Start(String instanceData,ServiceItem toDevice) {
+    public void Start(String instanceData,String peerId,String peerName,String peerAddress) {
         printe_line("Start");
         HandShakeTimeOutTimer.start();
         handShakeBuf = instanceData;
@@ -72,18 +80,10 @@ public class BTHandShaker {
         mBTHandShakeSocketTread.start();
 
         if(!isIncoming) {
-            try {
+            that.peerIdentifier = peerId;
+            that.peerName = peerName;
+            that.peerAddress = peerAddress;
 
-                if(toDevice != null) {
-                    that.peerIdentifier = toDevice.peerId;
-                    that.peerName = toDevice.peerName;
-                    that.peerAddress = toDevice.peerAddress;
-                }else{
-                    printe_line("toDevice is null");
-                }
-            }catch (Exception e) {
-                printe_line("instance data reading failed: " + e.toString());
-            }
             mBTHandShakeSocketTread.write(handShakeBuf.getBytes());
         }
     }

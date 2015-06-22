@@ -11,20 +11,26 @@ import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.UUID;
 
 
 public class BTListenerThread extends Thread {
 
-    private BluetoothBase.BluetoothStatusChanged callback;
+    public interface  BtListenCallback{
+        public void GotConnection(BluetoothSocket socket);
+        public void ListeningFailed(String reason);
+    }
+
+    private BtListenCallback callback;
     private final BluetoothServerSocket mSocket;
     boolean mStopped = false;
 
-    public BTListenerThread(BluetoothBase.BluetoothStatusChanged Callback,BluetoothAdapter bta, BTConnectorSettings settings) {
+    public BTListenerThread(BtListenCallback Callback,BluetoothAdapter bta,UUID BtUuid, String btName) {
         callback = Callback;
         BluetoothServerSocket tmp = null;
 
         try {
-            tmp = bta.listenUsingInsecureRfcommWithServiceRecord(settings.MY_NAME, settings.MY_UUID);
+            tmp = bta.listenUsingInsecureRfcommWithServiceRecord(btName, BtUuid);
         } catch (IOException e) {
 
             printe_line("listen() failed: " + e.toString());

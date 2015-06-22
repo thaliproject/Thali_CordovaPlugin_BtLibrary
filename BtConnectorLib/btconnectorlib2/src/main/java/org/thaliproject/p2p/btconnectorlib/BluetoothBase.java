@@ -18,16 +18,8 @@ import java.util.UUID;
 public class BluetoothBase {
 
     public interface  BluetoothStatusChanged{
-        public void Connected(BluetoothSocket socket,ServiceItem selectedDevice);
-        public void GotConnection(BluetoothSocket socket);
-        public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress);
-        public void ListeningFailed(String reason);
         public void BluetoothStateChanged(int state);
-        public void HandShakeOk(BluetoothSocket socket, boolean incoming,String peerId,String peerName,String peerAddress);
-        public void HandShakeFailed(String reason, boolean incoming,String peerId,String peerName,String peerAddress);
     }
-
-
 
     private BluetoothStatusChanged callBack = null;
     private BluetoothAdapter bluetooth = null;

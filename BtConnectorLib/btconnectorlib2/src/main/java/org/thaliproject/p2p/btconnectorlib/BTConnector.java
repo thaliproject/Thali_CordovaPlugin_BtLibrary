@@ -18,7 +18,7 @@ import java.util.UUID;
 /**
  * Created by juksilve on 13.3.2015.
  */
-public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBase.WifiStatusCallBack{
+public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBase.WifiStatusCallBack, BTConnector_Discovery.DiscoveryCallback, BTConnector_BtConnection.ListenerCallback {
 
     BTConnector that = this;
 
@@ -45,21 +45,18 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
     private State myState = State.NotInitialized;
 
+    WifiBase mWifiBase = null;
+    BTConnector_Discovery mBTConnector_Discovery = null;
+
+    BluetoothBase mBluetoothBase = null;
+    BTConnector_BtConnection mBTConnector_BtConnection = null;
+
+    AESCrypt mAESCrypt = null;
+    private String mEncryptedInstance = "";
     static String JSON_ID_PEERID   = "pi";
     static String JSON_ID_PEERNAME = "pn";
     static String JSON_ID_BTADRRES = "ra";
 
-
-    WifiBase mWifiBase = null;
-    WifiServiceAdvertiser mWifiAccessPoint = null;
-    WifiServiceSearcher mWifiServiceSearcher = null;
-    private String mEncryptedInstance = "";
-    BluetoothBase mBluetoothBase = null;
-    BTListenerThread mBTListenerThread = null;
-    BTConnectToThread mBTConnectToThread = null;
-    BTHandShaker mBTHandShaker = null;
-
-    AESCrypt mAESCrypt = null;
 
     boolean isStarting = false;
     private Callback callback = null;
@@ -67,18 +64,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     private Context context = null;
     private Handler mHandler = null;
 
-    CountDownTimer ServiceFoundTimeOutTimer = new CountDownTimer(600000, 1000) {
-        public void onTick(long millisUntilFinished) {
-            // not using
-        }
-        public void onFinish() {
-            if(that.connectSelector != null) {
-                //to clear any peers available status
-                that.connectSelector.CurrentPeersList(null);
-            }
-            startAll();
-        }
-    };
 
     BTConnectorSettings ConSettings = new BTConnectorSettings();
 
@@ -98,23 +83,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
     }
 
-    /*
-        if (mBluetoothBase != null) {
-            if(mAESCrypt != null){
-                try {
-                    String instanceLine = "{ \"" + JSON_ID_PEERID + "\": \"" + peerIdentifier + "\",";
-                    instanceLine = instanceLine +"\"" + JSON_ID_PEERNAME + "\": \"" + peerName+ "\",";
-                    instanceLine = instanceLine +"\"" + JSON_ID_BTADRRES + "\": \"" + mBluetoothBase.getAddress() + "\"}";
-                    mEncryptedInstance = instanceLine;
-                //    mEncryptedInstance = mAESCrypt.encrypt(instanceLine);
-                    print_line("", instanceLine + " encrypted to : " + mEncryptedInstance);
-                }catch (Exception e){
-                    print_line("", "mAESCrypt.encrypt failed: " + e.toString());
-                }
-            }
-        }*/
-
-
     public void Start(String peerIdentifier, String peerName) {
         //initialize the system, and
         // make sure BT & Wifi is enabled before we start running
@@ -132,6 +100,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             instanceLine = instanceLine + "\"" + JSON_ID_PEERNAME + "\": \"" + peerName + "\",";
             instanceLine = instanceLine + "\"" + JSON_ID_BTADRRES + "\": \"" + mBluetoothBase.getAddress() + "\"}";
             mEncryptedInstance = instanceLine;
+            //mEncryptedInstance = mAESCrypt.encrypt(instanceLine);
         }
 
         print_line("", " mEncryptedInstance : " + mEncryptedInstance);
@@ -165,8 +134,20 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
     }
 
-    private void startServices() {
+    public boolean TryConnect(ServiceItem selectedDevice) {
 
+        boolean ret = false;
+        if(mBTConnector_BtConnection != null && selectedDevice != null)
+        {
+            BluetoothDevice device = mBluetoothBase.getRemoteDevice(selectedDevice.peerAddress);
+            if(device != null) {
+                ret = mBTConnector_BtConnection.TryConnect(device, this.ConSettings.MY_UUID, selectedDevice.peerId, selectedDevice.peerName, selectedDevice.peerAddress);
+            }
+        }
+        return ret;
+    }
+
+    private void startServices() {
         stopServices();
 
         WifiP2pManager.Channel channel = null;
@@ -179,65 +160,41 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         if (channel != null && p2p != null) {
             print_line("", "Starting services address: " + mEncryptedInstance + ", " + ConSettings);
 
-            mWifiAccessPoint = new WifiServiceAdvertiser(p2p, channel);
-            mWifiAccessPoint.Start(mEncryptedInstance,ConSettings.SERVICE_TYPE);
-
-            mWifiServiceSearcher = new WifiServiceSearcher(this.context, p2p, channel, this,ConSettings.SERVICE_TYPE,mAESCrypt);
-            mWifiServiceSearcher.Start();
-            setState(State.FindingPeers);
+            mBTConnector_Discovery = new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mAESCrypt,mEncryptedInstance);
+            mBTConnector_Discovery.Start();
         }
     }
 
     private  void stopServices() {
         print_line("", "Stoppingservices");
-        setState(State.Idle);
-        if (mWifiAccessPoint != null) {
-            mWifiAccessPoint.Stop();
-            mWifiAccessPoint = null;
-        }
-
-        if (mWifiServiceSearcher != null) {
-            mWifiServiceSearcher.Stop();
-            mWifiServiceSearcher = null;
+        if (mBTConnector_Discovery != null) {
+            mBTConnector_Discovery.Stop();
+            mBTConnector_Discovery = null;
         }
     }
 
     private  void startBluetooth() {
-
+        stopBluetooth();
         BluetoothAdapter tmp = null;
         if (mBluetoothBase != null) {
             tmp = mBluetoothBase.getAdapter();
         }
-
-        if (mBTListenerThread == null && tmp != null) {
-            print_line("", "StartBluetooth listener");
-            mBTListenerThread = new BTListenerThread(that, tmp,ConSettings);
-            mBTListenerThread.start();
-        }
+        print_line("", "StartBluetooth listener");
+        mBTConnector_BtConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mAESCrypt,this.mEncryptedInstance);
+        mBTConnector_BtConnection.Start();
     }
 
     private  void stopBluetooth() {
         print_line("", "Stop Bluetooth");
 
-        if(mBTHandShaker != null){
-            mBTHandShaker.Stop();
-            mBTHandShaker = null;
-        }
-
-        if (mBTListenerThread != null) {
-            mBTListenerThread.Stop();
-            mBTListenerThread = null;
-        }
-
-        if (mBTConnectToThread != null) {
-            mBTConnectToThread.Stop();
-            mBTConnectToThread = null;
+        if(mBTConnector_BtConnection != null){
+            mBTConnector_BtConnection.Stop();
+            mBTConnector_BtConnection = null;
         }
     }
 
     private void stopAll() {
         print_line("", "Stoping All");
-        ServiceFoundTimeOutTimer.cancel();
         stopServices();
         stopBluetooth();
     }
@@ -247,153 +204,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         print_line("", "Starting All");
         startServices();
         startBluetooth();
-    }
-
-    @Override
-    public void Connected(BluetoothSocket socket,ServiceItem toDevice) {
-        //make sure we do not close the socket,
-        if(mBTHandShaker == null) {
-
-            final ServiceItem toDeviceTmp = toDevice;
-            final BluetoothSocket tmp = socket;
-            mBTConnectToThread = null;
-            stopBluetooth();
-            stopServices();
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mBTHandShaker = new BTHandShaker(tmp, that, false,that.mAESCrypt);
-                    // we crreated the connection, thus
-                    // - we need to store our target device information for future use
-                    // - we also need to sent our information to the other side
-                    mBTHandShaker.Start(mEncryptedInstance, toDeviceTmp);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void GotConnection(BluetoothSocket socket) {
-        if(mBTHandShaker == null) {
-            final BluetoothSocket tmp = socket;
-            stopBluetooth();
-            stopServices();
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mBTHandShaker = new BTHandShaker(tmp, that, true,that.mAESCrypt);
-                    // we got incoming connection, thus we expet to get device information from them
-                    // and thus do not supply any values in here
-                    mBTHandShaker.Start(mEncryptedInstance,null);
-                }
-            });
-        }
-    }
-
-    @Override
-    public void HandShakeOk(BluetoothSocket socket, boolean incoming,String peerId,String peerName,String peerAddress) {
-        final BluetoothSocket tmp = socket;
-        final boolean incomingTmp = incoming;
-
-        print_line("HS", "HandShakeOk for incoming = " + incoming);
-
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
-
-        if(mBTHandShaker != null) {
-            mBTHandShaker.Stop();
-            mBTHandShaker = null;
-        }
-
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                if (tmp.isConnected()) {
-                    setState(State.Connected);
-                    that.callback.Connected(tmp, incomingTmp,peerIdTmp,peerNaTmp,peerAdTmp);
-                } else {
-                    if(incomingTmp) {
-                        ListeningFailed("Disconnected");
-                    }else{
-                        ConnectionFailed("Disconnected",peerIdTmp,peerNaTmp,peerAdTmp);
-                    }
-                }
-            }
-        });
-    }
-
-    @Override
-    public void HandShakeFailed(String reason, boolean incoming,String peerId,String peerName,String peerAddress) {
-
-        final String reasontmp = reason;
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
-
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                print_line("HS", "HandShakeFailed: " + reasontmp);
-
-                if(peerIdTmp.length() > 0 && peerNaTmp.length() > 0) {
-                    that.callback.ConnectionFailed(peerIdTmp, peerNaTmp, peerAdTmp);
-                }
-                //only care if we have not stoppeed & nulled the instance
-                if(mBTHandShaker != null) {
-                    mBTHandShaker.tryCloseSocket();
-                    mBTHandShaker.Stop();
-                    mBTHandShaker = null;
-
-                    startServices();
-                    startBluetooth();
-                }
-            }
-        });
-    }
-
-    @Override
-    public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress) {
-        final String tmp = reason;
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
-
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                print_line("CONNEC", "Error: " + tmp);
-
-                that.callback.ConnectionFailed(peerIdTmp,peerNaTmp,peerAdTmp);
-
-                //only care if we have not stoppeed & nulled the instance
-                if (mBTConnectToThread != null) {
-                    mBTConnectToThread.Stop();
-                    mBTConnectToThread = null;
-
-                    startServices();
-                }
-            }
-        });
-    }
-
-    @Override
-    public void ListeningFailed(String reason) {
-        final String tmp = reason;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                print_line("LISTEN", "Error: " + tmp);
-
-                //only care if we have not stoppeed & nulled the instance
-                if (mBTListenerThread != null) {
-                    mBTListenerThread.Stop();
-                    mBTListenerThread = null;
-
-                    startBluetooth();
-                }
-            }
-        });
     }
 
     @Override
@@ -408,7 +218,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             if (mWifiBase != null && mWifiBase.isWifiEnabled()) {
                 print_line("BT", "Bluetooth enabled, re-starting");
 
-                if(mWifiAccessPoint != null && mWifiServiceSearcher != null) {
+                if(mBTConnector_Discovery != null) {
                     print_line("WB", "We already were running, thus doing nothing");
                 }else{
                     startAll();
@@ -417,15 +227,13 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
     }
 
-
-
     @Override
     public void WifiStateChanged(int state) {
         if (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED) {
             if (mBluetoothBase != null && mBluetoothBase.isBluetoothEnabled()) {
                 // we got wifi back, so we can re-start now
                 print_line("WB", "Wifi is now enabled !");
-                if(mWifiAccessPoint != null && mWifiServiceSearcher != null) {
+                if(mBTConnector_Discovery != null) {
                     print_line("WB", "We already were running, thus doing nothing");
                 }else{
                     startAll();
@@ -441,83 +249,98 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     @Override
-    public void gotPeersList(Collection<WifiP2pDevice> list) {
+    public void CurrentPeersList(List<ServiceItem> available) {
+        if (this.connectSelector != null) {
+            final List<ServiceItem> availableTmp = available;
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    ServiceItem retItem = that.connectSelector.CurrentPeersList(availableTmp);
+                    //we could checkl if the item is non-null and try connect
 
-        if(list.size() > 0) {
-            ServiceFoundTimeOutTimer.cancel();
-            ServiceFoundTimeOutTimer.start();
-
-            print_line("SS", "Found " + list.size() + " peers.");
-            int numm = 0;
-            for (WifiP2pDevice peer : list) {
-                numm++;
-                print_line("SS", "Peer(" + numm + "): " + peer.deviceName + " " + peer.deviceAddress);
-            }
-
-            setState(State.FindingServices);
-        }else{
-            print_line("SS", "We got empty peers list");
-            this.connectSelector.CurrentPeersList(null);
+                }
+            });
         }
     }
 
     @Override
-    public void gotServicesList(List<ServiceItem> list) {
-        if(mWifiBase != null && list != null && list.size() > 0) {
-
-            ServiceItem selItem = null;
-
-            if(this.connectSelector != null){
-                selItem = this.connectSelector.CurrentPeersList(list);
-            }else
-            {
-                selItem = mWifiBase.SelectServiceToConnect(list);
-            }
-
-            TryConnect(selItem);
+    public void PeerDiscovered(ServiceItem service) {
+        if (this.connectSelector != null) {
+            final ServiceItem serviceTmp = service;
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    that.connectSelector.PeerDiscovered(serviceTmp);
+                }
+            });
         }
     }
 
     @Override
-    public void foundService(ServiceItem item) {
-        if(this.connectSelector != null){
-            this.connectSelector.PeerDiscovered(item);
+    public void DiscoveryStateChanged(BTConnector_Discovery.State newState) {
+
+        if(callback != null) {
+            switch (newState) {
+                case DiscoveryIdle:
+                    setState(State.Idle);
+                    break;
+                case DiscoveryNotInitialized:
+                    setState(State.NotInitialized);
+                    break;
+                case DiscoveryFindingPeers:
+                    setState(State.FindingPeers);
+                    break;
+                case DiscoveryFindingServices:
+                    setState(State.FindingServices);
+                    break;
+            }
         }
     }
 
-    public boolean TryConnect(ServiceItem selectedDevice) {
-
-        boolean ret = false;
-        if (selectedDevice != null && mBluetoothBase != null) {
-
-            ret = true;
-            if (mBTConnectToThread != null) {
-                mBTConnectToThread.Stop();
-                mBTConnectToThread = null;
-            }
-
-            if(ServiceFoundTimeOutTimer != null) {
-                ServiceFoundTimeOutTimer.cancel();
-            }
-
-            print_line("", "Selected device address: " + selectedDevice.peerAddress +  ", from: " + selectedDevice.peerName);
-
-            BluetoothDevice device = mBluetoothBase.getRemoteDevice(selectedDevice.peerAddress);
-
-            mBTConnectToThread = new BTConnectToThread(that, device,ConSettings,selectedDevice);
-            mBTConnectToThread.start();
-
-            //we have connection, no need to find new ones
-            stopServices();
-            setState(State.Connecting);
-            print_line("", "Connecting to " + device.getName() + ", at " + device.getAddress());
-        } else {
-            // we'll get discovery stopped event soon enough
-            // and it starts the discovery again, so no worries :)
-            print_line("", "No devices selected");
+    @Override
+    public void Connected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress) {
+        if (callback != null) {
+            final BluetoothSocket socketTmp = socket;
+            final boolean incomingTmp = incoming;
+            final String peerIdTmp = peerId;
+            final String peerNameTmp = peerName;
+            final String peerAddressTmp = peerAddress;
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    callback.Connected(socketTmp, incomingTmp, peerIdTmp, peerNameTmp, peerAddressTmp);
+                }
+            });
         }
+    }
 
-        return ret;
+    @Override
+    public void ConnectionFailed(String peerId, String peerName, String peerAddress) {
+        if(callback != null) {
+            final String peerIdTmp = peerId;
+            final String peerNameTmp = peerName;
+            final String peerAddressTmp = peerAddress;
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    callback.ConnectionFailed(peerIdTmp, peerNameTmp, peerAddressTmp);
+                }
+            });
+        }
+    }
+
+    @Override
+    public void ConnectionStateChanged(BTConnector_BtConnection.State newState) {
+        if(callback != null) {
+            switch (newState) {
+                case ConnectionConnecting:
+                    setState(State.Connecting);
+                    break;
+                case ConnectionConnected:
+                    setState(State.Connected);
+                    break;
+            }
+        }
     }
 
     private void setState(State newState) {

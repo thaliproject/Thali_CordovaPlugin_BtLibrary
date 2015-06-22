@@ -7,22 +7,32 @@ import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * Created by juksilve on 12.3.2015.
  */
 public class BTConnectToThread extends Thread {
 
-    private BluetoothBase.BluetoothStatusChanged callback;
-    private final BluetoothSocket mSocket;
-    ServiceItem itemToConnect = null;
+    public interface  BtConnectToCallback{
+        public void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress);
+        public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress);
+    }
 
-    public BTConnectToThread(BluetoothBase.BluetoothStatusChanged Callback, BluetoothDevice device, BTConnectorSettings settings,ServiceItem selectedDevice) {
+    private BtConnectToCallback callback;
+    private final BluetoothSocket mSocket;
+    String mPeerId;
+    String mPeerName;
+    String mPeerAddress;
+
+    public BTConnectToThread(BtConnectToCallback Callback, BluetoothDevice device, UUID BtUUID, String peerId,String peerName, String peerAddress) {
         callback = Callback;
-        itemToConnect = selectedDevice;
+        mPeerId = peerId;
+        mPeerName = peerName;
+        mPeerAddress = peerAddress;
         BluetoothSocket tmp = null;
         try {
-            tmp = device.createInsecureRfcommSocketToServiceRecord(settings.MY_UUID);
+            tmp = device.createInsecureRfcommSocketToServiceRecord(BtUUID);
         } catch (IOException e) {
             printe_line("createInsecure.. failed: " + e.toString());
         }
@@ -34,7 +44,7 @@ public class BTConnectToThread extends Thread {
             try {
                 mSocket.connect();
                 //return success
-                callback.Connected(mSocket,itemToConnect);
+                callback.Connected(mSocket,mPeerId,mPeerName,mPeerAddress);
             } catch (IOException e) {
                 printe_line("socket connect failed: " + e.toString());
                 try {
@@ -42,7 +52,7 @@ public class BTConnectToThread extends Thread {
                 } catch (IOException ee) {
                     printe_line("closing socket 2 failed: " + ee.toString());
                 }
-                callback.ConnectionFailed(e.toString(),itemToConnect.peerId,itemToConnect.peerName,itemToConnect.deviceAddress);
+                callback.ConnectionFailed(e.toString(),mPeerId,mPeerName,mPeerAddress);
             }
         }
     }
