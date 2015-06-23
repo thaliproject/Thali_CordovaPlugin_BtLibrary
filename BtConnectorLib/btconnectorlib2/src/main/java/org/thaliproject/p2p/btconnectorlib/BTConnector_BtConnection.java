@@ -124,7 +124,6 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
     public void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress) {
 
         if(mBTHandShaker == null) {
-
             final String peerIdTmp = peerId;
             final String peerNameTmp = peerName;
             final String peerAddressTmp = peerAddress;
@@ -185,6 +184,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
                 if (tmp.isConnected()) {
                     setState(State.ConnectionConnected);
                     that.callback.Connected(tmp, incomingTmp,peerIdTmp,peerNaTmp,peerAdTmp);
+                    Start(); // re-start listening for incoming connections.
                 } else {
                     if(incomingTmp) {
                         ListeningFailed("Disconnected");
