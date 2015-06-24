@@ -129,7 +129,7 @@ public class BtConnectorHelper implements BTConnector.Callback, BTConnector.Conn
             peerName = selectedDevice.peerName;
         }
 
-        if (selectedDevice != null && mBTConnector != null  && mBTConnector.TryConnect(selectedDevice)) {
+        if (selectedDevice != null && mBTConnector != null  && mBTConnector.TryConnect(selectedDevice) == BTConnector.TryConnectReturnValues.Connecting) {
             // we are ok, and status-callback will be delivering the events.
             String stateReply = "[" + getStatusItem(peerId,peerName, STATE_CONNECTING) + "]";
             jxcore.CallJSMethod("peerChanged", stateReply);

@@ -22,6 +22,19 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
     BTConnector that = this;
 
+    public class WifiBtStatus{
+        public WifiBtStatus(){
+            isWifiOk = false;
+            isBtOk = false;
+            isWifiEnabled = false;
+            isBtEnabled = false;
+        }
+        public boolean isWifiOk;
+        public boolean isBtOk;
+        public boolean isWifiEnabled;
+        public boolean isBtEnabled;
+    }
+
     public enum State{
         Idle,
         NotInitialized,
@@ -83,17 +96,20 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
     }
 
-    public void Start(String peerIdentifier, String peerName) {
+
+
+    public WifiBtStatus Start(String peerIdentifier, String peerName) {
         //initialize the system, and
         // make sure BT & Wifi is enabled before we start running
 
+        WifiBtStatus ret = new WifiBtStatus();
         Stop();
 
         isStarting = true;
         mBluetoothBase = new BluetoothBase(this.context, this);
 
-        Boolean btOk = mBluetoothBase.Start();
-        Boolean btEnabled = mBluetoothBase.isBluetoothEnabled();
+        ret.isBtOk = mBluetoothBase.Start();
+        ret.isBtEnabled = mBluetoothBase.isBluetoothEnabled();
 
         if (mBluetoothBase != null) {
             String instanceLine = "{ \"" + JSON_ID_PEERID + "\": \"" + peerIdentifier + "\",";
@@ -106,19 +122,21 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         print_line("", " mEncryptedInstance : " + mEncryptedInstance);
 
         mWifiBase = new WifiBase(this.context, this);
-        Boolean WifiOk = mWifiBase.Start();
-        Boolean WifiEnabled = mWifiBase.isWifiEnabled();
+        ret.isWifiOk = mWifiBase.Start();
+        ret.isWifiEnabled= mWifiBase.isWifiEnabled();
 
-        if (!WifiOk || !btOk) {
-            print_line("", "BT available: " + btOk + ", wifi available: " + WifiOk);
+        if (!ret.isWifiOk || !ret.isBtOk) {
+            print_line("", "BT available: " + ret.isBtOk + ", wifi available: " + ret.isWifiOk);
             setState(State.NotInitialized);
-        } else if (btEnabled && WifiEnabled) {
+        } else if (ret.isBtEnabled && ret.isWifiEnabled) {
              print_line("", "All stuf available and enabled");
              startAll();
         }else{
             //we wait untill both Wifi & BT are turned on
             setState(State.WaitingStateChange);
         }
+
+        return ret;
     }
 
     public void Stop() {
@@ -134,15 +152,30 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
     }
 
-    public boolean TryConnect(ServiceItem selectedDevice) {
+    public enum TryConnectReturnValues{
+        Connecting,
+        AlreadyAttemptingToConnect,
+        NoSelectedDevice,
+        BTDeviceFetchFailed
+    }
 
-        boolean ret = false;
-        if(mBTConnector_BtConnection != null && selectedDevice != null)
-        {
-            BluetoothDevice device = mBluetoothBase.getRemoteDevice(selectedDevice.peerAddress);
-            if(device != null) {
-                ret = mBTConnector_BtConnection.TryConnect(device, this.ConSettings.MY_UUID, selectedDevice.peerId, selectedDevice.peerName, selectedDevice.peerAddress);
+    public TryConnectReturnValues TryConnect(ServiceItem selectedDevice) {
+
+        TryConnectReturnValues ret = TryConnectReturnValues.Connecting;
+        if(selectedDevice != null) {
+            if (mBTConnector_BtConnection != null) {
+                BluetoothDevice device = mBluetoothBase.getRemoteDevice(selectedDevice.peerAddress);
+                if (device != null) {
+                    // actually the ret will now be always true, since mBTConnector_BtConnection only checks if device is non-null
+                    mBTConnector_BtConnection.TryConnect(device, this.ConSettings.MY_UUID, selectedDevice.peerId, selectedDevice.peerName, selectedDevice.peerAddress);
+                }else{
+                    ret = TryConnectReturnValues.BTDeviceFetchFailed;
+                }
+            }else{
+                ret = TryConnectReturnValues.AlreadyAttemptingToConnect;
             }
+        }else{
+            ret = TryConnectReturnValues.NoSelectedDevice;
         }
         return ret;
     }

@@ -177,6 +177,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
             mBTHandShaker.Stop();
             mBTHandShaker = null;
         }
+        Start(); // re-start listening for incoming connections.
 
         mHandler.post(new Runnable() {
             @Override
@@ -184,7 +185,6 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
                 if (tmp.isConnected()) {
                     setState(State.ConnectionConnected);
                     that.callback.Connected(tmp, incomingTmp,peerIdTmp,peerNaTmp,peerAdTmp);
-                    Start(); // re-start listening for incoming connections.
                 } else {
                     if(incomingTmp) {
                         ListeningFailed("Disconnected");
