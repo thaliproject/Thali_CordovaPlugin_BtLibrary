@@ -64,8 +64,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     BluetoothBase mBluetoothBase = null;
     BTConnector_BtConnection mBTConnector_BtConnection = null;
 
-    AESCrypt mAESCrypt = null;
-    private String mEncryptedInstance = "";
+
+    private String mInstanceString = "";
     static String JSON_ID_PEERID   = "pi";
     static String JSON_ID_PEERNAME = "pn";
     static String JSON_ID_BTADRRES = "ra";
@@ -80,23 +80,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
     BTConnectorSettings ConSettings = new BTConnectorSettings();
 
-    public BTConnector(Context Context, Callback Callback, ConnectSelector selector, BTConnectorSettings settings, String InstancePassword){
+    public BTConnector(Context Context, Callback Callback, ConnectSelector selector, BTConnectorSettings settings){
         this.context = Context;
         this.callback = Callback;
         this.mHandler = new Handler(this.context.getMainLooper());
         this.myState = State.NotInitialized;
         this.ConSettings = settings;
         this.connectSelector = selector;
-
-        try{
-            mAESCrypt = new AESCrypt(InstancePassword);
-        }catch(Exception e){
-            print_line("", "mAESCrypt instance creation failed: " + e.toString());
-            mAESCrypt = null;
-        }
     }
-
-
 
     public WifiBtStatus Start(String peerIdentifier, String peerName) {
         //initialize the system, and
@@ -115,11 +106,10 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             String instanceLine = "{ \"" + JSON_ID_PEERID + "\": \"" + peerIdentifier + "\",";
             instanceLine = instanceLine + "\"" + JSON_ID_PEERNAME + "\": \"" + peerName + "\",";
             instanceLine = instanceLine + "\"" + JSON_ID_BTADRRES + "\": \"" + mBluetoothBase.getAddress() + "\"}";
-            mEncryptedInstance = instanceLine;
-            //mEncryptedInstance = mAESCrypt.encrypt(instanceLine);
+            mInstanceString = instanceLine;
         }
 
-        print_line("", " mEncryptedInstance : " + mEncryptedInstance);
+        print_line("", " mInstanceString : " + mInstanceString);
 
         mWifiBase = new WifiBase(this.context, this);
         ret.isWifiOk = mWifiBase.Start();
@@ -142,13 +132,15 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     public void Stop() {
         stopAll();
         if (mWifiBase != null) {
-            mWifiBase.Stop();
+            WifiBase tmp = mWifiBase;
             mWifiBase = null;
+            tmp.Stop();
         }
 
         if (mBluetoothBase != null) {
-            mBluetoothBase.Stop();
+            BluetoothBase tmpb =mBluetoothBase;
             mBluetoothBase = null;
+            tmpb.Stop();
         }
     }
 
@@ -191,9 +183,9 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         if (channel != null && p2p != null) {
-            print_line("", "Starting services address: " + mEncryptedInstance + ", " + ConSettings);
+            print_line("", "Starting services address: " + mInstanceString + ", " + ConSettings);
 
-            mBTConnector_Discovery = new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mAESCrypt,mEncryptedInstance);
+            mBTConnector_Discovery = new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mInstanceString);
             mBTConnector_Discovery.Start();
         }
     }
@@ -201,8 +193,9 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     private  void stopServices() {
         print_line("", "Stoppingservices");
         if (mBTConnector_Discovery != null) {
-            mBTConnector_Discovery.Stop();
+            BTConnector_Discovery tmp = mBTConnector_Discovery;
             mBTConnector_Discovery = null;
+            tmp.Stop();
         }
     }
 
@@ -213,7 +206,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             tmp = mBluetoothBase.getAdapter();
         }
         print_line("", "StartBluetooth listener");
-        mBTConnector_BtConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mAESCrypt,this.mEncryptedInstance);
+        mBTConnector_BtConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
         mBTConnector_BtConnection.Start();
     }
 
@@ -221,8 +214,9 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         print_line("", "Stop Bluetooth");
 
         if(mBTConnector_BtConnection != null){
-            mBTConnector_BtConnection.Stop();
+            BTConnector_BtConnection tmp = mBTConnector_BtConnection;
             mBTConnector_BtConnection = null;
+            tmp.Stop();
         }
     }
 

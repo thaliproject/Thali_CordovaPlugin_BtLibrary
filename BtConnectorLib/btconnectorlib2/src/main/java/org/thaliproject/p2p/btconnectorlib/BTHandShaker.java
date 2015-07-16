@@ -32,7 +32,6 @@ public class BTHandShaker {
     private BluetoothSocket mmSocket;
 
     private boolean isIncoming;
-    AESCrypt mAESCrypt = null;
 
     String handShakeBuf = "handshake";
     String shakeBackBuf = "shakehand";
@@ -52,12 +51,11 @@ public class BTHandShaker {
         }
     };
 
-    public BTHandShaker(BluetoothSocket socket, BtHandShakeCallback Callback, boolean incoming,AESCrypt encrypter) {
+    public BTHandShaker(BluetoothSocket socket, BtHandShakeCallback Callback, boolean incoming) {
         printe_line("Creating BTHandShaker");
         callback = Callback;
         mmSocket = socket;
         isIncoming = incoming;
-        mAESCrypt = encrypter;
     }
 
 
@@ -125,7 +123,7 @@ public class BTHandShaker {
                             try {
                                 byte[] readBuf = (byte[]) msg.obj;// construct a string from the valid bytes in the buffer
                                 String readMessage = new String(readBuf, 0, msg.arg1);
-                               // String JsonLine = that.mAESCrypt.decrypt(readMessage);
+
                                 String JsonLine = readMessage;
                                  printe_line("Got JSON from encryption:" + JsonLine);
                                 JSONObject jObject = new JSONObject(JsonLine);

@@ -44,7 +44,6 @@ public class BluetoothBase {
 
         boolean ret = false;
         if(bluetooth != null) {
-
             ret = true;
             Log.d("", "Start-My BT: " + blueAddress);
 
@@ -59,7 +58,6 @@ public class BluetoothBase {
     }
 
     public void Stop() {
-
         if(receiver != null) {
             this.context.unregisterReceiver(receiver);
             receiver = null;

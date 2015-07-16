@@ -45,20 +45,18 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
     private Context context = null;
     private UUID BluetoothUUID;
     private String BluetootName;
-    AESCrypt mAESCrypt = null;
-    private String mEncryptedInstance = "";
+    private String mInstanceString = "";
     private Handler mHandler = null;
     private State myState = State.ConnectionNotInitialized;
 
 
-    public BTConnector_BtConnection(Context Context, ListenerCallback Callback, BluetoothAdapter adapter, UUID BtUuid, String btName,AESCrypt encrypt, String instanceLine){
+    public BTConnector_BtConnection(Context Context, ListenerCallback Callback, BluetoothAdapter adapter, UUID BtUuid, String btName, String instanceLine){
         this.context = Context;
         this.callback = Callback;
         this.mBluetoothAdapter = adapter;
         this.BluetoothUUID = BtUuid;
         this.BluetootName = btName;
-        this.mAESCrypt = encrypt;
-        this.mEncryptedInstance = instanceLine;
+        this.mInstanceString = instanceLine;
         this.mHandler = new Handler(this.context.getMainLooper());
         this.myState = State.ConnectionNotInitialized;
 
@@ -135,11 +133,11 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mBTHandShaker = new BTHandShaker(tmp, that, false,that.mAESCrypt);
+                    mBTHandShaker = new BTHandShaker(tmp, that, false);
                     // we crreated the connection, thus
                     // - we need to store our target device information for future use
                     // - we also need to sent our information to the other side
-                    mBTHandShaker.Start(mEncryptedInstance, peerIdTmp,peerNameTmp,peerAddressTmp);
+                    mBTHandShaker.Start(mInstanceString, peerIdTmp,peerNameTmp,peerAddressTmp);
                 }
             });
         }
@@ -153,10 +151,10 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mBTHandShaker = new BTHandShaker(tmp, that, true,that.mAESCrypt);
+                    mBTHandShaker = new BTHandShaker(tmp, that, true);
                     // we got incoming connection, thus we expet to get device information from them
                     // and thus do not supply any values in here
-                    mBTHandShaker.Start(mEncryptedInstance,"","","");
+                    mBTHandShaker.Start(mInstanceString,"","","");
                 }
             });
         }

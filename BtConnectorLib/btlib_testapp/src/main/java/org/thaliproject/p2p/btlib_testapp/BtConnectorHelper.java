@@ -26,7 +26,6 @@ public class BtConnectorHelper implements BTConnector.Callback, BTConnector.Conn
         public void CallJSMethod(String method, String jsonData);
     }
 
-    final String instanceEncryptionPWD = "CHANGEYOURPASSWRODHERE";
     final String serviceTypeIdentifier = "Cordovap2p._tcp";
     final String BtUUID                = "fa87c0d0-afac-11de-8a39-0800200c9a66";
     final String Bt_NAME               = "Thaili_Bluetooth";
@@ -61,7 +60,7 @@ public class BtConnectorHelper implements BTConnector.Callback, BTConnector.Conn
         this.myPeerIdentifier= peerIdentifier;
         this.myPeerName = peerName;
         Stop();
-        mBTConnector = new BTConnector(context,this,this,conSettings,instanceEncryptionPWD);
+        mBTConnector = new BTConnector(context,this,this,conSettings);
         mBTConnector.Start(peerIdentifier,peerName);
     }
 

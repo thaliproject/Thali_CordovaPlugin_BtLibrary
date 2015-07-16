@@ -39,7 +39,7 @@ public class WifiServiceSearcher {
     private BroadcastReceiver receiver = null;
     private IntentFilter filter = null;
     private String SERVICE_TYPE;
-    private AESCrypt mAESCrypt = null;
+
     private final DiscoveryInternalCallBack callback;
     private WifiP2pManager p2p = null;
     private WifiP2pManager.Channel channel = null;
@@ -67,13 +67,12 @@ public class WifiServiceSearcher {
 
     CountDownTimer peerDiscoveryTimer = null;
 
-    public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, DiscoveryInternalCallBack handler,String serviceType,AESCrypt encrypter) {
+    public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, DiscoveryInternalCallBack handler,String serviceType) {
         this.context = Context;
         this.p2p = Manager;
         this.channel = Channel;
         this.callback = handler;
         this.SERVICE_TYPE = serviceType;
-        this.mAESCrypt = encrypter;
 
         Random ran = new Random(System.currentTimeMillis());
 
@@ -158,9 +157,7 @@ public class WifiServiceSearcher {
                     if(addService) {
 
                         try {
-                            //String JsonLine = that.mAESCrypt.decrypt(instanceName);
                             String JsonLine = instanceName;
-//                            debug_print("Got JSON from encryption:" + JsonLine);
 
                             JSONObject jObject = new JSONObject(JsonLine);
 

@@ -43,7 +43,6 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
     private String mEncryptedInstance = "";
 
     private Context context = null;
-    private AESCrypt mAESCrypt = null;
     String mSERVICE_TYPE = "";
     WifiP2pManager.Channel channel = null;
     WifiP2pManager p2p = null;
@@ -62,13 +61,12 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
     };
 
 
-    public BTConnector_Discovery(WifiP2pManager.Channel p2pChannel, WifiP2pManager p2pManager,Context Context, DiscoveryCallback selector, String ServiceType,AESCrypt encrypt, String instanceLine){
+    public BTConnector_Discovery(WifiP2pManager.Channel p2pChannel, WifiP2pManager p2pManager,Context Context, DiscoveryCallback selector, String ServiceType,String instanceLine){
         this.context = Context;
         this.mSERVICE_TYPE = ServiceType;
         this.mDiscoveryCallback = selector;
         this.channel = p2pChannel;
         this.p2p =p2pManager;
-        this.mAESCrypt = encrypt;
         this.mEncryptedInstance = instanceLine;
     }
 
@@ -81,7 +79,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
             mWifiAccessPoint = new WifiServiceAdvertiser(p2p, channel);
             mWifiAccessPoint.Start(mEncryptedInstance,mSERVICE_TYPE);
 
-            mWifiServiceSearcher = new WifiServiceSearcher(this.context, p2p, channel, this,mSERVICE_TYPE,mAESCrypt);
+            mWifiServiceSearcher = new WifiServiceSearcher(this.context, p2p, channel, this,mSERVICE_TYPE);
             mWifiServiceSearcher.Start();
             setState(State.DiscoveryFindingPeers);
         }
