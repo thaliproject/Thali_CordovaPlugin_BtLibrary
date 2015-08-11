@@ -165,7 +165,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         final BluetoothSocket tmp = socket;
         final boolean incomingTmp = incoming;
 
-        print_line("HS", "HandShakeOk for incoming = " + incoming);
+        print_line("HS", "HandShakeOk for incoming = " + incoming + ", : " + peerName);
 
         final String peerIdTmp = peerId;
         final String peerNaTmp = peerName;
