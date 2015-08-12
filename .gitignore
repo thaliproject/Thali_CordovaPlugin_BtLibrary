@@ -1,2 +1,4 @@
 /BtConnectorLib/.idea
 /BtConnectorLib/*.iml
+/ConnectorLib/*.iml
+/ConnectorLib/.idea
