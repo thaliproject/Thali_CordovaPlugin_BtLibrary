@@ -217,7 +217,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
         print_line("", "StartBluetooth listener");
         mBTConnector_BtConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
-        mBTConnector_BtConnection.StartListening();
+        mBTConnector_BtConnection.Start();
     }
 
     private  void stopBluetooth() {
