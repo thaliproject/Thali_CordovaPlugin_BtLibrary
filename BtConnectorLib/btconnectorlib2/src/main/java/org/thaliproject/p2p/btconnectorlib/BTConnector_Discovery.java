@@ -71,31 +71,39 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
     }
 
      public void Start() {
-        Stop();
+         Stop();
 
-        if (channel != null && p2p != null) {
-            print_line("", "Starting services address: " + mEncryptedInstance);
+         if (channel == null || p2p == null) {
+             return;
+         }
 
-            mWifiAccessPoint = new WifiServiceAdvertiser(p2p, channel);
-            mWifiAccessPoint.Start(mEncryptedInstance,mSERVICE_TYPE);
+         print_line("", "Starting services address: " + mEncryptedInstance);
 
-            mWifiServiceSearcher = new WifiServiceSearcher(this.context, p2p, channel, this,mSERVICE_TYPE);
-            mWifiServiceSearcher.Start();
-            setState(State.DiscoveryFindingPeers);
-        }
-    }
+         WifiServiceAdvertiser tmpAC = new WifiServiceAdvertiser(p2p, channel);
+         tmpAC.Start(mEncryptedInstance, mSERVICE_TYPE);
+         mWifiAccessPoint = tmpAC;
+
+         WifiServiceSearcher tmpSS = new WifiServiceSearcher(this.context, p2p, channel, this, mSERVICE_TYPE);
+         tmpSS.Start();
+         mWifiServiceSearcher = tmpSS;
+
+         setState(State.DiscoveryFindingPeers);
+     }
 
     public void Stop() {
         print_line("", "Stoppingservices");
         ServiceFoundTimeOutTimer.cancel();
-        if (mWifiAccessPoint != null) {
-            mWifiAccessPoint.Stop();
-            mWifiAccessPoint = null;
+
+        WifiServiceAdvertiser tmpAC = mWifiAccessPoint;
+        mWifiAccessPoint = null;
+        if (tmpAC != null) {
+            tmpAC.Stop();
         }
 
-        if (mWifiServiceSearcher != null) {
-            mWifiServiceSearcher.Stop();
-            mWifiServiceSearcher = null;
+        WifiServiceSearcher tmpSS = mWifiServiceSearcher;
+        mWifiServiceSearcher = null;
+        if (tmpSS != null) {
+            tmpSS.Stop();
         }
         setState(State.DiscoveryIdle);
     }

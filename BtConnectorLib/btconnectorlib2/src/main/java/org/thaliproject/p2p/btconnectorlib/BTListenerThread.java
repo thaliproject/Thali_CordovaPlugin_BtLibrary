@@ -57,43 +57,43 @@ public class BTListenerThread extends Thread {
         try {
             tmp = bta.listenUsingInsecureRfcommWithServiceRecord(btName, BtUuid);
         } catch (IOException e) {
-
             printe_line("listen() failed: " + e.toString());
         }
         mSocket = tmp;
     }
 
     public void run() {
-    //    while (!this.interrupted()) {
-        if(callback != null) {
-            printe_line("starting to listen");
+        //    while (!this.interrupted()) {
+        if (callback == null || mSocket == null) {
+            return;
+        }
+        printe_line("starting to listen");
 
-            try {
-                if (mSocket != null) {
-                    acceptedSocket = mSocket.accept();
-                }
-                if (acceptedSocket != null) {
-                    printe_line("we got incoming connection");
-                    mSocket.close();
-                    mStopped = true;
-                    if(mBTHandShakeSocketTread == null) {
-                        HandShakeTimeOutTimer.start();
-                        mBTHandShakeSocketTread = new BTHandShakeSocketTread(acceptedSocket, mHandler);
-                        mBTHandShakeSocketTread.start();
-                    }
-                } else if (!mStopped) {
-                    callback.ListeningFailed("Socket is null");
-                }
+        try {
+            acceptedSocket = mSocket.accept();
 
-            } catch (Exception e) {
-                if (!mStopped) {
-                    //return failure
-                    printe_line("accept socket failed: " + e.toString());
-                    callback.ListeningFailed(e.toString());
+            if (acceptedSocket != null) {
+                printe_line("we got incoming connection");
+                mSocket.close();
+                mStopped = true;
+                if (mBTHandShakeSocketTread == null) {
+                    HandShakeTimeOutTimer.start();
+                    mBTHandShakeSocketTread = new BTHandShakeSocketTread(acceptedSocket, mHandler);
+                    mBTHandShakeSocketTread.start();
                 }
+            } else if (!mStopped) {
+                callback.ListeningFailed("Socket is null");
+            }
+
+        } catch (Exception e) {
+            if (!mStopped) {
+                //return failure
+                printe_line("accept socket failed: " + e.toString());
+                callback.ListeningFailed(e.toString());
             }
         }
-       // }
+
+        // }
     }
 
     public void HandShakeOk() {

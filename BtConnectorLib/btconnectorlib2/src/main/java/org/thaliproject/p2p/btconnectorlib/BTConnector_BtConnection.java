@@ -63,43 +63,43 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
     public synchronized void StartListening() {
 
-        if (mBTListenerThread != null) {
-            mBTListenerThread.Stop();
-            mBTListenerThread = null;
+        BTListenerThread tmpList = mBTListenerThread;
+        mBTListenerThread = null;
+        if (tmpList != null) {
+            tmpList.Stop();
+
         }
 
         print_line("", "StartBluetooth listener");
-        mBTListenerThread = new BTListenerThread(that, mBluetoothAdapter,BluetoothUUID,BluetootName,mInstanceString);
-        mBTListenerThread.start();
+        tmpList = new BTListenerThread(that, mBluetoothAdapter,BluetoothUUID,BluetootName,mInstanceString);
+        tmpList.start();
+        mBTListenerThread = tmpList;
     }
 
     public synchronized boolean TryConnect(BluetoothDevice device,UUID BtUUID, String peerId,String peerName, String peerAddress) {
 
         boolean ret = false;
-        if (device != null) {
-
-            ret = true;
-            BTConnectToThread tmp = mBTConnectToThread;
-            mBTConnectToThread = null;
-            if (tmp != null) {
-                tmp.Stop();
-            }
-
-            print_line("", "Selected device address: " + device.getAddress() +  ", name: " + device.getName());
-
-            tmp = new BTConnectToThread(that, device,BtUUID,peerId,peerName,peerAddress,mInstanceString);
-            tmp.start();
-            mBTConnectToThread = tmp;
-
-            setState(State.ConnectionConnecting);
-            print_line("", "Connecting to " + device.getName() + ", at " + device.getAddress());
-        } else {
-            // we'll get discovery stopped event soon enough
-            // and it starts the discovery again, so no worries :)
+        if (device == null) {
             print_line("", "No devices selected");
+            return false;
         }
 
-        return ret;
+        BTConnectToThread tmp = mBTConnectToThread;
+        mBTConnectToThread = null;
+        if (tmp != null) {
+            tmp.Stop();
+        }
+
+        print_line("", "Selected device address: " + device.getAddress() +  ", name: " + device.getName());
+
+        tmp = new BTConnectToThread(that, device,BtUUID,peerId,peerName,peerAddress,mInstanceString);
+        tmp.start();
+        mBTConnectToThread = tmp;
+
+        setState(State.ConnectionConnecting);
+        print_line("", "Connecting to " + device.getName() + ", at " + device.getAddress());
+
+        return true;
     }
 
     public void Stop() {

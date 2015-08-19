@@ -39,30 +39,34 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
 
     public boolean Start(){
 
-        boolean ret =false;
-
         if(mBRReceiver == null) {
-            filter = new IntentFilter();
-            filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-            mBRReceiver = new MainBCReceiver();
-            this.context.registerReceiver((mBRReceiver), filter);
+            try {
+                mBRReceiver = new MainBCReceiver();
+                filter = new IntentFilter();
+                filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+                this.context.registerReceiver((mBRReceiver), filter);
+            } catch (Exception e) {e.printStackTrace();}
         }
 
         p2p = (WifiP2pManager) this.context.getSystemService(Context.WIFI_P2P_SERVICE);
         if (p2p == null) {
             Log.d("WifiBase", "This device does not support Wi-Fi Direct");
-        } else {
-            ret = true;
-            channel = p2p.initialize(this.context, this.context.getMainLooper(), this);
+            return false;
         }
 
-        return ret;
+        channel = p2p.initialize(this.context, this.context.getMainLooper(), this);
+
+
+        return true;
     }
     public void Stop(){
 
-        if(mBRReceiver != null) {
-            this.context.unregisterReceiver(mBRReceiver);
-            mBRReceiver = null;
+        BroadcastReceiver tmpRec = mBRReceiver;
+        mBRReceiver = null;
+        if(tmpRec != null) {
+            try {
+                this.context.unregisterReceiver(tmpRec);
+            } catch (Exception e) {e.printStackTrace();}
         }
     }
 
@@ -73,84 +77,25 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
         return p2p;
     }
 
-    public boolean isWifiEnabled(){
+    public boolean isWifiEnabled() {
         WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
-        if(wifiManager != null) {
-            return wifiManager.isWifiEnabled();
-        }else{
+        if (wifiManager == null) {
             return false;
         }
+        return wifiManager.isWifiEnabled();
     }
 
-    public boolean setWifiEnabled(boolean enabled){
+    public boolean setWifiEnabled(boolean enabled) {
         WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
-        if(wifiManager != null) {
-            return wifiManager.setWifiEnabled(enabled);
-        }else{
+        if (wifiManager == null) {
             return false;
         }
+        return wifiManager.setWifiEnabled(enabled);
     }
 
     @Override
     public void onChannelDisconnected() {
         // we might need to do something in here !
-    }
-
-
-    public ServiceItem SelectServiceToConnect(List<ServiceItem> available) {
-
-        ServiceItem  ret = null;
-
-        if(connectedArray.size() > 0 && available.size() > 0) {
-
-            int firstNewMatch = -1;
-            int firstOldMatch = -1;
-
-            for (int i = 0; i < available.size(); i++) {
-                if(firstNewMatch >= 0) {
-                    break;
-                }
-                for (int ii = 0; ii < connectedArray.size(); ii++) {
-                    if (available.get(i).deviceAddress.equals(connectedArray.get(ii).deviceAddress)) {
-                        if(firstOldMatch < 0 || firstOldMatch > ii){
-                            //find oldest one available that we have connected previously
-                            firstOldMatch = ii;
-                        }
-                        firstNewMatch = -1;
-                        break;
-                    } else {
-                        if (firstNewMatch < 0) {
-                            firstNewMatch = i; // select first not connected device
-                        }
-                    }
-                }
-            }
-
-            if (firstNewMatch >= 0){
-                ret = available.get(firstNewMatch);
-            }else if(firstOldMatch >= 0){
-                ret = connectedArray.get(firstOldMatch);
-                // we move this to last position
-                connectedArray.remove(firstOldMatch);
-            }
-
-            //print_line("EEE", "firstNewMatch " + firstNewMatch + ", firstOldMatch: " + firstOldMatch);
-
-        }else if(available.size() > 0){
-            ret = available.get(0);
-        }
-        if(ret != null){
-            connectedArray.add(ret);
-
-            // just to set upper limit for the amount of remembered contacts
-            // when we have 101, we remove the oldest (that's the top one)
-            // from the array
-            if(connectedArray.size() > 100){
-                connectedArray.remove(0);
-            }
-        }
-
-        return ret;
     }
 
     private void debug_print(String buffer) {
@@ -162,8 +107,8 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
-                int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
                 if(callback != null) {
+                    int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
                     callback.WifiStateChanged(state);
                 }
             }

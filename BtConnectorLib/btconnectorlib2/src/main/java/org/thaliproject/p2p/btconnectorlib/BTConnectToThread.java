@@ -58,26 +58,28 @@ public class BTConnectToThread extends Thread{
     }
     public void run() {
         printe_line("Starting to connect");
-        if(mSocket != null && callback != null) {
-            try {
-                mSocket.connect();
-                //return success
-                if(mBTHandShakeSocketTread == null) {
-                    HandShakeTimeOutTimer.start();
-                    mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, mHandler);
-                    mBTHandShakeSocketTread.start();
-                    mBTHandShakeSocketTread.write(mInstanceString.getBytes());
-                }
-            } catch (IOException e) {
-                printe_line("socket connect failed: " + e.toString());
-                try {
-                    mSocket.close();
-                } catch (IOException ee) {
-                    printe_line("closing socket 2 failed: " + ee.toString());
-                }
-                callback.ConnectionFailed(e.toString(),mPeerId,mPeerName,mPeerAddress);
-            }
+        if (mSocket == null || callback == null) {
+            return;
         }
+        try {
+            mSocket.connect();
+            //return success
+            if (mBTHandShakeSocketTread == null) {
+                HandShakeTimeOutTimer.start();
+                mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, mHandler);
+                mBTHandShakeSocketTread.start();
+                mBTHandShakeSocketTread.write(mInstanceString.getBytes());
+            }
+        } catch (IOException e) {
+            printe_line("socket connect failed: " + e.toString());
+            try {
+                mSocket.close();
+            } catch (IOException ee) {
+                printe_line("closing socket 2 failed: " + ee.toString());
+            }
+            callback.ConnectionFailed(e.toString(), mPeerId, mPeerName, mPeerAddress);
+        }
+
     }
 
     public void HandShakeOk() {

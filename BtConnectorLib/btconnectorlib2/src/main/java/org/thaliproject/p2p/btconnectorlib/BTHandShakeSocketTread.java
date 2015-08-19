@@ -65,11 +65,14 @@ public class BTHandShakeSocketTread extends Thread {
      * @param buffer The bytes to write
      */
     public void write(byte[] buffer) {
+
+        if (mmOutStream == null) {
+            return;
+        }
+
         try {
-            if(mmOutStream != null) {
-                mmOutStream.write(buffer);
-                mHandler.obtainMessage(MESSAGE_WRITE, buffer.length, -1, buffer).sendToTarget();
-            }
+            mmOutStream.write(buffer);
+            mHandler.obtainMessage(MESSAGE_WRITE, buffer.length, -1, buffer).sendToTarget();
         } catch (IOException e) {
             Log.e(TAG, "BTHandShakeSocketTread  write failed: ", e);
         }
@@ -77,20 +80,22 @@ public class BTHandShakeSocketTread extends Thread {
 
     public void CloseSocket() {
 
-        if (mmInStream != null) {
-            try {mmInStream.close();} catch (Exception e) {}
-            mmInStream = null;
+        InputStream tmpIn = mmInStream;
+        mmInStream = null;
+        if (tmpIn != null) {
+            try {tmpIn.close();} catch (Exception e) {}
         }
 
-        if (mmOutStream != null) {
-            try {mmOutStream.close();} catch (Exception e) {}
-            mmOutStream = null;
+        OutputStream tmpPOut = mmOutStream;
+        mmOutStream = null;
+        if (tmpPOut != null) {
+            try {tmpPOut.close();} catch (Exception e) {}
         }
 
-        if (mmSocket != null) {
-            try {mmSocket.close();} catch (Exception e) {}
-            mmSocket = null;
+        BluetoothSocket tmpSocket = mmSocket;
+        mmSocket = null;
+        if (tmpSocket != null) {
+            try {tmpSocket.close();} catch (Exception e) {}
         }
-
     }
 }

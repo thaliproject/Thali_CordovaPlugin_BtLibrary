@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static android.net.wifi.p2p.WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION;
 
@@ -53,7 +54,7 @@ public class WifiServiceSearcher {
     }
     ServiceState myServiceState = ServiceState.NONE;
 
-    List<ServiceItem> myServiceList = new ArrayList<ServiceItem>();
+    CopyOnWriteArrayList<ServiceItem> myServiceList = new CopyOnWriteArrayList<ServiceItem>();
 
     CountDownTimer ServiceDiscoveryTimeOutTimer = new CountDownTimer(60000, 1000) {
         public void onTick(long millisUntilFinished) {
@@ -88,17 +89,18 @@ public class WifiServiceSearcher {
             }
             public void onFinish() {
                 myServiceState = ServiceState.NONE;
-                if(callback != null) {
-                    callback.gotServicesList(myServiceList);
-                    myServiceState = ServiceState.DiscoverPeer;
-                    //cancel all other counters, and start our wait cycle
-                    ServiceDiscoveryTimeOutTimer.cancel();
-                    peerDiscoveryTimer.cancel();
-                    stopDiscovery();
+                if (callback == null) {
                     startPeerDiscovery();
-                }else{
-                    startPeerDiscovery();
+                    return;
                 }
+
+                callback.gotServicesList(myServiceList);
+                //cancel all other counters, and start our wait cycle
+                ServiceDiscoveryTimeOutTimer.cancel();
+                peerDiscoveryTimer.cancel();
+                stopDiscovery();
+                startPeerDiscovery();
+
             }
         };
     }
@@ -110,35 +112,43 @@ public class WifiServiceSearcher {
     public void Start() {
 
         if(receiver == null) {
-            filter = new IntentFilter();
-            filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
-            filter.addAction(WIFI_P2P_PEERS_CHANGED_ACTION);
-            receiver = new ServiceSearcherReceiver();
-            this.context.registerReceiver(receiver, filter);
+            try {
+                receiver = new ServiceSearcherReceiver();
+                filter = new IntentFilter();
+                filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
+                filter.addAction(WIFI_P2P_PEERS_CHANGED_ACTION);
+                this.context.registerReceiver(receiver, filter);
+            } catch(Exception e) {e.printStackTrace();}
         }
 
         peerListListener = new WifiP2pManager.PeerListListener() {
 
             public void onPeersAvailable(WifiP2pDeviceList peers) {
 
-                final WifiP2pDeviceList pers = peers;
                 // this is called still multiple time time-to-time
                 // so need to make sure we only make one service discovery call
-                if(myServiceState != ServiceState.DiscoverService) {
-                    if(callback != null) {
-                        callback.gotPeersList(pers.getDeviceList());
-                    }
-                    if (pers.getDeviceList().size() > 0) {
-                        //tests have shown that if we have multiple peers with services advertising
-                        // who disappear same time when we do this, there is a chance that we get stuck
-                        // thus, if this happens, in 60 seconds we'll cancel this query and start peer discovery again
-                        ServiceDiscoveryTimeOutTimer.start();
-                        startServiceDiscovery();
-                    }else{
-                        //we'll just wait
-                    }
+                if (myServiceState == ServiceState.DiscoverService) {
+                    return;
+                }
+
+                final WifiP2pDeviceList pers = peers;
+
+                if (callback != null) {
+                    // we do want to inform also when we get zero peer list
+                    // this would inform the plugin that all peers are now unavailable
+                    callback.gotPeersList(pers.getDeviceList());
+                }
+                if (pers.getDeviceList().size() > 0) {
+                    //tests have shown that if we have multiple peers with services advertising
+                    // who disappear same time when we do this, there is a chance that we get stuck
+                    // thus, if this happens, in 60 seconds we'll cancel this query and start peer discovery again
+                    ServiceDiscoveryTimeOutTimer.start();
+                    startServiceDiscovery();
+                } else {
+                    //we'll just wait
                 }
             }
+
         };
 
         serviceListener = new WifiP2pManager.DnsSdServiceResponseListener() {
@@ -155,7 +165,6 @@ public class WifiServiceSearcher {
                         }
                     }
                     if(addService) {
-
                         try {
                             String JsonLine = instanceName;
 
@@ -169,12 +178,13 @@ public class WifiServiceSearcher {
 
                             ServiceItem tmpSrv = new ServiceItem(peerIdentifier,peerName,peerAddress, serviceType, device.deviceAddress,device.deviceName);
                             if(callback != null) {
+                                //this is to inform right away that we have found a peer, so we don't need to wait for the whole list before connecting
                                 callback.foundService(tmpSrv);
                             }
                             myServiceList.add(tmpSrv);
 
                         }catch (Exception e){
-                            debug_print("Desscryptin instance failed , :" + e.toString());
+                            debug_print("checking instance failed , :" + e.toString());
                         }
                     }
 
@@ -193,9 +203,12 @@ public class WifiServiceSearcher {
     }
 
     public void Stop() {
-        if(receiver != null) {
-            this.context.unregisterReceiver(receiver);
-            receiver = null;
+        BroadcastReceiver tmprec = receiver;
+        receiver = null;
+        if(tmprec != null) {
+            try {
+                this.context.unregisterReceiver(tmprec);
+            } catch (Exception e) {e.printStackTrace();}
         }
         ServiceDiscoveryTimeOutTimer.cancel();
         peerDiscoveryTimer.cancel();
@@ -209,6 +222,7 @@ public class WifiServiceSearcher {
                 myServiceState = ServiceState.DiscoverPeer;
                 debug_print("Started peer discovery");
             }
+
             public void onFailure(int reason) {
                 myServiceState = ServiceState.NONE;
                 debug_print("Starting peer discovery failed, error code " + reason);
@@ -274,8 +288,13 @@ public class WifiServiceSearcher {
 
     private void stopDiscovery() {
         p2p.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
-            public void onSuccess() {debug_print("Cleared service requests");}
-            public void onFailure(int reason) {debug_print("Clearing service requests failed, error code " + reason);}
+            public void onSuccess() {
+                debug_print("Cleared service requests");
+            }
+
+            public void onFailure(int reason) {
+                debug_print("Clearing service requests failed, error code " + reason);
+            }
         });
     }
     private void debug_print(String buffer) {

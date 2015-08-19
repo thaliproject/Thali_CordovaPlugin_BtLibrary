@@ -17,7 +17,7 @@ import java.util.UUID;
  */
 public class BluetoothBase {
 
-    public interface  BluetoothStatusChanged{
+    public interface BluetoothStatusChanged {
         public void BluetoothStateChanged(int state);
     }
 
@@ -35,51 +35,60 @@ public class BluetoothBase {
 
         //bluetooth = new BluetoothAdapter(this);
         bluetooth = BluetoothAdapter.getDefaultAdapter();
-        if(bluetooth != null) {
+        if (bluetooth != null) {
             blueAddress = bluetooth.getAddress();
         }
     }
 
-    public boolean Start() {
+    public synchronized  boolean Start() {
 
-        boolean ret = false;
-        if(bluetooth != null) {
-            ret = true;
-            Log.d("", "Start-My BT: " + blueAddress);
+        if (bluetooth == null) {
+            return false;
+        }
 
-            if(receiver == null) {
+        Log.d("", "Start-My BT: " + blueAddress);
+
+        if (receiver == null) {
+            try {
+                receiver = new BtBrowdCastReceiver();
                 filter = new IntentFilter();
                 filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
-                receiver = new BtBrowdCastReceiver();
                 this.context.registerReceiver(receiver, filter);
-            }
+            } catch(Exception e) {e.printStackTrace();}
         }
-        return ret;
+
+        return true;
     }
 
     public void Stop() {
-        if(receiver != null) {
-            this.context.unregisterReceiver(receiver);
-            receiver = null;
+
+        BroadcastReceiver tmp = receiver;
+        receiver = null;
+        if (tmp != null) {
+            try {
+                this.context.unregisterReceiver(tmp);
+            } catch(Exception e) {e.printStackTrace();}
         }
     }
 
     public void SetBluetoothEnabled(boolean seton) {
-        if (bluetooth != null) {
-            if (seton) {
-                bluetooth.enable();
-            } else {
-                bluetooth.disable();
-            }
+        if (bluetooth == null) {
+            return;
+        }
+
+        if (seton) {
+            bluetooth.enable();
+        } else {
+            bluetooth.disable();
         }
     }
 
     public boolean isBluetoothEnabled() {
-        if (bluetooth != null) {
-            return bluetooth.isEnabled();
-        } else {
+        if (bluetooth == null) {
             return false;
         }
+
+        return bluetooth.isEnabled();
     }
 
     public BluetoothAdapter getAdapter(){
@@ -91,19 +100,19 @@ public class BluetoothBase {
     }
 
     public String getName() {
-        String ret = "";
-        if (bluetooth != null){
-            ret = bluetooth.getName();
+        if (bluetooth == null) {
+            return "";
         }
-        return ret;
+
+        return bluetooth.getName();
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
-        BluetoothDevice device = null;
-        if (bluetooth != null){
-            device = bluetooth.getRemoteDevice(address);
+        if (bluetooth == null) {
+            return null;
         }
-        return device;
+
+        return bluetooth.getRemoteDevice(address);
     }
 
     private class BtBrowdCastReceiver extends BroadcastReceiver {
