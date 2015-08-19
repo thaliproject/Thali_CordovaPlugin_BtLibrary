@@ -11,6 +11,9 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -89,7 +92,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         this.connectSelector = selector;
     }
 
-    public WifiBtStatus Start(String peerIdentifier, String peerName) {
+    public synchronized WifiBtStatus Start(String peerIdentifier, String peerName) {
         //initialize the system, and
         // make sure BT & Wifi is enabled before we start running
 
@@ -103,10 +106,17 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         ret.isBtEnabled = mBluetoothBase.isBluetoothEnabled();
 
         if (mBluetoothBase != null) {
-            String instanceLine = "{ \"" + JSON_ID_PEERID + "\": \"" + peerIdentifier + "\",";
-            instanceLine = instanceLine + "\"" + JSON_ID_PEERNAME + "\": \"" + peerName + "\",";
-            instanceLine = instanceLine + "\"" + JSON_ID_BTADRRES + "\": \"" + mBluetoothBase.getAddress() + "\"}";
-            mInstanceString = instanceLine;
+
+            JSONObject jsonobj = new JSONObject();
+            try {
+                jsonobj.put(JSON_ID_PEERID, peerIdentifier);
+                jsonobj.put(JSON_ID_PEERNAME, peerName);
+                jsonobj.put(JSON_ID_BTADRRES, mBluetoothBase.getAddress());
+            } catch (JSONException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+            mInstanceString = jsonobj.toString();
         }
 
         print_line("", " mInstanceString : " + mInstanceString);
@@ -129,7 +139,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         return ret;
     }
 
-    public void Stop() {
+    public synchronized void Stop() {
         stopAll();
         if (mWifiBase != null) {
             WifiBase tmp = mWifiBase;
@@ -151,7 +161,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         BTDeviceFetchFailed
     }
 
-    public TryConnectReturnValues TryConnect(ServiceItem selectedDevice) {
+    public synchronized TryConnectReturnValues TryConnect(ServiceItem selectedDevice) {
 
         TryConnectReturnValues ret = TryConnectReturnValues.Connecting;
         if(selectedDevice != null) {
@@ -207,7 +217,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
         print_line("", "StartBluetooth listener");
         mBTConnector_BtConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
-        mBTConnector_BtConnection.Start();
+        mBTConnector_BtConnection.StartListening();
     }
 
     private  void stopBluetooth() {

@@ -165,7 +165,7 @@ public class WifiServiceSearcher {
                             String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
                             String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
 
-                            debug_print("peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                            debug_print("JsonLine: " + JsonLine + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
                             ServiceItem tmpSrv = new ServiceItem(peerIdentifier,peerName,peerAddress, serviceType, device.deviceAddress,device.deviceName);
                             if(callback != null) {
