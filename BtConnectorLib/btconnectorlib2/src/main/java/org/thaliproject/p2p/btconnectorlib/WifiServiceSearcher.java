@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.util.Log;
 import org.json.JSONObject;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -145,7 +146,9 @@ public class WifiServiceSearcher {
                 if (serviceType.startsWith(SERVICE_TYPE)) {
                     boolean addService = true;
 
-                    for (ServiceItem item: myServiceList){
+                    Iterator<ServiceItem> iterator = myServiceList.iterator();
+                    while (iterator.hasNext()) {
+                        ServiceItem item = iterator.next();
                         if(item != null && item.deviceAddress.equals(device.deviceAddress)){
                             addService = false;
                         }
