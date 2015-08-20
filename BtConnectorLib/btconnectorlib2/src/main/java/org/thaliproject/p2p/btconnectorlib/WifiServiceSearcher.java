@@ -11,10 +11,7 @@ import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
-
 import org.json.JSONObject;
-
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
@@ -30,21 +27,18 @@ import static android.net.wifi.p2p.WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION;
 public class WifiServiceSearcher {
 
     public interface  DiscoveryInternalCallBack{
-        public void gotPeersList(Collection<WifiP2pDevice> list);
-        public void gotServicesList(List<ServiceItem> list);
-        public void foundService(ServiceItem item);
+        void gotPeersList(Collection<WifiP2pDevice> list);
+        void gotServicesList(List<ServiceItem> list);
+        void foundService(ServiceItem item);
     }
 
-    WifiServiceSearcher that = this;
     private Context context = null;
     private BroadcastReceiver receiver = null;
-    private IntentFilter filter = null;
-    private String SERVICE_TYPE;
+    private final String SERVICE_TYPE;
 
     private final DiscoveryInternalCallBack callback;
     private WifiP2pManager p2p = null;
     private WifiP2pManager.Channel channel = null;
-    private WifiP2pManager.DnsSdServiceResponseListener serviceListener = null;
     private WifiP2pManager.PeerListListener peerListListener = null;
 
     enum ServiceState{
@@ -52,11 +46,11 @@ public class WifiServiceSearcher {
         DiscoverPeer,
         DiscoverService
     }
-    ServiceState myServiceState = ServiceState.NONE;
+    private ServiceState myServiceState = ServiceState.NONE;
 
-    CopyOnWriteArrayList<ServiceItem> myServiceList = new CopyOnWriteArrayList<ServiceItem>();
+    private final CopyOnWriteArrayList<ServiceItem> myServiceList = new CopyOnWriteArrayList<ServiceItem>();
 
-    CountDownTimer ServiceDiscoveryTimeOutTimer = new CountDownTimer(60000, 1000) {
+    private final CountDownTimer ServiceDiscoveryTimeOutTimer = new CountDownTimer(60000, 1000) {
         public void onTick(long millisUntilFinished) {
             // not using
         }
@@ -66,7 +60,7 @@ public class WifiServiceSearcher {
         }
     };
 
-    CountDownTimer peerDiscoveryTimer = null;
+    private CountDownTimer peerDiscoveryTimer = null;
 
     public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, DiscoveryInternalCallBack handler,String serviceType) {
         this.context = Context;
@@ -100,13 +94,8 @@ public class WifiServiceSearcher {
                 peerDiscoveryTimer.cancel();
                 stopDiscovery();
                 startPeerDiscovery();
-
             }
         };
-    }
-
-    public List<ServiceItem> GetServiceList(){
-        return  myServiceList;
     }
 
     public void Start() {
@@ -114,7 +103,7 @@ public class WifiServiceSearcher {
         if(receiver == null) {
             try {
                 receiver = new ServiceSearcherReceiver();
-                filter = new IntentFilter();
+                IntentFilter filter = new IntentFilter();
                 filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
                 filter.addAction(WIFI_P2P_PEERS_CHANGED_ACTION);
                 this.context.registerReceiver(receiver, filter);
@@ -131,27 +120,23 @@ public class WifiServiceSearcher {
                     return;
                 }
 
-                final WifiP2pDeviceList pers = peers;
-
                 if (callback != null) {
                     // we do want to inform also when we get zero peer list
                     // this would inform the plugin that all peers are now unavailable
-                    callback.gotPeersList(pers.getDeviceList());
+                    callback.gotPeersList(peers.getDeviceList());
                 }
-                if (pers.getDeviceList().size() > 0) {
+                if (peers.getDeviceList().size() > 0) {
                     //tests have shown that if we have multiple peers with services advertising
                     // who disappear same time when we do this, there is a chance that we get stuck
                     // thus, if this happens, in 60 seconds we'll cancel this query and start peer discovery again
                     ServiceDiscoveryTimeOutTimer.start();
                     startServiceDiscovery();
-                } else {
-                    //we'll just wait
-                }
+                } //else //we'll just wait
             }
 
         };
 
-        serviceListener = new WifiP2pManager.DnsSdServiceResponseListener() {
+        WifiP2pManager.DnsSdServiceResponseListener serviceListener = new WifiP2pManager.DnsSdServiceResponseListener() {
 
             public void onDnsSdServiceAvailable(String instanceName, String serviceType, WifiP2pDevice device) {
 
@@ -159,22 +144,21 @@ public class WifiServiceSearcher {
 
                 if (serviceType.startsWith(SERVICE_TYPE)) {
                     boolean addService = true;
-                    for (int i=0; i<myServiceList.size(); i++) {
-                        if(myServiceList.get(i).deviceAddress.equals(device.deviceAddress)){
+
+                    for (ServiceItem item: myServiceList){
+                        if(item != null && item.deviceAddress.equals(device.deviceAddress)){
                             addService = false;
                         }
                     }
                     if(addService) {
                         try {
-                            String JsonLine = instanceName;
-
-                            JSONObject jObject = new JSONObject(JsonLine);
+                            JSONObject jObject = new JSONObject(instanceName);
 
                             String peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
                             String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
                             String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
 
-                            debug_print("JsonLine: " + JsonLine + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                            debug_print("JsonLine: " + instanceName + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
                             ServiceItem tmpSrv = new ServiceItem(peerIdentifier,peerName,peerAddress, serviceType, device.deviceAddress,device.deviceName);
                             if(callback != null) {

@@ -6,31 +6,24 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
-import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
 
 /**
  * Created by juksilve on 6.3.2015.
  */
-public class WifiBase implements WifiP2pManager.ChannelListener{
+class WifiBase{
 
     public interface  WifiStatusCallBack{
-        public void WifiStateChanged(int state);
+        void WifiStateChanged(int state);
     }
 
-    private List<ServiceItem> connectedArray = new ArrayList<ServiceItem>();
     private WifiP2pManager p2p = null;
     private WifiP2pManager.Channel channel = null;
     private Context context = null;
 
-    WifiStatusCallBack callback= null;
-    MainBCReceiver mBRReceiver = null;
-    private IntentFilter filter= null;
+    private WifiStatusCallBack callback= null;
+    private MainBCReceiver mBRReceiver = null;
 
     public WifiBase(Context Context, WifiStatusCallBack handler){
         this.context = Context;
@@ -42,7 +35,7 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
         if(mBRReceiver == null) {
             try {
                 mBRReceiver = new MainBCReceiver();
-                filter = new IntentFilter();
+                IntentFilter  filter = new IntentFilter();
                 filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
                 this.context.registerReceiver((mBRReceiver), filter);
             } catch (Exception e) {e.printStackTrace();}
@@ -54,7 +47,7 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
             return false;
         }
 
-        channel = p2p.initialize(this.context, this.context.getMainLooper(), this);
+        channel = p2p.initialize(this.context, this.context.getMainLooper(),null);
 
 
         return true;
@@ -79,23 +72,12 @@ public class WifiBase implements WifiP2pManager.ChannelListener{
 
     public boolean isWifiEnabled() {
         WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager == null) {
-            return false;
-        }
-        return wifiManager.isWifiEnabled();
+        return wifiManager != null && wifiManager.isWifiEnabled();
     }
 
     public boolean setWifiEnabled(boolean enabled) {
         WifiManager wifiManager = (WifiManager) this.context.getSystemService(Context.WIFI_SERVICE);
-        if (wifiManager == null) {
-            return false;
-        }
-        return wifiManager.setWifiEnabled(enabled);
-    }
-
-    @Override
-    public void onChannelDisconnected() {
-        // we might need to do something in here !
+        return wifiManager != null && wifiManager.setWifiEnabled(enabled);
     }
 
     private void debug_print(String buffer) {

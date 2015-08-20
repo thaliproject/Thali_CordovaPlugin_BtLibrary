@@ -19,16 +19,16 @@ import java.io.IOException;
 import java.util.UUID;
 
 
-public class BTListenerThread extends Thread {
+class BTListenerThread extends Thread {
 
-    BTListenerThread that = this;
+    private final BTListenerThread that = this;
 
     public interface  BtListenCallback{
-        public void GotConnection(BluetoothSocket socket,String peerId,String peerName,String peerAddress);
-        public void ListeningFailed(String reason);
+        void GotConnection(BluetoothSocket socket,String peerId,String peerName,String peerAddress);
+        void ListeningFailed(String reason);
     }
 
-    CountDownTimer HandShakeTimeOutTimer = new CountDownTimer(4000, 1000) {
+    private final CountDownTimer HandShakeTimeOutTimer = new CountDownTimer(4000, 1000) {
         public void onTick(long millisUntilFinished) {
             // not using
         }
@@ -37,17 +37,17 @@ public class BTListenerThread extends Thread {
         }
     };
 
-    String peerIdentifier = "";
-    String peerName = "";
-    String peerAddress = "";
-    String shakeBackBuf = "shakehand";
+    private String peerIdentifier = "";
+    private String peerName = "";
+    private String peerAddress = "";
+    private final String shakeBackBuf = "shakehand";
 
-    BTHandShakeSocketTread mBTHandShakeSocketTread = null;
+    private BTHandShakeSocketTread mBTHandShakeSocketTread = null;
     private String mInstanceString = "";
-    private BtListenCallback callback;
+    private final BtListenCallback callback;
     private final BluetoothServerSocket mSocket;
-    BluetoothSocket acceptedSocket = null;
-    boolean mStopped = false;
+    private BluetoothSocket acceptedSocket = null;
+    private boolean mStopped = false;
 
     public BTListenerThread(BtListenCallback Callback,BluetoothAdapter bta,UUID BtUuid, String btName, String InstanceString) {
         callback = Callback;
@@ -96,13 +96,13 @@ public class BTListenerThread extends Thread {
         // }
     }
 
-    public void HandShakeOk() {
+    private void HandShakeOk() {
         HandShakeTimeOutTimer.cancel();
         mBTHandShakeSocketTread = null;
         callback.GotConnection(that.acceptedSocket, that.peerIdentifier,that.peerName,that.peerAddress);
     }
 
-    public void HandShakeFailed(String reason) {
+    private void HandShakeFailed(String reason) {
         HandShakeTimeOutTimer.cancel();
         BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
         mBTHandShakeSocketTread = null;
@@ -153,9 +153,8 @@ public class BTListenerThread extends Thread {
 
                         try {
                             byte[] readBuf = (byte[]) msg.obj;// construct a string from the valid bytes in the buffer
-                            String readMessage = new String(readBuf, 0, msg.arg1);
 
-                            String JsonLine = readMessage;
+                            String JsonLine = new String(readBuf, 0, msg.arg1);
                             printe_line("Got JSON from encryption:" + JsonLine);
                             JSONObject jObject = new JSONObject(JsonLine);
 
@@ -167,13 +166,13 @@ public class BTListenerThread extends Thread {
                             tmpThread.write(shakeBackBuf.getBytes());
 
                         } catch (Exception e) {
-                            HandShakeFailed("Decryptin instance failed , :" + e.toString());
+                            HandShakeFailed("Decrypting instance failed , :" + e.toString());
                         }
 
                     }
                     break;
                     case BTHandShakeSocketTread.SOCKET_DISCONNEDTED: {
-                        HandShakeFailed("SOCKET_DISCONNEDTED");
+                        HandShakeFailed("SOCKET_DISCONNECTED");
                     }
                     break;
                 }

@@ -11,12 +11,12 @@ import java.util.Map;
 /**
  * Created by juksilve on 28.2.2015.
  */
-public class WifiServiceAdvertiser {
+class WifiServiceAdvertiser {
 
-    private WifiP2pManager p2p;
-    private WifiP2pManager.Channel channel;
+    private final WifiP2pManager p2p;
+    private final WifiP2pManager.Channel channel;
 
-    int lastError = -1;
+    private int lastError = -1;
     public WifiServiceAdvertiser(WifiP2pManager Manager, WifiP2pManager.Channel Channel) {
         this.p2p = Manager;
         this.channel = Channel;

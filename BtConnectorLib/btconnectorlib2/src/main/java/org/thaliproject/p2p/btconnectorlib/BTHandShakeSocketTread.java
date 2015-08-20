@@ -13,7 +13,7 @@ import java.io.OutputStream;
  * Created by juksilve on 11.3.2015.
  */
 
-public class BTHandShakeSocketTread extends Thread {
+class BTHandShakeSocketTread extends Thread {
 
     public static final int MESSAGE_READ         = 0x11;
     public static final int MESSAGE_WRITE        = 0x22;
@@ -24,7 +24,7 @@ public class BTHandShakeSocketTread extends Thread {
     private OutputStream mmOutStream;
     private final Handler mHandler;
 
-    final String TAG  = "BTHandShakeSocketTread";
+    private final String TAG  = "BTHandShakeSocketTread";
 
     public BTHandShakeSocketTread(BluetoothSocket socket, Handler handler) {
         Log.d(TAG, "Creating BTHandShakeSocketTread");
@@ -83,19 +83,19 @@ public class BTHandShakeSocketTread extends Thread {
         InputStream tmpIn = mmInStream;
         mmInStream = null;
         if (tmpIn != null) {
-            try {tmpIn.close();} catch (Exception e) {}
+            try {tmpIn.close();} catch (Exception e) {e.printStackTrace();}
         }
 
         OutputStream tmpPOut = mmOutStream;
         mmOutStream = null;
         if (tmpPOut != null) {
-            try {tmpPOut.close();} catch (Exception e) {}
+            try {tmpPOut.close();} catch (Exception e) {e.printStackTrace();}
         }
 
         BluetoothSocket tmpSocket = mmSocket;
         mmSocket = null;
         if (tmpSocket != null) {
-            try {tmpSocket.close();} catch (Exception e) {}
+            try {tmpSocket.close();} catch (Exception e) {e.printStackTrace();}
         }
     }
 }

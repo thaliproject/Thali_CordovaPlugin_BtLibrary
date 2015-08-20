@@ -7,32 +7,28 @@ import android.bluetooth.BluetoothSocket;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Log;
-
-import org.json.JSONObject;
-
 import java.io.IOException;
 import java.util.UUID;
 
 /**
  * Created by juksilve on 12.3.2015.
  */
-public class BTConnectToThread extends Thread{
+class BTConnectToThread extends Thread{
 
     public interface  BtConnectToCallback{
-        public void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress);
-        public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress);
+        void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress);
+        void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress);
     }
 
-    BTHandShakeSocketTread mBTHandShakeSocketTread = null;
+    private BTHandShakeSocketTread mBTHandShakeSocketTread = null;
     private String mInstanceString = "";
-    private BtConnectToCallback callback;
+    private final BtConnectToCallback callback;
     private final BluetoothSocket mSocket;
-    String mPeerId;
-    String mPeerName;
-    String mPeerAddress;
+    private final String mPeerId;
+    private final String mPeerName;
+    private final String mPeerAddress;
 
-    CountDownTimer HandShakeTimeOutTimer = new CountDownTimer(4000, 1000) {
+    private final CountDownTimer HandShakeTimeOutTimer = new CountDownTimer(4000, 1000) {
         public void onTick(long millisUntilFinished) {
             // not using
         }
@@ -66,6 +62,7 @@ public class BTConnectToThread extends Thread{
             //return success
             if (mBTHandShakeSocketTread == null) {
                 HandShakeTimeOutTimer.start();
+
                 mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, mHandler);
                 mBTHandShakeSocketTread.start();
                 mBTHandShakeSocketTread.write(mInstanceString.getBytes());
@@ -82,14 +79,14 @@ public class BTConnectToThread extends Thread{
 
     }
 
-    public void HandShakeOk() {
+    private void HandShakeOk() {
         HandShakeTimeOutTimer.cancel();
         mBTHandShakeSocketTread = null;
 
         callback.Connected(mSocket,mPeerId,mPeerName,mPeerAddress);
     }
 
-    public void HandShakeFailed(String reason) {
+    private void HandShakeFailed(String reason) {
         HandShakeTimeOutTimer.cancel();
         BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
         mBTHandShakeSocketTread = null;
@@ -122,6 +119,7 @@ public class BTConnectToThread extends Thread{
 
     // The Handler that gets information back from the BluetoothChatService
     private final Handler mHandler = new Handler() {
+
         @Override
         public void handleMessage(Message msg) {
             if (mBTHandShakeSocketTread != null) {
@@ -136,7 +134,7 @@ public class BTConnectToThread extends Thread{
                     }
                     break;
                     case BTHandShakeSocketTread.SOCKET_DISCONNEDTED: {
-                        HandShakeFailed("SOCKET_DISCONNEDTED");
+                        HandShakeFailed("SOCKET_DISCONNECTED");
                     }
                     break;
                 }

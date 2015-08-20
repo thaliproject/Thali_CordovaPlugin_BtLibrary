@@ -16,16 +16,12 @@ import java.util.List;
  */
 public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInternalCallBack {
 
-    BTConnector_Discovery that = this;
-
-    static String JSON_ID_PEERID   = "pi";
-    static String JSON_ID_PEERNAME = "pn";
-    static String JSON_ID_BTADRRES = "ra";
+    private final BTConnector_Discovery that = this;
 
     public interface  DiscoveryCallback{
-        public void CurrentPeersList(List<ServiceItem> available);
-        public void PeerDiscovered(ServiceItem service);
-        public void DiscoveryStateChanged(State newState);
+        void CurrentPeersList(List<ServiceItem> available);
+        void PeerDiscovered(ServiceItem service);
+        void DiscoveryStateChanged(State newState);
     }
     private DiscoveryCallback mDiscoveryCallback = null;
 
@@ -36,18 +32,16 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
         DiscoveryFindingServices
     }
 
-    private State myState = State.DiscoveryNotInitialized;
-
-    WifiServiceAdvertiser mWifiAccessPoint = null;
-    WifiServiceSearcher mWifiServiceSearcher = null;
+    private WifiServiceAdvertiser mWifiAccessPoint = null;
+    private WifiServiceSearcher mWifiServiceSearcher = null;
     private String mEncryptedInstance = "";
 
     private Context context = null;
-    String mSERVICE_TYPE = "";
-    WifiP2pManager.Channel channel = null;
-    WifiP2pManager p2p = null;
+    private String mSERVICE_TYPE = "";
+    private WifiP2pManager.Channel channel = null;
+    private WifiP2pManager p2p = null;
 
-    CountDownTimer ServiceFoundTimeOutTimer = new CountDownTimer(600000, 1000) {
+    private final CountDownTimer ServiceFoundTimeOutTimer = new CountDownTimer(600000, 1000) {
         public void onTick(long millisUntilFinished) {
             // not using
         }
@@ -91,7 +85,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
      }
 
     public void Stop() {
-        print_line("", "Stoppingservices");
+        print_line("", "Stopping services");
         ServiceFoundTimeOutTimer.cancel();
 
         WifiServiceAdvertiser tmpAC = mWifiAccessPoint;
@@ -116,10 +110,10 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
             ServiceFoundTimeOutTimer.start();
 
             print_line("SS", "Found " + list.size() + " peers.");
-            int numm = 0;
+            int num = 0;
             for (WifiP2pDevice peer : list) {
-                numm++;
-                print_line("SS", "Peer(" + numm + "): " + peer.deviceName + " " + peer.deviceAddress);
+                num++;
+                print_line("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
             }
 
             setState(State.DiscoveryFindingServices);
@@ -132,7 +126,6 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
     @Override
     public void gotServicesList(List<ServiceItem> list) {
         if(list != null && list.size() > 0) {
-            ServiceItem selItem = null;
             this.mDiscoveryCallback.CurrentPeersList(list);
         }
     }
@@ -147,7 +140,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
 
     }
 
-    public void print_line(String who, String line) {
+    private void print_line(String who, String line) {
         Log.i("BTConnector_Discovery" + who, line);
     }
 }

@@ -3,31 +3,27 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.util.Log;
 
-import java.util.UUID;
-
 /**
  * Created by juksilve on 6.3.2015.
  */
-public class BluetoothBase {
+class BluetoothBase {
 
     public interface BluetoothStatusChanged {
-        public void BluetoothStateChanged(int state);
+        void BluetoothStateChanged(int state);
     }
 
     private BluetoothStatusChanged callBack = null;
     private BluetoothAdapter bluetooth = null;
 
     private BtBrowdCastReceiver receiver = null;
-    private IntentFilter filter = null;
     private Context context = null;
-    String blueAddress = "";
+    private String blueAddress = "";
 
     public BluetoothBase(Context Context, BluetoothStatusChanged handler) {
         this.context = Context;
@@ -51,7 +47,7 @@ public class BluetoothBase {
         if (receiver == null) {
             try {
                 receiver = new BtBrowdCastReceiver();
-                filter = new IntentFilter();
+                IntentFilter filter = new IntentFilter();
                 filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
                 this.context.registerReceiver(receiver, filter);
             } catch(Exception e) {e.printStackTrace();}
@@ -84,11 +80,7 @@ public class BluetoothBase {
     }
 
     public boolean isBluetoothEnabled() {
-        if (bluetooth == null) {
-            return false;
-        }
-
-        return bluetooth.isEnabled();
+        return bluetooth != null && bluetooth.isEnabled();
     }
 
     public BluetoothAdapter getAdapter(){

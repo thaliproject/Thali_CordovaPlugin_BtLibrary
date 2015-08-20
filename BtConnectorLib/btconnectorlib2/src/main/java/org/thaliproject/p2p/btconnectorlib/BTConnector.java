@@ -5,25 +5,19 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
-import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
-
 import org.json.JSONException;
 import org.json.JSONObject;
-
-import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 
 /**
  * Created by juksilve on 13.3.2015.
  */
 public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBase.WifiStatusCallBack, BTConnector_Discovery.DiscoveryCallback, BTConnector_BtConnection.ListenerCallback {
 
-    BTConnector that = this;
+    private final BTConnector that = this;
 
     public class WifiBtStatus{
         public WifiBtStatus(){
@@ -49,43 +43,38 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     public interface  Callback{
-        public void Connected(BluetoothSocket socket, boolean incoming,String peerId,String peerName,String peerAddress);
-        public void ConnectionFailed(String peerId,String peerName,String peerAddress);
-        public void StateChanged(State newState);
+        void Connected(BluetoothSocket socket, boolean incoming,String peerId,String peerName,String peerAddress);
+        void ConnectionFailed(String peerId,String peerName,String peerAddress);
+        void StateChanged(State newState);
     }
 
     public interface  ConnectSelector{
-        public ServiceItem CurrentPeersList(List<ServiceItem> available);
-        public void PeerDiscovered(ServiceItem service);
+        ServiceItem CurrentPeersList(List<ServiceItem> available);
+        void PeerDiscovered(ServiceItem service);
     }
 
-    private State myState = State.NotInitialized;
+    private WifiBase mWifiBase = null;
+    private BTConnector_Discovery mBTConnector_Discovery = null;
 
-    WifiBase mWifiBase = null;
-    BTConnector_Discovery mBTConnector_Discovery = null;
-
-    BluetoothBase mBluetoothBase = null;
-    BTConnector_BtConnection mBTConnector_BtConnection = null;
-
+    private BluetoothBase mBluetoothBase = null;
+    private BTConnector_BtConnection mBTConnector_BtConnection = null;
 
     private String mInstanceString = "";
-    static String JSON_ID_PEERID   = "pi";
-    static String JSON_ID_PEERNAME = "pn";
-    static String JSON_ID_BTADRRES = "ra";
+    static final String JSON_ID_PEERID   = "pi";
+    static final String JSON_ID_PEERNAME = "pn";
+    static final String JSON_ID_BTADRRES = "ra";
 
     private Callback callback = null;
     private ConnectSelector connectSelector = null;
     private Context context = null;
     private Handler mHandler = null;
 
-
-    BTConnectorSettings ConSettings = new BTConnectorSettings();
+    private BTConnectorSettings ConSettings = new BTConnectorSettings();
 
     public BTConnector(Context Context, Callback Callback, ConnectSelector selector, BTConnectorSettings settings){
         this.context = Context;
         this.callback = Callback;
         this.mHandler = new Handler(this.context.getMainLooper());
-        this.myState = State.NotInitialized;
         this.ConSettings = settings;
         this.connectSelector = selector;
     }
@@ -135,7 +124,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         //all is good, so lets get started
-        print_line("", "All stuf available and enabled");
+        print_line("", "All stuff available and enabled");
         startAll();
         return ret;
     }
@@ -208,7 +197,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     private  void stopServices() {
-        print_line("", "Stoppingservices");
+        print_line("", "Stopping services");
         BTConnector_Discovery tmp = mBTConnector_Discovery;
         mBTConnector_Discovery = null;
         if (tmp != null) {
@@ -284,8 +273,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     public void WifiStateChanged(int state) {
 
         if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-            //no wifi availavble, thus we need to stop doing anything;
-            print_line("WB", "Wifi is DISABLEd !!");
+            //no wifi available, thus we need to stop doing anything;
+            print_line("WB", "Wifi is DISABLED !!");
             stopAll();
             // indicate the waiting with state change
             setState(State.WaitingStateChange);
@@ -318,8 +307,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                ServiceItem retItem = that.connectSelector.CurrentPeersList(availableTmp);
-                //we could checkl if the item is non-null and try connect
+                that.connectSelector.CurrentPeersList(availableTmp);
             }
         });
     }
@@ -415,7 +403,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         final State tmpState = newState;
-        myState = tmpState;
         mHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -424,7 +411,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         });
     }
 
-    public void print_line(String who, String line) {
+    private void print_line(String who, String line) {
         Log.i("BTConnector" + who, line);
     }
 }
