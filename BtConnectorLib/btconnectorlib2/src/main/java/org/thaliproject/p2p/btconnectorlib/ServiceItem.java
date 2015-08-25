@@ -14,10 +14,10 @@ public class ServiceItem{
         this.deviceAddress = address;
         this.deviceName =  name;
     }
-    public String peerId;
-    public String peerName;
-    public String peerAddress;
-    public String serviceType;
-    public String deviceAddress;
-    public String deviceName;
+    final public String peerId;
+    final public String peerName;
+    final public String peerAddress;
+    final public String serviceType;
+    final public String deviceAddress;
+    final public String deviceName;
 }

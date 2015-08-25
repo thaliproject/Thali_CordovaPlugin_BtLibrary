@@ -3,7 +3,6 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
-import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -17,36 +16,22 @@ class BTHandShakeSocketTread extends Thread {
 
     public static final int MESSAGE_READ         = 0x11;
     public static final int MESSAGE_WRITE        = 0x22;
-    public static final int SOCKET_DISCONNEDTED  = 0x33;
+    public static final int SOCKET_DISCONNECTED  = 0x33;
 
-    private BluetoothSocket mmSocket;
-    private InputStream mmInStream;
-    private OutputStream mmOutStream;
+    private final BluetoothSocket mmSocket;
+    private final InputStream mmInStream;
+    private final OutputStream mmOutStream;
     private final Handler mHandler;
 
-    private final String TAG  = "BTHandShakeSocketTread";
-
-    public BTHandShakeSocketTread(BluetoothSocket socket, Handler handler) {
-        Log.d(TAG, "Creating BTHandShakeSocketTread");
+    public BTHandShakeSocketTread(BluetoothSocket socket, Handler handler)  throws IOException {
+        print_debug("", "Creating BTHandShakeSocketTread");
         mHandler = handler;
         mmSocket = socket;
-
-        InputStream tmpIn = null;
-        OutputStream tmpOut = null;
-        // Get the BluetoothSocket input and output streams
-        try {
-            if(mmSocket != null) {
-                tmpIn = mmSocket.getInputStream();
-                tmpOut = mmSocket.getOutputStream();
-            }
-        } catch (IOException e) {
-            Log.e(TAG, "Creating temp sockets failed: ", e);
-        }
-        mmInStream = tmpIn;
-        mmOutStream = tmpOut;
+        mmInStream = mmSocket.getInputStream();
+        mmOutStream = mmSocket.getOutputStream();
     }
     public void run() {
-        Log.i(TAG, "BTHandShakeSocketTread started");
+        print_debug("", "BTHandShakeSocketTread started");
         byte[] buffer = new byte[255];
         int bytes;
 
@@ -55,10 +40,10 @@ class BTHandShakeSocketTread extends Thread {
             //Log.d(TAG, "ConnectedThread read data: " + bytes + " bytes");
             mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
         } catch (IOException e) {
-            Log.e(TAG, "BTHandShakeSocketTread disconnected: ", e);
-            mHandler.obtainMessage(SOCKET_DISCONNEDTED, -1, -1, e).sendToTarget();
+            print_debug("", "BTHandShakeSocketTread disconnected: " +  e.toString());
+            mHandler.obtainMessage(SOCKET_DISCONNECTED, -1, -1, e).sendToTarget();
         }
-        Log.i(TAG, "BTHandShakeSocketTread fully stopped");
+        print_debug("", "BTHandShakeSocketTread fully stopped");
     }
     /**
      * Write to the connected OutStream.
@@ -74,28 +59,27 @@ class BTHandShakeSocketTread extends Thread {
             mmOutStream.write(buffer);
             mHandler.obtainMessage(MESSAGE_WRITE, buffer.length, -1, buffer).sendToTarget();
         } catch (IOException e) {
-            Log.e(TAG, "BTHandShakeSocketTread  write failed: ", e);
+            // when write fails, the timeout for handshake will clear things out eventually.
+            print_debug("", "BTHandShakeSocketTread  write failed: " + e.toString());
         }
     }
 
     public void CloseSocket() {
 
-        InputStream tmpIn = mmInStream;
-        mmInStream = null;
-        if (tmpIn != null) {
-            try {tmpIn.close();} catch (Exception e) {e.printStackTrace();}
+        if (mmInStream != null) {
+            try {mmInStream.close();} catch (IOException e) {e.printStackTrace();}
         }
 
-        OutputStream tmpPOut = mmOutStream;
-        mmOutStream = null;
-        if (tmpPOut != null) {
-            try {tmpPOut.close();} catch (Exception e) {e.printStackTrace();}
+        if (mmOutStream != null) {
+            try {mmOutStream.close();} catch (IOException e) {e.printStackTrace();}
         }
 
-        BluetoothSocket tmpSocket = mmSocket;
-        mmSocket = null;
-        if (tmpSocket != null) {
-            try {tmpSocket.close();} catch (Exception e) {e.printStackTrace();}
+        if (mmSocket != null) {
+            try {mmSocket.close();} catch (IOException e) {e.printStackTrace();}
         }
+    }
+
+    private void print_debug(String who, String message){
+        //Log.d("BTHandShakeSocketTread" + who, "BTConnectToThread: " + message);
     }
 }

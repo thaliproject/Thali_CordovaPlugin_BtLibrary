@@ -64,12 +64,12 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     static final String JSON_ID_PEERNAME = "pn";
     static final String JSON_ID_BTADRRES = "ra";
 
-    private Callback callback = null;
-    private ConnectSelector connectSelector = null;
-    private Context context = null;
-    private Handler mHandler = null;
+    private final Callback callback;
+    private final ConnectSelector connectSelector;
+    private final Context context;
+    private final Handler mHandler;
 
-    private BTConnectorSettings ConSettings = new BTConnectorSettings();
+    private final BTConnectorSettings ConSettings;
 
     public BTConnector(Context Context, Callback Callback, ConnectSelector selector, BTConnectorSettings settings){
         this.context = Context;
@@ -96,11 +96,13 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             jsonobj.put(JSON_ID_PEERID, peerIdentifier);
             jsonobj.put(JSON_ID_PEERNAME, peerName);
             jsonobj.put(JSON_ID_BTADRRES, tmpBTbase.getAddress());
-        } catch (JSONException e) {e.printStackTrace();}
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
 
         mInstanceString = jsonobj.toString();
 
-        print_line("", " mInstanceString : " + mInstanceString);
+        print_debug("", " mInstanceString : " + mInstanceString);
 
         WifiBase tmpWifibase = new WifiBase(this.context, this);
         ret.isWifiOk = tmpWifibase.Start();
@@ -112,19 +114,19 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         if (!ret.isWifiOk || !ret.isBtOk) {
             // the HW is not supporting all needed stuff
-            print_line("", "BT available: " + ret.isBtOk + ", wifi available: " + ret.isWifiOk);
+            print_debug("", "BT available: " + ret.isBtOk + ", wifi available: " + ret.isWifiOk);
             setState(State.NotInitialized);
             return ret;
         }
 
         if (!ret.isBtEnabled  || !ret.isWifiEnabled) {
-            //we will be waiting untill both Wifi & BT are turned on
+            //we will be waiting until both Wifi & BT are turned on
             setState(State.WaitingStateChange);
             return ret;
         }
 
         //all is good, so lets get started
-        print_line("", "All stuff available and enabled");
+        print_debug("", "All stuff available and enabled");
         startAll();
         return ret;
     }
@@ -159,7 +161,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         BluetoothBase tmoBase = mBluetoothBase;
         if(tmoBase == null) {// should never happen, would indicate uninitialized system
-            return TryConnectReturnValues.BTDeviceFetchFailed;
+            throw new RuntimeException("BluetoothBase is not initialized properly");
         }
 
         BluetoothDevice device = tmoBase.getRemoteDevice(selectedDevice.peerAddress);
@@ -169,7 +171,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         BTConnector_BtConnection tmpConn = mBTConnector_BtConnection;
         if(tmpConn == null) { // should never happen, would indicate uninitialized system
-            return TryConnectReturnValues.AlreadyAttemptingToConnect;
+            throw new RuntimeException("Connector class is not initialized properly");
         }
 
         // actually the ret will now be always true, since mBTConnector_BtConnection only checks if device is non-null
@@ -189,7 +191,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         if (channel != null && p2p != null) {
-            print_line("", "Starting services address: " + mInstanceString + ", " + ConSettings);
+            print_debug("", "Starting services address: " + mInstanceString + ", " + ConSettings);
             BTConnector_Discovery tmpDisc= new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mInstanceString);
             tmpDisc.Start();
             mBTConnector_Discovery = tmpDisc;
@@ -197,7 +199,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     private  void stopServices() {
-        print_line("", "Stopping services");
+        print_debug("", "Stopping services");
         BTConnector_Discovery tmp = mBTConnector_Discovery;
         mBTConnector_Discovery = null;
         if (tmp != null) {
@@ -213,14 +215,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         if (tmpBase != null) {
             tmp = tmpBase.getAdapter();
         }
-        print_line("", "StartBluetooth listener");
+        print_debug("", "StartBluetooth listener");
         BTConnector_BtConnection tmpconn = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
         tmpconn.StartListening();
         mBTConnector_BtConnection = tmpconn;
     }
 
     private  void stopBluetooth() {
-        print_line("", "Stop Bluetooth");
+        print_debug("", "Stop Bluetooth");
         BTConnector_BtConnection tmp = mBTConnector_BtConnection;
         mBTConnector_BtConnection = null;
         if(tmp != null){
@@ -229,14 +231,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     private void stopAll() {
-        print_line("", "Stoping All");
+        print_debug("", "Stoping All");
         stopServices();
         stopBluetooth();
     }
 
     private void startAll() {
         stopAll();
-        print_line("", "Starting All");
+        print_debug("", "Starting All");
         startServices();
         startBluetooth();
     }
@@ -245,7 +247,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     public void BluetoothStateChanged(int state) {
 
         if (state == BluetoothAdapter.SCAN_MODE_NONE) {
-            print_line("BT", "Bluetooth DISABLED, stopping");
+            print_debug("BT", "Bluetooth DISABLED, stopping");
             stopAll();
             // indicate the waiting with state change
             setState(State.WaitingStateChange);
@@ -260,12 +262,12 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         if (mBTConnector_Discovery != null) {
-            print_line("WB", "We already were running, thus doing nothing");
+            print_debug("WB", "We already were running, thus doing nothing");
             return;
         }
 
         // we got bt back, and Wifi is already on, thus we can re-start now
-        print_line("BT", "Bluetooth enabled, re-starting");
+        print_debug("BT", "Bluetooth enabled, re-starting");
         startAll();
     }
 
@@ -274,7 +276,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
             //no wifi available, thus we need to stop doing anything;
-            print_line("WB", "Wifi is DISABLED !!");
+            print_debug("WB", "Wifi is DISABLED !!");
             stopAll();
             // indicate the waiting with state change
             setState(State.WaitingStateChange);
@@ -289,11 +291,11 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             return;
         }
         if (mBTConnector_Discovery != null) {
-            print_line("WB", "We already were running, thus doing nothing");
+            print_debug("WB", "We already were running, thus doing nothing");
             return;
         }
         // we got wifi back, and BT is already on, thus we can re-start now
-        print_line("WB", "Wifi is now enabled !");
+        print_debug("WB", "Wifi is now enabled !");
         startAll();
     }
 
@@ -411,7 +413,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         });
     }
 
-    private void print_line(String who, String line) {
+    private void print_debug(String who, String line) {
         Log.i("BTConnector" + who, line);
     }
 }

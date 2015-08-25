@@ -10,10 +10,11 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.CountDownTimer;
 import android.os.Handler;
-import android.util.Log;
+
+
+import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -33,13 +34,13 @@ public class WifiServiceSearcher {
         void foundService(ServiceItem item);
     }
 
-    private Context context = null;
+    private final Context context;
     private BroadcastReceiver receiver = null;
     private final String SERVICE_TYPE;
 
     private final DiscoveryInternalCallBack callback;
-    private WifiP2pManager p2p = null;
-    private WifiP2pManager.Channel channel = null;
+    private final WifiP2pManager p2p;
+    private final WifiP2pManager.Channel channel;
     private WifiP2pManager.PeerListListener peerListListener = null;
 
     enum ServiceState{
@@ -61,7 +62,7 @@ public class WifiServiceSearcher {
         }
     };
 
-    private CountDownTimer peerDiscoveryTimer = null;
+    private final CountDownTimer peerDiscoveryTimer;
 
     public WifiServiceSearcher(Context Context, WifiP2pManager Manager, WifiP2pManager.Channel Channel, DiscoveryInternalCallBack handler,String serviceType) {
         this.context = Context;
@@ -76,7 +77,7 @@ public class WifiServiceSearcher {
         // triggering before we got all services
         long millisInFuture = 5000 + (ran.nextInt(5000));
 
-        debug_print("peerDiscoveryTimer timeout value:" + millisInFuture);
+        print_debug("","peerDiscoveryTimer timeout value:" + millisInFuture);
 
         peerDiscoveryTimer = new CountDownTimer(millisInFuture, 1000) {
             public void onTick(long millisUntilFinished) {
@@ -99,17 +100,21 @@ public class WifiServiceSearcher {
         };
     }
 
-    public void Start() {
+    public boolean Start(){
 
-        if(receiver == null) {
-            try {
-                receiver = new ServiceSearcherReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
-                filter.addAction(WIFI_P2P_PEERS_CHANGED_ACTION);
-                this.context.registerReceiver(receiver, filter);
-            } catch(Exception e) {e.printStackTrace();}
+        Stop();
+
+        ServiceSearcherReceiver tmpReceiver = new ServiceSearcherReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
+        filter.addAction(WIFI_P2P_PEERS_CHANGED_ACTION);
+        try{
+            this.context.registerReceiver(tmpReceiver, filter);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return false;
         }
+        receiver = tmpReceiver;
 
         peerListListener = new WifiP2pManager.PeerListListener() {
 
@@ -141,14 +146,12 @@ public class WifiServiceSearcher {
 
             public void onDnsSdServiceAvailable(String instanceName, String serviceType, WifiP2pDevice device) {
 
-                debug_print("Found Service, :" + instanceName + ", type" + serviceType + ":");
+                print_debug("","Found Service, :" + instanceName + ", type" + serviceType + ":");
 
                 if (serviceType.startsWith(SERVICE_TYPE)) {
                     boolean addService = true;
 
-                    Iterator<ServiceItem> iterator = myServiceList.iterator();
-                    while (iterator.hasNext()) {
-                        ServiceItem item = iterator.next();
+                    for(ServiceItem item: myServiceList){
                         if(item != null && item.deviceAddress.equals(device.deviceAddress)){
                             addService = false;
                         }
@@ -161,7 +164,7 @@ public class WifiServiceSearcher {
                             String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
                             String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
 
-                            debug_print("JsonLine: " + instanceName + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                            print_debug("","JsonLine: " + instanceName + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
                             ServiceItem tmpSrv = new ServiceItem(peerIdentifier,peerName,peerAddress, serviceType, device.deviceAddress,device.deviceName);
                             if(callback != null) {
@@ -170,13 +173,13 @@ public class WifiServiceSearcher {
                             }
                             myServiceList.add(tmpSrv);
 
-                        }catch (Exception e){
-                            debug_print("checking instance failed , :" + e.toString());
+                        }catch (JSONException e){
+                            print_debug("","checking instance failed , :" + e.toString());
                         }
                     }
 
                 } else {
-                    debug_print("Not our Service, :" + SERVICE_TYPE + "!=" + serviceType + ":");
+                    print_debug("","Not our Service, :" + SERVICE_TYPE + "!=" + serviceType + ":");
                 }
 
                 ServiceDiscoveryTimeOutTimer.cancel();
@@ -187,6 +190,8 @@ public class WifiServiceSearcher {
 
         p2p.setDnsSdResponseListeners(channel, serviceListener, null);
         startPeerDiscovery();
+
+        return true;
     }
 
     public void Stop() {
@@ -195,7 +200,7 @@ public class WifiServiceSearcher {
         if(tmprec != null) {
             try {
                 this.context.unregisterReceiver(tmprec);
-            } catch (Exception e) {e.printStackTrace();}
+            } catch (IllegalArgumentException e) {e.printStackTrace();}
         }
         ServiceDiscoveryTimeOutTimer.cancel();
         peerDiscoveryTimer.cancel();
@@ -207,12 +212,12 @@ public class WifiServiceSearcher {
         p2p.discoverPeers(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
                 myServiceState = ServiceState.DiscoverPeer;
-                debug_print("Started peer discovery");
+                print_debug("","Started peer discovery");
             }
 
             public void onFailure(int reason) {
                 myServiceState = ServiceState.NONE;
-                debug_print("Starting peer discovery failed, error code " + reason);
+                print_debug("","Starting peer discovery failed, error code " + reason);
                 //lets try again after 1 minute time-out !
                 ServiceDiscoveryTimeOutTimer.start();
             }
@@ -222,11 +227,11 @@ public class WifiServiceSearcher {
     private void stopPeerDiscovery() {
         p2p.stopPeerDiscovery(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                debug_print("Stopped peer discovery");
+                print_debug("","Stopped peer discovery");
             }
 
             public void onFailure(int reason) {
-                debug_print("Stopping peer discovery failed, error code " + reason);
+                print_debug("","Stopping peer discovery failed, error code " + reason);
             }
         });
     }
@@ -240,7 +245,7 @@ public class WifiServiceSearcher {
         p2p.addServiceRequest(channel, request, new WifiP2pManager.ActionListener() {
 
             public void onSuccess() {
-                debug_print("Added service request");
+                print_debug("","Added service request");
                 handler.postDelayed(new Runnable() {
                     //There are supposedly a possible race-condition bug with the service discovery
                     // thus to avoid it, we are delaying the service discovery start here
@@ -248,13 +253,13 @@ public class WifiServiceSearcher {
                         p2p.discoverServices(channel, new WifiP2pManager.ActionListener() {
                             public void onSuccess() {
                                 myServiceList.clear();
-                                debug_print("Started service discovery");
+                                print_debug("","Started service discovery");
                                 myServiceState = ServiceState.DiscoverService;
                             }
                             public void onFailure(int reason) {
                                 stopDiscovery();
                                 myServiceState = ServiceState.NONE;
-                                debug_print("Starting service discovery failed, error code " + reason);
+                                print_debug("","Starting service discovery failed, error code " + reason);
                                 //lets try again after 1 minute time-out !
                                 ServiceDiscoveryTimeOutTimer.start();
                             }
@@ -265,7 +270,7 @@ public class WifiServiceSearcher {
 
             public void onFailure(int reason) {
                 myServiceState = ServiceState.NONE;
-                debug_print("Adding service request failed, error code " + reason);
+                print_debug("","Adding service request failed, error code " + reason);
                 //lets try again after 1 minute time-out !
                 ServiceDiscoveryTimeOutTimer.start();
             }
@@ -276,17 +281,15 @@ public class WifiServiceSearcher {
     private void stopDiscovery() {
         p2p.clearServiceRequests(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                debug_print("Cleared service requests");
+                print_debug("","Cleared service requests");
             }
 
             public void onFailure(int reason) {
-                debug_print("Clearing service requests failed, error code " + reason);
+                print_debug("","Clearing service requests failed, error code " + reason);
             }
         });
     }
-    private void debug_print(String buffer) {
-        Log.i("Service searcher", buffer);
-    }
+
     private class ServiceSearcherReceiver extends BroadcastReceiver {
 
         @Override
@@ -309,8 +312,12 @@ public class WifiServiceSearcher {
                 }else{
                     persTatu = persTatu + "unknown  " + state;
                 }
-                debug_print(persTatu);
+                print_debug("",persTatu);
             }
         }
+    }
+
+    private void print_debug(String who, String message){
+    //    Log.d("WifiServiceSearcher",  "BTListerThread: " + message);
     }
 }

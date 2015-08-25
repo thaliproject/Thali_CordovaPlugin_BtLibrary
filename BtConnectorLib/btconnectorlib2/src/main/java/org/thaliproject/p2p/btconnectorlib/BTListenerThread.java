@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -43,23 +44,14 @@ class BTListenerThread extends Thread {
     private final String shakeBackBuf = "shakehand";
 
     private BTHandShakeSocketTread mBTHandShakeSocketTread = null;
-    private String mInstanceString = "";
     private final BtListenCallback callback;
     private final BluetoothServerSocket mSocket;
     private BluetoothSocket acceptedSocket = null;
     private boolean mStopped = false;
 
-    public BTListenerThread(BtListenCallback Callback,BluetoothAdapter bta,UUID BtUuid, String btName, String InstanceString) {
+    public BTListenerThread(BtListenCallback Callback,BluetoothAdapter bta,UUID BtUuid, String btName)  throws IOException {
         callback = Callback;
-        mInstanceString = InstanceString;
-        BluetoothServerSocket tmp = null;
-
-        try {
-            tmp = bta.listenUsingInsecureRfcommWithServiceRecord(btName, BtUuid);
-        } catch (IOException e) {
-            printe_line("listen() failed: " + e.toString());
-        }
-        mSocket = tmp;
+        mSocket = bta.listenUsingInsecureRfcommWithServiceRecord(btName, BtUuid);
     }
 
     public void run() {
@@ -67,13 +59,13 @@ class BTListenerThread extends Thread {
         if (callback == null || mSocket == null) {
             return;
         }
-        printe_line("starting to listen");
+        print_debug("","starting to listen");
 
         try {
             acceptedSocket = mSocket.accept();
 
             if (acceptedSocket != null) {
-                printe_line("we got incoming connection");
+                print_debug("","we got incoming connection");
                 mSocket.close();
                 mStopped = true;
                 if (mBTHandShakeSocketTread == null) {
@@ -85,10 +77,10 @@ class BTListenerThread extends Thread {
                 callback.ListeningFailed("Socket is null");
             }
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             if (!mStopped) {
                 //return failure
-                printe_line("accept socket failed: " + e.toString());
+                print_debug("","accept socket failed: " + e.toString());
                 callback.ListeningFailed(e.toString());
             }
         }
@@ -113,12 +105,8 @@ class BTListenerThread extends Thread {
         callback.ListeningFailed("handshake: " + reason);
     }
 
-    private void printe_line(String message){
-        Log.d("BTListerThread",  "BTListerThread: " + message);
-    }
-
     public void Stop() {
-        printe_line("cancelled");
+        print_debug("","cancelled");
         HandShakeTimeOutTimer.cancel();
         BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
         mBTHandShakeSocketTread = null;
@@ -132,7 +120,7 @@ class BTListenerThread extends Thread {
                 mSocket.close();
             }
         } catch (IOException e) {
-            printe_line("closing socket failed: " + e.toString());
+            print_debug("","closing socket failed: " + e.toString());
         }
     }
 
@@ -144,41 +132,48 @@ class BTListenerThread extends Thread {
             if (tmpThread != null) {
                 switch (msg.what) {
                     case BTHandShakeSocketTread.MESSAGE_WRITE: {
-                        printe_line("MESSAGE_WRITE " + msg.arg1 + " bytes.");
+                        print_debug("","MESSAGE_WRITE " + msg.arg1 + " bytes.");
                         HandShakeOk();
                     }
                     break;
                     case BTHandShakeSocketTread.MESSAGE_READ: {
-                        printe_line("got MESSAGE_READ " + msg.arg1 + " bytes.");
+                        print_debug("","got MESSAGE_READ " + msg.arg1 + " bytes.");
 
                         try {
                             byte[] readBuf = (byte[]) msg.obj;// construct a string from the valid bytes in the buffer
 
                             String JsonLine = new String(readBuf, 0, msg.arg1);
-                            printe_line("Got JSON from encryption:" + JsonLine);
+                            print_debug("","Got JSON from encryption:" + JsonLine);
                             JSONObject jObject = new JSONObject(JsonLine);
 
                             that.peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
                             that.peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
                             that.peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
-                            printe_line("peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                            print_debug("","peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
                             tmpThread.write(shakeBackBuf.getBytes());
 
-                        } catch (Exception e) {
+                        } catch (JSONException e) {
+                            //handshake timeout will eventually clear out stuff, we'll just wait.
                             HandShakeFailed("Decrypting instance failed , :" + e.toString());
                         }
 
                     }
                     break;
-                    case BTHandShakeSocketTread.SOCKET_DISCONNEDTED: {
+                    case BTHandShakeSocketTread.SOCKET_DISCONNECTED: {
                         HandShakeFailed("SOCKET_DISCONNECTED");
                     }
                     break;
+                    default:
+                        throw new RuntimeException("Invalid message to Handshake handler");
                 }
             } else {
-                printe_line("handleMessage called for NULL thread handler");
+                print_debug("","handleMessage called for NULL thread handler");
             }
         }
     };
+
+    private void print_debug(String who, String message){
+        Log.d("BTListerThread",  "BTListerThread: " + message);
+    }
 }

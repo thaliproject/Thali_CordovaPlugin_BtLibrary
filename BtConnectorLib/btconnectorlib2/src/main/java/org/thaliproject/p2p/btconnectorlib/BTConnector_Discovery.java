@@ -23,7 +23,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
         void PeerDiscovered(ServiceItem service);
         void DiscoveryStateChanged(State newState);
     }
-    private DiscoveryCallback mDiscoveryCallback = null;
+    private final DiscoveryCallback mDiscoveryCallback;
 
     public enum State{
         DiscoveryIdle,
@@ -34,12 +34,12 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
 
     private WifiServiceAdvertiser mWifiAccessPoint = null;
     private WifiServiceSearcher mWifiServiceSearcher = null;
-    private String mEncryptedInstance = "";
+    private final String mEncryptedInstance;
 
-    private Context context = null;
-    private String mSERVICE_TYPE = "";
-    private WifiP2pManager.Channel channel = null;
-    private WifiP2pManager p2p = null;
+    private final Context context;
+    private final String mSERVICE_TYPE;
+    private final WifiP2pManager.Channel channel;
+    private final WifiP2pManager p2p;
 
     private final CountDownTimer ServiceFoundTimeOutTimer = new CountDownTimer(600000, 1000) {
         public void onTick(long millisUntilFinished) {
@@ -64,28 +64,28 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
         this.mEncryptedInstance = instanceLine;
     }
 
-     public void Start() {
+     public void Start(){
          Stop();
 
          if (channel == null || p2p == null) {
              return;
          }
 
-         print_line("", "Starting services address: " + mEncryptedInstance);
+         print_debug("", "Starting services address: " + mEncryptedInstance);
 
-         WifiServiceAdvertiser tmpAC = new WifiServiceAdvertiser(p2p, channel);
-         tmpAC.Start(mEncryptedInstance, mSERVICE_TYPE);
-         mWifiAccessPoint = tmpAC;
+         WifiServiceAdvertiser tmpAdvertiser = new WifiServiceAdvertiser(p2p, channel);
+         tmpAdvertiser.Start(mEncryptedInstance, mSERVICE_TYPE);
+         mWifiAccessPoint = tmpAdvertiser;
 
-         WifiServiceSearcher tmpSS = new WifiServiceSearcher(this.context, p2p, channel, this, mSERVICE_TYPE);
-         tmpSS.Start();
-         mWifiServiceSearcher = tmpSS;
+         WifiServiceSearcher tmpSearcher = new WifiServiceSearcher(this.context, p2p, channel, this, mSERVICE_TYPE);
+         tmpSearcher.Start();
+         mWifiServiceSearcher = tmpSearcher;
 
          setState(State.DiscoveryFindingPeers);
      }
 
     public void Stop() {
-        print_line("", "Stopping services");
+        print_debug("", "Stopping services");
         ServiceFoundTimeOutTimer.cancel();
 
         WifiServiceAdvertiser tmpAC = mWifiAccessPoint;
@@ -109,16 +109,16 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
             ServiceFoundTimeOutTimer.cancel();
             ServiceFoundTimeOutTimer.start();
 
-            print_line("SS", "Found " + list.size() + " peers.");
+            print_debug("SS", "Found " + list.size() + " peers.");
             int num = 0;
             for (WifiP2pDevice peer : list) {
                 num++;
-                print_line("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
+                print_debug("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
             }
 
             setState(State.DiscoveryFindingServices);
         }else{
-            print_line("SS", "We got empty peers list");
+            print_debug("SS", "We got empty peers list");
             this.mDiscoveryCallback.CurrentPeersList(null);
         }
     }
@@ -140,7 +140,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
 
     }
 
-    private void print_line(String who, String line) {
-        Log.i("BTConnector_Discovery" + who, line);
+    private void print_debug(String who, String line) {
+        Log.d("BTConnector_Discovery" + who, line);
     }
 }

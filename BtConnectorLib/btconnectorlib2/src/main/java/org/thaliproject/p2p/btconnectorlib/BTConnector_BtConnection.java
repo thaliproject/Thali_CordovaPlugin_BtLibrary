@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
+
+import java.io.IOException;
 import java.util.UUID;
 
 /**
@@ -27,15 +29,15 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         void ConnectionStateChanged(State newState);
     }
 
-    private BluetoothAdapter mBluetoothAdapter= null;
+    private final BluetoothAdapter mBluetoothAdapter;
     private BTListenerThread mBTListenerThread = null;
     private BTConnectToThread mBTConnectToThread = null;
 
-    private ListenerCallback callback = null;
+    private final ListenerCallback callback;
     private final UUID BluetoothUUID;
     private final String BluetootName;
-    private String mInstanceString = "";
-    private Handler mHandler = null;
+    private final String mInstanceString;
+    private final Handler mHandler;
 
 
     public BTConnector_BtConnection(Context Context, ListenerCallback Callback, BluetoothAdapter adapter, UUID BtUuid, String btName, String instanceLine){
@@ -55,8 +57,14 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
             tmpList.Stop();
         }
 
-        print_line("", "StartBluetooth listener");
-        tmpList = new BTListenerThread(that, mBluetoothAdapter,BluetoothUUID,BluetootName,mInstanceString);
+        print_debug("", "StartBluetooth listener");
+        try {
+            tmpList = new BTListenerThread(that, mBluetoothAdapter, BluetoothUUID, BluetootName);
+        }catch (IOException e){
+            e.printStackTrace();
+            // in this point of time we can not accept any incoming connections, thus what should we do ?
+            return;
+        }
         tmpList.start();
         mBTListenerThread = tmpList;
     }
@@ -64,7 +72,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
     public boolean TryConnect(BluetoothDevice device,UUID BtUUID, String peerId,String peerName, String peerAddress) {
 
         if (device == null) {
-            print_line("", "No devices selected");
+            print_debug("", "No devices selected");
             return false;
         }
 
@@ -74,20 +82,28 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
             tmp.Stop();
         }
 
-        print_line("", "Selected device address: " + device.getAddress() +  ", name: " + device.getName());
+        print_debug("", "Selected device address: " + device.getAddress() + ", name: " + device.getName());
 
-        tmp = new BTConnectToThread(that, device,BtUUID,peerId,peerName,peerAddress,mInstanceString);
+        try {
+            tmp = new BTConnectToThread(that, device, BtUUID, peerId, peerName, peerAddress, mInstanceString);
+        }catch (IOException e){
+            e.printStackTrace();
+            //lets inform that outgoing connection just failed.
+            ConnectionFailed(e.toString(),peerId,peerName,peerAddress);
+            return false;
+        }
+
         tmp.start();
         mBTConnectToThread = tmp;
 
         setState(State.ConnectionConnecting);
-        print_line("", "Connecting to " + device.getName() + ", at " + device.getAddress());
+        print_debug("", "Connecting to " + device.getName() + ", at " + device.getAddress());
 
         return true;
     }
 
     public void Stop() {
-        print_line("", "Stop Bluetooth");
+        print_debug("", "Stop Bluetooth");
 
         BTListenerThread tmpList = mBTListenerThread;
         mBTListenerThread = null;
@@ -107,7 +123,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         mBTConnectToThread = null;
         final BluetoothSocket tmp = socket;
 
-        print_line("HS", "Hand Shake finished outgoing for : " + peerName);
+        print_debug("HS", "Hand Shake finished outgoing for : " + peerName);
 
         final String peerIdTmp = peerId;
         final String peerNaTmp = peerName;
@@ -129,7 +145,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
     @Override
     public void GotConnection(BluetoothSocket socket,String peerId,String peerName,String peerAddress) {
         final BluetoothSocket tmp = socket;
-        print_line("HS", "Incoming connection Hand Shake finished for : " + peerName);
+        print_debug("HS", "Incoming connection Hand Shake finished for : " + peerName);
 
         final String peerIdTmp = peerId;
         final String peerNaTmp = peerName;
@@ -160,7 +176,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                print_line("CONNEC", "Error: " + tmp);
+                print_debug("CONNEC", "Error: " + tmp);
 
                 that.callback.ConnectionFailed(peerIdTmp,peerNaTmp,peerAdTmp);
 
@@ -180,7 +196,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                print_line("LISTEN", "Error: " + tmp);
+                print_debug("LISTEN", "Error: " + tmp);
                 StartListening();
             }
         });
@@ -196,7 +212,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         });
     }
 
-    private void print_line(String who, String line) {
-        Log.i("BTConnector_BtConnection" + who, line);
+    private void print_debug(String who, String line) {
+        Log.d("BTConnector_BtConnection" + who, line);
     }
 }

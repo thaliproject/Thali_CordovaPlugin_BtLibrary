@@ -3,7 +3,6 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
-import android.util.Log;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -16,15 +15,11 @@ class WifiServiceAdvertiser {
     private final WifiP2pManager p2p;
     private final WifiP2pManager.Channel channel;
 
-    private int lastError = -1;
     public WifiServiceAdvertiser(WifiP2pManager Manager, WifiP2pManager.Channel Channel) {
         this.p2p = Manager;
         this.channel = Channel;
     }
 
-    public int GetLastError(){
-        return lastError;
-    }
     public void Start(String instance,String service_type) {
 
         Map<String, String> record = new HashMap<String, String>();
@@ -32,16 +27,14 @@ class WifiServiceAdvertiser {
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(instance, service_type, record);
 
-        debug_print("Add local service :" + instance + ", length : " + instance.length());
+        print_debug("","Add local service :" + instance + ", length : " + instance.length());
         p2p.addLocalService(channel, service, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                lastError = -1;
-                debug_print("Added local service");
+                print_debug("","Added local service");
             }
 
             public void onFailure(int reason) {
-                lastError = reason;
-                debug_print("Adding local service failed, error code " + reason);
+                print_debug("","Adding local service failed, error code " + reason);
             }
         });
     }
@@ -49,18 +42,15 @@ class WifiServiceAdvertiser {
     public void Stop() {
         p2p.clearLocalServices(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                lastError = -1;
-                debug_print("Cleared local services");
+                print_debug("","Cleared local services");
             }
 
             public void onFailure(int reason) {
-                lastError = reason;
-                debug_print("Clearing local services failed, error code " + reason);
+                print_debug("","Clearing local services failed, error code " + reason);
             }
         });
     }
-
-    private void debug_print(String buffer) {
-        Log.i("ACCESS point",buffer);
+    private void print_debug(String who, String message){
+      //  Log.d("WifiBase",  "BTListerThread: " + message);
     }
 }

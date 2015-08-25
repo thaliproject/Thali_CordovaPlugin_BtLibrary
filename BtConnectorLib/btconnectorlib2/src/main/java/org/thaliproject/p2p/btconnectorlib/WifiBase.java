@@ -20,9 +20,9 @@ class WifiBase{
 
     private WifiP2pManager p2p = null;
     private WifiP2pManager.Channel channel = null;
-    private Context context = null;
+    private final Context context ;
 
-    private WifiStatusCallBack callback= null;
+    private final WifiStatusCallBack callback;
     private MainBCReceiver mBRReceiver = null;
 
     public WifiBase(Context Context, WifiStatusCallBack handler){
@@ -32,34 +32,35 @@ class WifiBase{
 
     public boolean Start(){
 
-        if(mBRReceiver == null) {
-            try {
-                mBRReceiver = new MainBCReceiver();
-                IntentFilter  filter = new IntentFilter();
-                filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
-                this.context.registerReceiver((mBRReceiver), filter);
-            } catch (Exception e) {e.printStackTrace();}
+        Stop();
+        MainBCReceiver tmpBRReceiver = new MainBCReceiver();
+        try {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+            this.context.registerReceiver(tmpBRReceiver, filter);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return false;
         }
+        mBRReceiver = tmpBRReceiver;
 
         p2p = (WifiP2pManager) this.context.getSystemService(Context.WIFI_P2P_SERVICE);
         if (p2p == null) {
-            Log.d("WifiBase", "This device does not support Wi-Fi Direct");
+            print_debug("", "This device does not support Wi-Fi Direct");
             return false;
         }
 
         channel = p2p.initialize(this.context, this.context.getMainLooper(),null);
-
-
         return true;
     }
-    public void Stop(){
 
+    public void Stop(){
         BroadcastReceiver tmpRec = mBRReceiver;
         mBRReceiver = null;
         if(tmpRec != null) {
             try {
                 this.context.unregisterReceiver(tmpRec);
-            } catch (Exception e) {e.printStackTrace();}
+            } catch (IllegalArgumentException e) {e.printStackTrace();}
         }
     }
 
@@ -80,10 +81,6 @@ class WifiBase{
         return wifiManager != null && wifiManager.setWifiEnabled(enabled);
     }
 
-    private void debug_print(String buffer) {
-        Log.i("Service searcher", buffer);
-    }
-
     private class MainBCReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -95,5 +92,9 @@ class WifiBase{
                 }
             }
         }
+    }
+
+    private void print_debug(String who, String message){
+        Log.d("WifiBase",  "BTListerThread: " + message);
     }
 }

@@ -18,41 +18,38 @@ class BluetoothBase {
         void BluetoothStateChanged(int state);
     }
 
-    private BluetoothStatusChanged callBack = null;
-    private BluetoothAdapter bluetooth = null;
+    private final BluetoothStatusChanged callBack;
+    private BluetoothAdapter bluetooth;
 
-    private BtBrowdCastReceiver receiver = null;
-    private Context context = null;
-    private String blueAddress = "";
+    private BtBroadCastReceiver receiver = null;
+    private final Context context;
 
     public BluetoothBase(Context Context, BluetoothStatusChanged handler) {
         this.context = Context;
         this.callBack = handler;
-
-        //bluetooth = new BluetoothAdapter(this);
-        bluetooth = BluetoothAdapter.getDefaultAdapter();
-        if (bluetooth != null) {
-            blueAddress = bluetooth.getAddress();
-        }
     }
 
-    public synchronized  boolean Start() {
-
+    public boolean Start(){
+        bluetooth = BluetoothAdapter.getDefaultAdapter();
         if (bluetooth == null) {
             return false;
         }
 
-        Log.d("", "Start-My BT: " + blueAddress);
+        Stop();
 
-        if (receiver == null) {
-            try {
-                receiver = new BtBrowdCastReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
-                this.context.registerReceiver(receiver, filter);
-            } catch(Exception e) {e.printStackTrace();}
+        print_debug("", "Start-My BT: " + getAddress());
+
+        BtBroadCastReceiver tmpReceiver = new BtBroadCastReceiver();
+        try {
+
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
+            this.context.registerReceiver(tmpReceiver, filter);
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            return false;
         }
-
+        receiver = tmpReceiver;
         return true;
     }
 
@@ -63,7 +60,7 @@ class BluetoothBase {
         if (tmp != null) {
             try {
                 this.context.unregisterReceiver(tmp);
-            } catch(Exception e) {e.printStackTrace();}
+            } catch(IllegalArgumentException e) {e.printStackTrace();}
         }
     }
 
@@ -88,26 +85,18 @@ class BluetoothBase {
     }
 
     public String getAddress() {
-        return blueAddress;
+        return bluetooth == null ? null : bluetooth.getAddress();
     }
 
     public String getName() {
-        if (bluetooth == null) {
-            return "";
-        }
-
-        return bluetooth.getName();
+        return bluetooth == null ? null : bluetooth.getName();
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
-        if (bluetooth == null) {
-            return null;
-        }
-
-        return bluetooth.getRemoteDevice(address);
+        return bluetooth == null ? null : bluetooth.getRemoteDevice(address);
     }
 
-    private class BtBrowdCastReceiver extends BroadcastReceiver {
+    private class BtBroadCastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -120,5 +109,9 @@ class BluetoothBase {
                 }
             }
         }
+    }
+
+    private void print_debug(String who, String line) {
+        Log.i("BluetoothBase" + who, line);
     }
 }
