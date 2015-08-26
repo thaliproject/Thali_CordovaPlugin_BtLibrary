@@ -11,20 +11,16 @@ import java.util.Map;
 /**
  * Created by juksilve on 28.2.2015.
  */
-public class WifiServiceAdvertiser {
+class WifiServiceAdvertiser {
 
-    private WifiP2pManager p2p;
-    private WifiP2pManager.Channel channel;
+    private final WifiP2pManager p2p;
+    private final WifiP2pManager.Channel channel;
 
-    int lastError = -1;
     public WifiServiceAdvertiser(WifiP2pManager Manager, WifiP2pManager.Channel Channel) {
         this.p2p = Manager;
         this.channel = Channel;
     }
 
-    public int GetLastError(){
-        return lastError;
-    }
     public void Start(String instance,String service_type) {
 
         Map<String, String> record = new HashMap<String, String>();
@@ -32,16 +28,14 @@ public class WifiServiceAdvertiser {
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(instance, service_type, record);
 
-        debug_print("Add local service :" + instance + ", length : " + instance.length());
+        Log.i("", "Add local service :" + instance + ", length : " + instance.length());
         p2p.addLocalService(channel, service, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                lastError = -1;
-                debug_print("Added local service");
+                Log.i("","Added local service");
             }
 
             public void onFailure(int reason) {
-                lastError = reason;
-                debug_print("Adding local service failed, error code " + reason);
+                Log.i("","Adding local service failed, error code " + reason);
             }
         });
     }
@@ -49,18 +43,12 @@ public class WifiServiceAdvertiser {
     public void Stop() {
         p2p.clearLocalServices(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                lastError = -1;
-                debug_print("Cleared local services");
+                Log.i("","Cleared local services");
             }
 
             public void onFailure(int reason) {
-                lastError = reason;
-                debug_print("Clearing local services failed, error code " + reason);
+                Log.i("","Clearing local services failed, error code " + reason);
             }
         });
-    }
-
-    private void debug_print(String buffer) {
-        Log.i("ACCESS point",buffer);
     }
 }
