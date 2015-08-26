@@ -46,7 +46,7 @@ class WifiBase{
 
         p2p = (WifiP2pManager) this.context.getSystemService(Context.WIFI_P2P_SERVICE);
         if (p2p == null) {
-            print_debug("", "This device does not support Wi-Fi Direct");
+            Log.i("", "This device does not support Wi-Fi Direct");
             return false;
         }
 
@@ -92,9 +92,5 @@ class WifiBase{
                 }
             }
         }
-    }
-
-    private void print_debug(String who, String message){
-        Log.d("WifiBase",  "BTListerThread: " + message);
     }
 }

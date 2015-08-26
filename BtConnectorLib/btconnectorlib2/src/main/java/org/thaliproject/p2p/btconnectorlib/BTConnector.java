@@ -102,7 +102,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         mInstanceString = jsonobj.toString();
 
-        print_debug("", " mInstanceString : " + mInstanceString);
+        Log.i("", " mInstanceString : " + mInstanceString);
 
         WifiBase tmpWifibase = new WifiBase(this.context, this);
         ret.isWifiOk = tmpWifibase.Start();
@@ -114,7 +114,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         if (!ret.isWifiOk || !ret.isBtOk) {
             // the HW is not supporting all needed stuff
-            print_debug("", "BT available: " + ret.isBtOk + ", wifi available: " + ret.isWifiOk);
+            Log.i("", "BT available: " + ret.isBtOk + ", wifi available: " + ret.isWifiOk);
             setState(State.NotInitialized);
             return ret;
         }
@@ -126,7 +126,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         //all is good, so lets get started
-        print_debug("", "All stuff available and enabled");
+        Log.i("", "All stuff available and enabled");
         startAll();
         return ret;
     }
@@ -191,7 +191,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         if (channel != null && p2p != null) {
-            print_debug("", "Starting services address: " + mInstanceString + ", " + ConSettings);
+            Log.i("", "Starting services address: " + mInstanceString + ", " + ConSettings);
             BTConnector_Discovery tmpDisc= new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mInstanceString);
             tmpDisc.Start();
             mBTConnector_Discovery = tmpDisc;
@@ -199,7 +199,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     private  void stopServices() {
-        print_debug("", "Stopping services");
+        Log.i("", "Stopping services");
         BTConnector_Discovery tmp = mBTConnector_Discovery;
         mBTConnector_Discovery = null;
         if (tmp != null) {
@@ -215,14 +215,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         if (tmpBase != null) {
             tmp = tmpBase.getAdapter();
         }
-        print_debug("", "StartBluetooth listener");
+        Log.i("", "StartBluetooth listener");
         BTConnector_BtConnection tmpconn = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
         tmpconn.StartListening();
         mBTConnector_BtConnection = tmpconn;
     }
 
     private  void stopBluetooth() {
-        print_debug("", "Stop Bluetooth");
+        Log.i("", "Stop Bluetooth");
         BTConnector_BtConnection tmp = mBTConnector_BtConnection;
         mBTConnector_BtConnection = null;
         if(tmp != null){
@@ -231,14 +231,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     private void stopAll() {
-        print_debug("", "Stoping All");
+        Log.i("", "Stoping All");
         stopServices();
         stopBluetooth();
     }
 
     private void startAll() {
         stopAll();
-        print_debug("", "Starting All");
+        Log.i("", "Starting All");
         startServices();
         startBluetooth();
     }
@@ -247,7 +247,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     public void BluetoothStateChanged(int state) {
 
         if (state == BluetoothAdapter.SCAN_MODE_NONE) {
-            print_debug("BT", "Bluetooth DISABLED, stopping");
+            Log.i("BT", "Bluetooth DISABLED, stopping");
             stopAll();
             // indicate the waiting with state change
             setState(State.WaitingStateChange);
@@ -262,12 +262,12 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         }
 
         if (mBTConnector_Discovery != null) {
-            print_debug("WB", "We already were running, thus doing nothing");
+            Log.i("WB", "We already were running, thus doing nothing");
             return;
         }
 
         // we got bt back, and Wifi is already on, thus we can re-start now
-        print_debug("BT", "Bluetooth enabled, re-starting");
+        Log.i("BT", "Bluetooth enabled, re-starting");
         startAll();
     }
 
@@ -276,7 +276,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
             //no wifi available, thus we need to stop doing anything;
-            print_debug("WB", "Wifi is DISABLED !!");
+            Log.i("WB", "Wifi is DISABLED !!");
             stopAll();
             // indicate the waiting with state change
             setState(State.WaitingStateChange);
@@ -291,11 +291,11 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             return;
         }
         if (mBTConnector_Discovery != null) {
-            print_debug("WB", "We already were running, thus doing nothing");
+            Log.i("WB", "We already were running, thus doing nothing");
             return;
         }
         // we got wifi back, and BT is already on, thus we can re-start now
-        print_debug("WB", "Wifi is now enabled !");
+        Log.i("WB", "Wifi is now enabled !");
         startAll();
     }
 
@@ -344,6 +344,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             case DiscoveryFindingServices:
                 setState(State.FindingServices);
                 break;
+            default:
+                throw new RuntimeException("DiscoveryStateChanged called with invalid vale for BTConnector_Discovery.State");
         }
     }
 
@@ -385,9 +387,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
     @Override
     public void ConnectionStateChanged(BTConnector_BtConnection.State newState) {
-        if (this.callback == null) {
-            return;
-        }
 
         switch (newState) {
             case ConnectionConnecting:
@@ -396,6 +395,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             case ConnectionConnected:
                 setState(State.Connected);
                 break;
+            default:
+                throw new RuntimeException("ConnectionStateChanged called with invalid vale for BTConnector_BtConnection.State");
         }
     }
 
@@ -411,9 +412,5 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
                 that.callback.StateChanged(tmpState);
             }
         });
-    }
-
-    private void print_debug(String who, String line) {
-        Log.i("BTConnector" + who, line);
     }
 }

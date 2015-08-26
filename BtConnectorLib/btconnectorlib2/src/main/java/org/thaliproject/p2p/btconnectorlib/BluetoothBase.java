@@ -19,7 +19,7 @@ class BluetoothBase {
     }
 
     private final BluetoothStatusChanged callBack;
-    private BluetoothAdapter bluetooth;
+    private final BluetoothAdapter bluetooth;
 
     private BtBroadCastReceiver receiver = null;
     private final Context context;
@@ -27,17 +27,18 @@ class BluetoothBase {
     public BluetoothBase(Context Context, BluetoothStatusChanged handler) {
         this.context = Context;
         this.callBack = handler;
+        this.bluetooth = BluetoothAdapter.getDefaultAdapter();
     }
 
+    //returning false will indicate missing HW support
     public boolean Start(){
-        bluetooth = BluetoothAdapter.getDefaultAdapter();
         if (bluetooth == null) {
             return false;
         }
 
         Stop();
 
-        print_debug("", "Start-My BT: " + getAddress());
+        Log.i("", "Start-My BT: " + getAddress());
 
         BtBroadCastReceiver tmpReceiver = new BtBroadCastReceiver();
         try {
@@ -109,9 +110,5 @@ class BluetoothBase {
                 }
             }
         }
-    }
-
-    private void print_debug(String who, String line) {
-        Log.i("BluetoothBase" + who, line);
     }
 }

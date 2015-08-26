@@ -3,6 +3,7 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
+import android.util.Log;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -27,14 +28,14 @@ class WifiServiceAdvertiser {
 
         WifiP2pDnsSdServiceInfo service = WifiP2pDnsSdServiceInfo.newInstance(instance, service_type, record);
 
-        print_debug("","Add local service :" + instance + ", length : " + instance.length());
+        Log.i("", "Add local service :" + instance + ", length : " + instance.length());
         p2p.addLocalService(channel, service, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                print_debug("","Added local service");
+                Log.i("","Added local service");
             }
 
             public void onFailure(int reason) {
-                print_debug("","Adding local service failed, error code " + reason);
+                Log.i("","Adding local service failed, error code " + reason);
             }
         });
     }
@@ -42,15 +43,12 @@ class WifiServiceAdvertiser {
     public void Stop() {
         p2p.clearLocalServices(channel, new WifiP2pManager.ActionListener() {
             public void onSuccess() {
-                print_debug("","Cleared local services");
+                Log.i("","Cleared local services");
             }
 
             public void onFailure(int reason) {
-                print_debug("","Clearing local services failed, error code " + reason);
+                Log.i("","Clearing local services failed, error code " + reason);
             }
         });
-    }
-    private void print_debug(String who, String message){
-      //  Log.d("WifiBase",  "BTListerThread: " + message);
     }
 }

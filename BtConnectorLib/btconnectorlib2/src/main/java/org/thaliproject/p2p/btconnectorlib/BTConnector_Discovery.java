@@ -71,7 +71,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
              return;
          }
 
-         print_debug("", "Starting services address: " + mEncryptedInstance);
+         Log.i("", "Starting services address: " + mEncryptedInstance);
 
          WifiServiceAdvertiser tmpAdvertiser = new WifiServiceAdvertiser(p2p, channel);
          tmpAdvertiser.Start(mEncryptedInstance, mSERVICE_TYPE);
@@ -85,7 +85,7 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
      }
 
     public void Stop() {
-        print_debug("", "Stopping services");
+        Log.i("", "Stopping services");
         ServiceFoundTimeOutTimer.cancel();
 
         WifiServiceAdvertiser tmpAC = mWifiAccessPoint;
@@ -109,16 +109,16 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
             ServiceFoundTimeOutTimer.cancel();
             ServiceFoundTimeOutTimer.start();
 
-            print_debug("SS", "Found " + list.size() + " peers.");
+            Log.i("SS", "Found " + list.size() + " peers.");
             int num = 0;
             for (WifiP2pDevice peer : list) {
                 num++;
-                print_debug("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
+                Log.i("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
             }
 
             setState(State.DiscoveryFindingServices);
         }else{
-            print_debug("SS", "We got empty peers list");
+            Log.i("SS", "We got empty peers list");
             this.mDiscoveryCallback.CurrentPeersList(null);
         }
     }
@@ -138,9 +138,5 @@ public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInter
     private void setState(State newState) {
        mDiscoveryCallback.DiscoveryStateChanged(newState);
 
-    }
-
-    private void print_debug(String who, String line) {
-        Log.d("BTConnector_Discovery" + who, line);
     }
 }

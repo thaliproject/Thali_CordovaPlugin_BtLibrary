@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothSocket;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.os.Message;
+import android.util.Log;
+
 import java.io.IOException;
 import java.util.UUID;
 
@@ -20,6 +22,7 @@ class BTConnectToThread extends Thread{
         void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress);
     }
 
+    private final BTConnectToThread that = this;
     private BTHandShakeSocketTread mBTHandShakeSocketTread = null;
     private final String mInstanceString;
     private final BtConnectToCallback callback;
@@ -46,7 +49,7 @@ class BTConnectToThread extends Thread{
         mSocket = device.createInsecureRfcommSocketToServiceRecord(BtUUID);
     }
     public void run() {
-        print_debug("","Starting to connect");
+        Log.i("", "Starting to connect");
 
         try {
             mSocket.connect();
@@ -55,19 +58,19 @@ class BTConnectToThread extends Thread{
                 HandShakeTimeOutTimer.start();
 
                 mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, mHandler);
+                mBTHandShakeSocketTread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
                 mBTHandShakeSocketTread.start();
                 mBTHandShakeSocketTread.write(mInstanceString.getBytes());
             }
         } catch (IOException e) {
-            print_debug("","socket connect failed: " + e.toString());
+            Log.i("","socket connect failed: " + e.toString());
             try {
                 mSocket.close();
             } catch (IOException ee) {
-                print_debug("","closing socket 2 failed: " + ee.toString());
+                Log.i("","closing socket 2 failed: " + ee.toString());
             }
             callback.ConnectionFailed(e.toString(), mPeerId, mPeerName, mPeerAddress);
         }
-
     }
 
     private void HandShakeOk() {
@@ -98,7 +101,7 @@ class BTConnectToThread extends Thread{
         try {
             mSocket.close();
         } catch (IOException e) {
-            print_debug("","closing socket failed: " + e.toString());
+            Log.i("","closing socket failed: " + e.toString());
         }
     }
 
@@ -110,11 +113,11 @@ class BTConnectToThread extends Thread{
             if (mBTHandShakeSocketTread != null) {
                 switch (msg.what) {
                     case BTHandShakeSocketTread.MESSAGE_WRITE: {
-                        print_debug("","MESSAGE_WRITE " + msg.arg1 + " bytes.");
+                        Log.i("","MESSAGE_WRITE " + msg.arg1 + " bytes.");
                     }
                     break;
                     case BTHandShakeSocketTread.MESSAGE_READ: {
-                        print_debug("","got MESSAGE_READ " + msg.arg1 + " bytes.");
+                        Log.i("","got MESSAGE_READ " + msg.arg1 + " bytes.");
                         HandShakeOk();
                     }
                     break;
@@ -126,12 +129,8 @@ class BTConnectToThread extends Thread{
                         throw new RuntimeException("Invalid message to Handshake handler");
                 }
             } else {
-                print_debug("","handleMessage called for NULL thread handler");
+                Log.i("","handleMessage called for NULL thread handler");
             }
         }
     };
-
-    private void print_debug(String who, String message){
-        //Log.d("BTConnectToThread" + who, "BTConnectToThread: " + message);
-    }
 }

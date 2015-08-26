@@ -3,6 +3,7 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothSocket;
 import android.os.Handler;
+import android.util.Log;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,14 +25,14 @@ class BTHandShakeSocketTread extends Thread {
     private final Handler mHandler;
 
     public BTHandShakeSocketTread(BluetoothSocket socket, Handler handler)  throws IOException {
-        print_debug("", "Creating BTHandShakeSocketTread");
+        Log.i("", "Creating BTHandShakeSocketTread");
         mHandler = handler;
         mmSocket = socket;
         mmInStream = mmSocket.getInputStream();
         mmOutStream = mmSocket.getOutputStream();
     }
     public void run() {
-        print_debug("", "BTHandShakeSocketTread started");
+        Log.i("", "BTHandShakeSocketTread started");
         byte[] buffer = new byte[255];
         int bytes;
 
@@ -40,10 +41,10 @@ class BTHandShakeSocketTread extends Thread {
             //Log.d(TAG, "ConnectedThread read data: " + bytes + " bytes");
             mHandler.obtainMessage(MESSAGE_READ, bytes, -1, buffer).sendToTarget();
         } catch (IOException e) {
-            print_debug("", "BTHandShakeSocketTread disconnected: " +  e.toString());
+            Log.i("", "BTHandShakeSocketTread disconnected: " +  e.toString());
             mHandler.obtainMessage(SOCKET_DISCONNECTED, -1, -1, e).sendToTarget();
         }
-        print_debug("", "BTHandShakeSocketTread fully stopped");
+        Log.i("", "BTHandShakeSocketTread fully stopped");
     }
     /**
      * Write to the connected OutStream.
@@ -60,7 +61,7 @@ class BTHandShakeSocketTread extends Thread {
             mHandler.obtainMessage(MESSAGE_WRITE, buffer.length, -1, buffer).sendToTarget();
         } catch (IOException e) {
             // when write fails, the timeout for handshake will clear things out eventually.
-            print_debug("", "BTHandShakeSocketTread  write failed: " + e.toString());
+            Log.i("", "BTHandShakeSocketTread  write failed: " + e.toString());
         }
     }
 
@@ -77,9 +78,5 @@ class BTHandShakeSocketTread extends Thread {
         if (mmSocket != null) {
             try {mmSocket.close();} catch (IOException e) {e.printStackTrace();}
         }
-    }
-
-    private void print_debug(String who, String message){
-        //Log.d("BTHandShakeSocketTread" + who, "BTConnectToThread: " + message);
     }
 }

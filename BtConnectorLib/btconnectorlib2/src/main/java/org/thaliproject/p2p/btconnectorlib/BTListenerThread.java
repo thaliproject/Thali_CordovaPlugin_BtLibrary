@@ -59,18 +59,19 @@ class BTListenerThread extends Thread {
         if (callback == null || mSocket == null) {
             return;
         }
-        print_debug("","starting to listen");
+        Log.i("","starting to listen");
 
         try {
             acceptedSocket = mSocket.accept();
 
             if (acceptedSocket != null) {
-                print_debug("","we got incoming connection");
+                Log.i("","we got incoming connection");
                 mSocket.close();
                 mStopped = true;
                 if (mBTHandShakeSocketTread == null) {
                     HandShakeTimeOutTimer.start();
                     mBTHandShakeSocketTread = new BTHandShakeSocketTread(acceptedSocket, mHandler);
+                    mBTHandShakeSocketTread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
                     mBTHandShakeSocketTread.start();
                 }
             } else if (!mStopped) {
@@ -80,7 +81,7 @@ class BTListenerThread extends Thread {
         } catch (IOException e) {
             if (!mStopped) {
                 //return failure
-                print_debug("","accept socket failed: " + e.toString());
+                Log.i("","accept socket failed: " + e.toString());
                 callback.ListeningFailed(e.toString());
             }
         }
@@ -106,7 +107,7 @@ class BTListenerThread extends Thread {
     }
 
     public void Stop() {
-        print_debug("","cancelled");
+        Log.i("","cancelled");
         HandShakeTimeOutTimer.cancel();
         BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
         mBTHandShakeSocketTread = null;
@@ -120,7 +121,7 @@ class BTListenerThread extends Thread {
                 mSocket.close();
             }
         } catch (IOException e) {
-            print_debug("","closing socket failed: " + e.toString());
+            Log.i("","closing socket failed: " + e.toString());
         }
     }
 
@@ -132,24 +133,24 @@ class BTListenerThread extends Thread {
             if (tmpThread != null) {
                 switch (msg.what) {
                     case BTHandShakeSocketTread.MESSAGE_WRITE: {
-                        print_debug("","MESSAGE_WRITE " + msg.arg1 + " bytes.");
+                        Log.i("","MESSAGE_WRITE " + msg.arg1 + " bytes.");
                         HandShakeOk();
                     }
                     break;
                     case BTHandShakeSocketTread.MESSAGE_READ: {
-                        print_debug("","got MESSAGE_READ " + msg.arg1 + " bytes.");
+                        Log.i("","got MESSAGE_READ " + msg.arg1 + " bytes.");
 
                         try {
                             byte[] readBuf = (byte[]) msg.obj;// construct a string from the valid bytes in the buffer
 
                             String JsonLine = new String(readBuf, 0, msg.arg1);
-                            print_debug("","Got JSON from encryption:" + JsonLine);
+                            Log.i("","Got JSON from encryption:" + JsonLine);
                             JSONObject jObject = new JSONObject(JsonLine);
 
                             that.peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
                             that.peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
                             that.peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
-                            print_debug("","peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                            Log.i("","peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
                             tmpThread.write(shakeBackBuf.getBytes());
 
@@ -168,12 +169,8 @@ class BTListenerThread extends Thread {
                         throw new RuntimeException("Invalid message to Handshake handler");
                 }
             } else {
-                print_debug("","handleMessage called for NULL thread handler");
+                Log.i("","handleMessage called for NULL thread handler");
             }
         }
     };
-
-    private void print_debug(String who, String message){
-        Log.d("BTListerThread",  "BTListerThread: " + message);
-    }
 }
