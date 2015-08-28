@@ -1,7 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="org.thaliproject.p2p.btconnectorlib">
 
-    <uses-feature android:name="android.hardware.wifi.direct" />
+    <uses-feature android:name="android.hardware.bluetooth_le"  android:required="true" />
 
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />

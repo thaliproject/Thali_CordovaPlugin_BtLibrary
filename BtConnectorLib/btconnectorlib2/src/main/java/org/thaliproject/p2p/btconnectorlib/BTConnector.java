@@ -15,7 +15,7 @@ import java.util.List;
 /**
  * Created by juksilve on 13.3.2015.
  */
-public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBase.WifiStatusCallBack, BTConnector_Discovery.DiscoveryCallback, BTConnector_BtConnection.ListenerCallback {
+public class BTConnector implements BluetoothBase.BluetoothStatusChanged, DiscoveryCallback, BTConnector_BtConnection.ListenerCallback {
 
     private final BTConnector that = this;
 
@@ -25,11 +25,15 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             isBtOk = false;
             isWifiEnabled = false;
             isBtEnabled = false;
+      //      isBLESupported = false;
+      //      isBLEAdvertisingSupported = false;
         }
         public boolean isWifiOk;
         public boolean isBtOk;
         public boolean isWifiEnabled;
         public boolean isBtEnabled;
+    //    public boolean isBLESupported;
+    //    public boolean isBLEAdvertisingSupported;
     }
 
     public enum State{
@@ -53,7 +57,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         void PeerDiscovered(ServiceItem service);
     }
 
-    private WifiBase mWifiBase = null;
     private BTConnector_Discovery mBTConnector_Discovery = null;
 
     private BluetoothBase mBluetoothBase = null;
@@ -104,12 +107,15 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
         Log.i("", " mInstanceString : " + mInstanceString);
 
-        WifiBase tmpWifibase = new WifiBase(this.context, this);
-        ret.isWifiOk = tmpWifibase.Start();
-        ret.isWifiEnabled = tmpWifibase.isWifiEnabled();
+        // these are needed with BLE discovery, we'll fix the naming later, now just ignoring notto make breaks.
+//      ret.isBLESupported =  BLEBase.isBLESupported(context);
+//      ret.isBLEAdvertisingSupported =  BLEBase.isBLEAdvertisingSupported(context);
+        ret.isWifiOk =  BLEBase.isBLESupported(context);
+        ret.isWifiEnabled =  BLEBase.isBLEAdvertisingSupported(context);
+                //    ret.isWifiOk = tmpWifibase.Start();
+    //    ret.isWifiEnabled = tmpWifibase.isWifiEnabled();
 
         //set the global values with our local ones
-        mWifiBase = tmpWifibase;
         mBluetoothBase = tmpBTbase;
 
         if (!ret.isWifiOk || !ret.isBtOk) {
@@ -133,11 +139,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
 
     public void Stop() {
         stopAll();
-        WifiBase tmp = mWifiBase;
-        mWifiBase = null;
-        if (tmp != null) {
-            tmp.Stop();
-        }
 
         BluetoothBase tmpb =mBluetoothBase;
         mBluetoothBase = null;
@@ -182,20 +183,11 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     private void startServices() {
         stopServices();
 
-        WifiP2pManager.Channel channel = null;
-        WifiP2pManager p2p = null;
-        WifiBase tmp = mWifiBase;
-        if (tmp != null) {
-            channel = tmp.GetWifiChannel();
-            p2p = tmp.GetWifiP2pManager();
-        }
+        Log.i("", "Starting services address: " + mInstanceString + ", " + ConSettings);
+        BTConnector_Discovery tmpDisc = new BTConnector_Discovery(this.context, this, ConSettings.SERVICE_TYPE, mInstanceString);
+        tmpDisc.Start();
+        mBTConnector_Discovery = tmpDisc;
 
-        if (channel != null && p2p != null) {
-            Log.i("", "Starting services address: " + mInstanceString + ", " + ConSettings);
-            BTConnector_Discovery tmpDisc= new BTConnector_Discovery(channel,p2p,this.context,this,ConSettings.SERVICE_TYPE,mInstanceString);
-            tmpDisc.Start();
-            mBTConnector_Discovery = tmpDisc;
-        }
     }
 
     private  void stopServices() {
@@ -253,13 +245,6 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
             setState(State.WaitingStateChange);
             return;
         }
-        if (mWifiBase == null) {
-            return;
-        }
-
-        if (!mWifiBase.isWifiEnabled()) {
-            return;
-        }
 
         if (mBTConnector_Discovery != null) {
             Log.i("WB", "We already were running, thus doing nothing");
@@ -272,40 +257,12 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     @Override
-    public void WifiStateChanged(int state) {
-
-        if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-            //no wifi available, thus we need to stop doing anything;
-            Log.i("WB", "Wifi is DISABLED !!");
-            stopAll();
-            // indicate the waiting with state change
-            setState(State.WaitingStateChange);
-            return;
-        }
-
-        if (mBluetoothBase == null) {
-            return;
-        }
-
-        if (!mBluetoothBase.isBluetoothEnabled()) {
-            return;
-        }
-        if (mBTConnector_Discovery != null) {
-            Log.i("WB", "We already were running, thus doing nothing");
-            return;
-        }
-        // we got wifi back, and BT is already on, thus we can re-start now
-        Log.i("WB", "Wifi is now enabled !");
-        startAll();
-    }
-
-    @Override
-    public void CurrentPeersList(List<ServiceItem> available) {
+    public void gotServicesList(List<ServiceItem> list) {
         if (this.connectSelector == null) {
             return;
         }
 
-        final List<ServiceItem> availableTmp = available;
+        final List<ServiceItem> availableTmp = list;
         mHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -315,12 +272,12 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     @Override
-    public void PeerDiscovered(ServiceItem service) {
+    public void foundService(ServiceItem item) {
         if (this.connectSelector == null) {
             return;
         }
 
-        final ServiceItem serviceTmp = service;
+        final ServiceItem serviceTmp = item;
         mHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -330,7 +287,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     }
 
     @Override
-    public void DiscoveryStateChanged(BTConnector_Discovery.State newState) {
+    public void StateChanged(DiscoveryCallback.State newState) {
+
         switch (newState) {
             case DiscoveryIdle:
                 setState(State.Idle);

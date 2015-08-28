@@ -1,6 +1,9 @@
 // Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License. See license.txt in the project root for further information.
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
@@ -10,133 +13,122 @@ import android.util.Log;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Created by juksilve on 22.06.2015.
  */
-public class BTConnector_Discovery implements WifiServiceSearcher.DiscoveryInternalCallBack {
+public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallback {
 
     private final BTConnector_Discovery that = this;
-
-    public interface  DiscoveryCallback{
-        void CurrentPeersList(List<ServiceItem> available);
-        void PeerDiscovered(ServiceItem service);
-        void DiscoveryStateChanged(State newState);
-    }
-    private final DiscoveryCallback mDiscoveryCallback;
-
-    public enum State{
-        DiscoveryIdle,
-        DiscoveryNotInitialized,
-        DiscoveryFindingPeers,
-        DiscoveryFindingServices
-    }
-
-    private WifiServiceAdvertiser mWifiAccessPoint = null;
-    private WifiServiceSearcher mWifiServiceSearcher = null;
-    private final String mEncryptedInstance;
+    private BLEScannerKitKat mSearchKitKat = null;
+    private BLEAdvertiserLollipop mBLEAdvertiserLollipop = null;
 
     private final Context context;
     private final String mSERVICE_TYPE;
-    private final WifiP2pManager.Channel channel;
-    private final WifiP2pManager p2p;
 
-    private final CountDownTimer ServiceFoundTimeOutTimer = new CountDownTimer(600000, 1000) {
-        public void onTick(long millisUntilFinished) {
-            // not using
-        }
-        public void onFinish() {
-            if(that.mDiscoveryCallback != null) {
-                //to clear any peers available status
-                that.mDiscoveryCallback.CurrentPeersList(null);
-            }
-            Start();
-        }
-    };
+    private final DiscoveryCallback callback;
+    private final BluetoothManager mBluetoothManager;
+    private final BluetoothGattService mFirstService;
 
-
-    public BTConnector_Discovery(WifiP2pManager.Channel p2pChannel, WifiP2pManager p2pManager,Context Context, DiscoveryCallback selector, String ServiceType,String instanceLine){
+    public BTConnector_Discovery(Context Context, DiscoveryCallback Callback, String ServiceType, String instanceLine){
         this.context = Context;
         this.mSERVICE_TYPE = ServiceType;
-        this.mDiscoveryCallback = selector;
-        this.channel = p2pChannel;
-        this.p2p =p2pManager;
-        this.mEncryptedInstance = instanceLine;
+        this.callback = Callback;
+        this.mBluetoothManager = (BluetoothManager) this.context.getSystemService(Context.BLUETOOTH_SERVICE);
+        this.mFirstService = new BluetoothGattService(UUID.fromString(BLEBase.SERVICE_UUID_1),BluetoothGattService.SERVICE_TYPE_PRIMARY);
+
+        BluetoothGattCharacteristic firstServiceChar = new BluetoothGattCharacteristic(UUID.fromString(BLEBase.CharacteristicsUID1),BluetoothGattCharacteristic.PROPERTY_READ,BluetoothGattCharacteristic.PERMISSION_READ );
+        firstServiceChar.setValue(instanceLine.getBytes());
+
+        this.mFirstService.addCharacteristic(firstServiceChar);
     }
 
-     public void Start(){
-         Stop();
-
-         if (channel == null || p2p == null) {
-             return;
-         }
-
-         Log.i("", "Starting services address: " + mEncryptedInstance);
-
-         WifiServiceAdvertiser tmpAdvertiser = new WifiServiceAdvertiser(p2p, channel);
-         tmpAdvertiser.Start(mEncryptedInstance, mSERVICE_TYPE);
-         mWifiAccessPoint = tmpAdvertiser;
-
-         WifiServiceSearcher tmpSearcher = new WifiServiceSearcher(this.context, p2p, channel, this, mSERVICE_TYPE);
-         tmpSearcher.Start();
-         mWifiServiceSearcher = tmpSearcher;
-
-         setState(State.DiscoveryFindingPeers);
-     }
+    public void Start() {
+        Log.i("Connector_Discovery", "starting-");
+        StartAdvertiser();
+        StartScanner();
+        StateChanged(State.DiscoveryFindingPeers);
+    }
 
     public void Stop() {
-        Log.i("", "Stopping services");
-        ServiceFoundTimeOutTimer.cancel();
+        Log.i("Connector_Discovery", "Stopping");
+        StopAdvertiser();
+        StopScanner();
+        StateChanged(State.DiscoveryIdle);
+    }
 
-        WifiServiceAdvertiser tmpAC = mWifiAccessPoint;
-        mWifiAccessPoint = null;
-        if (tmpAC != null) {
-            tmpAC.Stop();
-        }
+    private void StartAdvertiser(){
+        StopAdvertiser();
+        BLEAdvertiserLollipop tmpAdvertiserLollipop = new BLEAdvertiserLollipop(that.context,that,mBluetoothManager);
+        tmpAdvertiserLollipop.addService(mFirstService);
+        tmpAdvertiserLollipop.Start();
+        mBLEAdvertiserLollipop = tmpAdvertiserLollipop;
+    }
 
-        WifiServiceSearcher tmpSS = mWifiServiceSearcher;
-        mWifiServiceSearcher = null;
-        if (tmpSS != null) {
-            tmpSS.Stop();
+    private void StopAdvertiser(){
+        BLEAdvertiserLollipop tmpAdvertiser = mBLEAdvertiserLollipop;
+        mBLEAdvertiserLollipop = null;
+        if(tmpAdvertiser != null){
+            tmpAdvertiser.Stop();
         }
-        setState(State.DiscoveryIdle);
+    }
+
+    private void StartScanner() {
+        StopScanner();
+        BLEScannerKitKat tmpScannerKitKat = new BLEScannerKitKat(that.context, that,that.mBluetoothManager);
+        tmpScannerKitKat.Start();
+        mSearchKitKat = tmpScannerKitKat;
+    }
+
+    private void StopScanner() {
+        BLEScannerKitKat tmpScanner = mSearchKitKat;
+        mSearchKitKat = null;
+        if(tmpScanner != null){
+            tmpScanner.Stop();
+        }
     }
 
     @Override
-    public void gotPeersList(Collection<WifiP2pDevice> list) {
-
-        if(list.size() > 0) {
-            ServiceFoundTimeOutTimer.cancel();
-            ServiceFoundTimeOutTimer.start();
-
-            Log.i("SS", "Found " + list.size() + " peers.");
-            int num = 0;
-            for (WifiP2pDevice peer : list) {
-                num++;
-                Log.i("SS", "Peer(" + num + "): " + peer.deviceName + " " + peer.deviceAddress);
-            }
-
-            setState(State.DiscoveryFindingServices);
-        }else{
-            Log.i("SS", "We got empty peers list");
-            this.mDiscoveryCallback.CurrentPeersList(null);
-        }
+    public void onAdvertisingStarted(String error) {
+        //todo should we have a way on reporting advertising prolems ?
+        Log.i("Connector_Discovery", "Started err : " + error);
     }
 
+    @Override
+    public void onAdvertisingStopped(String error) {
+        Log.i("Connector_Discovery", "Stopped err : " + error);
+    }
+
+    //we are simply forwarding thw calls for DiscoveryCallback to be handled in the ConnectorLib
     @Override
     public void gotServicesList(List<ServiceItem> list) {
-        if(list != null && list.size() > 0) {
-            this.mDiscoveryCallback.CurrentPeersList(list);
-        }
+        that.callback.gotServicesList(list);
     }
 
     @Override
     public void foundService(ServiceItem item) {
-        this.mDiscoveryCallback.PeerDiscovered(item);
+        that.callback.foundService(item);
     }
 
-    private void setState(State newState) {
-       mDiscoveryCallback.DiscoveryStateChanged(newState);
+    public void StateChanged(State newState) {
 
+        Log.i("Connector_Discovery", "StateChanged : " + newState);
+        switch(newState){
+            case DiscoveryIdle:
+                that.callback.StateChanged(State.DiscoveryIdle);
+                break;
+            case DiscoveryNotInitialized:
+                that.callback.StateChanged(State.DiscoveryNotInitialized);
+                break;
+            case DiscoveryFindingPeers:
+                that.callback.StateChanged(State.DiscoveryFindingPeers);
+                break;
+            case DiscoveryFindingServices:
+                that.callback.StateChanged(State.DiscoveryFindingServices);
+                break;
+            default:
+                throw new RuntimeException("Invalid value for DiscoveryCallback.State = " + newState);
+        }
     }
 }
