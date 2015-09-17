@@ -11,6 +11,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Created by juksilve on 13.3.2015.
@@ -85,6 +86,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
     public WifiBtStatus Start(String peerIdentifier, String peerName) {
         //initialize the system, and
         // make sure BT & Wifi is enabled before we start running
+
+        Log.i("", "start called for library");
 
         WifiBtStatus ret = new WifiBtStatus();
         Stop();
@@ -211,6 +214,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
         BTConnector_BtConnection tmpconn = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
         tmpconn.StartListening();
         mBTConnector_BtConnection = tmpconn;
+
     }
 
     private  void stopBluetooth() {
@@ -257,15 +261,22 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
     }
 
     @Override
-    public void gotServicesList(List<ServiceItem> list) {
+    public void gotServicesList(final List<ServiceItem> list) {
         if (this.connectSelector == null) {
             return;
         }
 
-        final List<ServiceItem> availableTmp = list;
+        final CopyOnWriteArrayList<ServiceItem> availableTmp = new CopyOnWriteArrayList<ServiceItem>();
+        for(ServiceItem item : list ){
+            availableTmp.add(item);
+        }
+
+        Log.i("BTConnector", "gotServicesList size : " + list.size() + ", availableTmp : " + availableTmp.size());
+
         mHandler.post(new Runnable() {
             @Override
             public void run() {
+                Log.i("BTConnector", "gotServicesList availableTmp size : " + availableTmp.size());
                 that.connectSelector.CurrentPeersList(availableTmp);
             }
         });

@@ -115,14 +115,14 @@ public class BLEAdvertiserLollipop {
     }
 
     public boolean addService(BluetoothGattService service) {
-        boolean ret = false;
-        if (service != null && service.getUuid() != null) {
-            mBluetoothGattServices.add(service);
-            serviceUuids.add(new ParcelUuid(service.getUuid()));
-            ret = true;
+        if (service == null || service.getUuid() == null) {
+            return false;
         }
 
-        return ret;
+        mBluetoothGattServices.add(service);
+        serviceUuids.add(new ParcelUuid(service.getUuid()));
+
+        return true;
     }
     public boolean setCharacterValue(UUID uuid, byte[] value) {
         boolean ret = false;
@@ -237,7 +237,6 @@ public class BLEAdvertiserLollipop {
             super.onDescriptorReadRequest(device, requestId, offset, descriptor);
 
             byte[] dataForResponse = new byte[]{};
-
 
             for (BluetoothGattService tmpService : mBluetoothGattServices) {
                 outerLoop:

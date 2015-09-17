@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.CountDownTimer;
 import android.util.Log;
+import android.os.Handler;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -30,8 +31,8 @@ public class BLEValueReader {
     }
     private State myState = State.Idle;
 
-    // 60 second after we saw last peer, we could determine that we have seen all we have around us
-    private final CountDownTimer peerDiscoveryTimer = new CountDownTimer(60000, 1000) {
+    // 20 second after we saw last peer, we could determine that we have seen all we have around us
+    private final CountDownTimer peerDiscoveryTimer = new CountDownTimer(20000, 1000) {
         public void onTick(long millisUntilFinished) {}
 
         public void onFinish() {
@@ -51,22 +52,26 @@ public class BLEValueReader {
 
         public void onFinish() {
             if(myDeviceList.size() > 0){
+                Log.i("BLEValueReader", "doNextRoundTimer timeout" );
                 doNextRound();
             }
         }
     };
+    private final CopyOnWriteArrayList<ServiceItem> myDevicesSeenList = new CopyOnWriteArrayList<ServiceItem>();
 
     private final CopyOnWriteArrayList<ServiceItem> myServiceList = new CopyOnWriteArrayList<ServiceItem>();
     private final CopyOnWriteArrayList<BluetoothDevice> myDeviceList = new CopyOnWriteArrayList<BluetoothDevice>();
     private final Context context;
     private final DiscoveryCallback connectBack ;
     private final BluetoothAdapter btAdapter;
+    private final Handler mHandler;
     private BluetoothGatt bluetoothGatt = null;
 
     public BLEValueReader(Context Context, DiscoveryCallback CallBack,BluetoothAdapter adapter) {
         this.context = Context;
         this.connectBack = CallBack;
         this.btAdapter = adapter;
+        this.mHandler = new Handler(this.context.getMainLooper());
     }
 
     private void restartFullListTimer(){
@@ -78,30 +83,59 @@ public class BLEValueReader {
         Disconnect();
         myDeviceList.clear();
         myServiceList.clear();
+        myDevicesSeenList.clear();
         peerDiscoveryTimer.cancel();
     }
 
 
     private void Disconnect() {
         doNextRoundTimer.cancel();
-        BluetoothGatt tmpGat = bluetoothGatt;
-        bluetoothGatt = null;
-        if(tmpGat != null) {
-            tmpGat.disconnect();
-            tmpGat.close();
-        }
+
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                BluetoothGatt tmpGat = that.bluetoothGatt;
+                bluetoothGatt = null;
+                if (tmpGat != null) {
+                  /*disconnect appears to create following error:
+                    BluetoothGatt﹕ Unhandled exception in callback
+                        java.lang.NullPointerException: Attempt to invoke virtual method 'void android.bluetooth.BluetoothGattCallback.onConnectionStateChange(android.bluetooth.BluetoothGatt, int, int)' on a null object reference
+                            at android.bluetooth.BluetoothGatt$1.onClientConnectionState(BluetoothGatt.java:181)
+                            at android.bluetooth.IBluetoothGattCallback$Stub.onTransact(IBluetoothGattCallback.java:70)
+                            at android.os.Binder.execTransact(Binder.java:446)
+                    */
+                    //  tmpGat.disconnect();
+                    tmpGat.close();
+                }
+            }
+        });
     }
 
     public void AddDevice(final BluetoothDevice device){
-        myDeviceList.add(device);
 
-        //implement timeout timer. and call DiscoverServices
-        if(myState == State.Idle){
-            //we'll need to start this here, in order to get knowledge on all peers disappearing
-            // since if we don't find any peers, AddDevice,doNextRound etc. are never called
-            restartFullListTimer();
-            doNextRound();
+        boolean alreadyInTheList = false;
+        for(ServiceItem foundOne: myDevicesSeenList){
+            if(foundOne != null && foundOne.deviceAddress.equalsIgnoreCase(device.getAddress())) {
+                myServiceList.add(foundOne);
+                alreadyInTheList = true;
+                break;
+            }
         }
+
+        if(!alreadyInTheList) {
+            myDeviceList.add(device);
+        }
+
+        if(myState != State.Idle){
+            //we are already running a discovery on peer
+            // we'll do this one later
+            return;
+        }
+
+        //we'll need to start this here, in order to get knowledge on all peers disappearing
+        // since if we don't find any peers, AddDevice,doNextRound etc. are never called
+        restartFullListTimer();
+        doNextRound();
     }
 
     private void doNextRound() {
@@ -110,40 +144,43 @@ public class BLEValueReader {
         myState = State.Idle;
         doNextRoundTimer.start();
 
-        // how do I get first index item from the array in thread safe way
-        // any alternative than doing this funny loop
-        for(BluetoothDevice device : myDeviceList) {
-            if (device != null) {
-                if (myDeviceList.indexOf(device) == 0) {
-                    // get the first, and add it as last, so next round will do different one
-                    // we'll remove the device, once we get results for it.
-                    myDeviceList.remove(device);
-                    myDeviceList.add(device);
-                    //do connection to the selected device
-                    Log.i("BLEValueReader", "Connecting to next device : " + device.getAddress());
+        Log.i("BLEValueReader", "Connecting in called context");
 
-                    doConnect(device);
-                    break;
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if(connectBack == null || bluetoothGatt != null ) {
+                }
+
+                // how do I get first index item from the array in thread safe way
+                // any alternative than doing this funny loop
+                for(BluetoothDevice device : that.myDeviceList) {
+                    if (device != null) {
+                        if (that.myDeviceList.indexOf(device) == 0) {
+
+                            // get the first, and add it as last, so next round will do different one
+                            // we'll remove the device, once we get results for it.
+                            that.myDeviceList.remove(device);
+                            that.myDeviceList.add(device);
+                            //do connection to the selected device
+                            Log.i("BLEValueReader", "Connecting to next device : " + device.getAddress());;
+                            that.bluetoothGatt = device.connectGatt(that.context, false, that.gattCallback);
+                            that.myState = State.Discovering;
+                            break;
+                        }
+                    }
                 }
             }
-        }
-    }
-
-    private boolean doConnect(final BluetoothDevice device) {
-        boolean ret = false;
-        if(device != null && bluetoothGatt == null && connectBack != null) {
-            Log.i("BLEValueReader", "Connecting to : " + device.getAddress());
-            bluetoothGatt = device.connectGatt(that.context, false, gattCallback);
-            myState = State.Discovering;
-            ret = true;
-        }
-        return ret;
+        });
     }
 
 
     private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
 
+
         public void onConnectionStateChange(android.bluetooth.BluetoothGatt gatt, int status, int newState) {
+
+            Log.i("BLEValueReader", "onConnectionStateChange status : " + BLEBase.getGATTStatusAsString(status) + ", state: " + BLEBase.getConnectionStateAsString(newState));
 
             //if we fail to get anything started in here, then we'll do the next round with timeout timer
             switch (newState) {
@@ -152,13 +189,21 @@ public class BLEValueReader {
                     Log.i("BLEValueReader", "we are disconnected");
                     break;
                 case BluetoothProfile.STATE_CONNECTED:
-                    if (!gatt.discoverServices()) {
-                        myState = State.Idle;
-                        Log.i("BLEValueReader", "discoverServices return FALSE");
-                        return;
-                    }
-                    Log.i("BLEValueReader", "discoverServices to : " + gatt.getDevice().getAddress());
-                    myState = State.Discovering;
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (that.bluetoothGatt == null) {
+                                return;
+                            }
+                            if (!that.bluetoothGatt.discoverServices()) {
+                                that.myState = State.Idle;
+                                Log.i("BLEValueReader", "discoverServices return FALSE");
+                                return;
+                            }
+                            Log.i("BLEValueReader", "discoverServices to : " + that.bluetoothGatt.getDevice().getAddress());
+                            that.myState = State.Discovering;
+                        }
+                    });
                     break;
                 case BluetoothProfile.STATE_CONNECTING:
                 case BluetoothProfile.STATE_DISCONNECTING:
@@ -166,76 +211,128 @@ public class BLEValueReader {
                     // we can ignore any other than actual connected/disconnected sate
                     break;
             }
+
+            Log.i("BLEValueReader", "onConnectionStateChange out");
         }
 
         public void onServicesDiscovered(final BluetoothGatt gatt, final int status) {
-            List<BluetoothGattService> services = gatt.getServices();
-            if (services != null) {
-                for (BluetoothGattService item : services) {
-                    outerLoop:
-                    if (item != null && item.getUuid().toString().equalsIgnoreCase(BLEBase.SERVICE_UUID_1)) {
-                        List<BluetoothGattCharacteristic> charList = item.getCharacteristics();
-                        if (charList != null) {
-                            for (BluetoothGattCharacteristic charItem : charList) {
-                                if (charItem != null && charItem.getUuid().toString().equalsIgnoreCase(BLEBase.CharacteristicsUID1)) {
-                                    if(!gatt.readCharacteristic(charItem)){
-                                        Log.i("BLEValueReader", "readCharacteristic return FALSE");
-                                        myState = State.Idle;
-                                        return;
-                                    }
+            Log.i("BLEValueReader", "onServicesDiscovered status : " + BLEBase.getGATTStatusAsString(status));
 
-                                    Log.i("BLEValueReader", "readCharacteristic to : " + gatt.getDevice().getAddress());
-                                    myState = State.Reading;
-                                    break outerLoop;
+            if (bluetoothGatt == null) {
+                return;
+            }
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (that.bluetoothGatt == null) {
+                        return;
+                    }
+
+                    List<BluetoothGattService> services = that.bluetoothGatt.getServices();
+                    if (services != null) {
+                        for (BluetoothGattService item : services) {
+                            outerLoop:
+                            if (item != null && item.getUuid().toString().equalsIgnoreCase(BLEBase.SERVICE_UUID_1)) {
+                                List<BluetoothGattCharacteristic> charList = item.getCharacteristics();
+                                if (charList != null) {
+                                    for (BluetoothGattCharacteristic charItem : charList) {
+                                        if (charItem != null && charItem.getUuid().toString().equalsIgnoreCase(BLEBase.CharacteristicsUID1)) {
+                                            if (!gatt.readCharacteristic(charItem)) {
+                                                Log.i("BLEValueReader", "readCharacteristic return FALSE");
+                                                myState = State.Idle;
+                                                return;
+                                            }
+
+                                            Log.i("BLEValueReader", "readCharacteristic to : " + that.bluetoothGatt.getDevice().getAddress());
+                                            myState = State.Reading;
+                                            break outerLoop;
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            }
+            });
         }
 
         public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
 
-            if(characteristic.getValue().length > 0) {
-                String jsonString = new String(characteristic.getValue());
-                try {
-                    JSONObject jObject = new JSONObject(jsonString);
+            final BluetoothGattCharacteristic characteristicTmp = characteristic;
+            Log.i("BLEValueReader", "onCharacteristicRead status : " + BLEBase.getGATTStatusAsString(status));
 
-                    String peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
-                    String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
-                    String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
 
-                    Log.i("BLEValueReader", "JsonLine: " + jsonString + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
-                    ServiceItem tmpSrv = new ServiceItem(peerIdentifier, peerName, peerAddress, "BLE", gatt.getDevice().getAddress(), gatt.getDevice().getName());
-
-                    // we need to save the peer, so we can determine devices that went away with timer.
-                    myServiceList.add(tmpSrv);
-
-                    // lets inform that we have found a peer
-                    if (connectBack != null) {
-                        connectBack.foundService(tmpSrv);
+                    if (that.bluetoothGatt == null) {
+                        return;
                     }
 
-                    //only fully successful discoveries will reset the full list timer
-                    // this is to prevent failing peers to prevent discovery re-start from clean situations
-                    restartFullListTimer();
+                    if (characteristicTmp == null || characteristicTmp.getValue() == null || characteristicTmp.getValue().length <= 0) {
+                        return;
+                    }
 
-                    //remove the already processed device from the search list
-                    for (BluetoothDevice device : myDeviceList) {
-                        if (device != null && device.getAddress().equalsIgnoreCase(gatt.getDevice().getAddress())) {
-                            myDeviceList.remove(device);
+                    String jsonString = new String(characteristicTmp.getValue());
+                    try {
+                        JSONObject jObject = new JSONObject(jsonString);
+
+                        String peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
+                        String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
+                        String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
+
+                        Log.i("BLEValueReader", "JsonLine: " + jsonString + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+
+                        ServiceItem tmpSrv = new ServiceItem(peerIdentifier, peerName, peerAddress, "BLE", that.bluetoothGatt.getDevice().getAddress(), that.bluetoothGatt.getDevice().getName());
+
+                        // we need to save the peer, so we can determine devices that went away with timer.
+                        that.myServiceList.add(tmpSrv);
+
+                        //lets cache all peers we find, so we don't need to poll them again
+                        boolean alreadyInTheList = false;
+                        for (ServiceItem foundOne : that.myDevicesSeenList) {
+                            if (foundOne != null && foundOne.deviceAddress.equalsIgnoreCase(tmpSrv.deviceAddress)) {
+                                alreadyInTheList = true;
+                                break;
+                            }
                         }
+
+                        if (!alreadyInTheList) {
+                            //see whether we had it there with other BLE address, i.e. it was re-started
+                            for (ServiceItem foundOne : that.myDevicesSeenList) {
+                                if (foundOne != null && foundOne.peerAddress.equalsIgnoreCase(tmpSrv.peerAddress)) {
+                                    that.myDevicesSeenList.remove(foundOne);
+                                }
+                            }
+                            that.myDevicesSeenList.add(tmpSrv);
+                        }
+
+                        // lets inform that we have found a peer
+                        if (that.connectBack != null) {
+                            that.connectBack.foundService(tmpSrv);
+                        }
+
+                        //only fully successful discoveries will reset the full list timer
+                        // this is to prevent failing peers to prevent discovery re-start from clean situations
+                        restartFullListTimer();
+
+                        //remove the already processed device from the search list
+                        for (BluetoothDevice device : myDeviceList) {
+                            if (device != null && device.getAddress().equalsIgnoreCase(that.bluetoothGatt.getDevice().getAddress())) {
+                                that.myDeviceList.remove(device);
+                            }
+                        }
+
+                        Log.i("BLEValueReader", "processed fully, do next now!");
+                        //lets then move to process next peer we see on the list
+                        doNextRound();
+
+                    } catch (JSONException e) {
+                        Log.i("BLEValueReader", "Desscryptin instance failed , :" + e.toString());
                     }
-
-                    //lets then move to process next peer we see on the list
-                    doNextRound();
-
-                } catch (JSONException e) {
-                    Log.i("BLEValueReader", "Desscryptin instance failed , :" + e.toString());
                 }
-            }
+            });
         }
     };
 }
