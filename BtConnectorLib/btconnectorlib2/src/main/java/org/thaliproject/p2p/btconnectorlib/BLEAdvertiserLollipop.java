@@ -1,13 +1,6 @@
 package org.thaliproject.p2p.btconnectorlib;
 
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
-import android.bluetooth.BluetoothGattServer;
-import android.bluetooth.BluetoothGattServerCallback;
-import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
+import android.bluetooth.*;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
@@ -82,8 +75,11 @@ public class BLEAdvertiserLollipop {
             dataBuilder.addServiceUuid(uuid);
         }
 
-        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED);
-        settingsBuilder.setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH);
+        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER);
+        settingsBuilder.setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_LOW);
+
+//        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED);
+  //      settingsBuilder.setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH);
         settingsBuilder.setConnectable(true);
 
         weAreStoppingNow = false;
@@ -123,55 +119,6 @@ public class BLEAdvertiserLollipop {
         serviceUuids.add(new ParcelUuid(service.getUuid()));
 
         return true;
-    }
-    public boolean setCharacterValue(UUID uuid, byte[] value) {
-        boolean ret = false;
-
-        for (BluetoothGattService tmpService : mBluetoothGattServices) {
-            outerLoop:
-            if (tmpService != null) {
-                List<BluetoothGattCharacteristic> CharList = tmpService.getCharacteristics();
-                if (CharList != null) {
-                    for (BluetoothGattCharacteristic chara : CharList) {
-                        if (chara != null && chara.getUuid().compareTo(uuid) == 0) {
-                            chara.setValue(value);
-                            ret = true;
-                            break outerLoop;
-                        }
-                    }
-                }
-            }
-        }
-
-        return ret;
-    }
-
-    public boolean setDescriptorValue(UUID uuid, byte[] value) {
-        boolean ret = false;
-        for (BluetoothGattService tmpService : mBluetoothGattServices) {
-            outerLoop:
-            if (tmpService != null) {
-                List<BluetoothGattCharacteristic> CharList = tmpService.getCharacteristics();
-                if (CharList != null) {
-                    for (BluetoothGattCharacteristic chara : CharList) {
-                        if (chara != null) {
-                            List<BluetoothGattDescriptor> DescList = chara.getDescriptors();
-                            if (DescList != null) {
-                                for (BluetoothGattDescriptor descr : DescList) {
-                                    if (descr != null && descr.getUuid().compareTo(uuid) == 0) {
-                                        descr.setValue(value);
-                                        ret = true;
-                                        break outerLoop;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return ret;
     }
 
     private void Started(String error){
@@ -225,7 +172,6 @@ public class BLEAdvertiserLollipop {
                     }
                 }
             }
-
             if (mBluetoothGattServer != null) {
                 mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, dataForResponse);
             }
@@ -274,6 +220,66 @@ public class BLEAdvertiserLollipop {
                 mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, dataForResponse);
             }
         }
+
+        private int disconCount = 0;
+        private int connCount = 0;
+
+        @Override
+        public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
+
+            Log.i("ADV-CB", "onConnectionStateChange status : " + BLEBase.getGATTStatusAsString(status) + ", state: " + BLEBase.getConnectionStateAsString(newState));
+
+            switch (newState) {
+                case BluetoothProfile.STATE_DISCONNECTED:
+                    connCount++;
+                    break;
+                case BluetoothProfile.STATE_CONNECTED:
+                    disconCount++;
+                    break;
+                case BluetoothProfile.STATE_CONNECTING:
+                case BluetoothProfile.STATE_DISCONNECTING:
+                default:
+                    // we can ignore any other than actual connected/disconnected state
+                    break;
+            }
+
+            Log.i("ADV-CB", "onConnectionStateChange, ConCount : " + connCount + ", disconCount: " + disconCount);
+
+        }
+        @Override
+        public void onServiceAdded(int status, BluetoothGattService service) {
+            Log.i("ADV-CB", "onServiceAdded status : " + BLEBase.getGATTStatusAsString(status));
+        }
+
+        @Override
+        public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            Log.i("ADV-CB", "onCharacteristicWriteRequest ");
+        }
+
+        @Override
+        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            Log.i("ADV-CB", "onDescriptorWriteRequest ");
+        }
+        @Override
+        public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
+            Log.i("ADV-CB", "onExecuteWrite ");
+        }
+        @Override
+        public void onNotificationSent(BluetoothDevice device, int status) {
+            if(device == null){
+                return;
+            }
+
+            Log.i("ADV-CB", "onNotificationSent status : " + BLEBase.getGATTStatusAsString(status) + ", device : " + device.getAddress());
+        }
+        @Override
+        public void onMtuChanged(BluetoothDevice device, int mtu) {
+            if(device == null){
+                return;
+            }
+
+            Log.i("ADV-CB", "onMtuChanged newsize : " + mtu + ", device : " + device.getAddress());
+        }
     };
 
     private final AdvertiseCallback mAdvertiseCallback = new AdvertiseCallback() {
@@ -315,10 +321,10 @@ public class BLEAdvertiserLollipop {
             }
 
             if(weAreStoppingNow) {
-                Log.i("ADV-CB", "Stopped OK");
+                Log.i("ADV-CB", "Stopped Err: " + errBuffer);
                 Stopped(errBuffer);
             }else{
-                Log.i("ADV-CB", "Started OK");
+                Log.i("ADV-CB", "Started Err : " + errBuffer);
                 Started(errBuffer);
             }
         }

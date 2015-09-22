@@ -1,5 +1,4 @@
 package org.thaliproject.p2p.btconnectorlib;
-
 import java.util.List;
 
 /**

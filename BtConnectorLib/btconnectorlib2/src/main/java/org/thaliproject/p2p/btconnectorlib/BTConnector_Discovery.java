@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothManager;
 import android.content.Context;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.Build;
 import android.os.CountDownTimer;
 
 import android.util.Log;
@@ -22,6 +23,7 @@ public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallb
 
     private final BTConnector_Discovery that = this;
     private BLEScannerKitKat mSearchKitKat = null;
+    private BLEScannerLollipop mBLEScannerLollipop = null;
     private BLEAdvertiserLollipop mBLEAdvertiserLollipop = null;
 
     private final Context context;
@@ -60,10 +62,14 @@ public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallb
 
     private void StartAdvertiser(){
         StopAdvertiser();
-        BLEAdvertiserLollipop tmpAdvertiserLollipop = new BLEAdvertiserLollipop(that.context,that,mBluetoothManager);
-        tmpAdvertiserLollipop.addService(mFirstService);
-        tmpAdvertiserLollipop.Start();
-        mBLEAdvertiserLollipop = tmpAdvertiserLollipop;
+
+        //API is not available before Lollipop
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BLEAdvertiserLollipop tmpAdvertiserLollipop = new BLEAdvertiserLollipop(that.context, that, mBluetoothManager);
+            tmpAdvertiserLollipop.addService(mFirstService);
+            tmpAdvertiserLollipop.Start();
+            mBLEAdvertiserLollipop = tmpAdvertiserLollipop;
+        }
     }
 
     private void StopAdvertiser(){
@@ -76,9 +82,21 @@ public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallb
 
     private void StartScanner() {
         StopScanner();
-        BLEScannerKitKat tmpScannerKitKat = new BLEScannerKitKat(that.context, that,that.mBluetoothManager);
-        tmpScannerKitKat.Start();
-        mSearchKitKat = tmpScannerKitKat;
+
+        //API is not available before Lollipop
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Log.i("Connector_Discovery", "Start Lollipop scanner");
+            BLEScannerLollipop tmpScannerLollipop = new BLEScannerLollipop(that.context, that, that.mBluetoothManager);
+            tmpScannerLollipop.Start();
+            mBLEScannerLollipop= tmpScannerLollipop;
+
+        }else {
+            Log.i("Connector_Discovery", "Start kitkat scanner");
+            BLEScannerKitKat tmpScannerKitKat = new BLEScannerKitKat(that.context, that, that.mBluetoothManager);
+            tmpScannerKitKat.Start();
+            mSearchKitKat = tmpScannerKitKat;
+        }
+
     }
 
     private void StopScanner() {
@@ -86,6 +104,12 @@ public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallb
         mSearchKitKat = null;
         if(tmpScanner != null){
             tmpScanner.Stop();
+        }
+
+        BLEScannerLollipop tmpLollipopScan = mBLEScannerLollipop;
+        mBLEScannerLollipop = null;
+        if(tmpLollipopScan != null){
+            tmpLollipopScan.Stop();
         }
     }
 
@@ -131,4 +155,5 @@ public class BTConnector_Discovery implements AdvertiserCallback, DiscoveryCallb
                 throw new RuntimeException("Invalid value for DiscoveryCallback.State = " + newState);
         }
     }
+
 }
