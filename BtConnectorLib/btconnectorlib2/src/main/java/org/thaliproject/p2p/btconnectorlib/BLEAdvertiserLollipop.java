@@ -1,5 +1,7 @@
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.bluetooth.*;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
@@ -17,6 +19,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Created by juksilve on 20.4.2015.
  */
+@TargetApi(18)
+@SuppressLint("NewApi")
+
 public class BLEAdvertiserLollipop {
 
     private final BLEAdvertiserLollipop that = this;

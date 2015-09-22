@@ -1,4 +1,6 @@
 package org.thaliproject.p2p.btconnectorlib;
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
@@ -19,6 +21,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 // https://code.google.com/p/android/issues/detail?id=82463
 
+@TargetApi(18)
+@SuppressLint("NewApi")
 public class BLEScannerLollipop implements DiscoveryCallback{
 
     BLEScannerLollipop that = this;
