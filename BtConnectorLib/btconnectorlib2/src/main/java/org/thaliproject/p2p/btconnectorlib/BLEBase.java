@@ -2,14 +2,11 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothProfile;
+import android.bluetooth.*;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
+import android.util.Log;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -20,10 +17,19 @@ import java.util.Map;
  */
 public class BLEBase {
 
+
+    // we must use 128-bit UUID:
+    // https://developer.bluetooth.org/community/lists/community%20discussion/flat.aspx?rootfolder=/community/lists/community+discussion/16+bit+uuid+vs.+128+uuid&folderctid=0x01200200e2f0e56e3d53004dba96bdf0c357551f
+    // BLE address base      = "00000000-0000-1000-8000-00805F9B34FB";
+
     //this is out globally unique Service UUID, which is used for determining that the BLE device is running our service
     // the actual values are delivered through the characteristics
-    static public final String SERVICE_UUID_1      = "010500a1-00b0-1000-8000-00805f9b34fb";
-    static public final String CharacteristicsUID1 = "46651222-96e0-4aca-a710-8f35f7e702b9";
+
+
+    //000000a1-0000-1000-8000-00805f9b34fb
+  //  static public final String SERVICE_UUID_1      = "0000000b-00b0-1000-8000-00805F9B34FB";
+
+
 
     public static boolean isBLESupported(Context context) {
         return context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
@@ -155,6 +161,8 @@ public class BLEBase {
     inspired by:
     http://stackoverflow.com/questions/22016224/ble-obtain-uuid-encoded-in-advertising-packet
      */
+
+
     static public Map<Integer,String> ParseRecord(byte[] scanRecord){
         Map<Integer,String> ret = new HashMap<Integer,String>();
         int index = 0;
@@ -170,11 +178,25 @@ public class BLEBase {
 
             byte[] data = Arrays.copyOfRange(scanRecord, index + 1, index + length);
             if(data != null && data.length > 0) {
+
                 StringBuilder hex = new StringBuilder(data.length * 2);
-                // the data appears to be there backwards
-                for (int bb = data.length- 1; bb >= 0; bb--){
-                    hex.append(String.format("%02X", data[bb]));
+                if(type == EBLE_SERVICEDATA) {
+
+                    if(data.length >= 6) {
+                        // observed that the data has some A100 in the beginning, so lets get rid of them
+                        // and just find our BT address stored in there
+                        hex.append(String.format("%02X", data[(data.length - 6)]));
+                        for (int s = (data.length - 6) + 1; s < data.length; s++) {
+                            hex.append(String.format(":%02X", data[s]));
+                        }
+                    }
+                }else {
+                    // the data appears to be there backwards
+                    for (int bb = data.length - 1; bb >= 0; bb--) {
+                        hex.append(String.format("%02X", data[bb]));
+                    }
                 }
+                Log.i("MY-ParseRecord", "type : " + type + ", value : " + hex.toString());
                 ret.put(type,hex.toString());
             }
             index += length;
@@ -183,16 +205,30 @@ public class BLEBase {
         return ret;
     }
 
+    static public String getServiceData(Map<Integer,String> record){
+        if(record.containsKey(EBLE_SERVICEDATA)) {
+            return record.get(EBLE_SERVICEDATA).toString();
+        }
+
+        return "";
+    }
+
     static public String getServiceUUID(Map<Integer,String> record){
-        String ret = "";
         // for example: 0105FACB00B01000800000805F9B34FB --> 010510ee-0000-1000-8000-00805f9b34fb
+
+        if(record.containsKey(EBLE_16BitUUIDCom)) {
+            return record.get(EBLE_16BitUUIDCom).toString() + "0000-0000-1000-8000-00805f9b34fb";
+        }
+
+        if(record.containsKey(EBLE_32BitUUIDCom)){
+            return record.get(EBLE_32BitUUIDCom).toString() + "-0000-1000-8000-00805f9b34fb";
+        }
+
         if(record.containsKey(EBLE_128BitUUIDCom)){
             String tmpString= record.get(EBLE_128BitUUIDCom).toString();
-            ret = tmpString.substring(0, 8) + "-" + tmpString.substring(8,12)+ "-" + tmpString.substring(12,16)+ "-" + tmpString.substring(16,20)+ "-" + tmpString.substring(20,tmpString.length());
-            //010510EE --> 010510ee-0000-1000-8000-00805f9b34fb
-        }else if(record.containsKey(EBLE_32BitUUIDCom)){
-            ret = record.get(EBLE_32BitUUIDCom).toString() + "-0000-1000-8000-00805f9b34fb";
+            return tmpString.substring(0, 8) + "-" + tmpString.substring(8,12)+ "-" + tmpString.substring(12,16)+ "-" + tmpString.substring(16,20)+ "-" + tmpString.substring(20,tmpString.length());
         }
-        return ret;
+
+        return "";
     }
 }

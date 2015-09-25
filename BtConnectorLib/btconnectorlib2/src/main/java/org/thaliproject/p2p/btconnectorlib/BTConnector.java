@@ -20,6 +20,14 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
 
     private final BTConnector that = this;
 
+    // UUID Values used with Bluetooth
+    static public String BtDiscoveryUUID           = "A489F6EA-511A-4EEA-BEE6-79C1071BEC25";
+
+    // UUID Values used with BLE
+    static public final String SERVICE_UUID_1      = "A489F6EA-511A-1000-8000-00805f9b34fb";
+    static public final String CharacteristicsUID1 = "46651222-96e0-4aca-a710-8f35f7e702b9";
+    static public final String CharacteristicsUID2 = "46651333-96e0-4aca-a710-8f35f7e702b9";
+
     public class WifiBtStatus{
         public WifiBtStatus(){
             isWifiOk = false;
@@ -316,6 +324,11 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
             default:
                 throw new RuntimeException("DiscoveryStateChanged called with invalid vale for BTConnector_Discovery.State");
         }
+    }
+
+    @Override
+    public void debugData(String data) {
+       // Log.i("BT", "debugData : " + data);
     }
 
     @Override

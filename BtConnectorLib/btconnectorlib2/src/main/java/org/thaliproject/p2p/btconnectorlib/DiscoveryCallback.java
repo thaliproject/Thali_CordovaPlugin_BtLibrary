@@ -1,4 +1,5 @@
 package org.thaliproject.p2p.btconnectorlib;
+
 import java.util.List;
 
 /**
@@ -14,4 +15,5 @@ interface DiscoveryCallback {
     void gotServicesList(List<ServiceItem> list);
     void foundService(ServiceItem item);
     void StateChanged(State newState);
+    void debugData(String data);
 }

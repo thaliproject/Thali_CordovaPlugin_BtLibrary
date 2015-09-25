@@ -11,9 +11,11 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -45,7 +47,7 @@ public class BLEAdvertiserLollipop {
         this.mBluetoothManager = btManager;
         this.mBluetoothAdapter = mBluetoothManager.getAdapter();
     }
-    public boolean Start() {
+    public boolean Start(String blueToothAddressString) {
 
         if(mBluetoothManager == null || mBluetoothAdapter == null){
             Started("Bluetooth is NOT-Supported");
@@ -65,6 +67,16 @@ public class BLEAdvertiserLollipop {
         mBluetoothGattServer = mBluetoothManager.openGattServer(this.context, mGattServerCallback);
         mBluetoothLeAdvertiser = mBluetoothAdapter.getBluetoothLeAdvertiser();
 
+        if(mBluetoothGattServer == null) {
+            Started("openGattServer returned null");
+            return false;
+        }
+
+        if(mBluetoothLeAdvertiser == null) {
+            Started("getBluetoothLeAdvertiser returned null");
+            return false;
+        }
+
         for (BluetoothGattService service: mBluetoothGattServices) {
             if (service != null) {
                 mBluetoothGattServer.addService(service);
@@ -76,8 +88,16 @@ public class BLEAdvertiserLollipop {
 
         dataBuilder.setIncludeTxPowerLevel(true);
 
+        String[] splitted = blueToothAddressString.split(":");
+        byte[] sendAddress = new byte[6];        // length == 6 bytes
+        for(int i = 0; i < splitted.length; i++) {
+            sendAddress[i] = Integer.decode("0x" + splitted[i]).byteValue();
+        }
+
+        //the list can actually only have one item, otherwise its making the scan record too big
         for (ParcelUuid uuid : serviceUuids) {
             dataBuilder.addServiceUuid(uuid);
+            dataBuilder.addServiceData(uuid, sendAddress);
         }
 
         settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER);
@@ -86,6 +106,10 @@ public class BLEAdvertiserLollipop {
 //        settingsBuilder.setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_BALANCED);
   //      settingsBuilder.setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH);
         settingsBuilder.setConnectable(true);
+
+        //make sure these are false, so we save some space on scan record
+        dataBuilder.setIncludeDeviceName(false);
+        dataBuilder.setIncludeTxPowerLevel(false);
 
         weAreStoppingNow = false;
         mBluetoothLeAdvertiser.startAdvertising(settingsBuilder.build(), dataBuilder.build(),mAdvertiseCallback );
@@ -113,6 +137,7 @@ public class BLEAdvertiserLollipop {
         }
         mBluetoothGattServices.clear();
         serviceUuids.clear();
+        mWriteList.clear();
     }
 
     public boolean addService(BluetoothGattService service) {
@@ -132,7 +157,7 @@ public class BLEAdvertiserLollipop {
         that.mHandler.post(new Runnable() {
             @Override
             public void run() {
-                if(callback != null) {
+                if (callback != null) {
                     callback.onAdvertisingStarted(errorTmp);
                 }
             }
@@ -144,7 +169,7 @@ public class BLEAdvertiserLollipop {
         that.mHandler.post(new Runnable() {
             @Override
             public void run() {
-                if(callback != null) {
+                if (callback != null) {
                     callback.onAdvertisingStopped(errorTmp);
                 }
             }
@@ -154,7 +179,7 @@ public class BLEAdvertiserLollipop {
     private final BluetoothGattServerCallback mGattServerCallback  = new BluetoothGattServerCallback() {
 
         @Override
-        public void onCharacteristicReadRequest(android.bluetooth.BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
+        public void onCharacteristicReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
 
             byte[] dataForResponse = new byte[]{};
@@ -182,108 +207,94 @@ public class BLEAdvertiserLollipop {
             }
         }
 
-
-        @Override
-        public void onDescriptorReadRequest(android.bluetooth.BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor descriptor) {
-            super.onDescriptorReadRequest(device, requestId, offset, descriptor);
-
-            byte[] dataForResponse = new byte[]{};
-
-            for (BluetoothGattService tmpService : mBluetoothGattServices) {
-                outerLoop:
-                if (tmpService != null) {
-                    List<BluetoothGattCharacteristic> CharList = tmpService.getCharacteristics();
-                    if (CharList != null) {
-                        for (BluetoothGattCharacteristic chara : CharList) {
-                            if (chara != null) {
-                                List<BluetoothGattDescriptor> DescList = chara.getDescriptors();
-                                if (DescList != null) {
-                                    for (BluetoothGattDescriptor descriptorItem : DescList) {
-                                        if (descriptorItem != null && descriptorItem.getUuid().compareTo(descriptor.getUuid()) == 0) {
-
-                                            byte[] tmpString = descriptorItem.getValue();
-
-                                            if (tmpString == null || offset > tmpString.length) {
-                                                //lets just return the empty string we have made already
-                                            } else {
-                                                dataForResponse = new byte[tmpString.length - offset];
-                                                for (int i = 0; i != (tmpString.length - offset); ++i) {
-                                                    dataForResponse[i] = tmpString[offset + i];
-                                                }
-                                            }
-                                            break outerLoop;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (mBluetoothGattServer != null) {
-                mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, dataForResponse);
-            }
-        }
-
-        private int disconCount = 0;
-        private int connCount = 0;
-
-        @Override
-        public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-
-            Log.i("ADV-CB", "onConnectionStateChange status : " + BLEBase.getGATTStatusAsString(status) + ", state: " + BLEBase.getConnectionStateAsString(newState));
-
-            switch (newState) {
-                case BluetoothProfile.STATE_DISCONNECTED:
-                    connCount++;
-                    break;
-                case BluetoothProfile.STATE_CONNECTED:
-                    disconCount++;
-                    break;
-                case BluetoothProfile.STATE_CONNECTING:
-                case BluetoothProfile.STATE_DISCONNECTING:
-                default:
-                    // we can ignore any other than actual connected/disconnected state
-                    break;
-            }
-
-            Log.i("ADV-CB", "onConnectionStateChange, ConCount : " + connCount + ", disconCount: " + disconCount);
-
-        }
-        @Override
-        public void onServiceAdded(int status, BluetoothGattService service) {
-            Log.i("ADV-CB", "onServiceAdded status : " + BLEBase.getGATTStatusAsString(status));
-        }
-
         @Override
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId, BluetoothGattCharacteristic characteristic, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
-            Log.i("ADV-CB", "onCharacteristicWriteRequest ");
+            super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
+
+            if(preparedWrite) {
+                addWriteItemByteBuffer(device.getAddress(), characteristic.getUuid().toString(), value, true);
+            }else {
+                onCharacterWrite(device.getAddress(),characteristic.getUuid().toString(),value);
+            }
+
+            if (mBluetoothGattServer != null &&responseNeeded) {
+                // need to give the same values we got as an reply, in order to get next possible part.
+                mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value);
+            }
         }
 
-        @Override
-        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
-            Log.i("ADV-CB", "onDescriptorWriteRequest ");
-        }
         @Override
         public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
-            Log.i("ADV-CB", "onExecuteWrite ");
-        }
-        @Override
-        public void onNotificationSent(BluetoothDevice device, int status) {
-            if(device == null){
-                return;
+            super.onExecuteWrite(device, requestId, execute);
+
+            if (mBluetoothGattServer != null) {
+                mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, new byte[] {});
             }
 
-            Log.i("ADV-CB", "onNotificationSent status : " + BLEBase.getGATTStatusAsString(status) + ", device : " + device.getAddress());
+            executeWriteStorages(device.getAddress(),execute);
         }
-        @Override
-        public void onMtuChanged(BluetoothDevice device, int mtu) {
-            if(device == null){
-                return;
-            }
 
-            Log.i("ADV-CB", "onMtuChanged newsize : " + mtu + ", device : " + device.getAddress());
+        private void addWriteItemByteBuffer(String deviceAddress, String uuid,byte[] buffer, boolean isCharacter){
+            WriteStorage  tmpitem = getWriteItem(deviceAddress,uuid);
+            if(tmpitem != null){
+                tmpitem.addData(buffer);
+            }else{
+                WriteStorage newItem = new WriteStorage(deviceAddress,uuid,isCharacter);
+                mWriteList.add(newItem);
+                newItem.addData(buffer);
+            }
+        }
+
+        private WriteStorage getWriteItem(String deviceAddress, String uuid) {
+            WriteStorage ret = null;
+            for (WriteStorage storage : mWriteList){
+                if(storage != null && storage.getUUID().equalsIgnoreCase(uuid) && storage.getDeviceAddress().equalsIgnoreCase(deviceAddress)){
+                    ret = storage;
+                    break;
+                }
+            }
+            return ret;
+        }
+
+        private void executeWriteStorages(String deviceAddress, boolean execute){
+
+            Log.i("ADV-CB", "executeWriteStorages : " + execute);
+            for(int i=mWriteList.size() - 1; i >= 0;i--){
+                WriteStorage storage  = mWriteList.get(i);
+                if(storage != null && storage.getDeviceAddress().equalsIgnoreCase(deviceAddress)){
+                    if(execute){//if its not for executing, its then for cancelling it
+                        if(storage.isCharacter()){
+                            onCharacterWrite(storage.getDeviceAddress(), storage.getUUID(), storage.getFullData());
+                        }
+                    }
+
+                    mWriteList.remove(storage);
+                    //we are done with this item now.
+                    storage.clearData();
+                }
+            }
+        }
+
+        private void onCharacterWrite(String deviceAddress, String uuid,byte[] value){
+
+            //disabled for debugging reasons
+            String jsonString = new String(value);
+            try {
+                JSONObject jObject = new JSONObject(jsonString);
+
+                String peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
+                String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
+                String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
+
+                Log.i("ADV-CB", "JsonLine: " + jsonString + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                ServiceItem tmpSrv = new ServiceItem(peerIdentifier, peerName, peerAddress, "BLE", deviceAddress, deviceAddress);
+                that.callback.PeerDiscovered(tmpSrv,false);
+
+                callback.debugData("Incoming peer " + peerName);
+
+            } catch (JSONException e) {
+                Log.i("ADV-CB", "Decrypting instance failed , :" + e.toString());
+            }
         }
     };
 
@@ -293,10 +304,12 @@ public class BLEAdvertiserLollipop {
         public void onStartSuccess(AdvertiseSettings settingsInEffec) {
             if(weAreStoppingNow) {
                 Log.i("ADV-CB", "Stopped OK");
+                callback.debugData("Advertisement STOP ok");
                 Stopped(null);
             }else{
                 Log.i("ADV-CB", "Started OK");
-                Started( null);
+                callback.debugData("Advertisement started ok");
+                Started(null);
             }
         }
 
@@ -329,9 +342,61 @@ public class BLEAdvertiserLollipop {
                 Log.i("ADV-CB", "Stopped Err: " + errBuffer);
                 Stopped(errBuffer);
             }else{
+                callback.debugData("Advertisement failed: " + errBuffer);
                 Log.i("ADV-CB", "Started Err : " + errBuffer);
                 Started(errBuffer);
             }
         }
     };
+
+
+    public class WriteStorage{
+
+        final private String  mDeviceAddress;
+        final private String mUUID;
+        final private boolean mIsCharacter;
+        private List<byte[]> byteArray;
+
+        public WriteStorage(String address,String uuid, boolean isCharacter){
+            mDeviceAddress = address;
+            mUUID = uuid;
+            byteArray = new ArrayList<byte[]>();
+            mIsCharacter = isCharacter;
+        }
+
+        public boolean isCharacter(){return mIsCharacter;}
+        public String getUUID(){return mUUID;}
+        public String getDeviceAddress(){return mDeviceAddress;}
+        public void clearData(){
+            byteArray.clear();
+        }
+        public void addData(byte[] array){
+            byteArray.add(array);
+        }
+
+        public byte[] getFullData(){
+
+            int totalSize = 0;
+
+            for(int i=0; i < byteArray.size();i++){
+                totalSize = totalSize + byteArray.get(i).length;
+            }
+
+            if(totalSize <= 0) {
+                return new byte[]{};
+            }
+
+            int copuCounter = 0;
+            byte[] retArray = new byte[totalSize];
+            for(int ii=0; ii < byteArray.size();ii++) {
+                byte[] tmpArr = byteArray.get(ii);
+                System.arraycopy(tmpArr, 0, retArray, copuCounter, tmpArr.length);
+                copuCounter = copuCounter + tmpArr.length;
+            }
+
+            return retArray;
+        }
+    }
+
+    private List<WriteStorage> mWriteList = new ArrayList<WriteStorage>();
 }

@@ -1,4 +1,5 @@
 package org.thaliproject.p2p.btconnectorlib;
+
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
@@ -13,6 +14,7 @@ import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -23,15 +25,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 @TargetApi(18)
 @SuppressLint("NewApi")
-public class BLEScannerLollipop implements DiscoveryCallback{
+public class BLEScannerLollipop {
 
     BLEScannerLollipop that = this;
     private final Context context;
-    private final DiscoveryCallback mDiscoveryCallback;
+    private final PeerDiscoveredCallback mDiscoveryCallback;
     private final BluetoothAdapter mBluetoothAdapter;
     private final CopyOnWriteArrayList<BluetoothDevice> mBLEDeviceList = new CopyOnWriteArrayList<BluetoothDevice>();
     private final Handler mHandler;
-
+    private final String mInstanceString;
     private final BluetoothLeScanner scanner;
 
     private BLEValueReader mBLEValueReader = null;
@@ -46,10 +48,11 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         }
     };
 
-    public BLEScannerLollipop(Context Context, DiscoveryCallback CallBack, BluetoothManager Manager) {
+    public BLEScannerLollipop(Context Context, PeerDiscoveredCallback CallBack, BluetoothManager Manager,String instanceString) {
         this.context = Context;
         this.mDiscoveryCallback = CallBack;
         this.mBluetoothAdapter = Manager.getAdapter();
+        this.mInstanceString = instanceString;
         this.scanner = this.mBluetoothAdapter.getBluetoothLeScanner();
 
         this.mHandler = new Handler(this.context.getMainLooper());
@@ -57,7 +60,7 @@ public class BLEScannerLollipop implements DiscoveryCallback{
 
     public void Start() {
         Stop();
-        BLEValueReader tmpValueReader = new BLEValueReader(this.context, this, mBluetoothAdapter);
+        BLEValueReader tmpValueReader = new BLEValueReader(this.context, this.mDiscoveryCallback, mBluetoothAdapter,this.mInstanceString);
         mBLEValueReader = tmpValueReader;
         StartScanning();
     }
@@ -66,6 +69,7 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         mHandler.post(new Runnable() {
             @Override
             public void run() {
+                Log.i("SCAN-NER", "Start scanner now");
                 ScanSettings settings = new ScanSettings.Builder()
                         .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
                         .build();
@@ -90,13 +94,9 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         }
     }
 
-    @Override
-    public void gotServicesList(List<ServiceItem> list) {
-        Log.i("SCAN-NER", "gotServicesList size : " + list.size());
-
-        that.mDiscoveryCallback.gotServicesList(list);
+    public void reStartScanning() {
+        Log.i("SCAN-NER", "reStartScanning called");
         mBLEDeviceList.clear();
-
         // supposedly we need to stp & re-start in order to be sure we do get the devices again.
         // http://stackoverflow.com/questions/19502853/android-4-3-ble-filtering-behaviour-of-startlescan
         // I did not have the devices mentioned in the list to actually test this, but supposedly starting & stopping should work just fine
@@ -109,17 +109,6 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         });
     }
 
-    @Override
-    public void foundService(ServiceItem item) {
-        Log.i("SCAN-NER", "foundService : " + item.peerName);
-        that.mDiscoveryCallback.foundService(item);
-    }
-
-    @Override
-    public void StateChanged(State newState) {
-        that.mDiscoveryCallback.StateChanged(newState);
-    }
-
     private void foudDevice(ScanResult result) {
 
         if (result == null) {
@@ -129,7 +118,7 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         BluetoothDevice device = result.getDevice();
         List<ParcelUuid> uuids = result.getScanRecord().getServiceUuids();
 
-        Log.i("SCAN-NER", "foudDevice : " + device.getAddress());
+
 
         if (device == null || uuids == null || mBLEValueReader == null) {
             return;
@@ -145,14 +134,13 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         }
 
         //seen earlier, lets return
-        if (itemTmp != null) {
-            return;
+        if (itemTmp == null) {
+            mBLEDeviceList.add(device);
         }
-        mBLEDeviceList.add(device);
 
         boolean isOurService = false;
         for (ParcelUuid UID : uuids) {
-            if (UID.toString().equalsIgnoreCase(BLEBase.SERVICE_UUID_1)) {
+            if (UID.toString().equalsIgnoreCase(BTConnector.SERVICE_UUID_1)) {
                 isOurService = true;
             }
         }
@@ -163,12 +151,48 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         if (!isOurService) {
             return;
         }
+        Log.i("SCAN-NER", "foudDevice with ourService: " + device.getAddress());
 
-        Log.i("SCAN-NER", "AddDevice : " + device.getAddress());
+        // we already have it in the currently discovered list
+        if(that.mDiscoveryCallback.isPeerDiscovered(device.getAddress())){
+            return;
+        }
 
+        // the UID does not always match
+        // for example I was getting 000000a1-0000-1000-8000-00805f9b34fb for 010500a1-00b0-1000-8000-00805f9b34fb
+
+        String peerBluetoothAddress = "";
+
+        Map<ParcelUuid, byte[]> srvData = result.getScanRecord().getServiceData();
+        if(srvData != null && srvData.size() > 0){
+            for (ParcelUuid key : srvData.keySet()) {
+                byte[] srvBuffer = srvData.get(key);
+                // we are expecting Buetooth address, thus the length should be 6
+                if (srvBuffer != null && srvBuffer.length == 6) {
+                    StringBuilder bluetoothAddress = new StringBuilder(srvBuffer.length * 3);
+                    bluetoothAddress.append(String.format("%02X", srvBuffer[0]));
+                    for (int i = 1; i < srvBuffer.length; i++) {
+                        bluetoothAddress.append(String.format(":%02X", srvBuffer[i]));
+                    }
+
+                    peerBluetoothAddress = bluetoothAddress.toString();
+                    break;
+                }
+            }
+        }
+
+        //lets ask if we have seen this earlier already
+        ServiceItem foundPeer = that.mDiscoveryCallback.haveWeSeenPeerEarlier(device);
+        if(foundPeer != null){
+            // so we have seen it earlier, but if we are all the way here, its not yet in current list of peers we see
+            that.mDiscoveryCallback.PeerDiscovered(foundPeer,true);
+            return;
+        }
+
+        Log.i("SCAN-NER", "AddDevice : " + device.getAddress() + ", BT-Address: " + peerBluetoothAddress);
         //Add device will actually start the discovery process if there is no previous discovery on progress
         // if there is not, then we will start discovery process with this device
-        mBLEValueReader.AddDevice(device);
+        mBLEValueReader.AddDevice(device,peerBluetoothAddress);
     }
 
     final private ScanCallback mScanCallback = new ScanCallback(){
@@ -183,7 +207,9 @@ public class BLEScannerLollipop implements DiscoveryCallback{
         }
 
         public void onScanFailed(int errorCode) {
+            that.mDiscoveryCallback.debugData("onScanFailed : " + errorCode);
             Log.i("SCAN-NER", "onScanFailed : " + errorCode);
+            reStartScanning();
         }
     };
 }

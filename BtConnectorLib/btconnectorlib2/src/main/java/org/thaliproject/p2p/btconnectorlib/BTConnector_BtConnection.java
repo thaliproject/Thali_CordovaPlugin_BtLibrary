@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 
@@ -28,6 +29,21 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         void ConnectionFailed(String peerId, String peerName, String peerAddress);
         void ConnectionStateChanged(State newState);
     }
+
+    // incase the connection establishment takes too long, then we need to cancel it
+    private final CountDownTimer connectionTimeoutTimer = new CountDownTimer(60000, 1000) {
+        public void onTick(long millisUntilFinished) { }
+        public void onFinish() {
+            //we got timeout, thus lets go for next round
+            Log.i("BtConnection", "connectionTimeoutTimer");
+            BTConnectToThread tmp = mBTConnectToThread;
+            mBTConnectToThread = null;
+            if (tmp != null) {
+                // will stop & report failing to connect
+                tmp.Cancel();
+            }
+        }
+    };
 
     private final BluetoothAdapter mBluetoothAdapter;
     private BTListenerThread mBTListenerThread = null;
@@ -73,7 +89,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
         Log.i("", "StartBluetooth listener");
         try {
-            tmpList = new BTListenerThread(that, mBluetoothAdapter, BluetoothUUID, BluetootName);
+            tmpList = new BTListenerThread(that, mBluetoothAdapter, BluetoothUUID, BluetootName, mInstanceString);
         }catch (IOException e){
             e.printStackTrace();
             // in this point of time we can not accept any incoming connections, thus what should we do ?
@@ -100,14 +116,16 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         Log.i("", "Selected device address: " + device.getAddress() + ", name: " + device.getName());
 
         try {
-            tmp = new BTConnectToThread(that, device, BtUUID, peerId, peerName, peerAddress, mInstanceString);
-        }catch (IOException e){
+            tmp = new BTConnectToThread(that, device, BtUUID, mInstanceString);
+            tmp.saveRemotePeerValue(peerId, peerName, peerAddress);
+        } catch (IOException e){
             e.printStackTrace();
             //lets inform that outgoing connection just failed.
-            ConnectionFailed(e.toString(),peerId,peerName,peerAddress);
+            ConnectionFailed(e.toString(), peerId, peerName, peerAddress);
             return false;
         }
         tmp.setDefaultUncaughtExceptionHandler(mThreadUncaughtExceptionHandler);
+        connectionTimeoutTimer.start();
         tmp.start();
         mBTConnectToThread = tmp;
 
@@ -119,6 +137,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
     public void Stop() {
         Log.i("", "Stop Bluetooth");
+        connectionTimeoutTimer.cancel();
 
         BTListenerThread tmpList = mBTListenerThread;
         mBTListenerThread = null;
@@ -135,6 +154,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
     @Override
     public void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress) {
+        connectionTimeoutTimer.cancel();
         mBTConnectToThread = null;
         final BluetoothSocket tmp = socket;
 
@@ -151,7 +171,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
                     setState(State.ConnectionConnected);
                     that.callback.Connected(tmp, false,peerIdTmp,peerNaTmp,peerAdTmp);
                 } else {
-                    ConnectionFailed("Disconnected",peerIdTmp,peerNaTmp,peerAdTmp);
+                    ConnectionFailed("Disconnected", peerIdTmp, peerNaTmp, peerAdTmp);
                 }
             }
         });
@@ -183,6 +203,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
     @Override
     public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress) {
+        connectionTimeoutTimer.cancel();
         final String tmp = reason;
         final String peerIdTmp = peerId;
         final String peerNaTmp = peerName;
