@@ -58,7 +58,7 @@ class BTConnectToThread extends Thread{
                 HandShakeTimeOutTimer.start();
 
                 mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, mHandler);
-                mBTHandShakeSocketTread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
+                setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
                 mBTHandShakeSocketTread.start();
                 mBTHandShakeSocketTread.write(mInstanceString.getBytes());
             }

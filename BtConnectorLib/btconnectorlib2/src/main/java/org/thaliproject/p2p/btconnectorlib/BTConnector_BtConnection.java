@@ -35,7 +35,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
     private final ListenerCallback callback;
     private final UUID BluetoothUUID;
-    private final String BluetootName;
+    private final String BluetoothName;
     private final String mInstanceString;
     private final Handler mHandler;
 
@@ -46,7 +46,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         this.callback = Callback;
         this.mBluetoothAdapter = adapter;
         this.BluetoothUUID = BtUuid;
-        this.BluetootName = btName;
+        this.BluetoothName = btName;
         this.mInstanceString = instanceLine;
         this.mHandler = new Handler(Context.getMainLooper());
         this.mThreadUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
@@ -73,7 +73,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
 
         Log.i("", "StartBluetooth listener");
         try {
-            tmpList = new BTListenerThread(that, mBluetoothAdapter, BluetoothUUID, BluetootName);
+            tmpList = new BTListenerThread(that, mBluetoothAdapter, BluetoothUUID, BluetoothName);
         }catch (IOException e){
             e.printStackTrace();
             // in this point of time we can not accept any incoming connections, thus what should we do ?
