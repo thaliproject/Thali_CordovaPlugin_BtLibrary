@@ -151,10 +151,10 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
     public void Stop() {
         stopAll();
 
-        BluetoothBase tmpb =mBluetoothBase;
+        BluetoothBase temporaryBluetoothBase = mBluetoothBase;
         mBluetoothBase = null;
-        if (tmpb != null) {
-            tmpb.Stop();
+        if (temporaryBluetoothBase != null) {
+            temporaryBluetoothBase.Stop();
         }
     }
 
@@ -219,10 +219,9 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, Discov
             tmp = tmpBase.getAdapter();
         }
         Log.i("", "StartBluetooth listener");
-        BTConnector_BtConnection tmpconn = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
-        tmpconn.StartListening();
-        mBTConnector_BtConnection = tmpconn;
-
+        BTConnector_BtConnection temporaryConnection = new BTConnector_BtConnection(this.context,this,tmp,this.ConSettings.MY_UUID, this.ConSettings.MY_NAME,this.mInstanceString);
+        temporaryConnection.StartListening();
+        mBTConnector_BtConnection = temporaryConnection;
     }
 
     private  void stopBluetooth() {

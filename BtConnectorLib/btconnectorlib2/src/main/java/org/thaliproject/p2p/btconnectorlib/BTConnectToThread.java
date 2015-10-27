@@ -55,7 +55,7 @@ class BTConnectToThread extends Thread implements BTHandShakeSocketTread.HandSha
 
             Log.i("BTConnectToThread", "Starting to handshake");
             mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, this);
-            mBTHandShakeSocketTread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
+            setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
             mBTHandShakeSocketTread.start();
 
             mBTHandShakeSocketTread.write(mInstanceString.getBytes());
