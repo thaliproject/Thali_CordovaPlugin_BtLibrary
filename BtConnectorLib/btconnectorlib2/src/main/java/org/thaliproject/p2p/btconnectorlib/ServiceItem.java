@@ -13,6 +13,7 @@ public class ServiceItem{
         this.serviceType = type;
         this.deviceAddress = address;
         this.deviceName =  name;
+        this.discoveredTime = System.currentTimeMillis();
     }
     final public String peerId;
     final public String peerName;
@@ -20,4 +21,5 @@ public class ServiceItem{
     final public String serviceType;
     final public String deviceAddress;
     final public String deviceName;
+    final public long discoveredTime;
 }
