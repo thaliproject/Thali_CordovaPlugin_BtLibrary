@@ -83,6 +83,8 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         //initialize the system, and
         // make sure BT & Wifi is enabled before we start running
 
+        Log.i("DEBUG", "this is lib with new listening handshake");
+
         WifiBtStatus ret = new WifiBtStatus();
         Stop();
 
