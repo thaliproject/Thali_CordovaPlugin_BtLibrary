@@ -60,6 +60,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
                     handShake.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
                     handShake.start();
                 } else if (!mStopped) {
+                    Log.i("BTListenerThread", "acceptedSocket is null");
                     mStopped = true;
                     callback.ListeningFailed("Socket is null");
                 }
@@ -80,7 +81,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
 
     private void HandShakeFailed(String reason) {
         Log.i("BTListenerThread", "HandShakeFailed: " + reason);
-       // callback.ListeningFailed("handshake: " + reason);
+     //   callback.ListeningFailed("handshake: " + reason);
     }
 
     public void Stop() {

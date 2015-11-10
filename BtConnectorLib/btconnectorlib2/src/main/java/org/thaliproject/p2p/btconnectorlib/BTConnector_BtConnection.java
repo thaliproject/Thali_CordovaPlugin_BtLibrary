@@ -68,6 +68,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         this.mThreadUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread thread, Throwable ex) {
+                Log.i("BtConnection", "Got uncaughtException: " + ex.toString());
                 final Throwable tmpException = ex;
                 mHandler.post(new Runnable() {
                     @Override
@@ -186,7 +187,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         final String peerNaTmp = peerName;
         final String peerAdTmp = peerAddress;
 
-        StartListening(); // re-start listening for incoming connections.
+        //StartListening(); // re-start listening for incoming connections.
 
         mHandler.post(new Runnable() {
             @Override
