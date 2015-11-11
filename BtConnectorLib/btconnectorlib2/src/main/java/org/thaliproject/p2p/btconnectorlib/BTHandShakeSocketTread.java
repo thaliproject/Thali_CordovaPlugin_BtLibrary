@@ -12,12 +12,12 @@ import java.io.OutputStream;
  * Created by juksilve on 11.3.2015.
  */
 
-class BTHandShakeSocketTread extends Thread {
+class BTHandshakeSocketThread extends Thread {
 
     public interface HandShakeCallback{
-        void handShakeMessageRead(byte[] buffer, int size, BTHandShakeSocketTread who);
-        void handShakeMessageWrite(byte[] buffer, int size, BTHandShakeSocketTread who);
-        void handShakeDisconnected(String error, BTHandShakeSocketTread who);
+        void handshakeMessageRead(byte[] buffer, int size, BTHandshakeSocketThread who);
+        void handshakeMessageWrite(byte[] buffer, int size, BTHandshakeSocketThread who);
+        void handshakeDisconnected(String error, BTHandshakeSocketThread who);
     }
 
     private String peerIdentifier = "";
@@ -29,8 +29,8 @@ class BTHandShakeSocketTread extends Thread {
     private final OutputStream mmOutStream;
     private final HandShakeCallback mHandler;
 
-    public BTHandShakeSocketTread(BluetoothSocket socket, HandShakeCallback handler)  throws IOException {
-        Log.i("BTHandShakeSocketTread", "Creating BTHandShakeSocketTread");
+    public BTHandshakeSocketThread(BluetoothSocket socket, HandShakeCallback handler)  throws IOException {
+        Log.i("BTHandshakeSocketThread", "Creating BTHandshakeSocketThread");
         mHandler = handler;
         mmSocket = socket;
         mmInStream = mmSocket.getInputStream();
@@ -49,19 +49,19 @@ class BTHandShakeSocketTread extends Thread {
     public  void setPeerAddress(String value ){ peerAddress = value;}
 
     public void run() {
-        Log.i("BTHandShakeSocketTread", "BTHandShakeSocketTread started");
+        Log.i("BTHandshakeSocketThread", "BTHandshakeSocketThread started");
         byte[] buffer = new byte[255];
         int bytes;
 
         try {
             bytes = mmInStream.read(buffer);
             //Log.d(TAG, "ConnectedThread read data: " + bytes + " bytes");
-            mHandler.handShakeMessageRead(buffer, bytes,this);
+            mHandler.handshakeMessageRead(buffer, bytes,this);
         } catch (IOException e) {
-            Log.i("BTHandShakeSocketTread", "BTHandShakeSocketTread disconnected: " + e.toString());
-            mHandler.handShakeDisconnected(e.toString(),this);
+            Log.i("BTHandshakeSocketThread", "BTHandshakeSocketThread disconnected: " + e.toString());
+            mHandler.handshakeDisconnected(e.toString(),this);
         }
-        Log.i("BTHandShakeSocketTread", "BTHandShakeSocketTread fully stopped");
+        Log.i("BTHandshakeSocketThread", "BTHandshakeSocketThread fully stopped");
     }
     /**
      * Write to the connected OutStream.
@@ -75,10 +75,10 @@ class BTHandShakeSocketTread extends Thread {
 
         try {
             mmOutStream.write(buffer);
-            mHandler.handShakeMessageWrite(buffer, buffer.length,this);
+            mHandler.handshakeMessageWrite(buffer, buffer.length,this);
         } catch (IOException e) {
             // when write fails, the timeout for handshake will clear things out eventually.
-            Log.i("BTHandShakeSocketTread", "BTHandShakeSocketTread  write failed: " + e.toString());
+            Log.i("BTHandshakeSocketThread", "BTHandshakeSocketThread  write failed: " + e.toString());
         }
     }
 

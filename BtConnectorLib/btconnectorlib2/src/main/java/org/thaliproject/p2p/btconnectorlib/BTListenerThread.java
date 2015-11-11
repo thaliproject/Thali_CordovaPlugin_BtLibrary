@@ -17,7 +17,7 @@ import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 
-class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShakeCallback {
+class BTListenerThread extends Thread implements BTHandshakeSocketThread.HandShakeCallback {
 
     private final BTListenerThread that = this;
 
@@ -26,7 +26,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
         void ListeningFailed(String reason);
     }
 
-    private final CopyOnWriteArrayList<BTHandShakeSocketTread> mBTHandShakerList = new CopyOnWriteArrayList<BTHandShakeSocketTread>();
+    private final CopyOnWriteArrayList<BTHandshakeSocketThread> mBTHandShakerList = new CopyOnWriteArrayList<BTHandshakeSocketThread>();
     private final String mInstanceString;
 
     private final BtListenCallback callback;
@@ -54,7 +54,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
                 BluetoothSocket acceptedSocket = mSocket.accept();
                 if (acceptedSocket != null) {
                     Log.i("BTListenerThread", "we got incoming connection");
-                    BTHandShakeSocketTread handShake = new BTHandShakeSocketTread(acceptedSocket, this);
+                    BTHandshakeSocketThread handShake = new BTHandshakeSocketThread(acceptedSocket, this);
                     mBTHandShakerList.add(handShake);
 
                     handShake.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
@@ -87,7 +87,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
     public void Stop() {
         Log.i("BTListenerThread", "Stopped");
 
-        for(BTHandShakeSocketTread tmp : mBTHandShakerList) {
+        for(BTHandshakeSocketThread tmp : mBTHandShakerList) {
             if(tmp != null) {
                 tmp.CloseSocket();
             }
@@ -104,7 +104,7 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
     }
 
     @Override
-    public void handShakeMessageRead(byte[] buffer, int size, BTHandShakeSocketTread who) {
+    public void handshakeMessageRead(byte[] buffer, int size, BTHandshakeSocketThread who) {
         Log.i("BTListenerThread", "got MESSAGE_READ " + size + " bytes.");
 
         try {
@@ -115,13 +115,14 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
             //set that we got the identifications right from remote peer
             who.setPeerId(jObject.getString(BTConnector.JSON_ID_PEERID));
             who.setPeerName(jObject.getString(BTConnector.JSON_ID_PEERNAME));
-            who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRES));
+            who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRESS));
+            who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRESS));
 
             //and lets return our identification back to the remote peer
             who.write(mInstanceString.getBytes());
 
         } catch (JSONException e) {
-            for(BTHandShakeSocketTread tmp : mBTHandShakerList) {
+            for(BTHandshakeSocketThread tmp : mBTHandShakerList) {
                 if(tmp != null && tmp.getId() == who.getId()) {
                     mBTHandShakerList.remove(tmp);
                     tmp.CloseSocket();
@@ -133,9 +134,9 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
     }
 
     @Override
-    public void handShakeMessageWrite(byte[] buffer, int size, BTHandShakeSocketTread who) {
+    public void handshakeMessageWrite(byte[] buffer, int size, BTHandshakeSocketThread who) {
         Log.i("BTListenerThread", "MESSAGE_WRITE " + size + " bytes.");
-        for(BTHandShakeSocketTread tmp : mBTHandShakerList) {
+        for(BTHandshakeSocketThread tmp : mBTHandShakerList) {
             if(tmp != null && tmp.getId() == who.getId()) {
                 mBTHandShakerList.remove(tmp);
                 //tmp.interrupt();
@@ -147,11 +148,11 @@ class BTListenerThread extends Thread implements BTHandShakeSocketTread.HandShak
     }
 
     @Override
-    public void handShakeDisconnected(String error, BTHandShakeSocketTread who) {
+    public void handshakeDisconnected(String error, BTHandshakeSocketThread who) {
         // if we get disconnected after we were succccesfull,
         // then the who is not on the list anymore
         // so if it is there, then we have error situation
-        for(BTHandShakeSocketTread tmp : mBTHandShakerList) {
+        for(BTHandshakeSocketThread tmp : mBTHandShakerList) {
             if(tmp != null && tmp.getId() == who.getId()) {
                 mBTHandShakerList.remove(tmp);
                 tmp.CloseSocket();

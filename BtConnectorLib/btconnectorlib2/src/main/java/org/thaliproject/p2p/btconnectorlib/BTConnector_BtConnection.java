@@ -30,11 +30,11 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         void ConnectionStateChanged(State newState);
     }
 
-    // incase the connection establishment takes too long, then we need to cancel it
+    // in case the connection establishment takes too long, then we need to cancel it
     private final CountDownTimer connectionTimeoutTimer = new CountDownTimer(60000, 1000) {
         public void onTick(long millisUntilFinished) { }
         public void onFinish() {
-            //we got timeout, thus lets go for next round
+
             Log.i("BtConnection", "connectionTimeoutTimer");
             BTConnectToThread tmp = mBTConnectToThread;
             mBTConnectToThread = null;
