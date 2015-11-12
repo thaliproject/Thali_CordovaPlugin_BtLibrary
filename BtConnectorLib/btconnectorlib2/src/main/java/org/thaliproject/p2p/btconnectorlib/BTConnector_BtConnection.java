@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * Created by juksilve on 13.3.2015.
  */
-public class BTConnector_BtConnection implements BTListenerThread.BtListenCallback, BTConnectToThread.BtConnectToCallback{
+public class BTConnector_BtConnection implements BTListenerThread.BtListenCallback, BTConnectToThread.BtConnectToCallback {
 
     private final BTConnector_BtConnection that = this;
 
@@ -29,6 +29,8 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         void ConnectionFailed(String peerId, String peerName, String peerAddress);
         void ConnectionStateChanged(State newState);
     }
+
+    private static final String TAG = BTConnector_BtConnection.class.getName();
 
     // incase the connection establishment takes too long, then we need to cancel it
     private final CountDownTimer connectionTimeoutTimer = new CountDownTimer(60000, 1000) {
@@ -68,6 +70,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         this.mThreadUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread thread, Throwable ex) {
+                Log.e(TAG, "Uncaught exception: " + ex.getMessage(), ex);
                 final Throwable tmpException = ex;
                 mHandler.post(new Runnable() {
                     @Override
