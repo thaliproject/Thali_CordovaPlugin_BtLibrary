@@ -116,7 +116,6 @@ class BTListenerThread extends Thread implements BTHandshakeSocketThread.HandSha
             who.setPeerId(jObject.getString(BTConnector.JSON_ID_PEERID));
             who.setPeerName(jObject.getString(BTConnector.JSON_ID_PEERNAME));
             who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRESS));
-            who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRESS));
 
             //and lets return our identification back to the remote peer
             who.write(mInstanceString.getBytes());
