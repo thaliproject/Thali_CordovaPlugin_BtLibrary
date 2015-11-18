@@ -163,7 +163,7 @@ public class WifiServiceSearcher {
 
                             String peerIdentifier = jObject.getString(BTConnector.JSON_ID_PEERID);
                             String peerName = jObject.getString(BTConnector.JSON_ID_PEERNAME);
-                            String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRES);
+                            String peerAddress = jObject.getString(BTConnector.JSON_ID_BTADRRESS);
 
                             Log.i("","JsonLine: " + instanceName + " -- peerIdentifier:" + peerIdentifier + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 

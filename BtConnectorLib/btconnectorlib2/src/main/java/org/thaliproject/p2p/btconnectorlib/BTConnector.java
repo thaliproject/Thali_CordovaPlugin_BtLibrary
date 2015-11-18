@@ -60,9 +60,9 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
     private BTConnector_BtConnection mBTConnector_BtConnection = null;
 
     private String mInstanceString = "";
-    static final String JSON_ID_PEERID   = "pi";
-    static final String JSON_ID_PEERNAME = "pn";
-    static final String JSON_ID_BTADRRES = "ra";
+    static final String JSON_ID_PEERID    = "pi";
+    static final String JSON_ID_PEERNAME  = "pn";
+    static final String JSON_ID_BTADRRESS = "ra";
 
     private final Callback callback;
     private final ConnectSelector connectSelector;
@@ -95,7 +95,7 @@ public class BTConnector implements BluetoothBase.BluetoothStatusChanged, WifiBa
         try {
             jsonobj.put(JSON_ID_PEERID, peerIdentifier);
             jsonobj.put(JSON_ID_PEERNAME, peerName);
-            jsonobj.put(JSON_ID_BTADRRES, tmpBTbase.getAddress());
+            jsonobj.put(JSON_ID_BTADRRESS, tmpBTbase.getAddress());
         } catch (JSONException e) {
             e.printStackTrace();
         }
