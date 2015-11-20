@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License. See license.txt in the project root for further information.
-package org.thaliproject.p2p.btconnectorlib;
+package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 
 import android.bluetooth.BluetoothDevice;
@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -14,7 +15,7 @@ import java.util.UUID;
 /**
  * Created by juksilve on 12.3.2015.
  */
-class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandShakeCallback {
+class BTConnectToThread extends Thread implements BTHandShakeSocketTread.HandShakeCallback {
 
 
     public interface  BtConnectToCallback{
@@ -27,7 +28,7 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
     private String peerAddress = "";
 
     private final BTConnectToThread that = this;
-    private BTHandshakeSocketThread mBTHandshakeSocketThread = null;
+    private BTHandShakeSocketTread mBTHandShakeSocketTread = null;
     private final String mInstanceString;
     private final BtConnectToCallback callback;
     private final BluetoothSocket mSocket;
@@ -53,12 +54,12 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
             mSocket.connect();
             //return when success
 
-            Log.i("BTConnectToThread", "Starting to Handshake");
-            mBTHandshakeSocketThread = new BTHandshakeSocketThread(mSocket, this);
-            mBTHandshakeSocketThread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
-            mBTHandshakeSocketThread.start();
+            Log.i("BTConnectToThread", "Starting to handshake");
+            mBTHandShakeSocketTread = new BTHandShakeSocketTread(mSocket, this);
+            mBTHandShakeSocketTread.setDefaultUncaughtExceptionHandler(that.getUncaughtExceptionHandler());
+            mBTHandShakeSocketTread.start();
 
-            mBTHandshakeSocketThread.write(mInstanceString.getBytes());
+            mBTHandShakeSocketTread.write(mInstanceString.getBytes());
         } catch (IOException e) {
             Log.i("BTConnectToThread", "socket connect failed: " + e.toString());
             try {
@@ -71,16 +72,16 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
     }
 
     private void HandShakeOk(BluetoothSocket socket, String peerId, String peerName, String peerAddress) {
-        Log.i("BTConnectToThread", "HandshakeOk : " + peerName);
-        mBTHandshakeSocketThread = null;
+        Log.i("BTConnectToThread", "HandShakeOk : " + peerName);
+        mBTHandShakeSocketTread = null;
         // on successful handshake, we'll pass the socket for further processing, so do not close it here
         callback.Connected(socket, peerId,peerName,peerAddress);
     }
 
     private void HandShakeFailed(String reason) {
-        Log.i("BTConnectToThread", "HandshakeFailed : " + reason);
-        BTHandshakeSocketThread tmp = mBTHandshakeSocketThread;
-        mBTHandshakeSocketThread = null;
+        Log.i("BTConnectToThread", "HandShakeFailed : " + reason);
+        BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
+        mBTHandShakeSocketTread = null;
         if(tmp != null) {
             tmp.CloseSocket();
         }
@@ -88,15 +89,15 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
     }
 
 
-    //called by timeout timer to cancel outgoing connection attempt
+    //called by timeout timer to cancel oitgoing connection attempt
     public void Cancel() {
         Stop();
         callback.ConnectionFailed("Cancelled",peerIdentifier,peerName,peerAddress);
     }
 
     public void Stop() {
-        BTHandshakeSocketThread tmp = mBTHandshakeSocketThread;
-        mBTHandshakeSocketThread = null;
+        BTHandShakeSocketTread tmp = mBTHandShakeSocketTread;
+        mBTHandShakeSocketTread = null;
         if(tmp != null) {
             tmp.CloseSocket();
         }
@@ -108,7 +109,7 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
     }
 
     @Override
-    public void handshakeMessageRead(byte[] buffer, int size, BTHandshakeSocketThread who) {
+    public void handShakeMessageRead(byte[] buffer, int size, BTHandShakeSocketTread who) {
         Log.i("BTConnectToThread", "got MESSAGE_READ " + size + " bytes.");
         try {
 
@@ -117,9 +118,9 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
             JSONObject jObject = new JSONObject(JsonLine);
 
             //set that we got the identifications right from remote peer
-            who.setPeerId(jObject.getString(BTConnector.JSON_ID_PEERID));
-            who.setPeerName(jObject.getString(BTConnector.JSON_ID_PEERNAME));
-            who.setPeerAddress(jObject.getString(BTConnector.JSON_ID_BTADRRESS));
+            who.setPeerId(jObject.getString(ConnectionManager.JSON_ID_PEERID));
+            who.setPeerName(jObject.getString(ConnectionManager.JSON_ID_PEERNAME));
+            who.setPeerAddress(jObject.getString(ConnectionManager.JSON_ID_BTADRRES));
 
             HandShakeOk(who.getSocket(),who.getPeerId(),who.getPeerName(),who.getPeerAddress());
         } catch (JSONException e) {
@@ -128,14 +129,14 @@ class BTConnectToThread extends Thread implements BTHandshakeSocketThread.HandSh
     }
 
     @Override
-    public void handshakeMessageWrite(byte[] buffer, int size, BTHandshakeSocketThread who) {
+    public void handShakeMessageWrite(byte[] buffer, int size, BTHandShakeSocketTread who) {
         Log.i("BTConnectToThread", "MESSAGE_WRITE " + size + " bytes.");
     }
 
     @Override
-    public void handshakeDisconnected(String error, BTHandshakeSocketThread who) {
+    public void handShakeDisconnected(String error, BTHandShakeSocketTread who) {
         // we got disconnected after we were succccesfull
-        if(mBTHandshakeSocketThread != null) {
+        if(mBTHandShakeSocketTread != null) {
             HandShakeFailed("SOCKET_DISCONNECTED");
         }
     }

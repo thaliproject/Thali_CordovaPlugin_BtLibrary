@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License. See license.txt in the project root for further information.
-package org.thaliproject.p2p.btconnectorlib;
+package org.thaliproject.p2p.btconnectorlib.internal.wifi;
 
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;

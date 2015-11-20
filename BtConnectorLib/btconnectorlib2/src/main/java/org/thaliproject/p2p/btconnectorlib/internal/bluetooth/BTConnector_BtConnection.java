@@ -1,5 +1,5 @@
 // Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License. See license.txt in the project root for further information.
-package org.thaliproject.p2p.btconnectorlib;
+package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -15,7 +15,7 @@ import java.util.UUID;
 /**
  * Created by juksilve on 13.3.2015.
  */
-public class BTConnector_BtConnection implements BTListenerThread.BtListenCallback, BTConnectToThread.BtConnectToCallback{
+public class BTConnector_BtConnection implements BTListenerThread.BtListenCallback, BTConnectToThread.BtConnectToCallback {
 
     private final BTConnector_BtConnection that = this;
 
@@ -30,11 +30,13 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         void ConnectionStateChanged(State newState);
     }
 
-    // in case the connection establishment takes too long, then we need to cancel it
+    private static final String TAG = BTConnector_BtConnection.class.getName();
+
+    // incase the connection establishment takes too long, then we need to cancel it
     private final CountDownTimer connectionTimeoutTimer = new CountDownTimer(60000, 1000) {
         public void onTick(long millisUntilFinished) { }
         public void onFinish() {
-
+            //we got timeout, thus lets go for next round
             Log.i("BtConnection", "connectionTimeoutTimer");
             BTConnectToThread tmp = mBTConnectToThread;
             mBTConnectToThread = null;
@@ -68,7 +70,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         this.mThreadUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
             @Override
             public void uncaughtException(Thread thread, Throwable ex) {
-                Log.i("BtConnection", "Got uncaughtException: " + ex.toString());
+                Log.e(TAG, "Uncaught exception: " + ex.getMessage(), ex);
                 final Throwable tmpException = ex;
                 mHandler.post(new Runnable() {
                     @Override
@@ -137,7 +139,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
     }
 
     public void Stop() {
-        Log.i("", "Stop Bluetooth");
+        Log.i("", "deinitialize Bluetooth");
         connectionTimeoutTimer.cancel();
 
         BTListenerThread tmpList = mBTListenerThread;
@@ -187,7 +189,7 @@ public class BTConnector_BtConnection implements BTListenerThread.BtListenCallba
         final String peerNaTmp = peerName;
         final String peerAdTmp = peerAddress;
 
-        //StartListening(); // re-start listening for incoming connections.
+        StartListening(); // re-initialize listening for incoming connections.
 
         mHandler.post(new Runnable() {
             @Override
