@@ -103,7 +103,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
                 Log.e(TAG, "initialize: Missing critical P2P instances!");
             }
         } else {
-            Log.w(TAG, "initialize: Already running, call stop() first to restart");
+            Log.w(TAG, "initialize: Already running, call stopListening() first to restart");
         }
     }
 

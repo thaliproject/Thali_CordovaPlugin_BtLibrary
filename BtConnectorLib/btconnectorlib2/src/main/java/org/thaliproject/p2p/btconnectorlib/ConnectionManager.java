@@ -12,9 +12,9 @@ import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.thaliproject.p2p.btconnectorlib.internal.Constants;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
-import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BTConnector_BtConnection;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
 import java.util.EnumSet;
@@ -28,7 +28,7 @@ public class ConnectionManager implements
         BluetoothManager.BluetoothAdapterScanModeListener,
         WifiDirectManager.WifiStateListener,
         WifiPeerDiscoverer.WifiPeerDiscoveryListener,
-        BTConnector_BtConnection.ListenerCallback {
+        BluetoothConnector.BluetoothConnectorListener {
 
     public enum ConnectionManagerState {
         NOT_INITIALIZED,
@@ -71,7 +71,7 @@ public class ConnectionManager implements
     private WifiDirectManager mWifiManager = null;
     private BluetoothManager mBluetoothManager = null;
     private WifiPeerDiscoverer mPeerDiscoverer = null;
-    private BTConnector_BtConnection mBTConnector_BtConnection = null;
+    private BluetoothConnector mBTConnector_BtConnection = null;
     private ConnectionManagerState mState = ConnectionManagerState.NOT_INITIALIZED;
     private String mInstanceString = "";
     private UUID mMyUuid = null;
@@ -238,10 +238,10 @@ public class ConnectionManager implements
             BluetoothAdapter bluetoothAdapter = mBluetoothManager.getBluetoothAdapter();
 
             mBTConnector_BtConnection =
-                    new BTConnector_BtConnection(
+                    new BluetoothConnector(
                             mContext, this, bluetoothAdapter, mMyUuid, mMyName, mInstanceString);
 
-            mBTConnector_BtConnection.StartListening();
+            mBTConnector_BtConnection.start();
             Log.i(TAG, "startBluetoothListener: OK");
         } else {
             Log.e(TAG, "startBluetoothListener: Attempted to initialize although already running!");
@@ -252,7 +252,7 @@ public class ConnectionManager implements
      *
      */
     private synchronized void stopBluetoothListener() {
-        BTConnector_BtConnection temp = mBTConnector_BtConnection;
+        BluetoothConnector temp = mBTConnector_BtConnection;
         mBTConnector_BtConnection = null;
 
         if (temp != null) {
@@ -386,7 +386,7 @@ public class ConnectionManager implements
     }
 
     @Override
-    public void ConnectionStateChanged(BTConnector_BtConnection.State newState) {
+    public void ConnectionStateChanged(BluetoothConnector.State newState) {
 
         switch (newState) {
             case ConnectionConnecting:
@@ -452,38 +452,13 @@ public class ConnectionManager implements
         if (isWifiPresent) {
             connectivityState.add(DeviceConnectivityState.WIFI_OK);
 
-            if (!isWifiEnabled)
-            {
-                connectivityState.add(DeviceConnectivityState.WIFI_DISABLED)
+            if (!isWifiEnabled) {
+                connectivityState.add(DeviceConnectivityState.WIFI_DISABLED);
             }
         } else {
             connectivityState.add(DeviceConnectivityState.WIFI_NOT_PRESENT);
         }
 
         return connectivityState;
-    }
-
-    /**
-     * Creates an instance string based on the given arguments.
-     * @param peerId
-     * @param peerName
-     * @param bluetoothAddress
-     * @return An instance string or null in case of a failure.
-     */
-    private String createInstanceString(String peerId, String peerName, String bluetoothAddress)
-    {
-        String instanceString = null;
-        JSONObject jsonObject = new JSONObject();
-
-        try {
-            jsonObject.put(Constants.JSON_ID_PEER_ID, peerId);
-            jsonObject.put(Constants.JSON_ID_PEER_NAME, peerName);
-            jsonObject.put(Constants.JSON_ID_BLUETOOTH_ADDRESS, bluetoothAddress);
-            instanceString = jsonObject.toString();
-        } catch (JSONException e) {
-            Log.e(TAG, "createInstanceString: Failed to construct a JSON object: " + e.getMessage(), e);
-        }
-
-        return instanceString;
     }
 }

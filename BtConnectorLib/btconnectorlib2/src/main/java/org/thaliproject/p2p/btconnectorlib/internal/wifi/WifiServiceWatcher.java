@@ -19,7 +19,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.thaliproject.p2p.btconnectorlib.PeerDevice;
-import org.thaliproject.p2p.btconnectorlib.internal.Constants;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 
 import java.util.Collection;
 import java.util.List;
@@ -210,12 +210,14 @@ class WifiServiceWatcher {
         Log.i(TAG, "stopPeerDiscovery");
 
         mP2pManager.stopPeerDiscovery(mP2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
             public void onSuccess() {
                 Log.i(TAG, "Peer discovery stopped successfully");
             }
 
+            @Override
             public void onFailure(int reason) {
-                Log.e(TAG, "Failed to stop peer discovery, got error code: " + reason);
+                Log.e(TAG, "Failed to stopListening peer discovery, got error code: " + reason);
             }
         });
     }
@@ -230,7 +232,7 @@ class WifiServiceWatcher {
             final Handler handler = new Handler();
 
             mP2pManager.addServiceRequest(mP2pChannel, request, new WifiP2pManager.ActionListener() {
-
+                @Override
                 public void onSuccess() {
                     Log.i("", "Added service request");
                     handler.postDelayed(new Runnable() {
@@ -257,6 +259,7 @@ class WifiServiceWatcher {
                     }, 1000);
                 }
 
+                @Override
                 public void onFailure(int reason) {
                     setState(WifiServiceWatcherState.NOT_INITIALIZED);
                     Log.i("", "Adding service request failed, error code " + reason);
@@ -277,10 +280,12 @@ class WifiServiceWatcher {
             Log.i(TAG, "stopServiceDiscovery");
 
             mP2pManager.clearServiceRequests(mP2pChannel, new WifiP2pManager.ActionListener() {
+                @Override
                 public void onSuccess() {
                     Log.i(TAG, "Service requests cleared successfully");
                 }
 
+                @Override
                 public void onFailure(int reason) {
                     Log.e(TAG, "Failed to clear service requests, got error code: " + reason);
                 }
@@ -350,9 +355,9 @@ class WifiServiceWatcher {
                     try {
                         JSONObject jObject = new JSONObject(instanceName);
 
-                        String peerId = jObject.getString(Constants.JSON_ID_PEER_ID);
-                        String peerName = jObject.getString(Constants.JSON_ID_PEER_NAME);
-                        String peerAddress = jObject.getString(Constants.JSON_ID_BLUETOOTH_ADDRESS);
+                        String peerId = jObject.getString(CommonUtils.JSON_ID_PEER_ID);
+                        String peerName = jObject.getString(CommonUtils.JSON_ID_PEER_NAME);
+                        String peerAddress = jObject.getString(CommonUtils.JSON_ID_BLUETOOTH_ADDRESS);
 
                         Log.i("", "JsonLine: " + instanceName + " -- peerIdentifier:" + peerId + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
 
