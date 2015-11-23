@@ -11,8 +11,7 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
-import org.json.JSONObject;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
@@ -71,9 +70,9 @@ public class ConnectionManager implements
     private WifiDirectManager mWifiManager = null;
     private BluetoothManager mBluetoothManager = null;
     private WifiPeerDiscoverer mPeerDiscoverer = null;
-    private BluetoothConnector mBTConnector_BtConnection = null;
+    private BluetoothConnector mBluetoothConnector = null;
     private ConnectionManagerState mState = ConnectionManagerState.NOT_INITIALIZED;
-    private String mInstanceString = "";
+    private String mIdentityString = "";
     private UUID mMyUuid = null;
     private String mMyServiceType = null;
     private String mMyName = null;
@@ -113,8 +112,14 @@ public class ConnectionManager implements
         final EnumSet<DeviceConnectivityState> connectivityState = getDeviceConnectivityState();
 
         if (connectivityState.contains(DeviceConnectivityState.BLUETOOTH_OK)) {
-            mInstanceString = createInstanceString(peerId, peerName, mBluetoothManager.getBluetoothAddress());
-            Log.i(TAG, "initialize: Instance string: \"" + mInstanceString + "\"");
+            try {
+                mIdentityString = CommonUtils.createIdentityString(
+                        peerId, peerName, mBluetoothManager.getBluetoothAddress());
+            } catch (JSONException e) {
+                Log.e(TAG, "Failed create an identity string: " + e.getMessage(), e);
+            }
+
+            Log.i(TAG, "initialize: Instance string: \"" + mIdentityString + "\"");
         }
 
         if (connectivityState.contains(DeviceConnectivityState.BLUETOOTH_NOT_PRESENT)
@@ -183,7 +188,11 @@ public class ConnectionManager implements
         if (deviceToConnectTo != null) {
             try {
                 BluetoothDevice device = mBluetoothManager.getRemoteDevice(deviceToConnectTo.peerAddress);
-                success = mBTConnector_BtConnection.TryConnect(device, mMyUuid, deviceToConnectTo.peerId, deviceToConnectTo.peerName, deviceToConnectTo.peerAddress);
+
+                success = mBluetoothConnector.connect(
+                        device, mMyUuid,
+                        deviceToConnectTo.peerId, deviceToConnectTo.peerName,
+                        deviceToConnectTo.peerAddress);
             } catch (NullPointerException e) {
                 Log.e(TAG, "connect: Failed to connect to device \"" + deviceToConnectTo.peerName
                         + "\" with address \"" + deviceToConnectTo.peerAddress + "\": "
@@ -201,13 +210,13 @@ public class ConnectionManager implements
      */
     private synchronized void startWifiPeerDiscovery() {
         if (mPeerDiscoverer == null) {
-            WifiP2pManager p2pManager = mWifiManager.GetWifiP2pManager();
-            WifiP2pManager.Channel channel = mWifiManager.GetWifiChannel();
+            WifiP2pManager p2pManager = mWifiManager.getWifiP2pManager();
+            WifiP2pManager.Channel channel = mWifiManager.getWifiP2pChannel();
 
             if (p2pManager != null && channel != null) {
                 mPeerDiscoverer =
                         new WifiPeerDiscoverer(
-                                mContext, channel, p2pManager, this, mMyServiceType, mInstanceString);
+                                mContext, channel, p2pManager, this, mMyServiceType, mIdentityString);
 
                 mPeerDiscoverer.start();
                 Log.i(TAG, "startWifiPeerDiscovery: OK");
@@ -234,14 +243,14 @@ public class ConnectionManager implements
      *
      */
     private synchronized void startBluetoothListener() {
-        if (mBTConnector_BtConnection == null) {
+        if (mBluetoothConnector == null) {
             BluetoothAdapter bluetoothAdapter = mBluetoothManager.getBluetoothAdapter();
 
-            mBTConnector_BtConnection =
+            mBluetoothConnector =
                     new BluetoothConnector(
-                            mContext, this, bluetoothAdapter, mMyUuid, mMyName, mInstanceString);
+                            mContext, this, bluetoothAdapter, mMyUuid, mMyName, mIdentityString);
 
-            mBTConnector_BtConnection.start();
+            mBluetoothConnector.startListeningForIncomingConnections();
             Log.i(TAG, "startBluetoothListener: OK");
         } else {
             Log.e(TAG, "startBluetoothListener: Attempted to initialize although already running!");
@@ -252,12 +261,12 @@ public class ConnectionManager implements
      *
      */
     private synchronized void stopBluetoothListener() {
-        BluetoothConnector temp = mBTConnector_BtConnection;
-        mBTConnector_BtConnection = null;
+        BluetoothConnector temp = mBluetoothConnector;
+        mBluetoothConnector = null;
 
         if (temp != null) {
             Log.i(TAG, "stopBluetoothListener");
-            temp.Stop();
+            temp.shutdown();
         }
     }
 
@@ -350,7 +359,7 @@ public class ConnectionManager implements
     }
 
     @Override
-    public void Connected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress) {
+    public void onConnected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress) {
         if (this.callback == null) {
             return;
         }
@@ -369,7 +378,7 @@ public class ConnectionManager implements
     }
 
     @Override
-    public void ConnectionFailed(String peerId, String peerName, String peerAddress) {
+    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
         if (this.callback == null) {
             return;
         }

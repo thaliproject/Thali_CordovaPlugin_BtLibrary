@@ -191,7 +191,7 @@ class WifiServiceWatcher {
                 }
 
                 public void onFailure(int reason) {
-                    Log.e(TAG, "Failed to start peer discovery, got error code: " + reason);
+                    Log.e(TAG, "Failed to startListeningForIncomingConnections peer discovery, got error code: " + reason);
                     setState(WifiServiceWatcherState.INITIALIZED);
 
                     // Lets try again after a 1 minute timeout
@@ -199,7 +199,7 @@ class WifiServiceWatcher {
                 }
             });
         } else {
-            Log.e(TAG, "startPeerDiscovery: Cannot start peer discovery due to invalid state (" + mState.toString() + ")");
+            Log.e(TAG, "startPeerDiscovery: Cannot startListeningForIncomingConnections peer discovery due to invalid state (" + mState.toString() + ")");
         }
     }
 
@@ -217,7 +217,7 @@ class WifiServiceWatcher {
 
             @Override
             public void onFailure(int reason) {
-                Log.e(TAG, "Failed to stopListening peer discovery, got error code: " + reason);
+                Log.e(TAG, "Failed to shutdown peer discovery, got error code: " + reason);
             }
         });
     }
@@ -268,7 +268,7 @@ class WifiServiceWatcher {
                 }
             });
         } else {
-            Log.e(TAG, "startServiceDiscovery: Cannot start service discovery due to invalid state (" + mState.toString() + ")");
+            Log.e(TAG, "startServiceDiscovery: Cannot startListeningForIncomingConnections service discovery due to invalid state (" + mState.toString() + ")");
         }
     }
 
@@ -359,7 +359,7 @@ class WifiServiceWatcher {
                         String peerName = jObject.getString(CommonUtils.JSON_ID_PEER_NAME);
                         String peerAddress = jObject.getString(CommonUtils.JSON_ID_BLUETOOTH_ADDRESS);
 
-                        Log.i("", "JsonLine: " + instanceName + " -- peerIdentifier:" + peerId + ", peerName: " + peerName + ", peerAddress: " + peerAddress);
+                        Log.i("", "JsonLine: " + instanceName + " -- peerIdentifier:" + peerId + ", name: " + peerName + ", peerAddress: " + peerAddress);
 
                         PeerDevice tmpSrv = new PeerDevice(peerId, peerName, peerAddress, serviceType, device.deviceAddress, device.deviceName);
                         if (mServiceWatcherListener != null) {

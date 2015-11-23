@@ -33,7 +33,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
     private final WifiP2pManager mP2pManager;
     private final WifiPeerDiscoveryListener mWifiPeerDiscoveryListener;
     private final String mServiceType;
-    private final String mInstanceString;
+    private final String mIdentityString;
     private WifiServiceAdvertiser mWifiServiceAdvertiser = null;
     private WifiServiceWatcher mWifiServiceWatcher = null;
     private CountDownTimer mServiceSearchTimeoutTimer = null;
@@ -46,17 +46,17 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      * @param p2pManager
      * @param listener
      * @param serviceType
-     * @param instanceString
+     * @param identityString
      */
     public WifiPeerDiscoverer (
             Context context, WifiP2pManager.Channel p2pChannel, WifiP2pManager p2pManager,
-            WifiPeerDiscoveryListener listener, String serviceType, String instanceString) {
+            WifiPeerDiscoveryListener listener, String serviceType, String identityString) {
         mContext = context;
         mP2pChannel = p2pChannel;
         mP2pManager = p2pManager;
         mWifiPeerDiscoveryListener = listener;
         mServiceType = serviceType;
-        mInstanceString = instanceString;
+        mIdentityString = identityString;
 
         final WifiPeerDiscoverer thisInstance = this;
 
@@ -87,13 +87,13 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
     public synchronized void start(){
         if (!mIsStarted) {
             if (mP2pManager != null && mP2pChannel != null) {
-                Log.i(TAG, "initialize: " + mInstanceString);
+                Log.i(TAG, "initialize: " + mIdentityString);
 
                 mServiceSearchTimeoutTimer.cancel();
                 mServiceSearchTimeoutTimer.start();
 
                 mWifiServiceAdvertiser = new WifiServiceAdvertiser(mP2pManager, mP2pChannel);
-                mWifiServiceAdvertiser.Start(mInstanceString, mServiceType);
+                mWifiServiceAdvertiser.Start(mIdentityString, mServiceType);
 
                 mWifiServiceWatcher = new WifiServiceWatcher(mContext, mP2pManager, mP2pChannel, this, mServiceType);
                 mWifiServiceWatcher.initialize();

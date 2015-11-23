@@ -10,6 +10,7 @@ import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -17,21 +18,37 @@ import java.util.UUID;
  *
  */
 public class BluetoothConnector
-        implements BluetoothSocketListenerThread.Listener, BTConnectToThread.BtConnectToCallback {
+        implements BluetoothServerThread.Listener, BluetoothClientThread.Listener {
 
-    public enum State{
-        ConnectionConnecting,
-        ConnectionConnected
-    }
-
+    /**
+     * The listener interface.
+     */
     public interface BluetoothConnectorListener {
-        void Connected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress);
-        void ConnectionFailed(String peerId, String peerName, String peerAddress);
-        void ConnectionStateChanged(State newState);
+        /**
+         *
+         * @param bluetoothDeviceName
+         * @param bluetoothDeviceAddress
+         */
+        void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress);
+
+        /**
+         *
+         * @param socket
+         * @param isIncoming
+         * @param peerProperties
+         */
+        void onConnected(BluetoothSocket socket, boolean isIncoming, PeerProperties peerProperties);
+
+        /**
+         *
+         * @param reason
+         * @param peerProperties
+         */
+        void onConnectionFailed(String reason, PeerProperties peerProperties);
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
-    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 60000;
+    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 30000;
     private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
 
     private final BluetoothConnector that = this;
@@ -39,13 +56,14 @@ public class BluetoothConnector
     private final BluetoothConnectorListener mListener;
     private final UUID mBluetoothUuid;
     private final String mBluetoothName;
-    private final String mInstanceString;
+    private final String mIdentityString;
     private final Handler mHandler;
     private final CountDownTimer mConnectionTimeoutTimer;
     private final Thread.UncaughtExceptionHandler mUncaughtExceptionHandler;
-    private BluetoothSocketListenerThread mConnectorThread = null;
-    private BTConnectToThread mBTConnectToThread = null;
-    private boolean mIsStarted = false;
+    private BluetoothServerThread mServerThread = null;
+    private BluetoothClientThread mClientThread = null;
+    private boolean mIsServerThreadAlive = false;
+    private boolean mIsShuttingDown = false;
 
     /**
      * Constructor.
@@ -54,16 +72,16 @@ public class BluetoothConnector
      * @param bluetoothAdapter
      * @param bluetoothUuid
      * @param bluetoothName
-     * @param instanceString
+     * @param identityString
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
-            UUID bluetoothUuid, String bluetoothName, String instanceString) {
+            UUID bluetoothUuid, String bluetoothName, String identityString) {
         mListener = listener;
         mBluetoothAdapter = bluetoothAdapter;
         mBluetoothUuid = bluetoothUuid;
         mBluetoothName = bluetoothName;
-        mInstanceString = instanceString;
+        mIdentityString = identityString;
         mHandler = new Handler(context.getMainLooper());
 
         mConnectionTimeoutTimer = new CountDownTimer(
@@ -76,12 +94,12 @@ public class BluetoothConnector
             @Override
             public void onFinish() {
                 Log.i(TAG, "Connection timeout");
-                BTConnectToThread temp = mBTConnectToThread;
-                mBTConnectToThread = null;
+                BluetoothClientThread tempClientThread = mClientThread;
+                mClientThread = null;
 
-                if (temp != null) {
-                    // will stopListening & report failing to connect
-                    temp.Cancel();
+                if (tempClientThread != null) {
+                    // Shut down the client thread and notify the listener (me)
+                    tempClientThread.cancel("Connection timeout");
                 }
             }
         };
@@ -103,174 +121,252 @@ public class BluetoothConnector
     }
 
     /**
-     *
+     * Starts to listen for incoming connections.
+     * @return True, if the connector was started successfully or was already running. False otherwise.
      */
-    public synchronized void start() {
-        if (!mIsStarted) {
-            if (mConnectorThread != null) {
-                mConnectorThread.stopListening();
-                mConnectorThread = null;
+    public synchronized boolean startListeningForIncomingConnections() {
+        if (!mIsServerThreadAlive && !mIsShuttingDown) {
+            Log.i(TAG, "startListeningForIncomingConnections: Starting...");
+
+            if (mServerThread != null) {
+                mServerThread.shutdown();
+                mServerThread = null;
             }
 
-            Log.i("", "StartBluetooth listener");
             try {
-                mConnectorThread = new BluetoothSocketListenerThread(that, mBluetoothAdapter, mBluetoothUuid, mBluetoothName, mInstanceString);
+                mServerThread = new BluetoothServerThread(
+                        this, mBluetoothAdapter, mBluetoothUuid, mBluetoothName, mIdentityString);
             } catch (IOException e) {
-                e.printStackTrace();
-                // in this point of time we can not accept any incoming connections, thus what should we do ?
-                return;
+                Log.e(TAG, "Failed to create the socket listener thread: " + e.getMessage(), e);
+                mServerThread = null;
             }
 
-            mConnectorThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
-            mConnectorThread.start();
-            mIsStarted = true;
+            if (mServerThread != null) {
+                mServerThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mServerThread.start();
+                mIsServerThreadAlive = true;
+            }
+        } else {
+            Log.w(TAG, "startListeningForIncomingConnections: Already started");
         }
+
+        return mIsServerThreadAlive;
     }
 
-    public boolean TryConnect(BluetoothDevice device,UUID BtUUID, String peerId,String peerName, String peerAddress) {
-
-        if (device == null) {
-            Log.i("", "No devices selected");
-            return false;
-        }
-
-        BTConnectToThread tmp = mBTConnectToThread;
-        mBTConnectToThread = null;
-        if (tmp != null) {
-            tmp.Stop();
-        }
-
-        Log.i("", "Selected device address: " + device.getAddress() + ", name: " + device.getName());
-
-        try {
-            tmp = new BTConnectToThread(that, device, BtUUID, mInstanceString);
-            tmp.saveRemotePeerValue(peerId, peerName, peerAddress);
-        } catch (IOException e){
-            e.printStackTrace();
-            //lets inform that outgoing connection just failed.
-            ConnectionFailed(e.toString(), peerId, peerName, peerAddress);
-            return false;
-        }
-        tmp.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
-        mConnectionTimeoutTimer.start();
-        tmp.start();
-        mBTConnectToThread = tmp;
-
-        setState(State.ConnectionConnecting);
-        Log.i("", "Connecting to " + device.getName() + ", at " + device.getAddress());
-
-        return true;
-    }
-
-    public void Stop() {
-        Log.i("", "deinitialize Bluetooth");
+    /**
+     * Shuts down all operations.
+     * Note that after calling this method, this instance cannot be used anymore and must be
+     * disposed of. To start using this class again one must create a new instance.
+     */
+    public synchronized void shutdown() {
+        Log.i(TAG, "Shutting down...");
+        mIsShuttingDown = true;
         mConnectionTimeoutTimer.cancel();
 
-        BluetoothSocketListenerThread tmpList = mConnectorThread;
-        mConnectorThread = null;
-        if (tmpList != null) {
-            tmpList.stopListening();
+        if (mServerThread != null) {
+            mServerThread.shutdown();
+            mServerThread = null;
         }
 
-        BTConnectToThread tmpConn = mBTConnectToThread;
-        mBTConnectToThread = null;
-        if (tmpConn != null) {
-            tmpConn.Stop();
+        if (mClientThread != null) {
+            mClientThread.shutdown();
+            mClientThread = null;
         }
+
+        mIsServerThreadAlive = false;
     }
 
+    /**
+     * Tries to connect to the given Bluetooth device.
+     * Note that even if this method returns successfully, the connection is not yet established,
+     * but the connection process is merely initiated.
+     * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
+     * @param myBluetoothUuid Our own Bluetooth UUID.
+     * @param peerProperties The properties of the peer to connect to.
+     * @return True, if started trying to connect successfully. False otherwise.
+     */
+    public synchronized boolean connect(
+            BluetoothDevice bluetoothDeviceToConnectTo, UUID myBluetoothUuid, PeerProperties peerProperties) {
+
+        boolean wasSuccessful = false;
+        String errorMessage = "";
+
+        if (bluetoothDeviceToConnectTo != null) {
+            final String bluetoothDeviceName = bluetoothDeviceToConnectTo.getName();
+            final String bluetoothDeviceAddress = bluetoothDeviceToConnectTo.getAddress();
+
+            Log.i(TAG, "connect: Trying to start connecting to " + bluetoothDeviceName
+                    + " in address " + bluetoothDeviceAddress);
+
+            if (mClientThread != null) {
+                mClientThread.shutdown();
+                mClientThread = null;
+            }
+
+            try {
+                mClientThread = new BluetoothClientThread(
+                        this, bluetoothDeviceToConnectTo, myBluetoothUuid, mIdentityString);
+                wasSuccessful = true;
+            } catch (IOException e) {
+                errorMessage = "connect: Failed to create a Bluetooth connect thread instance: " + e.getMessage();
+                Log.e(TAG, errorMessage, e);
+            }
+
+            if (wasSuccessful) {
+                mClientThread.setRemotePeerProperties(peerProperties);
+                mClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mConnectionTimeoutTimer.start();
+                mClientThread.start();
+
+                mListener.onConnecting(bluetoothDeviceName, bluetoothDeviceAddress);
+                Log.i(TAG, "connect: Started connecting to " + bluetoothDeviceName
+                        + " in address " + bluetoothDeviceAddress);
+            } else {
+                mListener.onConnectionFailed(errorMessage, peerProperties);
+            }
+        } else {
+            Log.e(TAG, "connect: No bluetooth device!");
+        }
+
+        return wasSuccessful;
+    }
+
+    /**
+     * Tries to connect to the given Bluetooth device.
+     * Note that even if this method returns successfully, the connection is not yet established,
+     * but the connection process is merely initiated.
+     * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
+     * @param myBluetoothUuid Our own Bluetooth UUID.
+     * @param peerId The peer ID.
+     * @param peerName The peer name.
+     * @param peerBluetoothAddress The Bluetooth address of the peer.
+     * @return True, if started trying to connect successfully. False otherwise.
+     */
+    public synchronized boolean connect(
+            BluetoothDevice bluetoothDeviceToConnectTo, UUID myBluetoothUuid,
+            String peerId, String peerName, String peerBluetoothAddress) {
+
+        PeerProperties peerProperties = new PeerProperties();
+        peerProperties.id = peerId;
+        peerProperties.name = peerName;
+        peerProperties.bluetoothAddress = peerBluetoothAddress;
+
+        return connect(bluetoothDeviceToConnectTo, myBluetoothUuid, peerProperties);
+    }
+
+    /**
+     *
+     * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
+     * @param peerProperties The peer properties.
+     */
     @Override
-    public void Connected(BluetoothSocket socket,String peerId,String peerName,String peerAddress) {
-        mConnectionTimeoutTimer.cancel();
-        mBTConnectToThread = null;
-        final BluetoothSocket tmp = socket;
+    public void onIncomingConnectionConnected(
+            BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
 
-        Log.i("HS", "Hand Shake finished outgoing for : " + peerName);
-
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
+        Log.i(TAG, "onIncomingConnectionConnected: " + peerProperties.toString());
+        final BluetoothConnector thisInstance = this;
+        final BluetoothSocket tempSocket = bluetoothSocket;
+        final PeerProperties tempPeerProperties = peerProperties;
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (tmp.isConnected()) {
-                    setState(State.ConnectionConnected);
-                    that.mListener.Connected(tmp, false,peerIdTmp,peerNaTmp,peerAdTmp);
+                if (tempSocket.isConnected()) {
+                    thisInstance.mListener.onConnected(tempSocket, true, tempPeerProperties);
                 } else {
-                    ConnectionFailed("Disconnected", peerIdTmp, peerNaTmp, peerAdTmp);
+                    thisInstance.onIncomingConnectionFailed("Disconnected");
                 }
             }
         });
     }
 
+    /**
+     *
+     * @param reason The reason for the failure.
+     */
     @Override
-    public void onIncomingConnection(BluetoothSocket socket, String peerId, String peerName, String peerAddress) {
-        final BluetoothSocket tmp = socket;
-        Log.i("HS", "Incoming connection Hand Shake finished for : " + peerName);
-
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
-
-        start(); // re-initialize listening for incoming connections.
+    public void onIncomingConnectionFailed(String reason) {
+        Log.e(TAG, "onIncomingConnectionFailed: " + reason);
+        final BluetoothConnector thisInstance = this;
+        final String tempReason = reason;
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (tmp.isConnected()) {
-                    setState(State.ConnectionConnected);
-                    that.mListener.Connected(tmp, true,peerIdTmp,peerNaTmp,peerAdTmp);
-                } else {
-                    onSocketAcceptFailure("Disconnected");
-                }
+                thisInstance.mListener.onConnectionFailed(tempReason, null);
             }
         });
     }
 
+    /**
+     * If this wasn't a deliberate shutdown (shutdown of this instance was not called), tries to
+     * restart the server thread.
+     */
     @Override
-    public void ConnectionFailed(String reason,String peerId,String peerName,String peerAddress) {
+    public void onServerStopped() {
+        Log.i(TAG, "onServerStopped");
+        mIsServerThreadAlive = false;
+
+        if (!mIsShuttingDown) {
+            // This instance is still valid, let's try to restart the server
+            Log.i(TAG, "onServerStopped: Restarting the server...");
+            startListeningForIncomingConnections();
+        }
+    }
+
+    /**
+     *
+     * @param bluetoothSocket The Bluetooth socket associated with the connection.
+     * @param peerProperties The peer properties.
+     */
+    @Override
+    public void onConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
+        Log.i(TAG, "onConnected: " + peerProperties.toString());
+        final BluetoothConnector thisInstance = this;
+        final BluetoothSocket tempSocket = bluetoothSocket;
+        final PeerProperties tempPeerProperties = peerProperties;
+
         mConnectionTimeoutTimer.cancel();
-        final String tmp = reason;
-        final String peerIdTmp = peerId;
-        final String peerNaTmp = peerName;
-        final String peerAdTmp = peerAddress;
+        mClientThread = null;
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                Log.i("CONNEC", "Error: " + tmp);
-
-                that.mListener.ConnectionFailed(peerIdTmp,peerNaTmp,peerAdTmp);
-
-                //only care if we have not stopped & nulled the instance
-                BTConnectToThread tmp = mBTConnectToThread;
-                mBTConnectToThread = null;
-                if (tmp != null) {
-                    tmp.Stop();
+                if (tempSocket.isConnected()) {
+                    thisInstance.mListener.onConnected(tempSocket, false, tempPeerProperties);
+                } else {
+                    thisInstance.onConnectionFailed("Disconnected", tempPeerProperties);
                 }
             }
         });
     }
 
+    /**
+     *
+     *
+     * @param reason The reason for the failure.
+     * @param peerProperties The peer properties.
+     */
     @Override
-    public void onSocketAcceptFailure(String reason) {
-        final String tmp = reason;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                Log.i("LISTEN", "Error: " + tmp);
-                start();
-            }
-        });
-    }
+    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
+        Log.e(TAG, "onConnectionFailed: " + reason);
+        final BluetoothConnector thisInstance = this;
+        final String tempReason = reason;
+        final PeerProperties tempPeerProperties = peerProperties;
 
-    private void setState(State newState) {
-        final State tmpState = newState;
+        mConnectionTimeoutTimer.cancel();
+
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                that.mListener.ConnectionStateChanged(tmpState);
+                thisInstance.mListener.onConnectionFailed(tempReason, tempPeerProperties);
+
+                BluetoothClientThread tempClientThread = mClientThread;
+                mClientThread = null;
+
+                if (tempClientThread != null) {
+                    tempClientThread.shutdown();
+                }
             }
         });
     }

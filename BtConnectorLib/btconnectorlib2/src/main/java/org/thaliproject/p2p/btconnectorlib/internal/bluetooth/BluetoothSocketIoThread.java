@@ -5,6 +5,7 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -47,9 +48,7 @@ class BluetoothSocketIoThread extends Thread {
     private final Listener mHandler;
     private final InputStream mInputStream;
     private final OutputStream mOutputStream;
-    private String mPeerId = "";
-    private String mPeerName = "";
-    private String mPeerAddress = "";
+    private PeerProperties mPeerProperties;
     private boolean mIsClosingSocket = false;
 
     /**
@@ -69,10 +68,19 @@ class BluetoothSocketIoThread extends Thread {
         mSocket = socket;
         mInputStream = mSocket.getInputStream();
         mOutputStream = mSocket.getOutputStream();
+        mPeerProperties = new PeerProperties();
     }
 
     public BluetoothSocket getSocket() {
         return mSocket;
+    }
+
+    public PeerProperties getPeerProperties() {
+        return mPeerProperties;
+    }
+
+    public void setPeerProperties(PeerProperties peerProperties) {
+        mPeerProperties = peerProperties;
     }
 
     /**
@@ -129,15 +137,16 @@ class BluetoothSocketIoThread extends Thread {
      * Closes the input and output streams in addition to the socket.
      * Note that after calling this method, this instance is no longer in valid state and must be
      * disposed of.
+     * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
      */
-    public synchronized void closeSocket() {
+    public synchronized void close(boolean closeSocket) {
         mIsClosingSocket = true;
 
         if (mInputStream != null) {
             try {
                 mInputStream.close();
             } catch (IOException e) {
-                Log.e(TAG, "Failed to close the input stream: " + e.getMessage(), e);
+                Log.w(TAG, "Failed to close the input stream: " + e.getMessage());
             }
         }
 
@@ -145,40 +154,16 @@ class BluetoothSocketIoThread extends Thread {
             try {
                 mOutputStream.close();
             } catch (IOException e) {
-                Log.e(TAG, "Failed to close the output stream: " + e.getMessage(), e);
+                Log.w(TAG, "Failed to close the output stream: " + e.getMessage());
             }
         }
 
-        if (mSocket != null) {
+        if (closeSocket && mSocket != null) {
             try {
                 mSocket.close();
             } catch (IOException e) {
-                Log.e(TAG, "Failed to close the socket: " + e.getMessage(), e);
+                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
             }
         }
-    }
-
-    public String getPeerId() {
-        return mPeerId;
-    }
-
-    public void setPeerId(String peerId) {
-        mPeerId = peerId;
-    }
-
-    public String getPeerName() {
-        return mPeerName;
-    }
-
-    public void setPeerName(String peerName) {
-        mPeerName = peerName;
-    }
-
-    public String getPeerAddress() {
-        return mPeerAddress;
-    }
-
-    public void setPeerAddress(String peerAddress) {
-        mPeerAddress = peerAddress;
     }
 }
