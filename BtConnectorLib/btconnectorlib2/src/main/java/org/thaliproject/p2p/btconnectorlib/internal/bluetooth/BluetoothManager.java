@@ -20,6 +20,10 @@ public class BluetoothManager {
      * A listener interface for Bluetooth scan ode changes.
      */
     public interface BluetoothAdapterScanModeListener {
+        /**
+         * Called when the mode of the Bluetooth adapter changes.
+         * @param mode The new mode.
+         */
         void onBluetoothAdapterScanModeChanged(int mode);
     }
 

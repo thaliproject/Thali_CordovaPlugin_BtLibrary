@@ -53,15 +53,15 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * Constructor.
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
-     * @param bluetoothUuid The Bluetooth UUID for the server socket.
-     * @param bluetoothName The Bluetooth name for the server socket.
+     * @param myBluetoothUuid Our Bluetooth UUID for the server socket.
+     * @param myBluetoothName Our Bluetooth name for the server socket.
      * @param myIdentityString The identity string for the response.
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
      * @throws IOException Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
      */
     public BluetoothServerThread(
             Listener listener, BluetoothAdapter bluetoothAdapter,
-            UUID bluetoothUuid, String bluetoothName, String myIdentityString)
+            UUID myBluetoothUuid, String myBluetoothName, String myIdentityString)
             throws NullPointerException, IOException {
         if (listener == null || bluetoothAdapter == null)
         {
@@ -70,7 +70,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
 
         mListener = listener;
         mMyIdentityString = myIdentityString;
-        mServerSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(bluetoothName, bluetoothUuid);
+        mServerSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(myBluetoothName, myBluetoothUuid);
     }
 
     /**

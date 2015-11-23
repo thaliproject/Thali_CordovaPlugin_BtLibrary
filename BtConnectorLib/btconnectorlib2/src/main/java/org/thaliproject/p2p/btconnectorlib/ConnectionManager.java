@@ -11,12 +11,11 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
-import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
-import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
-import java.util.EnumSet;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -25,78 +24,75 @@ import java.util.UUID;
  */
 public class ConnectionManager implements
         BluetoothManager.BluetoothAdapterScanModeListener,
-        WifiDirectManager.WifiStateListener,
-        WifiPeerDiscoverer.WifiPeerDiscoveryListener,
         BluetoothConnector.BluetoothConnectorListener {
 
     public enum ConnectionManagerState {
         NOT_INITIALIZED,
         WAITING_FOR_SERVICES_TO_BE_ENABLED,
         INITIALIZED,
-        IDLE,
-        FINDING_PEERS,
-        FINDING_SERVICES,
-        CONNECTING,
-        CONNECTED
+        RUNNING
     }
 
-    public enum DeviceConnectivityState {
-        WIFI_OK,
-        WIFI_DISABLED,
-        WIFI_NOT_PRESENT,
+    public enum BluetoothState {
         BLUETOOTH_OK,
         BLUETOOTH_DISABLED,
-        BLUETOOTH_NOT_PRESENT
+        BLUETOOTH_NOT_SUPPORTED
     }
 
-    public interface ConnectorListener {
-        void connected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress);
-        void connectionFailed(String peerId, String peerName, String peerAddress);
-        void connectorStateChanged(ConnectionManagerState newState);
-    }
+    public interface ConnectionManagerListener {
+        /**
+         *
+         * @param bluetoothSocket
+         * @param isIncoming
+         * @param peerId
+         * @param peerName
+         * @param peerBluetoothAddress
+         */
+        void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming,
+                         String peerId, String peerName, String peerBluetoothAddress);
 
-    public interface ConnectSelector {
-        PeerDevice CurrentPeersList(List<PeerDevice> available);
-        void PeerDiscovered(PeerDevice service);
+        /**
+         *
+         * @param peerId
+         * @param peerName
+         * @param peerBluetoothAddress
+         */
+        void onConnectionFailed(String peerId, String peerName, String peerBluetoothAddress);
+
+        /**
+         *
+         * @param state
+         */
+        void onConnectionManagerStateChanged(ConnectionManagerState state);
     }
 
     private static final String TAG = ConnectionManager.class.getName();
 
     private final Context mContext;
     private final Handler mHandler;
-    private final ConnectorListener mListener;
-    private final ConnectSelector mConnectSelector;
+    private final ConnectionManagerListener mListener;
 
-    private WifiDirectManager mWifiManager = null;
     private BluetoothManager mBluetoothManager = null;
-    private WifiPeerDiscoverer mPeerDiscoverer = null;
     private BluetoothConnector mBluetoothConnector = null;
     private ConnectionManagerState mState = ConnectionManagerState.NOT_INITIALIZED;
-    private String mIdentityString = "";
+    private String mMyIdentityString = "";
     private UUID mMyUuid = null;
-    private String mMyServiceType = null;
     private String mMyName = null;
 
     /**
      * Constructor.
      * @param context
      * @param listener
-     * @param selector
      * @param myUuid
-     * @param myServiceType
+     * @param myName
      */
-    public ConnectionManager(
-            Context context, ConnectorListener listener, ConnectSelector selector,
-            UUID myUuid, String myServiceType, String myName) {
+    public ConnectionManager(Context context, ConnectionManagerListener listener, UUID myUuid, String myName) {
         mContext = context;
         mListener = listener;
-        mConnectSelector = selector;
-        mHandler = new Handler(mContext.getMainLooper());
         mMyUuid = myUuid;
-        mMyServiceType = myServiceType;
         mMyName = myName;
 
-        mWifiManager = new WifiDirectManager(mContext, this);
+        mHandler = new Handler(mContext.getMainLooper());
         mBluetoothManager = new BluetoothManager(mContext, this);
     }
 
@@ -106,37 +102,42 @@ public class ConnectionManager implements
      * @param peerName
      * @return
      */
-    public synchronized EnumSet<DeviceConnectivityState> initialize(String peerId, String peerName) {
+    public synchronized BluetoothState initialize(String peerId, String peerName) {
         deinitialize();
         Log.i(TAG, "initialize: " + peerId + " " + peerName);
-        final EnumSet<DeviceConnectivityState> connectivityState = getDeviceConnectivityState();
+        BluetoothState bluetoothState = BluetoothState.BLUETOOTH_NOT_SUPPORTED;
 
-        if (connectivityState.contains(DeviceConnectivityState.BLUETOOTH_OK)) {
+        boolean isBluetoothPresent = mBluetoothManager.initialize();
+        boolean isBluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
+
+        if (isBluetoothPresent) {
+            bluetoothState = BluetoothState.BLUETOOTH_OK;
+
+            if (!isBluetoothEnabled) {
+                bluetoothState = BluetoothState.BLUETOOTH_DISABLED;
+            }
+        }
+
+        if (bluetoothState == BluetoothState.BLUETOOTH_OK) {
             try {
-                mIdentityString = CommonUtils.createIdentityString(
+                mMyIdentityString = CommonUtils.createIdentityString(
                         peerId, peerName, mBluetoothManager.getBluetoothAddress());
             } catch (JSONException e) {
-                Log.e(TAG, "Failed create an identity string: " + e.getMessage(), e);
+                Log.e(TAG, "initialize: Failed create an identity string: " + e.getMessage(), e);
             }
 
-            Log.i(TAG, "initialize: Instance string: \"" + mIdentityString + "\"");
-        }
-
-        if (connectivityState.contains(DeviceConnectivityState.BLUETOOTH_NOT_PRESENT)
-                || connectivityState.contains(DeviceConnectivityState.WIFI_NOT_PRESENT)) {
-            Log.e(TAG, "Either Bluetooth or Wi-Fi is not present on the device: " + connectivityState.toString());
-            deinitialize();
-        } else if (connectivityState.contains(DeviceConnectivityState.BLUETOOTH_DISABLED)
-                    || connectivityState.contains(DeviceConnectivityState.WIFI_DISABLED)) {
-            Log.w(TAG, "Either Bluetooth or Wi-Fi disabled");
-            setConnectorState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        } else {
-            // Good to go
-            setConnectorState(ConnectionManagerState.INITIALIZED);
+            Log.i(TAG, "initialize: Bluetooth OK, my identity string is: " + mMyIdentityString);
+            setState(ConnectionManagerState.INITIALIZED);
             start();
+        } else if (bluetoothState == BluetoothState.BLUETOOTH_DISABLED) {
+            Log.w(TAG, "initialize: Bluetooth is disabled, waiting for it to be enabled...");
+            setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        } else if (bluetoothState == BluetoothState.BLUETOOTH_NOT_SUPPORTED) {
+            Log.e(TAG, "initialize: Bluetooth not supported");
+            deinitialize();
         }
 
-        return connectivityState;
+        return bluetoothState;
     }
 
     /**
@@ -144,37 +145,50 @@ public class ConnectionManager implements
      */
     public synchronized void deinitialize() {
         stop();
-        mWifiManager.deinitialize();
         mBluetoothManager.deinitialize();
-        setConnectorState(ConnectionManagerState.NOT_INITIALIZED);
+        setState(ConnectionManagerState.NOT_INITIALIZED);
     }
 
     /**
      *
-     * @return
+     * @return True, if started successfully or was already running. False otherwise.
      */
     public synchronized boolean start() {
-        boolean success = false;
+        if (mState == ConnectionManagerState.INITIALIZED) {
+            if (mBluetoothConnector == null) {
+                BluetoothAdapter bluetoothAdapter = mBluetoothManager.getBluetoothAdapter();
 
-        if (mState != ConnectionManagerState.NOT_INITIALIZED
-                && mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-            startWifiPeerDiscovery();
-            startBluetoothListener();
-            success = true;
+                mBluetoothConnector =
+                        new BluetoothConnector(
+                                mContext, this, bluetoothAdapter, mMyUuid, mMyName, mMyIdentityString);
+
+                mBluetoothConnector.startListeningForIncomingConnections();
+                Log.i(TAG, "start: OK");
+            } else {
+                Log.e(TAG, "start: This should not happen - Found an existing Bluetooth connector instance although the state was not 'RUNNING'!");
+                stop();
+            }
+
+            setState(ConnectionManagerState.RUNNING);
+        } else if (mState == ConnectionManagerState.RUNNING) {
+            Log.w(TAG, "start: Already running, call stop() first in order to restart");
         } else {
-            Log.e(TAG, "initialize: Cannot be started due to invalid state: " + mState.toString());
+            Log.e(TAG, "start: Cannot be started due to invalid state: " + mState.toString());
         }
 
-        return success;
+        return (mState == ConnectionManagerState.RUNNING);
     }
 
     /**
-     * Stops the bluetooth listener and the peer discovery. Calling this method does nothing, if
-     * the aforementioned services are not running.
+     * Stops the Bluetooth connector. Calling this method does nothing, if the service is not
+     * running.
      */
     public synchronized void stop() {
-        stopBluetoothListener();
-        stopWifiPeerDiscovery();
+        if (mBluetoothConnector != null) {
+            Log.i(TAG, "stopBluetoothListener");
+            mBluetoothConnector.shutdown();
+            mBluetoothConnector = null;
+        }
     }
 
     /**
@@ -207,69 +221,8 @@ public class ConnectionManager implements
 
     /**
      *
+     * @param mode The new mode.
      */
-    private synchronized void startWifiPeerDiscovery() {
-        if (mPeerDiscoverer == null) {
-            WifiP2pManager p2pManager = mWifiManager.getWifiP2pManager();
-            WifiP2pManager.Channel channel = mWifiManager.getWifiP2pChannel();
-
-            if (p2pManager != null && channel != null) {
-                mPeerDiscoverer =
-                        new WifiPeerDiscoverer(
-                                mContext, channel, p2pManager, this, mMyServiceType, mIdentityString);
-
-                mPeerDiscoverer.start();
-                Log.i(TAG, "startWifiPeerDiscovery: OK");
-            }
-        } else {
-            Log.e(TAG, "startWifiPeerDiscovery: Attempted to initialize peer discovery although already running!");
-        }
-    }
-
-    /**
-     *
-     */
-    private synchronized void stopWifiPeerDiscovery() {
-        WifiPeerDiscoverer temp = mPeerDiscoverer;
-        mPeerDiscoverer = null;
-
-        if (temp != null) {
-            Log.i(TAG, "stopWifiPeerDiscovery");
-            temp.stop();
-        }
-    }
-
-    /**
-     *
-     */
-    private synchronized void startBluetoothListener() {
-        if (mBluetoothConnector == null) {
-            BluetoothAdapter bluetoothAdapter = mBluetoothManager.getBluetoothAdapter();
-
-            mBluetoothConnector =
-                    new BluetoothConnector(
-                            mContext, this, bluetoothAdapter, mMyUuid, mMyName, mIdentityString);
-
-            mBluetoothConnector.startListeningForIncomingConnections();
-            Log.i(TAG, "startBluetoothListener: OK");
-        } else {
-            Log.e(TAG, "startBluetoothListener: Attempted to initialize although already running!");
-        }
-    }
-
-    /**
-     *
-     */
-    private synchronized void stopBluetoothListener() {
-        BluetoothConnector temp = mBluetoothConnector;
-        mBluetoothConnector = null;
-
-        if (temp != null) {
-            Log.i(TAG, "stopBluetoothListener");
-            temp.shutdown();
-        }
-    }
-
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
         Log.i(TAG, "onBluetoothAdapterScanModeChanged: Mode changed to " + mode);
@@ -278,154 +231,85 @@ public class ConnectionManager implements
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth or Wi-Fi disabled, stopping...");
                 stop();
-                setConnectorState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
             }
         } else {
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
-                    && mWifiManager.isWifiEnabled() && mBluetoothManager.isBluetoothEnabled()) {
+                    && mBluetoothManager.isBluetoothEnabled()) {
                 Log.w(TAG, "onBluetoothAdapterScanModeChanged: Both Bluetooth and Wi-Fi enabled, restarting...");
-                setConnectorState(ConnectionManagerState.INITIALIZED);
+                setState(ConnectionManagerState.INITIALIZED);
                 start();
             }
-        }
-    }
-
-    @Override
-    public void onWifiStateChanged(int state) {
-        if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-                Log.w(TAG, "onWifiStateChanged: Bluetooth or Wi-Fi disabled, stopping...");
-                stop();
-                setConnectorState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-            }
-        } else {
-            if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
-                    && mWifiManager.isWifiEnabled() && mBluetoothManager.isBluetoothEnabled()) {
-                Log.w(TAG, "onWifiStateChanged: Both Bluetooth and Wi-Fi enabled, restarting...");
-                setConnectorState(ConnectionManagerState.INITIALIZED);
-                start();
-            }
-        }
-    }
-
-    @Override
-    public void onListOfDiscoveredPeersChanged(List<PeerDevice> peerDeviceList) {
-        if (this.mConnectSelector == null) {
-            return;
-        }
-
-        final List<PeerDevice> availableTmp = peerDeviceList;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                that.connectSelector.CurrentPeersList(availableTmp);
-            }
-        });
-    }
-
-    @Override
-    public void onPeerDiscovered(PeerDevice peerDevice) {
-        if (this.mConnectSelector == null) {
-            return;
-        }
-
-        final PeerDevice serviceTmp = peerDevice;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                that.connectSelector.PeerDiscovered(serviceTmp);
-            }
-        });
-    }
-
-    @Override
-    public void onIsDicovererRunningChanged(WifiPeerDiscoverer.DiscovererState newState) {
-        switch (newState) {
-            case DiscoveryIdle:
-                setState(State.Idle);
-                break;
-            case DiscoveryNotInitialized:
-                setState(State.NotInitialized);
-                break;
-            case DiscoveryFindingPeers:
-                setState(State.FindingPeers);
-                break;
-            case DiscoveryFindingServices:
-                setState(State.FindingServices);
-                break;
-            default:
-                throw new RuntimeException("onIsDiscoveryStartedChanged called with invalid vale for BTConnector_Discovery.State");
-        }
-    }
-
-    @Override
-    public void onConnected(BluetoothSocket socket, boolean incoming, String peerId, String peerName, String peerAddress) {
-        if (this.callback == null) {
-            return;
-        }
-
-        final BluetoothSocket socketTmp = socket;
-        final boolean incomingTmp = incoming;
-        final String peerIdTmp = peerId;
-        final String peerNameTmp = peerName;
-        final String peerAddressTmp = peerAddress;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                callback.Connected(socketTmp, incomingTmp, peerIdTmp, peerNameTmp, peerAddressTmp);
-            }
-        });
-    }
-
-    @Override
-    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
-        if (this.callback == null) {
-            return;
-        }
-
-        final String peerIdTmp = peerId;
-        final String peerNameTmp = peerName;
-        final String peerAddressTmp = peerAddress;
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                callback.ConnectionFailed(peerIdTmp, peerNameTmp, peerAddressTmp);
-            }
-        });
-    }
-
-    @Override
-    public void ConnectionStateChanged(BluetoothConnector.State newState) {
-
-        switch (newState) {
-            case ConnectionConnecting:
-                setState(State.Connecting);
-                break;
-            case ConnectionConnected:
-                setState(State.Connected);
-                break;
-            default:
-                throw new RuntimeException("ConnectionStateChanged called with invalid vale for BTConnector_BtConnection.State");
         }
     }
 
     /**
      *
-     * @param newState
+     * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
+     * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
      */
-    private void setConnectorState(ConnectionManagerState newState) {
-        if (mState != newState) {
-            Log.i(TAG, "setConnectorState: " + newState.toString());
-            mState = newState;
+    @Override
+    public void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress) {
+        Log.i(TAG, "onConnecting: " + bluetoothDeviceName + " " + bluetoothDeviceAddress);
+    }
 
-            if (mListener != null) {
-                final ConnectionManagerState tempState = mState;
-                final ConnectionManager thisInstance = this;
+    /**
+     *
+     * @param bluetoothSocket The Bluetooth socket.
+     * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
+     * @param peerProperties The properties of the peer connected to.
+     */
+    @Override
+    public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
+        Log.i(TAG, "onConnected: " + peerProperties.toString());
+
+        if (mListener != null) {
+            final BluetoothSocket tempBluetoothSocket = bluetoothSocket;
+            final boolean tempIsIncoming = isIncoming;
+            final String peerId = peerProperties.id;
+            final String peerName = peerProperties.name;
+            final String peerBluetoothAddress = peerProperties.bluetoothAddress;
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onConnected(
+                            tempBluetoothSocket, tempIsIncoming, peerId, peerName, peerBluetoothAddress);
+                }
+            });
+        }
+    }
+
+    /**
+     *
+     * @param reason The reason of the failure.
+     * @param peerProperties The properties of the peer. Note: Can be null!
+     */
+    @Override
+    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
+        if (peerProperties != null) {
+            Log.w(TAG, "onConnectionFailed: " + reason + " " + peerProperties.toString());
+        } else {
+            Log.w(TAG, "onConnectionFailed: " + reason);
+        }
+
+        if (mListener != null) {
+            if (peerProperties != null) {
+                final String peerId = peerProperties.id;
+                final String peerName = peerProperties.name;
+                final String peerBluetoothAddress = peerProperties.bluetoothAddress;
 
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        thisInstance.mListener.connectorStateChanged(tempState);
+                        mListener.onConnectionFailed(peerId, peerName, peerBluetoothAddress);
+                    }
+                });
+            } else {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mListener.onConnectionFailed("", "", "");
                     }
                 });
             }
@@ -433,41 +317,24 @@ public class ConnectionManager implements
     }
 
     /**
-     * Resolves the device connectivty state in respect to Bluetooth and Wi-Fi.
-     * Note that this method changes the state of both the BluetoothManager and WifiDirectManager by
-     * initializing them.
-     * @return The connectivity state of the device.
+     *
+     * @param state The new state.
      */
-    private EnumSet<DeviceConnectivityState> getDeviceConnectivityState()
-    {
-        EnumSet<DeviceConnectivityState> connectivityState = EnumSet.noneOf(DeviceConnectivityState.class);
+    private synchronized void setState(ConnectionManagerState state) {
+        if (mState != state) {
+            Log.i(TAG, "setState: " + state.toString());
+            mState = state;
 
-        boolean isBluetoothPresent = mBluetoothManager.initialize();
-        boolean isBluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
+            if (mListener != null) {
+                final ConnectionManagerState tempState = mState;
 
-        if (isBluetoothPresent) {
-            connectivityState.add(DeviceConnectivityState.BLUETOOTH_OK);
-
-            if (!isBluetoothEnabled) {
-                connectivityState.add(DeviceConnectivityState.BLUETOOTH_DISABLED);
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mListener.onConnectionManagerStateChanged(tempState);
+                    }
+                });
             }
-        } else {
-            connectivityState.add(DeviceConnectivityState.BLUETOOTH_NOT_PRESENT);
         }
-
-        boolean isWifiPresent = mWifiManager.initialize();
-        boolean isWifiEnabled = mWifiManager.isWifiEnabled();
-
-        if (isWifiPresent) {
-            connectivityState.add(DeviceConnectivityState.WIFI_OK);
-
-            if (!isWifiEnabled) {
-                connectivityState.add(DeviceConnectivityState.WIFI_DISABLED);
-            }
-        } else {
-            connectivityState.add(DeviceConnectivityState.WIFI_NOT_PRESENT);
-        }
-
-        return connectivityState;
     }
 }

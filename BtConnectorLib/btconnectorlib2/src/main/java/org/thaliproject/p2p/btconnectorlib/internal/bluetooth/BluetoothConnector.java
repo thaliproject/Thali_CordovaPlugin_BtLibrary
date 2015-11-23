@@ -19,30 +19,29 @@ import java.util.UUID;
  */
 public class BluetoothConnector
         implements BluetoothServerThread.Listener, BluetoothClientThread.Listener {
-
     /**
      * The listener interface.
      */
     public interface BluetoothConnectorListener {
         /**
-         *
-         * @param bluetoothDeviceName
-         * @param bluetoothDeviceAddress
+         * Called when connecting to a Bluetooth device.
+         * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
+         * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
          */
         void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress);
 
         /**
-         *
-         * @param socket
-         * @param isIncoming
-         * @param peerProperties
+         * Called when connected to a Bluetooth device.
+         * @param bluetoothSocket The Bluetooth socket.
+         * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
+         * @param peerProperties The properties of the peer connected to.
          */
-        void onConnected(BluetoothSocket socket, boolean isIncoming, PeerProperties peerProperties);
+        void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties);
 
         /**
-         *
-         * @param reason
-         * @param peerProperties
+         * Called when a connection fails.
+         * @param reason The reason of the failure.
+         * @param peerProperties The properties of the peer. Note: Can be null!
          */
         void onConnectionFailed(String reason, PeerProperties peerProperties);
     }
@@ -54,9 +53,9 @@ public class BluetoothConnector
     private final BluetoothConnector that = this;
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
-    private final UUID mBluetoothUuid;
-    private final String mBluetoothName;
-    private final String mIdentityString;
+    private final UUID mMyBluetoothUuid;
+    private final String mMyBluetoothName;
+    private final String mMyIdentityString;
     private final Handler mHandler;
     private final CountDownTimer mConnectionTimeoutTimer;
     private final Thread.UncaughtExceptionHandler mUncaughtExceptionHandler;
@@ -70,18 +69,18 @@ public class BluetoothConnector
      * @param context
      * @param listener
      * @param bluetoothAdapter
-     * @param bluetoothUuid
-     * @param bluetoothName
-     * @param identityString
+     * @param myBluetoothUuid
+     * @param myBluetoothName
+     * @param myIdentityString
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
-            UUID bluetoothUuid, String bluetoothName, String identityString) {
+            UUID myBluetoothUuid, String myBluetoothName, String myIdentityString) {
         mListener = listener;
         mBluetoothAdapter = bluetoothAdapter;
-        mBluetoothUuid = bluetoothUuid;
-        mBluetoothName = bluetoothName;
-        mIdentityString = identityString;
+        mMyBluetoothUuid = myBluetoothUuid;
+        mMyBluetoothName = myBluetoothName;
+        mMyIdentityString = myIdentityString;
         mHandler = new Handler(context.getMainLooper());
 
         mConnectionTimeoutTimer = new CountDownTimer(
@@ -93,12 +92,12 @@ public class BluetoothConnector
 
             @Override
             public void onFinish() {
-                Log.i(TAG, "Connection timeout");
                 BluetoothClientThread tempClientThread = mClientThread;
                 mClientThread = null;
 
                 if (tempClientThread != null) {
                     // Shut down the client thread and notify the listener (me)
+                    Log.i(TAG, "Connection timeout");
                     tempClientThread.cancel("Connection timeout");
                 }
             }
@@ -135,7 +134,7 @@ public class BluetoothConnector
 
             try {
                 mServerThread = new BluetoothServerThread(
-                        this, mBluetoothAdapter, mBluetoothUuid, mBluetoothName, mIdentityString);
+                        this, mBluetoothAdapter, mMyBluetoothUuid, mMyBluetoothName, mMyIdentityString);
             } catch (IOException e) {
                 Log.e(TAG, "Failed to create the socket listener thread: " + e.getMessage(), e);
                 mServerThread = null;
@@ -205,7 +204,7 @@ public class BluetoothConnector
 
             try {
                 mClientThread = new BluetoothClientThread(
-                        this, bluetoothDeviceToConnectTo, myBluetoothUuid, mIdentityString);
+                        this, bluetoothDeviceToConnectTo, myBluetoothUuid, mMyIdentityString);
                 wasSuccessful = true;
             } catch (IOException e) {
                 errorMessage = "connect: Failed to create a Bluetooth connect thread instance: " + e.getMessage();

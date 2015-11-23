@@ -37,7 +37,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private final String mIdentityString;
+    private final String mMyIdentityString;
     private final Listener mListener;
     private final BluetoothSocket mSocket;
     private BluetoothSocketIoThread mHandshakeThread = null;
@@ -45,30 +45,33 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
     /**
      * Constructor.
-     * @param listener
-     * @param bluetoothDevice
-     * @param bluetoothUuid
-     * @param identityString
-     * @throws NullPointerException
-     * @throws IOException
+     * @param listener The listener.
+     * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
+     * @param myBluetoothUuid Our Bluetooth UUID.
+     * @param myIdentityString Our identity.
+     * @throws NullPointerException Thrown, if either the listener or the Bluetooth device instance is null.
+     * @throws IOException Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
      */
     public BluetoothClientThread(
-            Listener listener, BluetoothDevice bluetoothDevice,
-            UUID bluetoothUuid, String identityString)
+            Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
+            UUID myBluetoothUuid, String myIdentityString)
             throws NullPointerException, IOException {
-        if (listener == null || bluetoothDevice == null)
+        if (listener == null || bluetoothDeviceToConnectTo == null)
         {
             throw new NullPointerException("Either the listener or the Bluetooth device instance is null");
         }
 
         mListener = listener;
-        mIdentityString = identityString;
-        mSocket = bluetoothDevice.createInsecureRfcommSocketToServiceRecord(bluetoothUuid);
+        mMyIdentityString = myIdentityString;
+        mSocket = bluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(myBluetoothUuid);
         mPeerProperties = new PeerProperties();
     }
 
     /**
      * From Thread.
+     *
+     * Tries to connect to the Bluetooth socket. If successful, will create a handshake instance to
+     * handle the connecting process.
      */
     public void run() {
         boolean wasSuccessful = false;
@@ -81,7 +84,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
             mHandshakeThread.start();
             Log.i(TAG, "Outgoing connection initialized (thread ID: " + mHandshakeThread.getId() + ")");
-            wasSuccessful = mHandshakeThread.write(mIdentityString.getBytes());
+            wasSuccessful = mHandshakeThread.write(mMyIdentityString.getBytes());
         } catch (IOException e) {
             errorMessage = "Either the socket connection or the construction of a handshake thread failed: " + e.getMessage();
             Log.e(TAG, errorMessage, e);
@@ -142,7 +145,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     /**
-     *
+     * Tries to validate the read message, which should contain the identity of the peer. If the
+     * identity is valid, notify the user that we have established a connection.
      * @param bytes The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
@@ -199,7 +203,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     /**
-     *
+     * If the handshake thread instance is still around, it means we got a connection failure in our
+     * hands and we need to notify the listener and shutdown.
      * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
      * @param who The related BluetoothSocketIoThread instance.
      */
@@ -212,7 +217,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         // If we were successful, the handshake thread instance was set to null
         if (mHandshakeThread != null) {
             mListener.onConnectionFailed("Socket disconnected", peerProperties);
-            // TODO: Should we call shutdown() here?
+            shutdown();
         }
     }
 }

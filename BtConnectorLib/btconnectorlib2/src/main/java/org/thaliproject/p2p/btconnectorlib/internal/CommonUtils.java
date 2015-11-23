@@ -11,11 +11,10 @@ import org.json.JSONObject;
  * Commonly used utils and constants.
  */
 public class CommonUtils {
+    private static final String TAG = CommonUtils.class.getName();
     private static final String JSON_ID_PEER_ID   = "pi";
     private static final String JSON_ID_PEER_NAME = "pn";
     private static final String JSON_ID_PEER_BLUETOOTH_ADDRESS = "ra";
-
-    private static final String TAG = CommonUtils.class.getName();
 
     /**
      * A struct like class for peer properties: ID, name and Bluetooth address.
