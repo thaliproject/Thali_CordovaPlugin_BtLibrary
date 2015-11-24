@@ -20,14 +20,28 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      * A listener for peer discovery events.
      */
     public interface WifiPeerDiscoveryListener {
+        /**
+         * Called when the discovery is started or stopped.
+         * @param isStarted If true, the discovery was started. If false, it was stopped.
+         */
         void onIsDiscoveryStartedChanged(boolean isStarted);
+
+        /**
+         * Called when a peer was discovered.
+         * @param peerDevice The properties of the discovered peer.
+         */
         void onPeerDiscovered(PeerDevice peerDevice);
-        void onListOfDiscoveredPeersChanged(List<PeerDevice> peerDeviceList);
+
+        /**
+         * Called when we resolve a new list of available peers.
+         * @param peerDeviceList The new list of available peers.
+         */
+        void onPeerListChanged(List<PeerDevice> peerDeviceList);
     }
 
     private static final String TAG = WifiPeerDiscoverer.class.getName();
-    private static final long SERVICE_SEARCH_TIMEOUT_IN_MILLISECONDS = 600000;
-    private static final long SERVICE_SEARCH_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long SERVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS = 60000;
+    private static final long SERVICE_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
     private final Context mContext;
     private final WifiP2pManager.Channel mP2pChannel;
     private final WifiP2pManager mP2pManager;
@@ -61,8 +75,8 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
         final WifiPeerDiscoverer thisInstance = this;
 
         mServiceSearchTimeoutTimer =
-            new CountDownTimer(SERVICE_SEARCH_TIMEOUT_IN_MILLISECONDS,
-                    SERVICE_SEARCH_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
+            new CountDownTimer(SERVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS,
+                    SERVICE_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
                 public void onTick(long millisUntilFinished) {
                     // Not used
                 }
@@ -70,7 +84,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
                 public void onFinish() {
                     if (thisInstance.mWifiPeerDiscoveryListener != null) {
                         // Clear the existing list of found peers
-                        thisInstance.mWifiPeerDiscoveryListener.onListOfDiscoveredPeersChanged(null);
+                        thisInstance.mWifiPeerDiscoveryListener.onPeerListChanged(null);
                     }
 
                     // Restart discovery
@@ -112,7 +126,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      */
     public synchronized void stop() {
         if (mIsStarted) {
-            Log.i("", "Stopping services");
+            Log.i(TAG, "Stopping services");
             mServiceSearchTimeoutTimer.cancel();
 
             if (mWifiServiceAdvertiser != null)
@@ -150,7 +164,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
                 Log.i(TAG, "onNewListOfPeersAvailable: Peer " + index + ": " + p2pDevice.deviceName + " " + p2pDevice.deviceAddress);
             }
         } else {
-            mWifiPeerDiscoveryListener.onListOfDiscoveredPeersChanged(null);
+            mWifiPeerDiscoveryListener.onPeerListChanged(null);
         }
     }
 
@@ -161,7 +175,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
     @Override
     public void gotServicesList(List<PeerDevice> peerDeviceList) {
         if (mWifiPeerDiscoveryListener != null && peerDeviceList != null && peerDeviceList.size() > 0) {
-            mWifiPeerDiscoveryListener.onListOfDiscoveredPeersChanged(peerDeviceList);
+            mWifiPeerDiscoveryListener.onPeerListChanged(peerDeviceList);
         }
     }
 

@@ -20,6 +20,10 @@ public class WifiDirectManager {
      * A listener interface for Wi-Fi state changes.
      */
     public interface WifiStateListener {
+        /**
+         * Called when the Wi-Fi state on the device is changed (e.g. enabled or disabled).
+         * @param state The new state.
+         */
         void onWifiStateChanged(int state);
     }
 
