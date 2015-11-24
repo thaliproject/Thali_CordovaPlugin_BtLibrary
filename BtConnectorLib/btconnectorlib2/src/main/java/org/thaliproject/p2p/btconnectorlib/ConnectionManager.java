@@ -21,7 +21,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- *
+ * The main interface of this library.
+ * Manages peer discovery and connections.
  */
 public class ConnectionManager implements
         BluetoothManager.BluetoothAdapterScanModeListener,
@@ -38,49 +39,48 @@ public class ConnectionManager implements
 
     public interface ConnectionManagerListener {
         /**
-         *
-         * @param state
+         * Called when the state of this instance is changed.
+         * @param state The new state.
          */
         void onConnectionManagerStateChanged(ConnectionManagerState state);
 
         /**
-         *
-         * @param peerDevicePropertiesList
+         * Called when the list of discovered peers is changed.
+         * @param peerDevicePropertiesList The new list of discovered peers.
          */
         void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList);
 
         /**
-         *
-         * @param peerDeviceProperties
+         * Called when a new peer is discovered.
+         * @param peerDeviceProperties The properties of the new peer.
          */
         void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties);
 
         /**
-         *
-         * @param bluetoothSocket
-         * @param isIncoming
-         * @param peerId
-         * @param peerName
-         * @param peerBluetoothAddress
+         * Called when successfully connected to a peer.
+         * Note that the ownership of the bluetooth socket is transferred to the listener.
+         * @param bluetoothSocket The Bluetooth socket associated with the peer.
+         * @param isIncoming True, if the connection was incoming. False, if outgoing.
+         * @param peerId The peer ID.
+         * @param peerName The peer name.
+         * @param peerBluetoothAddress The Bluetooth address of the peer.
          */
         void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming,
                          String peerId, String peerName, String peerBluetoothAddress);
 
         /**
-         *
-         * @param peerId
-         * @param peerName
-         * @param peerBluetoothAddress
+         * Called in case of a failure to connect to a peer.
+         * @param peerId The peer ID.
+         * @param peerName The peer name.
+         * @param peerBluetoothAddress The Bluetooth address of the peer.
          */
         void onConnectionFailed(String peerId, String peerName, String peerBluetoothAddress);
     }
 
     private static final String TAG = ConnectionManager.class.getName();
-
     private final Context mContext;
     private final ConnectionManagerListener mListener;
     private final Handler mHandler;
-
     private BluetoothManager mBluetoothManager = null;
     private BluetoothConnector mBluetoothConnector = null;
     private WifiDirectManager mWifiDirectManager = null;
@@ -93,11 +93,11 @@ public class ConnectionManager implements
 
     /**
      * Constructor.
-     * @param context
-     * @param listener
-     * @param myUuid
-     * @param myName
-     * @param serviceType
+     * @param context The application context.
+     * @param listener The listener.
+     * @param myUuid Our UUID.
+     * @param myName Our name.
+     * @param serviceType The service type (both ours and requirement for the peer).
      */
     public ConnectionManager(
             Context context, ConnectionManagerListener listener,
@@ -171,7 +171,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Starts the peer discovery and the listener for incoming connections.
      * @return True, if started successfully or was already running. False otherwise.
      */
     public synchronized boolean start() {
@@ -214,6 +214,7 @@ public class ConnectionManager implements
         }
 
         stopWifiPeerDiscovery();
+        setState(ConnectionManagerState.INITIALIZED);
     }
 
     /**
@@ -253,9 +254,12 @@ public class ConnectionManager implements
     }
 
     /**
-     *
-     * @param deviceToConnectTo
-     * @return
+     * Tries to connect to the given device.
+     * Note that even when this method returns true, it does not yet indicate a successful
+     * connection, but merely that the connection process was started successfully.
+     * ConnectionManagerListener.onConnected callback gets called after a successful connection.
+     * @param deviceToConnectTo The device to connect to.
+     * @return True, if the connection process was started successfully.
      */
     public synchronized boolean connect(PeerDeviceProperties deviceToConnectTo) {
         boolean success = false;
@@ -288,7 +292,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Starts/stops the connectivity processes based on the given mode.
      * @param mode The new mode.
      */
     @Override
@@ -344,7 +348,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Does nothing but logs the event.
      * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
      * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
      */
@@ -354,7 +358,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Notifies the listener about a successful connection.
      * @param bluetoothSocket The Bluetooth socket.
      * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
      * @param peerProperties The properties of the peer connected to.
@@ -381,7 +385,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Notifies the listener about a failed connection.
      * @param reason The reason of the failure.
      * @param peerProperties The properties of the peer. Note: Can be null!
      */
@@ -417,7 +421,7 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Does nothing but logs the event.
      * @param isStarted If true, the discovery was started. If false, it was stopped.
      */
     @Override
@@ -426,45 +430,43 @@ public class ConnectionManager implements
     }
 
     /**
-     *
+     * Forward this event to the listener.
      * @param peerDeviceProperties The properties of the discovered peer.
      */
     @Override
     public void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties) {
         if (mListener != null) {
-            final ConnectionManager thisInstance = this;
             final PeerDeviceProperties tempPeerDeviceProperties = peerDeviceProperties;
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    thisInstance.mListener.onPeerDiscovered(tempPeerDeviceProperties);
+                    mListener.onPeerDiscovered(tempPeerDeviceProperties);
                 }
             });
         }
     }
 
     /**
-     *
+     * Forward this event to the listener.
      * @param peerDevicePropertiesList The new list of available peers.
      */
     @Override
     public void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList) {
         if (mListener != null) {
-            final ConnectionManager thisInstance = this;
             final List<PeerDeviceProperties> tempPeerDevicePropertiesList = peerDevicePropertiesList;
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    thisInstance.mListener.onPeerListChanged(tempPeerDevicePropertiesList);
+                    mListener.onPeerListChanged(tempPeerDevicePropertiesList);
                 }
             });
         }
     }
 
     /**
-     *
+     * Sets the state of this instance and notifies the listener.
      * @param state The new state.
      */
     private synchronized void setState(ConnectionManagerState state) {
