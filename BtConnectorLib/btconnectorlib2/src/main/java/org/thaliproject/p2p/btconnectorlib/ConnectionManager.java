@@ -45,15 +45,15 @@ public class ConnectionManager implements
 
         /**
          *
-         * @param peerDeviceList
+         * @param peerDevicePropertiesList
          */
-        void onPeerListChanged(List<PeerDevice> peerDeviceList);
+        void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList);
 
         /**
          *
-         * @param peerDevice
+         * @param peerDeviceProperties
          */
-        void onPeerDiscovered(PeerDevice peerDevice);
+        void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties);
 
         /**
          *
@@ -257,20 +257,20 @@ public class ConnectionManager implements
      * @param deviceToConnectTo
      * @return
      */
-    public synchronized boolean connect(PeerDevice deviceToConnectTo) {
+    public synchronized boolean connect(PeerDeviceProperties deviceToConnectTo) {
         boolean success = false;
 
         if (deviceToConnectTo != null) {
             try {
-                BluetoothDevice device = mBluetoothManager.getRemoteDevice(deviceToConnectTo.peerAddress);
+                BluetoothDevice device = mBluetoothManager.getRemoteDevice(deviceToConnectTo.peerBluetoothAddress);
 
                 success = mBluetoothConnector.connect(
                         device, mMyUuid,
                         deviceToConnectTo.peerId, deviceToConnectTo.peerName,
-                        deviceToConnectTo.peerAddress);
+                        deviceToConnectTo.peerBluetoothAddress);
             } catch (NullPointerException e) {
                 Log.e(TAG, "connect: Failed to connect to device \"" + deviceToConnectTo.peerName
-                        + "\" with address \"" + deviceToConnectTo.peerAddress + "\": "
+                        + "\" with address \"" + deviceToConnectTo.peerBluetoothAddress + "\": "
                         + e.getMessage(), e);
             }
         } else {
@@ -427,18 +427,18 @@ public class ConnectionManager implements
 
     /**
      *
-     * @param peerDevice The properties of the discovered peer.
+     * @param peerDeviceProperties The properties of the discovered peer.
      */
     @Override
-    public void onPeerDiscovered(PeerDevice peerDevice) {
+    public void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties) {
         if (mListener != null) {
             final ConnectionManager thisInstance = this;
-            final PeerDevice tempPeerDevice = peerDevice;
+            final PeerDeviceProperties tempPeerDeviceProperties = peerDeviceProperties;
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    thisInstance.mListener.onPeerDiscovered(tempPeerDevice);
+                    thisInstance.mListener.onPeerDiscovered(tempPeerDeviceProperties);
                 }
             });
         }
@@ -446,18 +446,18 @@ public class ConnectionManager implements
 
     /**
      *
-     * @param peerDeviceList The new list of available peers.
+     * @param peerDevicePropertiesList The new list of available peers.
      */
     @Override
-    public void onPeerListChanged(List<PeerDevice> peerDeviceList) {
+    public void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList) {
         if (mListener != null) {
             final ConnectionManager thisInstance = this;
-            final List<PeerDevice> tempPeerDeviceList = peerDeviceList;
+            final List<PeerDeviceProperties> tempPeerDevicePropertiesList = peerDevicePropertiesList;
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    thisInstance.mListener.onPeerListChanged(tempPeerDeviceList);
+                    thisInstance.mListener.onPeerListChanged(tempPeerDevicePropertiesList);
                 }
             });
         }

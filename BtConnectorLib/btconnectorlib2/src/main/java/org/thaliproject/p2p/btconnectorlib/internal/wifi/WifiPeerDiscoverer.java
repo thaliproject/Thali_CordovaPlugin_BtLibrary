@@ -8,7 +8,7 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.CountDownTimer;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.PeerDevice;
+import org.thaliproject.p2p.btconnectorlib.PeerDeviceProperties;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,20 +28,20 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
 
         /**
          * Called when a peer was discovered.
-         * @param peerDevice The properties of the discovered peer.
+         * @param peerDeviceProperties The properties of the discovered peer.
          */
-        void onPeerDiscovered(PeerDevice peerDevice);
+        void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties);
 
         /**
          * Called when we resolve a new list of available peers.
-         * @param peerDeviceList The new list of available peers.
+         * @param peerDevicePropertiesList The new list of available peers.
          */
-        void onPeerListChanged(List<PeerDevice> peerDeviceList);
+        void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList);
     }
 
     private static final String TAG = WifiPeerDiscoverer.class.getName();
-    private static final long SERVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS = 60000;
-    private static final long SERVICE_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long PEER_DISCOVERY_TIMEOUT_IN_MILLISECONDS = 60000;
+    private static final long PEER_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
     private final Context mContext;
     private final WifiP2pManager.Channel mP2pChannel;
     private final WifiP2pManager mP2pManager;
@@ -50,7 +50,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
     private final String mIdentityString;
     private WifiServiceAdvertiser mWifiServiceAdvertiser = null;
     private WifiServiceWatcher mWifiServiceWatcher = null;
-    private CountDownTimer mServiceSearchTimeoutTimer = null;
+    private CountDownTimer mPeerDiscoveryTimeoutTimer = null;
     private boolean mIsStarted = false;
 
     /**
@@ -74,9 +74,9 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
 
         final WifiPeerDiscoverer thisInstance = this;
 
-        mServiceSearchTimeoutTimer =
-            new CountDownTimer(SERVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS,
-                    SERVICE_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
+        mPeerDiscoveryTimeoutTimer =
+            new CountDownTimer(PEER_DISCOVERY_TIMEOUT_IN_MILLISECONDS,
+                    PEER_DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
                 public void onTick(long millisUntilFinished) {
                     // Not used
                 }
@@ -87,7 +87,7 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
                         thisInstance.mWifiPeerDiscoveryListener.onPeerListChanged(null);
                     }
 
-                    // Restart discovery
+                    // Restart the discovery
                     thisInstance.stop();
                     thisInstance.start();
                 }
@@ -101,23 +101,27 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
     public synchronized void start(){
         if (!mIsStarted) {
             if (mP2pManager != null && mP2pChannel != null) {
-                Log.i(TAG, "initialize: " + mIdentityString);
+                Log.i(TAG, "start: " + mIdentityString);
 
-                mServiceSearchTimeoutTimer.cancel();
-                mServiceSearchTimeoutTimer.start();
+                mPeerDiscoveryTimeoutTimer.cancel();
+                mPeerDiscoveryTimeoutTimer.start();
 
                 mWifiServiceAdvertiser = new WifiServiceAdvertiser(mP2pManager, mP2pChannel);
-                mWifiServiceAdvertiser.Start(mIdentityString, mServiceType);
+                mWifiServiceAdvertiser.start(mIdentityString, mServiceType);
 
                 mWifiServiceWatcher = new WifiServiceWatcher(mContext, mP2pManager, mP2pChannel, this, mServiceType);
-                mWifiServiceWatcher.initialize();
 
-                setIsStarted(true);
+                if (mWifiServiceWatcher.initialize() && mWifiServiceWatcher.start()) {
+                    setIsStarted(true);
+                } else {
+                    Log.e(TAG, "Failed to initialize and start the service watcher");
+                    stop();
+                }
             } else {
-                Log.e(TAG, "initialize: Missing critical P2P instances!");
+                Log.e(TAG, "start: Missing critical P2P instances!");
             }
         } else {
-            Log.w(TAG, "initialize: Already running, call stopListening() first to restart");
+            Log.w(TAG, "start: Already running, call stopListening() first to restart");
         }
     }
 
@@ -126,23 +130,24 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      */
     public synchronized void stop() {
         if (mIsStarted) {
-            Log.i(TAG, "Stopping services");
-            mServiceSearchTimeoutTimer.cancel();
-
-            if (mWifiServiceAdvertiser != null)
-            {
-                mWifiServiceAdvertiser.Stop();
-                mWifiServiceAdvertiser = null;
-            }
-
-            if (mWifiServiceWatcher != null)
-            {
-                mWifiServiceWatcher.deinitialize();
-                mWifiServiceWatcher = null;
-            }
-
-            setIsStarted(false);
+            Log.i(TAG, "stop: Stopping services");
         }
+
+        mPeerDiscoveryTimeoutTimer.cancel();
+
+        if (mWifiServiceAdvertiser != null)
+        {
+            mWifiServiceAdvertiser.stop();
+            mWifiServiceAdvertiser = null;
+        }
+
+        if (mWifiServiceWatcher != null)
+        {
+            mWifiServiceWatcher.deinitialize();
+            mWifiServiceWatcher = null;
+        }
+
+        setIsStarted(false);
     }
 
     /**
@@ -150,43 +155,47 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      * @param p2pDeviceList
      */
     @Override
-    public void onNewListOfPeersAvailable(Collection<WifiP2pDevice> p2pDeviceList) {
-        Log.i(TAG, "onNewListOfPeersAvailable: " + p2pDeviceList.size() + " peers discovered");
+    public void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
+        Log.i(TAG, "onP2pDeviceListChanged: " + p2pDeviceList.size() + " P2P devices discovered");
 
         if (p2pDeviceList.size() > 0) {
-            mServiceSearchTimeoutTimer.cancel();
-            mServiceSearchTimeoutTimer.start();
+            mPeerDiscoveryTimeoutTimer.cancel();
+            mPeerDiscoveryTimeoutTimer.start();
 
             int index = 0;
 
             for (WifiP2pDevice p2pDevice : p2pDeviceList) {
                 index++;
-                Log.i(TAG, "onNewListOfPeersAvailable: Peer " + index + ": " + p2pDevice.deviceName + " " + p2pDevice.deviceAddress);
+                Log.i(TAG, "onP2pDeviceListChanged: Peer " + index + ": " + p2pDevice.deviceName + " " + p2pDevice.deviceAddress);
             }
         } else {
-            mWifiPeerDiscoveryListener.onPeerListChanged(null);
+            if (mWifiPeerDiscoveryListener != null) {
+                mWifiPeerDiscoveryListener.onPeerListChanged(null);
+            }
         }
     }
 
     /**
      *
-     * @param peerDeviceList
+     * @param peerDevicePropertiesList
      */
     @Override
-    public void gotServicesList(List<PeerDevice> peerDeviceList) {
-        if (mWifiPeerDiscoveryListener != null && peerDeviceList != null && peerDeviceList.size() > 0) {
-            mWifiPeerDiscoveryListener.onPeerListChanged(peerDeviceList);
+    public void onServiceListChanged(List<PeerDeviceProperties> peerDevicePropertiesList) {
+        if (mWifiPeerDiscoveryListener != null
+                && peerDevicePropertiesList != null
+                && peerDevicePropertiesList.size() > 0) {
+            mWifiPeerDiscoveryListener.onPeerListChanged(peerDevicePropertiesList);
         }
     }
 
     /**
      *
-     * @param peerDevice
+     * @param peerDeviceProperties
      */
     @Override
-    public void foundService(PeerDevice peerDevice) {
+    public void onServiceDiscovered(PeerDeviceProperties peerDeviceProperties) {
         if (mWifiPeerDiscoveryListener != null) {
-            mWifiPeerDiscoveryListener.onPeerDiscovered(peerDevice);
+            mWifiPeerDiscoveryListener.onPeerDiscovered(peerDeviceProperties);
         }
     }
 
@@ -195,10 +204,12 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
      * @param isStarted
      */
     private void setIsStarted(boolean isStarted) {
-        mIsStarted = isStarted;
+        if (mIsStarted != isStarted) {
+            mIsStarted = isStarted;
 
-        if (mWifiPeerDiscoveryListener != null) {
-            mWifiPeerDiscoveryListener.onIsDiscoveryStartedChanged(mIsStarted);
+            if (mWifiPeerDiscoveryListener != null) {
+                mWifiPeerDiscoveryListener.onIsDiscoveryStartedChanged(mIsStarted);
+            }
         }
     }
 }

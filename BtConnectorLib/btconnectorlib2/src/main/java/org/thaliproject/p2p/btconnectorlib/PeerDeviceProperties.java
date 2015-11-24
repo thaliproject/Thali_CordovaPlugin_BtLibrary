@@ -6,31 +6,32 @@ package org.thaliproject.p2p.btconnectorlib;
 /**
  *
  */
-public class PeerDevice {
+public class PeerDeviceProperties {
     /**
      * Constructor.
      * @param peerId
      * @param peerName
-     * @param peerAddress
+     * @param peerBluetoothAddress
      * @param serviceType
      * @param deviceAddress
      * @param deviceName
      */
-    public PeerDevice(
-            String peerId, String peerName, String peerAddress,
+    public PeerDeviceProperties(
+            String peerId, String peerName, String peerBluetoothAddress,
             String serviceType, String deviceAddress, String deviceName) {
         this.peerId = peerId;
         this.peerName = peerName;
-        this.peerAddress = peerAddress;
+        this.peerBluetoothAddress = peerBluetoothAddress;
         this.serviceType = serviceType;
-        this.deviceAddress = deviceAddress;
         this.deviceName =  deviceName;
+        this.deviceAddress = deviceAddress;
+
     }
 
     final public String peerId;
     final public String peerName;
-    final public String peerAddress;
+    final public String peerBluetoothAddress;
     final public String serviceType;
-    final public String deviceAddress;
     final public String deviceName;
+    final public String deviceAddress;
 }
