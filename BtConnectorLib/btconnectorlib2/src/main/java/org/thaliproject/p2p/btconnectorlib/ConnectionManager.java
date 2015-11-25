@@ -90,6 +90,8 @@ public class ConnectionManager implements
     private UUID mMyUuid = null;
     private String mMyName = null;
     private String mServiceType = null;
+    private String mMyPeerId = null;
+    private String mMyPeerName = null;
 
     /**
      * Constructor.
@@ -128,29 +130,21 @@ public class ConnectionManager implements
         deinitialize();
         Log.i(TAG, "initialize: " + myPeerId + " " + myPeerName);
 
+        mMyPeerId = myPeerId;
+        mMyPeerName = myPeerName;
+
         boolean servicesSupported = (mBluetoothManager.initialize() && mWifiDirectManager.initialize());
         boolean isBluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
         boolean isWifiEnabled = mWifiDirectManager.isWifiEnabled();
 
         if (servicesSupported) {
-            if (isBluetoothEnabled) {
-                try {
-                    mMyIdentityString = CommonUtils.createIdentityString(
-                            myPeerId, myPeerName, mBluetoothManager.getBluetoothAddress());
-                } catch (JSONException e) {
-                    Log.e(TAG, "initialize: Failed create an identity string: " + e.getMessage(), e);
-                }
-
-                Log.i(TAG, "initialize: Bluetooth OK, my identity string is: " + mMyIdentityString);
-
-                if (isWifiEnabled) {
-                    Log.i(TAG, "initialize: Success");
-                    setState(ConnectionManagerState.INITIALIZED);
-                    start();
-                } else {
-                    Log.w(TAG, "initialize: Wi-Fi disabled, waiting for it to be enabled...");
-                    setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                }
+            if (isBluetoothEnabled && isWifiEnabled) {
+                Log.i(TAG, "initialize: Bluetooth and Wi-Fi OK");
+                setState(ConnectionManagerState.INITIALIZED);
+                start();
+            } else {
+                Log.w(TAG, "initialize: Bluetooth or Wi-Fi disabled, waiting for them to be enabled...");
+                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
             }
         } else {
             Log.e(TAG, "initialize: Bluetooth or Wi-Fi Direct not supported");
@@ -175,7 +169,7 @@ public class ConnectionManager implements
      * @return True, if started successfully or was already running. False otherwise.
      */
     public synchronized boolean start() {
-        if (mState == ConnectionManagerState.INITIALIZED) {
+        if (mState == ConnectionManagerState.INITIALIZED && verifyIdentityString()) {
             if (mBluetoothConnector == null) {
                 BluetoothAdapter bluetoothAdapter = mBluetoothManager.getBluetoothAdapter();
 
@@ -195,7 +189,9 @@ public class ConnectionManager implements
         } else if (mState == ConnectionManagerState.RUNNING) {
             Log.w(TAG, "start: Already running, call stop() first in order to restart");
         } else {
-            Log.e(TAG, "start: Cannot be started due to invalid state: " + mState.toString());
+            String identityString = (mMyIdentityString != null) ? mMyIdentityString : "<null>";
+            Log.e(TAG, "start: Cannot be started due to invalid state or missing identity string, "
+                + "state is " + mState.toString() + " and identity string: " + identityString);
         }
 
         return (mState == ConnectionManagerState.RUNNING);
@@ -485,5 +481,26 @@ public class ConnectionManager implements
                 });
             }
         }
+    }
+
+    /**
+     * Verifies the validity of our identity string. If the not yet created, will try to create it.
+     * If the identity string already exists, it won't be recreated.
+     * @return True, if the identity string is OK (i.e. not empty). False otherwise.
+     */
+    private boolean verifyIdentityString() {
+        if ((mMyIdentityString == null || mMyIdentityString.length() == 0)
+                && mMyPeerId != null && mMyPeerName != null
+                && mBluetoothManager.isBluetoothEnabled()) {
+            try {
+                mMyIdentityString = CommonUtils.createIdentityString(
+                        mMyPeerId, mMyPeerName, mBluetoothManager.getBluetoothAddress());
+                Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
+            } catch (JSONException e) {
+                Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
+            }
+        }
+
+        return (mMyIdentityString != null && mMyIdentityString.length() > 0);
     }
 }
