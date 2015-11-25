@@ -190,8 +190,9 @@ public class ConnectionManager implements
             Log.w(TAG, "start: Already running, call stop() first in order to restart");
         } else {
             String identityString = (mMyIdentityString != null) ? mMyIdentityString : "<null>";
-            Log.e(TAG, "start: Cannot be started due to invalid state or missing identity string, "
-                + "state is " + mState.toString() + " and identity string: " + identityString);
+            Log.e(TAG, "start: Cannot be started due to invalid state (\""
+                    + mState.toString() + "\") or missing identity string (\""
+                    + identityString + "\"). Try calling initialize() first.");
         }
 
         return (mState == ConnectionManagerState.RUNNING);
