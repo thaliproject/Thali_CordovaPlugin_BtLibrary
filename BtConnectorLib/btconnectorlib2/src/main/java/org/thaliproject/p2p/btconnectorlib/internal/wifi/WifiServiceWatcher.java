@@ -370,6 +370,7 @@ class WifiServiceWatcher {
                     // Restart after awhile unless we find services
                     mDiscoveryTimeoutTimer.cancel();
                     mDiscoveryTimeoutTimer.start();
+                    startServiceDiscovery();
                 } // Else we'll just wait
             } else {
                 Log.w(TAG, "Got a list of peers, but since we are currently discovering services (not peers), the new list is ignored");
@@ -456,12 +457,12 @@ class WifiServiceWatcher {
                         WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED);
 
                 if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED) {
-                    Log.i(TAG, "ServiceSearcherReceiver.onReceive: Wi-Fi P2P discovery stopped, restarting...");
+                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery stopped, restarting...");
                     restart();
                 } else if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED) {
-                    Log.i(TAG, "ServiceSearcherReceiver.onReceive: Wi-Fi P2P discovery started");
+                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery started");
                 } else {
-                    Log.i(TAG, "ServiceSearcherReceiver.onReceive: Wi-Fi P2P discovery state changed to " + state);
+                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery state changed to " + state);
                 }
             }
         }
