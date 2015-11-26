@@ -112,6 +112,8 @@ class WifiServiceWatcher {
             }
         };
 
+        final WifiServiceWatcher wifiServiceWatcher = this;
+
         mStartTimer = new CountDownTimer(
                 START_DISCOVERY_DELAY_IN_MILLISECONDS,
                 START_DISCOVERY_TIMER_INTERVAL_IN_MILLISECONDS) {
@@ -122,7 +124,7 @@ class WifiServiceWatcher {
             public void onFinish() {
                 Log.i(TAG, "Start timer timeout, starting now...");
                 mStartTimer.cancel();
-                start();
+                wifiServiceWatcher.start();
             }
         };
     }
@@ -149,6 +151,7 @@ class WifiServiceWatcher {
             if (mPeerDiscoveryBroadcastReceiver != null) {
                 mP2pManager.setDnsSdResponseListeners(mP2pChannel, mDnsSdServiceResponseListener, null);
                 mIsInitialized = true;
+                Log.i(TAG, "initialize: Success");
             }
         }
 
