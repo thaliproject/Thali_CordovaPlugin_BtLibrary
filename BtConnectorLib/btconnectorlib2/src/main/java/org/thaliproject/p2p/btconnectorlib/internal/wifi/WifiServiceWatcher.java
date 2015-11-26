@@ -55,8 +55,10 @@ class WifiServiceWatcher {
     }
 
     private static final String TAG = WifiServiceWatcher.class.getName();
-    private static final long DISCOVERY_TIMEOUT_IN_MILLISECONDS = 300000;
+    private static final long DISCOVERY_TIMEOUT_IN_MILLISECONDS = 30000;
     private static final long DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long START_DISCOVERY_DELAY_IN_MILLISECONDS = 5000;
+    private static final long START_DISCOVERY_TIMER_INTERVAL_IN_MILLISECONDS = DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS;
     private static final long START_SERVICE_DISCOVERY_DELAY_IN_MILLISECONDS = 1000;
     private final Context mContext;
     private final WifiP2pManager mP2pManager;
@@ -65,6 +67,7 @@ class WifiServiceWatcher {
     private final String mServiceType;
     private final CopyOnWriteArrayList<PeerDeviceProperties> mPeerDevicePropertiesList;
     private final CountDownTimer mDiscoveryTimeoutTimer;
+    private final CountDownTimer mStartTimer;
     private BroadcastReceiver mPeerDiscoveryBroadcastReceiver = null;
     private PeerListListener mPeerListListener = null;
     private DnsSdServiceResponseListener mDnsSdServiceResponseListener = null;
@@ -103,8 +106,23 @@ class WifiServiceWatcher {
             }
 
             public void onFinish() {
-                Log.i(TAG, "Got service discovery timeout");
+                Log.i(TAG, "Got discovery timeout, restarting...");
+                mDiscoveryTimeoutTimer.cancel();
                 restart();
+            }
+        };
+
+        mStartTimer = new CountDownTimer(
+                START_DISCOVERY_DELAY_IN_MILLISECONDS,
+                START_DISCOVERY_TIMER_INTERVAL_IN_MILLISECONDS) {
+            public void onTick(long millisUntilFinished) {
+                // Not used
+            }
+
+            public void onFinish() {
+                Log.i(TAG, "Start timer timeout, starting now...");
+                mStartTimer.cancel();
+                start();
             }
         };
     }
@@ -167,12 +185,12 @@ class WifiServiceWatcher {
         if (mIsInitialized && (!mIsPeerDiscoveryStarted || mIsRestartPending)) {
             Log.i(TAG, "start: Starting peer discovery...");
             mIsRestartPending = false;
-            final WifiServiceWatcher thisInstance = this;
 
             mP2pManager.discoverPeers(mP2pChannel, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    thisInstance.mIsPeerDiscoveryStarted = true;
+                    mStartTimer.cancel();
+                    mIsPeerDiscoveryStarted = true;
                     Log.i(TAG, "Peer discovery started successfully");
                 }
 
@@ -207,16 +225,16 @@ class WifiServiceWatcher {
         }
 
         stopServiceDiscovery();
-        final WifiServiceWatcher thisInstance = this;
 
         mP2pManager.stopPeerDiscovery(mP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
                 Log.i(TAG, "Peer discovery stopped successfully");
-                thisInstance.mIsPeerDiscoveryStarted = false;
+                mIsPeerDiscoveryStarted = false;
 
-                if (thisInstance.mIsRestartPending) {
-                    thisInstance.start();
+                if (mIsRestartPending) {
+                    mStartTimer.cancel();
+                    mStartTimer.start();
                 }
             }
 
@@ -224,8 +242,9 @@ class WifiServiceWatcher {
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to shutdown peer discovery, got error code: " + reason);
 
-                if (thisInstance.mIsRestartPending) {
-                    thisInstance.start();
+                if (mIsRestartPending) {
+                    mStartTimer.cancel();
+                    mStartTimer.start();
                 }
             }
         });
@@ -268,7 +287,7 @@ class WifiServiceWatcher {
                                 @Override
                                 public void onSuccess() {
                                     Log.i(TAG, "Service discovery started successfully");
-                                    mIsServiceDiscoveryStarted = true;
+                                    thisInstance.mIsServiceDiscoveryStarted = true;
                                     thisInstance.mPeerDevicePropertiesList.clear();
                                     thisInstance.mServiceWatcherListener.onServiceListChanged(mPeerDevicePropertiesList);
                                 }
@@ -276,11 +295,11 @@ class WifiServiceWatcher {
                                 @Override
                                 public void onFailure(int reason) {
                                     Log.e(TAG, "Failed to start the service discovery, got error code: " + reason);
-                                    stopServiceDiscovery();
+                                    thisInstance.stopServiceDiscovery();
 
                                     // Try again after awhile
-                                    mDiscoveryTimeoutTimer.cancel();
-                                    mDiscoveryTimeoutTimer.start();
+                                    thisInstance.mDiscoveryTimeoutTimer.cancel();
+                                    thisInstance.mDiscoveryTimeoutTimer.start();
                                 }
                             });
                         }
