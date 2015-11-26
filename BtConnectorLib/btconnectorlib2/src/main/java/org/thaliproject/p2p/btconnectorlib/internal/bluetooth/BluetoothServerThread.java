@@ -81,7 +81,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      */
     @Override
     public void run() {
-        Log.i(TAG, "Thread started");
+        Log.i(TAG, "Entering thread");
 
         while (!mStopThread) {
             Log.i(TAG, "Waiting for incoming connections...");
@@ -119,7 +119,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
             }
         }
 
-        Log.i(TAG, "Thread stopping");
+        Log.i(TAG, "Exiting thread");
         mListener.onServerStopped();
     }
 
@@ -158,7 +158,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesRead: Read " + size + "bytes successfully (thread ID: " + threadId + ")");
+        Log.i(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
         String identityString = new String(bytes);
         PeerProperties peerProperties = new PeerProperties();
         boolean resolvedPropertiesOk = false;

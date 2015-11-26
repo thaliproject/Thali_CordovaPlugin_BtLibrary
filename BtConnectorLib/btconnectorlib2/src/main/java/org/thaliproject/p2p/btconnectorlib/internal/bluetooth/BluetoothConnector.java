@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- *
+ * The main Bluetooth connectivity interface managing both incoming and outgoing connections.
  */
 public class BluetoothConnector
         implements BluetoothServerThread.Listener, BluetoothClientThread.Listener {
@@ -66,12 +66,12 @@ public class BluetoothConnector
 
     /**
      * Constructor.
-     * @param context
-     * @param listener
-     * @param bluetoothAdapter
-     * @param myBluetoothUuid
-     * @param myBluetoothName
-     * @param myIdentityString
+     * @param context The application context.
+     * @param listener The listener.
+     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param myBluetoothUuid The Bluetooth UUID.
+     * @param myBluetoothName Our Bluetooth name.
+     * @param myIdentityString Our identity.
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
@@ -254,7 +254,7 @@ public class BluetoothConnector
     }
 
     /**
-     *
+     * Forward the event to the listener.
      * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
      * @param peerProperties The peer properties.
      */
@@ -280,7 +280,7 @@ public class BluetoothConnector
     }
 
     /**
-     *
+     * Forward the event to the listener.
      * @param reason The reason for the failure.
      */
     @Override
@@ -314,7 +314,7 @@ public class BluetoothConnector
     }
 
     /**
-     *
+     * Forward the event to the listener.
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
      * @param peerProperties The peer properties.
      */
@@ -341,8 +341,7 @@ public class BluetoothConnector
     }
 
     /**
-     *
-     *
+     * Forward the event to the listener.
      * @param reason The reason for the failure.
      * @param peerProperties The peer properties.
      */

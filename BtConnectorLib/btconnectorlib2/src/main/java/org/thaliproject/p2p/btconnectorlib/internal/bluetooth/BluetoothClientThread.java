@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 /**
- *
+ * Thread for initiating outgoing connections.
  */
 class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Listener {
     /**
@@ -42,6 +42,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     private final BluetoothSocket mSocket;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
+    private boolean mIsShuttingDown = false;
 
     /**
      * Constructor.
@@ -74,6 +75,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * handle the connecting process.
      */
     public void run() {
+        Log.i(TAG, "Entering thread");
         boolean wasSuccessful = false;
         String errorMessage = "Unknown error";
 
@@ -91,6 +93,12 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         }
 
         if (!wasSuccessful) {
+            if (!mIsShuttingDown) {
+                Log.e(TAG, "Failed to connect to socket/initiate handshake");
+            } else {
+                mIsShuttingDown = false;
+            }
+
             if (mHandshakeThread != null) {
                 mHandshakeThread.close(false);
                 mHandshakeThread = null;
@@ -103,9 +111,9 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             }
 
             mListener.onConnectionFailed(errorMessage, mPeerProperties);
-        } else {
-            Log.i(TAG, "run: Success");
         }
+
+        Log.i(TAG, "Exiting thread");
     }
 
     /**
@@ -113,6 +121,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      */
     public synchronized void shutdown() {
         Log.i(TAG, "shutdown");
+        mIsShuttingDown = true;
 
         if (mHandshakeThread != null) {
             mHandshakeThread.close(false);
@@ -154,7 +163,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesRead: Read " + size + "bytes successfully (thread ID: " + threadId + ")");
+        Log.i(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
         String identityString = new String(bytes);
         PeerProperties peerProperties = new PeerProperties();
         boolean resolvedPropertiesOk = false;

@@ -26,13 +26,13 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import static android.net.wifi.p2p.WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION;
 
-
 /**
- *
+ * Watcher for Wi-Fi P2P services (peers) matching the desired service type and which also have a
+ * valid identity.
  */
 class WifiServiceWatcher {
     /**
-     *
+     * Service (peer) discovery listener.
      */
     public interface WifiServiceWatcherListener {
         /**
@@ -75,11 +75,11 @@ class WifiServiceWatcher {
 
     /**
      * Constructor.
-     * @param context
-     * @param p2pManager
-     * @param p2pChannel
-     * @param listener
-     * @param serviceType
+     * @param context The application context.
+     * @param p2pManager The Wi-Fi P2P manager.
+     * @param p2pChannel The Wi-Fi P2P channel.
+     * @param listener The listener.
+     * @param serviceType The service type.
      */
     public WifiServiceWatcher(
             Context context, WifiP2pManager p2pManager, WifiP2pManager.Channel p2pChannel,
@@ -158,7 +158,7 @@ class WifiServiceWatcher {
     }
 
     /**
-     *
+     * Starts peer discovery.
      * @return True, if successful or already started. False otherwise.
      */
     public synchronized boolean start() {
@@ -378,11 +378,12 @@ class WifiServiceWatcher {
     }
 
     /**
-     *
+     * Custom listener for services (peers).
      */
     private class MyDnsSdServiceResponseListener implements WifiP2pManager.DnsSdServiceResponseListener {
         /**
-         *
+         * Handles found services. Checks if the service type matches ours and that the received
+         * identity string is valid. Notifies the listener, when peers are found.
          * @param identityString
          * @param serviceType
          * @param p2pDevice
@@ -432,9 +433,12 @@ class WifiServiceWatcher {
         }
     }
 
+    /**
+     * Broadcast receiver for WIFI P2P state changes.
+     */
     private class PeerDiscoveryBroadcastReceiver extends BroadcastReceiver {
         /**
-         *
+         * Handles the P2P state changes.
          * @param context
          * @param intent
          */

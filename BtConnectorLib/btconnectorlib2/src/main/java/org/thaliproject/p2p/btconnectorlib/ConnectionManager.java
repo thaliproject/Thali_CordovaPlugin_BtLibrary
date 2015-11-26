@@ -160,7 +160,7 @@ public class ConnectionManager implements
     public synchronized void deinitialize() {
         stop();
         mBluetoothManager.deinitialize();
-        mWifiDirectManager.deinitialize();;
+        mWifiDirectManager.deinitialize();
         setState(ConnectionManagerState.NOT_INITIALIZED);
     }
 
@@ -203,7 +203,10 @@ public class ConnectionManager implements
      * Calling this method does nothing, if the services are not running.
      */
     public synchronized void stop() {
-        Log.i(TAG, "stop");
+        if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
+                && mState != ConnectionManagerState.RUNNING) {
+            Log.i(TAG, "stop: Stopping Bluetooth and peer discovery...");
+        }
 
         if (mBluetoothConnector != null) {
             mBluetoothConnector.shutdown();
@@ -211,7 +214,11 @@ public class ConnectionManager implements
         }
 
         stopWifiPeerDiscovery();
-        setState(ConnectionManagerState.INITIALIZED);
+
+        if (mState != ConnectionManagerState.NOT_INITIALIZED) {
+            // We were initialized before and that does not change even when stopped
+            setState(ConnectionManagerState.INITIALIZED);
+        }
     }
 
     /**
@@ -262,6 +269,8 @@ public class ConnectionManager implements
         boolean success = false;
 
         if (deviceToConnectTo != null) {
+            Log.i(TAG, "connect: " + deviceToConnectTo.deviceName);
+
             try {
                 BluetoothDevice device = mBluetoothManager.getRemoteDevice(deviceToConnectTo.peerBluetoothAddress);
 
@@ -318,6 +327,8 @@ public class ConnectionManager implements
      */
     @Override
     public void onWifiStateChanged(int state) {
+        Log.i(TAG, "onWifiStateChanged: State changed to " + state);
+
         if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onWifiStateChanged: Bluetooth or Wi-Fi disabled, stopping Wi-Fi peer discovery...");
@@ -432,6 +443,8 @@ public class ConnectionManager implements
      */
     @Override
     public void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties) {
+        Log.i(TAG, "onPeerDiscovered");
+
         if (mListener != null) {
             final PeerDeviceProperties tempPeerDeviceProperties = peerDeviceProperties;
 
@@ -450,6 +463,8 @@ public class ConnectionManager implements
      */
     @Override
     public void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList) {
+        Log.i(TAG, "onPeerListChanged");
+
         if (mListener != null) {
             final List<PeerDeviceProperties> tempPeerDevicePropertiesList = peerDevicePropertiesList;
 

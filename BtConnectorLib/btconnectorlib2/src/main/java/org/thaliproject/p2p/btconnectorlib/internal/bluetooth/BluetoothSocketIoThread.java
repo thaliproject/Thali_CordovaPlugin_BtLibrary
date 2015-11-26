@@ -90,7 +90,7 @@ class BluetoothSocketIoThread extends Thread {
      */
     @Override
     public void run() {
-        Log.i(TAG, "Thread started");
+        Log.i(TAG, "Entering thread (ID: " + getId() + ")");
         byte[] buffer = new byte[BUFFER_SIZE_IN_BYTES];
         int numberOfBytesRead;
 
@@ -102,7 +102,7 @@ class BluetoothSocketIoThread extends Thread {
             mHandler.onDisconnected(e.getMessage(), this);
         }
 
-        Log.i(TAG, "Thread stopping");
+        Log.i(TAG, "Exiting thread (ID: " + getId() + ")");
     }
 
     /**
