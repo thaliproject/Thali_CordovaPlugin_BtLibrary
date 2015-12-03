@@ -64,7 +64,8 @@ public class ConnectionManager
      * Constructor.
      * @param context The application context.
      * @param listener The listener.
-     * @param myUuid Our UUID.
+     * @param myUuid Our UUID. Note that his has to match the one of the peers we are trying to
+     *               connect to, otherwise any connection attempt will fail.
      * @param myName Our name.
      */
     public ConnectionManager(
@@ -83,9 +84,15 @@ public class ConnectionManager
 
     /**
      * Initializes the components and starts the listener for incoming connections.
+     * @param myPeerId Our peer ID (used for the identity).
+     * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public boolean start() {
+    public boolean start(String myPeerId, String myPeerName) {
+        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
+        mMyPeerId = myPeerId;
+        mMyPeerName = myPeerName;
+
         switch (mState) {
             case NOT_STARTED:
                 if (mBluetoothManager.bind(this)) {
@@ -191,14 +198,14 @@ public class ConnectionManager
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting...");
-                start();
+                start(mMyPeerId, mMyPeerName);
             }
         }
     }
 
     /**
      * Does nothing but logs the event.
-     * @param bluetoothDeviceName The mName of the Bluetooth device connecting to.
+     * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
      * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
      */
     @Override

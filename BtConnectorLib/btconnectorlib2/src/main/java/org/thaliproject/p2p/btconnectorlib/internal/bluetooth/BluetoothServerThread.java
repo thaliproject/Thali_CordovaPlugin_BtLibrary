@@ -54,7 +54,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param myBluetoothUuid Our Bluetooth UUID for the server socket.
-     * @param myBluetoothName Our Bluetooth mName for the server socket.
+     * @param myBluetoothName Our Bluetooth name for the server socket.
      * @param myIdentityString The identity string for the response.
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
      * @throws IOException Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.

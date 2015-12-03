@@ -8,7 +8,7 @@ package org.thaliproject.p2p.btconnectorlib;
  */
 public class PeerProperties {
     private String mId; // The peer ID
-    private String mName; // The peer mName
+    private String mName; // The peer name
     private String mBluetoothAddress;
     private String mServiceType;
     private String mDeviceName;
@@ -23,7 +23,7 @@ public class PeerProperties {
     /**
      * Constructor.
      * @param id The peer ID.
-     * @param name The peer mName.
+     * @param name The peer name.
      * @param bluetoothAddress The Bluetooth address of the peer.
      */
     public PeerProperties(String id, String name, String bluetoothAddress) {
@@ -38,11 +38,11 @@ public class PeerProperties {
     /**
      * Constructor.
      * @param id The peer ID.
-     * @param name The peer mName.
+     * @param name The peer name.
      * @param bluetoothAddress The Bluetooth address of the peer.
      * @param serviceType The service type of the peer.
      * @param deviceAddress The device address of the peer.
-     * @param deviceName The device mName of the peer.
+     * @param deviceName The device name of the peer.
      */
     public PeerProperties(
             String id, String name, String bluetoothAddress,

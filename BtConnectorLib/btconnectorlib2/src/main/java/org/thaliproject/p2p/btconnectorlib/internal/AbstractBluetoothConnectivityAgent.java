@@ -6,7 +6,8 @@ import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 
 /**
- *
+ * An abstract base class for classes utilizing Bluetooth connectivity and need to validate the
+ * identity string. For internal use of the library only.
  */
 public abstract class AbstractBluetoothConnectivityAgent implements BluetoothManager.BluetoothManagerListener {
     protected static String TAG = AbstractBluetoothConnectivityAgent.class.getName();
