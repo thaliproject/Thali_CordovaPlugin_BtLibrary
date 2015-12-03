@@ -39,7 +39,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     private static final String TAG = BluetoothClientThread.class.getName();
     private final String mMyIdentityString;
     private final Listener mListener;
-    private final BluetoothSocket mSocket;
+    private BluetoothSocket mSocket = null;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private boolean mIsShuttingDown = false;
@@ -75,21 +75,43 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * handle the connecting process.
      */
     public void run() {
-        Log.i(TAG, "Entering thread");
+        Log.d(TAG, "Entering thread");
+        boolean socketConnectSucceeded = false;
         boolean wasSuccessful = false;
         String errorMessage = "Unknown error";
 
         try {
             Log.i(TAG, "Trying to connect...");
             mSocket.connect(); // Blocking call
-            mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
-            mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
-            mHandshakeThread.start();
-            Log.i(TAG, "Outgoing connection initialized (thread ID: " + mHandshakeThread.getId() + ")");
-            wasSuccessful = mHandshakeThread.write(mMyIdentityString.getBytes());
+            socketConnectSucceeded = true;
         } catch (IOException e) {
-            errorMessage = "Either the socket connection or the construction of a handshake thread failed: " + e.getMessage();
-            Log.e(TAG, errorMessage, e);
+            BluetoothSocket newSocket = BluetoothUtils.createBluetoothSocketWithNextChannel(mSocket, false);
+
+            if (newSocket != null) {
+                mSocket = newSocket;
+
+                try {
+                    mSocket.connect(); // Again blocking
+                    socketConnectSucceeded = true;
+                } catch (IOException e2) {
+                    errorMessage = "Socket connect failures: \"" + e.getMessage() + "\" and \"" + e2.getMessage() + "\"";
+                    Log.e(TAG, errorMessage, e);
+                    Log.e(TAG, errorMessage, e2);
+                }
+            }
+        }
+
+        if (socketConnectSucceeded) {
+            try {
+                mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
+                mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                mHandshakeThread.start();
+                Log.d(TAG, "Outgoing connection initialized (thread ID: " + mHandshakeThread.getId() + ")");
+                wasSuccessful = mHandshakeThread.write(mMyIdentityString.getBytes());
+            } catch (IOException e) {
+                errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
+                Log.e(TAG, errorMessage, e);
+            }
         }
 
         if (!wasSuccessful) {
@@ -113,7 +135,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mListener.onConnectionFailed(errorMessage, mPeerProperties);
         }
 
-        Log.i(TAG, "Exiting thread");
+        Log.d(TAG, "Exiting thread");
     }
 
     /**
@@ -163,7 +185,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
+        Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
         String identityString = new String(bytes);
         PeerProperties peerProperties = new PeerProperties();
         boolean resolvedPropertiesOk = false;
@@ -208,7 +230,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesWritten(byte[] buffer, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
+        Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
     }
 
     /**
