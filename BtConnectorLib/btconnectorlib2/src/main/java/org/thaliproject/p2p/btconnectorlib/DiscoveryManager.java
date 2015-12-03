@@ -73,7 +73,6 @@ public class DiscoveryManager
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryMode mDiscoveryMode = DiscoveryMode.NOT_SET;
 
-
     /**
      * Constructor.
      * @param context
