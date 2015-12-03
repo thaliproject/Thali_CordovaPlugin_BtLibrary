@@ -10,7 +10,7 @@ import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -25,7 +25,7 @@ public class BluetoothConnector
     public interface BluetoothConnectorListener {
         /**
          * Called when connecting to a Bluetooth device.
-         * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
+         * @param bluetoothDeviceName The mName of the Bluetooth device connecting to.
          * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
          */
         void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress);
@@ -70,7 +70,7 @@ public class BluetoothConnector
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param myBluetoothUuid The Bluetooth UUID.
-     * @param myBluetoothName Our Bluetooth name.
+     * @param myBluetoothName Our Bluetooth mName.
      * @param myIdentityString Our identity.
      */
     public BluetoothConnector(
@@ -180,12 +180,12 @@ public class BluetoothConnector
      * Note that even if this method returns successfully, the connection is not yet established,
      * but the connection process is merely initiated.
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param myBluetoothUuid Our own Bluetooth UUID.
      * @param peerProperties The properties of the peer to connect to.
+     * @param myBluetoothUuid Our own Bluetooth UUID.
      * @return True, if started trying to connect successfully. False otherwise.
      */
     public synchronized boolean connect(
-            BluetoothDevice bluetoothDeviceToConnectTo, UUID myBluetoothUuid, PeerProperties peerProperties) {
+            BluetoothDevice bluetoothDeviceToConnectTo, PeerProperties peerProperties, UUID myBluetoothUuid) {
 
         boolean wasSuccessful = false;
         String errorMessage = "";
@@ -228,29 +228,6 @@ public class BluetoothConnector
         }
 
         return wasSuccessful;
-    }
-
-    /**
-     * Tries to connect to the given Bluetooth device.
-     * Note that even if this method returns successfully, the connection is not yet established,
-     * but the connection process is merely initiated.
-     * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param myBluetoothUuid Our own Bluetooth UUID.
-     * @param peerId The peer ID.
-     * @param peerName The peer name.
-     * @param peerBluetoothAddress The Bluetooth address of the peer.
-     * @return True, if started trying to connect successfully. False otherwise.
-     */
-    public synchronized boolean connect(
-            BluetoothDevice bluetoothDeviceToConnectTo, UUID myBluetoothUuid,
-            String peerId, String peerName, String peerBluetoothAddress) {
-
-        PeerProperties peerProperties = new PeerProperties();
-        peerProperties.id = peerId;
-        peerProperties.name = peerName;
-        peerProperties.bluetoothAddress = peerBluetoothAddress;
-
-        return connect(bluetoothDeviceToConnectTo, myBluetoothUuid, peerProperties);
     }
 
     /**

@@ -7,8 +7,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 import org.json.JSONException;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
 
