@@ -20,7 +20,7 @@ public class CommonUtils {
     /**
      * Creates an identity string based on the given arguments.
      * @param peerId The peer ID.
-     * @param peerName The peer mName.
+     * @param peerName The peer name.
      * @param peerBluetoothAddress The Bluetooth address of the peer.
      * @return An identity string or null in case of a failure.
      * @throws JSONException

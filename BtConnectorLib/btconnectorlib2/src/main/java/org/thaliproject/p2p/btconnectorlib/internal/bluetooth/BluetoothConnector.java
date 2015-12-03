@@ -25,7 +25,7 @@ public class BluetoothConnector
     public interface BluetoothConnectorListener {
         /**
          * Called when connecting to a Bluetooth device.
-         * @param bluetoothDeviceName The mName of the Bluetooth device connecting to.
+         * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
          * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
          */
         void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress);
@@ -69,7 +69,7 @@ public class BluetoothConnector
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param myBluetoothUuid The Bluetooth UUID.
-     * @param myBluetoothName Our Bluetooth mName.
+     * @param myBluetoothName Our Bluetooth name.
      * @param myIdentityString Our identity.
      */
     public BluetoothConnector(

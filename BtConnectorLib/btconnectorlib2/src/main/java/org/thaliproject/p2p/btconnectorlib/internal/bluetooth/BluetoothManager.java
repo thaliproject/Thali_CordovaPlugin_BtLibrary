@@ -3,12 +3,16 @@
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
 import java.util.ArrayList;
 
@@ -110,12 +114,31 @@ public class BluetoothManager {
         return isSupported;
     }
 
-    /**
-     *
-     * @return
-     */
     public boolean isBleSupported() {
-        return false;
+        return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
+    }
+
+    @TargetApi(18)
+    @SuppressLint("NewApi")
+    public boolean isBleAdvertisingSupported() {
+        boolean isSupported = false;
+
+        if (isBleSupported()) {
+            android.bluetooth.BluetoothManager androidBluetoothManager =
+                    (android.bluetooth.BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+
+            if (androidBluetoothManager != null) {
+                BluetoothAdapter bluetoothAdapter = androidBluetoothManager.getAdapter();
+
+                if (bluetoothAdapter != null) {
+                    isSupported = bluetoothAdapter.isMultipleAdvertisementSupported();
+                }
+            } else {
+                isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+            }
+        }
+
+        return isSupported;
     }
 
     public boolean isBluetoothEnabled() {

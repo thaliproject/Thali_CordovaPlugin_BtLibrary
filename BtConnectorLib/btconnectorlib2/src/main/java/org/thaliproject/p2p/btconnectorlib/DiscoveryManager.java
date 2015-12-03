@@ -14,7 +14,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
 import java.util.List;
 
 /**
- *
+ * The main interface for managing peer discovery.
  */
 public class DiscoveryManager
         extends AbstractBluetoothConnectivityAgent
@@ -51,6 +51,12 @@ public class DiscoveryManager
          * @param peerProperties The properties of the new peer.
          */
         void onPeerDiscovered(PeerProperties peerProperties);
+
+        /**
+         * Called when an existing peer is lost (i.e. not available anymore).
+         * @param peerProperties The properties of the lost peer.
+         */
+        void onPeerLost(PeerProperties peerProperties);
     }
 
     private static final String TAG = DiscoveryManager.class.getName();
@@ -85,54 +91,91 @@ public class DiscoveryManager
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
 
         if (!setDiscoveryMode(DEFAULT_DISCOVERY_MODE)) {
-            // Fallback to Wi-Fi Direct
+            // Try to fallback to Wi-Fi Direct
             setDiscoveryMode(DiscoveryMode.WIFI);
         }
     }
 
+    public DiscoveryMode getDiscoveryMode() {
+        return mDiscoveryMode;
+    }
+
     /**
-     *
-     * @param discoveryMode
-     * @return
+     * Sets the discovery mode.
+     * @param discoveryMode The discovery mode to set.
+     * @param forceRestart If true and the discovery was running, will try to do a restart.
+     * @return True, if the mode was set. False otherwise (likely because not supported). Note that,
+     * if forceRestarts was true, false is also be returned in case the restart fails.
      */
-    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode) {
+    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean forceRestart) {
+        boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
         boolean discoveryModeSet = false;
 
-        switch (discoveryMode) {
-            case BLE:
-                if (mBluetoothManager.isBleSupported()) {
-                    mDiscoveryMode = discoveryMode;
-                    discoveryModeSet = true;
-                }
-
-                break;
-
-            case WIFI:
-                mDiscoveryMode = discoveryMode;
-                discoveryModeSet = true;
-                break;
-
-            case BLE_AND_WIFI:
-                if (mBluetoothManager.isBleSupported() && mWifiDirectManager.isWifiDirectSupported()) {
-                    mDiscoveryMode = discoveryMode;
-                    discoveryModeSet = true;
-                }
-
-                break;
+        if (wasRunning && forceRestart) {
+            stop();
         }
 
-        if (!discoveryModeSet) {
-            mDiscoveryMode = DiscoveryMode.NOT_SET;
+        if (!wasRunning || forceRestart) {
+            switch (discoveryMode) {
+                case BLE:
+                    if (mBluetoothManager.isBleAdvertisingSupported()) {
+                        mDiscoveryMode = discoveryMode;
+                        discoveryModeSet = true;
+                    }
+
+                    break;
+
+                case WIFI:
+                    mDiscoveryMode = discoveryMode;
+                    discoveryModeSet = true;
+                    break;
+
+                case BLE_AND_WIFI:
+                    if (mBluetoothManager.isBleAdvertisingSupported()
+                            && mWifiDirectManager.isWifiDirectSupported()) {
+                        mDiscoveryMode = discoveryMode;
+                        discoveryModeSet = true;
+                    }
+
+                    break;
+            }
+
+            if (!discoveryModeSet) {
+                Log.w(TAG, "setDiscoveryMode: Failed to set discovery mode to " + discoveryMode);
+                mDiscoveryMode = DiscoveryMode.NOT_SET;
+            } else {
+                Log.i(TAG, "setDiscoveryMode: Mode set to " + mDiscoveryMode);
+            }
+        }
+
+        if (discoveryModeSet && wasRunning && forceRestart) {
+            discoveryModeSet = start(mMyPeerId, mMyPeerName);
         }
 
         return discoveryModeSet;
     }
 
     /**
+     * Sets the discovery mode. Note that this method will fail, if the discovery is currently
+     * running.
+     * @param discoveryMode The discovery mode to set.
+     * @return True, if the mode was set. False otherwise (likely because not supported).
+     */
+    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode) {
+        return setDiscoveryMode(discoveryMode, false);
+    }
+
+    /**
      * Starts the peer discovery.
+     * @param myPeerId Our peer ID (used for the identity).
+     * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public synchronized boolean start() {
+    public synchronized boolean start(String myPeerId, String myPeerName) {
+        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
+        mMyPeerId = myPeerId;
+        mMyPeerName = myPeerName;
+
         switch (mState) {
             case NOT_STARTED:
                 if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
@@ -143,33 +186,12 @@ public class DiscoveryManager
 
                             if (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                                 // Try to start BLE based discovery
-                                // TODO: Implement
+                                bleDiscoveryStarted = startBlePeerDiscovery();
                             }
 
                             if (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                                 // Try to start Wi-Fi Direct based discovery
-                                if (mWifiDirectManager.bind(this)) {
-                                    if (mWifiPeerDiscoverer == null) {
-                                        WifiP2pManager p2pManager = mWifiDirectManager.getWifiP2pManager();
-                                        WifiP2pManager.Channel channel = mWifiDirectManager.getWifiP2pChannel();
-
-                                        if (p2pManager != null && channel != null) {
-                                            mWifiPeerDiscoverer = new WifiPeerDiscoverer(
-                                                    mContext, channel, p2pManager, this, mServiceType, mMyIdentityString);
-
-                                            mWifiPeerDiscoverer.start();
-                                        } else {
-                                            Log.e(TAG, "start: Failed to get Wi-Fi P2P manager or channel");
-                                        }
-                                    }
-
-                                    if (mWifiPeerDiscoverer != null) {
-                                        wifiDiscoveryStarted = true;
-                                        Log.d(TAG, "start: Wi-Fi Direct OK");
-                                    }
-                                } else {
-                                    Log.e(TAG, "start: Failed to start, this may indicate that Wi-Fi Direct is not supported on this device");
-                                }
+                                wifiDiscoveryStarted = startWifiPeerDiscovery();
                             }
 
                             if ((mDiscoveryMode != DiscoveryMode.BLE_AND_WIFI
@@ -219,7 +241,7 @@ public class DiscoveryManager
     }
 
     /**
-     *
+     * Stops/restarts the BLE based peer discovery depending on the given mode.
      * @param mode The new mode.
      */
     @Override
@@ -239,17 +261,17 @@ public class DiscoveryManager
                     }
                 }
             } else {
-                if (mState == DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
+                if (mState != DiscoveryManagerState.NOT_STARTED
                         && mBluetoothManager.isBluetoothEnabled()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
-                    start();
+                    start(mMyPeerId, mMyPeerName);
                 }
             }
         }
     }
 
     /**
-     * Starts/stops Wi-Fi peer discovery depending on the given state.
+     * Stops/restarts the Wi-Fi Direct based peer discovery depending on the given state.
      * @param state The new state.
      */
     @Override
@@ -269,11 +291,12 @@ public class DiscoveryManager
                     }
                 }
             } else {
-                if (mState == DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
-                        && mWifiDirectManager.isWifiEnabled()
-                        && mBluetoothManager.isBluetoothEnabled()) {
-                        Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
-                        start();
+                if ((mDiscoveryMode == DiscoveryMode.WIFI
+                        && mState == DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)
+                    || (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI
+                        && mState == DiscoveryManagerState.RUNNING)) {
+                    Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
+                    start(mMyPeerId, mMyPeerName);
                 }
             }
         }
@@ -329,10 +352,58 @@ public class DiscoveryManager
     }
 
     /**
+     * Tries to start the BLE based peer discovery.
+     * @return True, if started (or already running). False otherwise.
+     */
+    private synchronized boolean startBlePeerDiscovery() {
+        boolean started = false;
+
+        if (mBluetoothManager.bind(this)) {
+            // TODO: Implement
+        }
+
+        return started;
+    }
+
+    /**
      * Stops the BLE based peer discovery.
      */
     private synchronized void stopBlePeerDiscovery() {
         // TODO: Implement
+    }
+
+    /**
+     * Tries to start the Wi-Fi Direct based peer discovery.
+     * Note that this method does not validate the current state nor the identity string.
+     * @return True, if started (or already running). False otherwise.
+     */
+    private synchronized boolean startWifiPeerDiscovery() {
+        boolean started = false;
+
+        if (mWifiDirectManager.bind(this)) {
+            if (mWifiPeerDiscoverer == null) {
+                WifiP2pManager p2pManager = mWifiDirectManager.getWifiP2pManager();
+                WifiP2pManager.Channel channel = mWifiDirectManager.getWifiP2pChannel();
+
+                if (p2pManager != null && channel != null) {
+                    mWifiPeerDiscoverer = new WifiPeerDiscoverer(
+                            mContext, channel, p2pManager, this, mServiceType, mMyIdentityString);
+
+                    mWifiPeerDiscoverer.start();
+                } else {
+                    Log.e(TAG, "startWifiPeerDiscovery: Failed to get Wi-Fi P2P manager or channel");
+                }
+            }
+
+            if (mWifiPeerDiscoverer != null) {
+                started = true;
+                Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
+            }
+        } else {
+            Log.e(TAG, "startWifiPeerDiscovery: Failed to start, this may indicate that Wi-Fi Direct is not supported on this device");
+        }
+
+        return started;
     }
 
     /**
