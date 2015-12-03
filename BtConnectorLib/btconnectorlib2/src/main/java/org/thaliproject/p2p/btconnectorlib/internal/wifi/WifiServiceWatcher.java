@@ -17,9 +17,8 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
-import org.thaliproject.p2p.btconnectorlib.PeerDeviceProperties;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -43,15 +42,15 @@ class WifiServiceWatcher {
 
         /**
          * Called when the list of discovered peers (with the appropriate services) is changed.
-         * @param peerDevicePropertiesList The new list of peers (with the appropriate services) available.
+         * @param peerPropertiesList The new list of peers (with the appropriate services) available.
          */
-        void onServiceListChanged(List<PeerDeviceProperties> peerDevicePropertiesList);
+        void onServiceListChanged(List<PeerProperties> peerPropertiesList);
 
         /**
          * Called when a new peer (with an appropriate service) is discovered.
-         * @param peerDeviceProperties The discovered peer device with an appropriate service.
+         * @param peerProperties The discovered peer device with an appropriate service.
          */
-        void onServiceDiscovered(PeerDeviceProperties peerDeviceProperties);
+        void onServiceDiscovered(PeerProperties peerProperties);
     }
 
     private static final String TAG = WifiServiceWatcher.class.getName();
@@ -65,7 +64,7 @@ class WifiServiceWatcher {
     private final WifiP2pManager.Channel mP2pChannel;
     private final WifiServiceWatcherListener mServiceWatcherListener;
     private final String mServiceType;
-    private final CopyOnWriteArrayList<PeerDeviceProperties> mPeerDevicePropertiesList;
+    private final CopyOnWriteArrayList<PeerProperties> mPeerPropertiesList;
     private final CountDownTimer mDiscoveryTimeoutTimer;
     private final CountDownTimer mStartTimer;
     private BroadcastReceiver mPeerDiscoveryBroadcastReceiver = null;
@@ -93,7 +92,7 @@ class WifiServiceWatcher {
         mServiceWatcherListener = listener;
         mServiceType = serviceType;
 
-        mPeerDevicePropertiesList = new CopyOnWriteArrayList<>();
+        mPeerPropertiesList = new CopyOnWriteArrayList<>();
         mPeerListListener = new MyPeerListListener();
         mDnsSdServiceResponseListener = new MyDnsSdServiceResponseListener();
         mP2pManager.setDnsSdResponseListeners(mP2pChannel, mDnsSdServiceResponseListener, null);
@@ -291,8 +290,8 @@ class WifiServiceWatcher {
                                 public void onSuccess() {
                                     Log.i(TAG, "Service discovery started successfully");
                                     thisInstance.mIsServiceDiscoveryStarted = true;
-                                    thisInstance.mPeerDevicePropertiesList.clear();
-                                    thisInstance.mServiceWatcherListener.onServiceListChanged(mPeerDevicePropertiesList);
+                                    thisInstance.mPeerPropertiesList.clear();
+                                    thisInstance.mServiceWatcherListener.onServiceListChanged(mPeerPropertiesList);
                                 }
 
                                 @Override
@@ -354,8 +353,8 @@ class WifiServiceWatcher {
     private synchronized boolean listContainsPeerDevice(String peerDeviceAddress) {
         boolean peerDeviceFound = false;
 
-        for (PeerDeviceProperties peerDeviceProperties : mPeerDevicePropertiesList) {
-            if (peerDeviceProperties != null && peerDeviceProperties.deviceAddress.equals(peerDeviceAddress)) {
+        for (PeerProperties peerProperties : mPeerPropertiesList) {
+            if (peerProperties != null && peerProperties.getDeviceAddress().equals(peerDeviceAddress)) {
                 peerDeviceFound = true;
                 break;
             }
@@ -419,7 +418,6 @@ class WifiServiceWatcher {
             if (serviceType.startsWith(mServiceType)) {
                 if (!listContainsPeerDevice(p2pDevice.deviceAddress)) {
                     PeerProperties peerProperties = new PeerProperties();
-                    PeerDeviceProperties peerDeviceProperties = null;
                     boolean resolvedPropertiesOk = false;
 
                     try {
@@ -430,23 +428,22 @@ class WifiServiceWatcher {
                     }
 
                     if (resolvedPropertiesOk) {
-                        Log.i(TAG, "onDnsSdServiceAvailable: Resolved peer properties: " + peerProperties.toString());
-
-                        peerDeviceProperties = new PeerDeviceProperties(
-                                peerProperties.id, peerProperties.name, peerProperties.bluetoothAddress,
-                                serviceType, p2pDevice.deviceAddress, p2pDevice.deviceName);
+                        Log.d(TAG, "onDnsSdServiceAvailable: Resolved peer properties: " + peerProperties.toString());
+                        peerProperties.setServiceType(serviceType);
+                        peerProperties.setDeviceName(p2pDevice.deviceName);
+                        peerProperties.setDeviceAddress(p2pDevice.deviceAddress);
                     }
 
                     if (mServiceWatcherListener != null) {
                         // Inform the listener of this individual peer so that it does not have to
                         // wait for the complete list in case it wants to connect right away.
-                        mServiceWatcherListener.onServiceDiscovered(peerDeviceProperties);
+                        mServiceWatcherListener.onServiceDiscovered(peerProperties);
                     }
 
-                    mPeerDevicePropertiesList.add(peerDeviceProperties);
-                    mServiceWatcherListener.onServiceListChanged(mPeerDevicePropertiesList);
+                    mPeerPropertiesList.add(peerProperties);
+                    mServiceWatcherListener.onServiceListChanged(mPeerPropertiesList);
                 } else {
-                    Log.i(TAG, "onDnsSdServiceAvailable: Peer already exists in the list of peers");
+                    Log.d(TAG, "onDnsSdServiceAvailable: Peer already exists in the list of peers");
                 }
             } else {
                 Log.i(TAG, "onDnsSdServiceAvailable: This not our service: " + mServiceType + " != " + serviceType);
@@ -479,12 +476,12 @@ class WifiServiceWatcher {
                         WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED);
 
                 if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED) {
-                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery stopped, restarting...");
+                    Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery stopped, restarting...");
                     restart();
                 } else if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED) {
-                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery started");
+                    Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery started");
                 } else {
-                    Log.i(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery state changed to " + state);
+                    Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P discovery state changed to " + state);
                 }
             }
         }

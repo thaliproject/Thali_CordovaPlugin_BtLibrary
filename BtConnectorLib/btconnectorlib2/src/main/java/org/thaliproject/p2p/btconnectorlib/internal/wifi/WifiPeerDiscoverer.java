@@ -8,7 +8,7 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.CountDownTimer;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.PeerDeviceProperties;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.Collection;
 import java.util.List;
 
@@ -28,15 +28,15 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
 
         /**
          * Called when a peer was discovered.
-         * @param peerDeviceProperties The properties of the discovered peer.
+         * @param peerProperties The properties of the discovered peer.
          */
-        void onPeerDiscovered(PeerDeviceProperties peerDeviceProperties);
+        void onPeerDiscovered(PeerProperties peerProperties);
 
         /**
          * Called when we resolve a new list of available peers.
-         * @param peerDevicePropertiesList The new list of available peers.
+         * @param peerPropertiesList The new list of available peers.
          */
-        void onPeerListChanged(List<PeerDeviceProperties> peerDevicePropertiesList);
+        void onPeerListChanged(List<PeerProperties> peerPropertiesList);
     }
 
     private static final String TAG = WifiPeerDiscoverer.class.getName();
@@ -179,15 +179,15 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
 
     /**
      * If the list is not empty, it is forwarded to the listener.
-     * @param peerDevicePropertiesList The new list of peers (with the appropriate services) available.
+     * @param peerPropertiesList The new list of peers (with the appropriate services) available.
      */
     @Override
-    public void onServiceListChanged(List<PeerDeviceProperties> peerDevicePropertiesList) {
+    public void onServiceListChanged(List<PeerProperties> peerPropertiesList) {
         if (mWifiPeerDiscoveryListener != null
-                && peerDevicePropertiesList != null
-                && peerDevicePropertiesList.size() > 0) {
-            Log.i(TAG, "onServiceListChanged: " + peerDevicePropertiesList.size() + " services discovered");
-            mWifiPeerDiscoveryListener.onPeerListChanged(peerDevicePropertiesList);
+                && peerPropertiesList != null
+                && peerPropertiesList.size() > 0) {
+            Log.i(TAG, "onServiceListChanged: " + peerPropertiesList.size() + " services discovered");
+            mWifiPeerDiscoveryListener.onPeerListChanged(peerPropertiesList);
         } else {
             Log.w(TAG, "onServiceListChanged: Got empty list");
         }
@@ -195,14 +195,14 @@ public class WifiPeerDiscoverer implements WifiServiceWatcher.WifiServiceWatcher
 
     /**
      * Forwards the event to the listener.
-     * @param peerDeviceProperties The discovered peer device with an appropriate service.
+     * @param peerProperties The discovered peer device with an appropriate service.
      */
     @Override
-    public void onServiceDiscovered(PeerDeviceProperties peerDeviceProperties) {
+    public void onServiceDiscovered(PeerProperties peerProperties) {
         Log.i(TAG, "onServiceDiscovered");
 
         if (mWifiPeerDiscoveryListener != null) {
-            mWifiPeerDiscoveryListener.onPeerDiscovered(peerDeviceProperties);
+            mWifiPeerDiscoveryListener.onPeerDiscovered(peerProperties);
         }
     }
 

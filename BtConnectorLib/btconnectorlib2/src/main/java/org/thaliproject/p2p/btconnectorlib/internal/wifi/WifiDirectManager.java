@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
+import java.util.ArrayList;
 
 /**
  * Manages the device Wi-Fi settings and provides information on Wi-Fi and Wi-Fi Direct status on
@@ -28,8 +29,9 @@ public class WifiDirectManager {
     }
 
     private static final String TAG = WifiDirectManager.class.getName();
+    private static WifiDirectManager mInstance = null;
     private final Context mContext;
-    private final WifiStateListener mWifiStateListener;
+    private final ArrayList<WifiStateListener> mListeners = new ArrayList<>();
     private WifiStateBroadcastReceiver mWifiStateBroadcastReceiver = null;
     private WifiP2pManager mP2pManager = null;
     private WifiP2pManager.Channel mP2pChannel = null;
@@ -37,75 +39,73 @@ public class WifiDirectManager {
     private boolean mInitialized = false;
 
     /**
+     * Getter for the singleton instance of this class.
+     * @param context The application context.
+     * @return The singleton instance of this class.
+     */
+    public static WifiDirectManager getInstance(Context context) {
+        if (mInstance == null) {
+            mInstance = new WifiDirectManager(context);
+        }
+
+        return mInstance;
+    }
+
+    /**
      * Constructor.
      * @param context The application context.
-     * @param listener A listener for Wi-Fi state changed events.
      */
-    public WifiDirectManager(Context context, WifiStateListener listener) {
+    private WifiDirectManager(Context context) {
         mContext = context;
-        mWifiStateListener = listener;
     }
 
     /**
-     * Registers the broadcast receiver to listen to Wi-Fi state changes and fetches the Wi-Fi
-     * P2P manager instance.
-     * @return True, if successfully initialized (even if that the initialization was done earlier).
-     * If false is returned, this could indicate the lack of Wi-Fi Direct hardware support.
+     * Binds the given listener to this instance. If already bound, this method does nothing.
+     *
+     * Note that the listener acts as a sort of a reference counter. You must call release() after
+     * you're done using the instance.
+     *
+     * @param listener A listener for Wi-Fi state changed events.
+     * @return True, if bound successfully (or already bound). If false is returned, this could
+     * indicate the lack of Bluetooth hardware support.
      */
-    public synchronized boolean initialize() {
-        if (!mInitialized) {
-            mWifiStateBroadcastReceiver = new WifiStateBroadcastReceiver();
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+    public boolean bind(WifiStateListener listener) {
+        if (!mListeners.contains(listener)) {
+            Log.i(TAG, "bind: Binding a new listener");
+            mListeners.add(listener);
+        }
 
-            try {
-                mContext.registerReceiver(mWifiStateBroadcastReceiver, filter);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
-                mWifiStateBroadcastReceiver = null;
-            }
+        return initialize();
+    }
 
-            if (mWifiStateBroadcastReceiver != null) {
-                mP2pManager = (WifiP2pManager)mContext.getSystemService(Context.WIFI_P2P_SERVICE);
+    /**
+     *
+     * @param listener The listener.
+     */
+    public void release(WifiStateListener listener) {
+        if (!mListeners.remove(listener)) {
+            Log.e(TAG, "release: The given listener does not exist in the list");
+        }
 
-                if (mP2pManager == null) {
-                    Log.w(TAG, "initialize: This device does not support Wi-Fi Direct");
-
-                    try {
-                        mContext.unregisterReceiver(mWifiStateBroadcastReceiver);
-                    } catch (IllegalArgumentException e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    mP2pChannel = mP2pManager.initialize(mContext, mContext.getMainLooper(), null);
-                    mWifiManager = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
-                    mInitialized = true;
-                }
-            }
+        if (mListeners.size() == 0) {
+            Log.i(TAG, "release: No more listeners, de-initializing...");
+            deinitialize();
         } else {
-            Log.w(TAG, "initialize: Already initialized, call deinitialize() first to reinitialize");
+            Log.d(TAG, "release: " + mListeners.size() + " listener(s) left");
         }
-
-        return mInitialized;
     }
 
     /**
-     * Unregisters the broadcast receiver and releases the Wi-Fi Direct P2P manager instance.
+     * Checks whether the device supports Wi-Fi Direct or not. Note that this method also retrieves
+     * the WifiP2pManager instance.
+     * @return True, if Wi-Fi Direct is supported. False otherwise.
      */
-    public synchronized void deinitialize() {
-        if (mWifiStateBroadcastReceiver != null) {
-            try {
-                mContext.unregisterReceiver(mWifiStateBroadcastReceiver);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "deinitialize: Failed to unregister the broadcast receiver: " + e.getMessage(), e);
-            }
-
-            mWifiStateBroadcastReceiver = null;
-            mP2pManager = null;
-            mP2pChannel = null;
-            mWifiManager = null;
-            mInitialized = false;
+    public boolean isWifiDirectSupported() {
+        if (mP2pManager == null) {
+            mP2pManager = (WifiP2pManager)mContext.getSystemService(Context.WIFI_P2P_SERVICE);
         }
+
+        return (mP2pManager != null);
     }
 
     public boolean isWifiEnabled() {
@@ -125,6 +125,52 @@ public class WifiDirectManager {
     }
 
     /**
+     * Registers the broadcast receiver to listen to Wi-Fi state changes.
+     * @return True, if successfully initialized (even if that the initialization was done earlier).
+     * If false is returned, this could indicate the lack of Wi-Fi Direct hardware support.
+     */
+    private synchronized boolean initialize() {
+        if (!mInitialized && isWifiDirectSupported()) {
+            mWifiStateBroadcastReceiver = new WifiStateBroadcastReceiver();
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+
+            try {
+                mContext.registerReceiver(mWifiStateBroadcastReceiver, filter);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
+                mWifiStateBroadcastReceiver = null;
+            }
+
+            mP2pChannel = mP2pManager.initialize(mContext, mContext.getMainLooper(), null);
+            mWifiManager = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
+            mInitialized = true;
+        }
+
+        return mInitialized;
+    }
+
+    /**
+     * Unregisters the broadcast receiver and releases the Wi-Fi Direct P2P manager instance.
+     */
+    private synchronized void deinitialize() {
+        if (mWifiStateBroadcastReceiver != null) {
+            try {
+                mContext.unregisterReceiver(mWifiStateBroadcastReceiver);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "deinitialize: Failed to unregister the broadcast receiver: " + e.getMessage(), e);
+            }
+
+            mWifiStateBroadcastReceiver = null;
+        }
+
+        mP2pManager = null;
+        mP2pChannel = null;
+        mWifiManager = null;
+        mInitialized = false;
+    }
+
+    /**
      * Broadcast receiver for Wi-Fi state changes.
      */
     private class WifiStateBroadcastReceiver extends BroadcastReceiver {
@@ -133,9 +179,10 @@ public class WifiDirectManager {
             String action = intent.getAction();
 
             if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
-                if (mWifiStateListener != null) {
-                    int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
-                    mWifiStateListener.onWifiStateChanged(state);
+                int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
+
+                for (WifiStateListener listener : mListeners) {
+                    listener.onWifiStateChanged(state);
                 }
             }
         }

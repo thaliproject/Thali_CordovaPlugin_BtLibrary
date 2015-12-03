@@ -6,6 +6,7 @@ package org.thaliproject.p2p.btconnectorlib.internal;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
  * Commonly used utils and constants.
@@ -17,23 +18,9 @@ public class CommonUtils {
     private static final String JSON_ID_PEER_BLUETOOTH_ADDRESS = "ra";
 
     /**
-     * A struct like class for peer properties: ID, name and Bluetooth address.
-     */
-    public static class PeerProperties {
-        public String id = "";
-        public String name = "";
-        public String bluetoothAddress = "";
-
-        @Override
-        public String toString() {
-            return "[" + id + " " + name + " " + bluetoothAddress + "]";
-        }
-    }
-
-    /**
      * Creates an identity string based on the given arguments.
      * @param peerId The peer ID.
-     * @param peerName The peer name.
+     * @param peerName The peer mName.
      * @param peerBluetoothAddress The Bluetooth address of the peer.
      * @return An identity string or null in case of a failure.
      * @throws JSONException
@@ -66,7 +53,7 @@ public class CommonUtils {
      * @throws JSONException
      */
     public static String createIdentityString(PeerProperties peerProperties) throws JSONException {
-        return createIdentityString(peerProperties.id, peerProperties.name, peerProperties.bluetoothAddress);
+        return createIdentityString(peerProperties.getId(), peerProperties.getName(), peerProperties.getBluetoothAddress());
     }
 
     /**
@@ -81,12 +68,10 @@ public class CommonUtils {
             throws JSONException {
 
         JSONObject jsonObject = new JSONObject(identityString);
-        peerProperties.id = jsonObject.getString(JSON_ID_PEER_ID);
-        peerProperties.name = jsonObject.getString(JSON_ID_PEER_NAME);
-        peerProperties.bluetoothAddress = jsonObject.getString(JSON_ID_PEER_BLUETOOTH_ADDRESS);
+        peerProperties.setId(jsonObject.getString(JSON_ID_PEER_ID));
+        peerProperties.setName(jsonObject.getString(JSON_ID_PEER_NAME));
+        peerProperties.setBluetoothAddress(jsonObject.getString(JSON_ID_PEER_BLUETOOTH_ADDRESS));
 
-        return (peerProperties.id != null && !peerProperties.id.isEmpty()
-                && peerProperties.name != null && !peerProperties.name.isEmpty()
-                && peerProperties.bluetoothAddress != null && !peerProperties.bluetoothAddress.isEmpty());
+        return peerProperties.isValid();
     }
 }
