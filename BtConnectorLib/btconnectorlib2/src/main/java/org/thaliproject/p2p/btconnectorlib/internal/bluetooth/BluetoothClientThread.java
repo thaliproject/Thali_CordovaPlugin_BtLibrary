@@ -44,6 +44,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private boolean mIsShuttingDown = false;
+    private RecreateSocketTimer mRecreateSocketTimer = new RecreateSocketTimer();
     private boolean mKeepTrying = false;
 
     /**
@@ -89,18 +90,19 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         } catch (IOException e) {
             Log.e(TAG, "Failed to connect: " + e.getMessage(), e);
             mKeepTrying = true;
-            RecreateSocketTimer timer = new RecreateSocketTimer();
 
             while (!socketConnectSucceeded && mKeepTrying) {
                 BluetoothSocket newSocket = BluetoothUtils.createBluetoothSocketWithNextChannel(mSocket, false);
 
                 if (newSocket != null) {
                     mSocket = newSocket;
-                    timer.start();
+                    mRecreateSocketTimer.start();
 
                     try {
                         mSocket.connect(); // Again blocking
+                        mRecreateSocketTimer.cancel();
                         socketConnectSucceeded = true;
+                        Log.d(TAG, "Workaround to recreate socket succeeded");
                     } catch (IOException e2) {
                         errorMessage = "Failed to connect: " + e2.getMessage();
                         Log.e(TAG, errorMessage, e2);
