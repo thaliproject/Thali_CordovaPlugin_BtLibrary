@@ -14,7 +14,7 @@ public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
-    private static final int MAX_ALTERNATIVE_CHANNEL = 32;
+    private static final int MAX_ALTERNATIVE_CHANNEL = 30;
     private static int mAlternativeChannel = 0;
 
     /**

@@ -5,6 +5,7 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.os.CountDownTimer;
 import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
@@ -43,6 +44,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private boolean mIsShuttingDown = false;
+    private boolean mKeepTrying = false;
 
     /**
      * Constructor.
@@ -85,18 +87,24 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mSocket.connect(); // Blocking call
             socketConnectSucceeded = true;
         } catch (IOException e) {
-            BluetoothSocket newSocket = BluetoothUtils.createBluetoothSocketWithNextChannel(mSocket, false);
+            Log.e(TAG, "Failed to connect: " + e.getMessage(), e);
+            mKeepTrying = true;
+            RecreateSocketTimer timer = new RecreateSocketTimer();
 
-            if (newSocket != null) {
-                mSocket = newSocket;
+            while (!socketConnectSucceeded && mKeepTrying) {
+                BluetoothSocket newSocket = BluetoothUtils.createBluetoothSocketWithNextChannel(mSocket, false);
 
-                try {
-                    mSocket.connect(); // Again blocking
-                    socketConnectSucceeded = true;
-                } catch (IOException e2) {
-                    errorMessage = "Socket connect failures: \"" + e.getMessage() + "\" and \"" + e2.getMessage() + "\"";
-                    Log.e(TAG, errorMessage, e);
-                    Log.e(TAG, errorMessage, e2);
+                if (newSocket != null) {
+                    mSocket = newSocket;
+                    timer.start();
+
+                    try {
+                        mSocket.connect(); // Again blocking
+                        socketConnectSucceeded = true;
+                    } catch (IOException e2) {
+                        errorMessage = "Failed to connect: " + e2.getMessage();
+                        Log.e(TAG, errorMessage, e2);
+                    }
                 }
             }
         }
@@ -249,6 +257,33 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         if (mHandshakeThread != null) {
             mListener.onConnectionFailed("Socket disconnected", peerProperties);
             shutdown();
+        }
+    }
+
+    private class RecreateSocketTimer extends CountDownTimer {
+        public RecreateSocketTimer() {
+            super(50000, 300);
+        }
+
+        @Override
+        public void onTick(long l) {
+            if (mSocket != null) {
+                Log.v(TAG, "RecreateSocketTimer: Close and recreate socket with different channel");
+
+                try {
+                    mSocket.close();
+                } catch (IOException e) {
+                }
+
+                mSocket = null;
+            }
+        }
+
+        @Override
+        public void onFinish() {
+            Log.v(TAG, "RecreateSocketTimer: Giving up");
+            mKeepTrying = false;
+            this.cancel();
         }
     }
 }
