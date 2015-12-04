@@ -83,19 +83,21 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         Log.d(TAG, "Entering thread");
         boolean socketConnectSucceeded = false;
         boolean wasSuccessful = false;
-        IOException exception = null;
         String errorMessage = "Unknown error";
-        int retryCount = 0;
+        int tryCount = 0;
 
         Log.i(TAG, "Trying to connect...");
 
         while (!socketConnectSucceeded && !mIsShuttingDown) {
+            tryCount++;
+
             try {
                 mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
                 mSocket.connect(); // Blocking call
                 socketConnectSucceeded = true;
+                Log.i(TAG, "Socket connection succeeded, tried " + tryCount + " time(s)");
             } catch (IOException e) {
-                exception = e;
+                errorMessage = "Failed to connect (tried " + tryCount + " time(s)): " + e.getMessage();
 
                 try {
                     mSocket.close();
@@ -104,14 +106,12 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 mSocket = null;
             }
 
-            Log.w(TAG, "Failed to connect, number of retries so far is " + retryCount + ", error: " + exception.getMessage());
+            Log.w(TAG, errorMessage);
             Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS + " ms");
 
             try {
                 Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
             } catch (InterruptedException e) {}
-
-            retryCount++;
         }
 
         if (socketConnectSucceeded) {
@@ -126,8 +126,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 Log.e(TAG, errorMessage, e);
             }
         } else {
-            errorMessage = "Failed to connect (tried " + retryCount + " number(s)): " + exception.getMessage();
-            Log.e(TAG, errorMessage, exception);
+            Log.e(TAG, errorMessage);
         }
 
         if (!wasSuccessful) {
