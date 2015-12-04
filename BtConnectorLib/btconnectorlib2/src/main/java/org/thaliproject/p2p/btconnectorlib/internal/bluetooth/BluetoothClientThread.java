@@ -276,8 +276,6 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                     mSocket.close();
                 } catch (IOException e) {
                 }
-
-                mSocket = null;
             }
         }
 
