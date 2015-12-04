@@ -38,27 +38,28 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private final String mMyIdentityString;
+    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 1000;
     private final Listener mListener;
+    private final BluetoothDevice mBluetoothDeviceToConnectTo;
+    private final UUID mServiceRecordUuid;
+    private final String mMyIdentityString;
     private BluetoothSocket mSocket = null;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private boolean mIsShuttingDown = false;
-    private RecreateSocketTimer mRecreateSocketTimer = new RecreateSocketTimer();
-    private boolean mKeepTrying = false;
 
     /**
      * Constructor.
      * @param listener The listener.
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param myBluetoothUuid Our Bluetooth UUID.
+     * @param serviceRecordUuid Our UUID (service record uuid to lookup RFCOMM channel).
      * @param myIdentityString Our identity.
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth device instance is null.
      * @throws IOException Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
      */
     public BluetoothClientThread(
             Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
-            UUID myBluetoothUuid, String myIdentityString)
+            UUID serviceRecordUuid, String myIdentityString)
             throws NullPointerException, IOException {
         if (listener == null || bluetoothDeviceToConnectTo == null)
         {
@@ -66,8 +67,9 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         }
 
         mListener = listener;
+        mBluetoothDeviceToConnectTo = bluetoothDeviceToConnectTo;
+        mServiceRecordUuid = serviceRecordUuid;
         mMyIdentityString = myIdentityString;
-        mSocket = bluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(myBluetoothUuid);
         mPeerProperties = new PeerProperties();
     }
 
@@ -81,36 +83,35 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         Log.d(TAG, "Entering thread");
         boolean socketConnectSucceeded = false;
         boolean wasSuccessful = false;
+        IOException exception = null;
         String errorMessage = "Unknown error";
+        int retryCount = 0;
 
-        try {
-            Log.i(TAG, "Trying to connect...");
-            mSocket.connect(); // Blocking call
-            socketConnectSucceeded = true;
-        } catch (IOException e) {
-            Log.e(TAG, "Failed to connect: " + e.getMessage(), e);
-            mKeepTrying = true;
+        Log.i(TAG, "Trying to connect...");
 
-            while (!socketConnectSucceeded && mKeepTrying) {
-                BluetoothSocket newSocket = BluetoothUtils.createBluetoothSocketWithNextChannel(mSocket, false);
+        while (!socketConnectSucceeded && !mIsShuttingDown) {
+            try {
+                mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
+                mSocket.connect(); // Blocking call
+                socketConnectSucceeded = true;
+            } catch (IOException e) {
+                exception = e;
 
-                if (newSocket != null) {
-                    mSocket = newSocket;
-                    mRecreateSocketTimer.restart();
+                try {
+                    mSocket.close();
+                } catch (IOException e2) {}
 
-                    try {
-                        mSocket.connect(); // Again blocking
-                        mRecreateSocketTimer.cancel();
-                        socketConnectSucceeded = true;
-                        errorMessage = "";
-                        Log.d(TAG, "Workaround to recreate socket succeeded");
-                    } catch (IOException e2) {
-                        mRecreateSocketTimer.cancel();
-                        errorMessage = "Failed to connect: " + e2.getMessage();
-                        Log.e(TAG, errorMessage, e2);
-                    }
-                }
+                mSocket = null;
             }
+
+            Log.w(TAG, "Failed to connect, number of retries so far is " + retryCount + ", error: " + exception.getMessage());
+            Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS + " ms");
+
+            try {
+                Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
+            } catch (InterruptedException e) {}
+
+            retryCount++;
         }
 
         if (socketConnectSucceeded) {
@@ -124,6 +125,9 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
             }
+        } else {
+            errorMessage = "Failed to connect (tried " + retryCount + " number(s)): " + exception.getMessage();
+            Log.e(TAG, errorMessage, exception);
         }
 
         if (!wasSuccessful) {
@@ -261,47 +265,6 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         if (mHandshakeThread != null) {
             mListener.onConnectionFailed("Socket disconnected", peerProperties);
             shutdown();
-        }
-    }
-
-    private class RecreateSocketTimer extends CountDownTimer {
-        private static final int RETRY_INTERVAL_IN_MILLISECONDS = 5000;
-        private static final int NUMBER_OF_RETRIES = 6;
-        private int mRetryCount = 0;
-
-        public RecreateSocketTimer() {
-            super(RETRY_INTERVAL_IN_MILLISECONDS, RETRY_INTERVAL_IN_MILLISECONDS);
-        }
-
-        public void restart() {
-            if (mRetryCount < NUMBER_OF_RETRIES) {
-                super.cancel();
-                super.start();
-            }
-        }
-
-        @Override
-        public void onTick(long l) {
-        }
-
-        @Override
-        public void onFinish() {
-            mRetryCount++;
-
-            if (mSocket != null) {
-                Log.v(TAG, "RecreateSocketTimer: Close and recreate socket with different channel");
-
-                try {
-                    mSocket.close();
-                } catch (IOException e) {
-                }
-            }
-
-            if (mRetryCount >= NUMBER_OF_RETRIES) {
-                Log.v(TAG, "RecreateSocketTimer: Giving up");
-                mKeepTrying = false;
-                this.cancel();
-            }
         }
     }
 }

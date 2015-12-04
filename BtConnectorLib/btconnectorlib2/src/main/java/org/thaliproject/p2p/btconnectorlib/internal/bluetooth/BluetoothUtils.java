@@ -27,7 +27,7 @@ public class BluetoothUtils {
     public static BluetoothSocket createBluetoothSocketWithSpecifiedChannel(
             BluetoothSocket originalBluetoothSocket, int channel, boolean secure) {
         Log.d(TAG, "createBluetoothSocketWithSpecifiedChannel: Channel: " + channel + ", secure: " + secure);
-        Class<?> socketClass = originalBluetoothSocket.getRemoteDevice().getClass();
+        Class<?> bluetoothDeviceClass = originalBluetoothSocket.getRemoteDevice().getClass();
         Class<?>[] parameterTypes = new Class<?>[] { Integer.TYPE };
 
         String methodName = secure
@@ -37,7 +37,7 @@ public class BluetoothUtils {
         BluetoothSocket newSocket = null;
 
         try {
-            Method createSocketMethod = socketClass.getMethod(methodName, parameterTypes);
+            Method createSocketMethod = bluetoothDeviceClass.getMethod(methodName, parameterTypes);
             Object[] parameters = new Object[] { Integer.valueOf(channel) };
             newSocket = (BluetoothSocket) createSocketMethod.invoke(originalBluetoothSocket.getRemoteDevice(), parameters);
         } catch (Exception e) {
