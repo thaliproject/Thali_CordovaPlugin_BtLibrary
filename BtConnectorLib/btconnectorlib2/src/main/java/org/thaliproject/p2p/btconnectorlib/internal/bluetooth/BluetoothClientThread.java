@@ -96,14 +96,16 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
                 if (newSocket != null) {
                     mSocket = newSocket;
-                    mRecreateSocketTimer.start();
+                    mRecreateSocketTimer.restart();
 
                     try {
                         mSocket.connect(); // Again blocking
                         mRecreateSocketTimer.cancel();
                         socketConnectSucceeded = true;
+                        errorMessage = "";
                         Log.d(TAG, "Workaround to recreate socket succeeded");
                     } catch (IOException e2) {
+                        mRecreateSocketTimer.cancel();
                         errorMessage = "Failed to connect: " + e2.getMessage();
                         Log.e(TAG, errorMessage, e2);
                     }
@@ -263,12 +265,29 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private class RecreateSocketTimer extends CountDownTimer {
+        private static final int RETRY_INTERVAL_IN_MILLISECONDS = 5000;
+        private static final int NUMBER_OF_RETRIES = 6;
+        private int mRetryCount = 0;
+
         public RecreateSocketTimer() {
-            super(50000, 300);
+            super(RETRY_INTERVAL_IN_MILLISECONDS, RETRY_INTERVAL_IN_MILLISECONDS);
+        }
+
+        public void restart() {
+            if (mRetryCount < NUMBER_OF_RETRIES) {
+                super.cancel();
+                super.start();
+            }
         }
 
         @Override
         public void onTick(long l) {
+        }
+
+        @Override
+        public void onFinish() {
+            mRetryCount++;
+
             if (mSocket != null) {
                 Log.v(TAG, "RecreateSocketTimer: Close and recreate socket with different channel");
 
@@ -277,13 +296,12 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 } catch (IOException e) {
                 }
             }
-        }
 
-        @Override
-        public void onFinish() {
-            Log.v(TAG, "RecreateSocketTimer: Giving up");
-            mKeepTrying = false;
-            this.cancel();
+            if (mRetryCount >= NUMBER_OF_RETRIES) {
+                Log.v(TAG, "RecreateSocketTimer: Giving up");
+                mKeepTrying = false;
+                this.cancel();
+            }
         }
     }
 }

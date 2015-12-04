@@ -55,7 +55,7 @@ public class BluetoothUtils {
      */
     public static BluetoothSocket createBluetoothSocketWithNextChannel(
             BluetoothSocket originalBluetoothSocket, boolean secure) {
-        if (mAlternativeChannel > MAX_ALTERNATIVE_CHANNEL) {
+        if (mAlternativeChannel >= MAX_ALTERNATIVE_CHANNEL) {
             mAlternativeChannel = 0;
         }
 
