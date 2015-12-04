@@ -80,24 +80,22 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * handle the connecting process.
      */
     public void run() {
-        Log.d(TAG, "Entering thread");
+        Log.i(TAG, "Trying to connect to peer with address " + mBluetoothDeviceToConnectTo.getAddress());
         boolean socketConnectSucceeded = false;
         boolean wasSuccessful = false;
         String errorMessage = "Unknown error";
-        int tryCount = 0;
-
-        Log.i(TAG, "Trying to connect...");
+        int socketConnectAttempts = 0;
 
         while (!socketConnectSucceeded && !mIsShuttingDown) {
-            tryCount++;
+            socketConnectAttempts++;
 
             try {
                 mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
                 mSocket.connect(); // Blocking call
                 socketConnectSucceeded = true;
-                Log.i(TAG, "Socket connection succeeded, tried " + tryCount + " time(s)");
+                Log.i(TAG, "Socket connection succeeded after " + socketConnectAttempts + " attempt(s)");
             } catch (IOException e) {
-                errorMessage = "Failed to connect (tried " + tryCount + " time(s)): " + e.getMessage();
+                errorMessage = "Failed to connect (tried " + socketConnectAttempts + " time(s)): " + e.getMessage();
 
                 try {
                     mSocket.close();
@@ -106,12 +104,15 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 mSocket = null;
             }
 
-            Log.w(TAG, errorMessage);
-            Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS + " ms");
+            if (!socketConnectSucceeded && !mIsShuttingDown) {
+                Log.w(TAG, errorMessage);
+                Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS + " ms");
 
-            try {
-                Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
-            } catch (InterruptedException e) {}
+                try {
+                    Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
+                } catch (InterruptedException e) {
+                }
+            }
         }
 
         if (socketConnectSucceeded) {
@@ -150,7 +151,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mListener.onConnectionFailed(errorMessage, mPeerProperties);
         }
 
-        Log.d(TAG, "Exiting thread");
+        Log.i(TAG, "Exiting thread");
     }
 
     /**

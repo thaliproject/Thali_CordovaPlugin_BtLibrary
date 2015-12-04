@@ -81,8 +81,6 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      */
     @Override
     public void run() {
-        Log.i(TAG, "Entering thread");
-
         while (!mStopThread) {
             Log.i(TAG, "Waiting for incoming connections...");
             BluetoothSocket socket = null;
