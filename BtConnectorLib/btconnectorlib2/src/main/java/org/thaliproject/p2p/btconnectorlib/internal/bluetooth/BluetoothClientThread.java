@@ -97,11 +97,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             } catch (IOException e) {
                 errorMessage = "Failed to connect (tried " + socketConnectAttempts + " time(s)): " + e.getMessage();
 
-                try {
-                    mSocket.close();
-                } catch (IOException e2) {}
+                if (mSocket != null) {
+                    try {
+                        mSocket.close();
+                    } catch (IOException e2) {
+                    }
 
-                mSocket = null;
+                    mSocket = null;
+                }
             }
 
             if (!socketConnectSucceeded && !mIsShuttingDown) {
@@ -142,10 +145,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 mHandshakeThread = null;
             }
 
-            try {
-                mSocket.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+            if (mSocket != null) {
+                try {
+                    mSocket.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+                }
+
+                mSocket = null;
             }
 
             mListener.onConnectionFailed(errorMessage, mPeerProperties);
@@ -158,7 +165,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * Stops the IO thread and closes the socket.
      */
     public synchronized void shutdown() {
-        Log.i(TAG, "shutdown");
+        Log.i(TAG, "Shutting down...");
         mIsShuttingDown = true;
 
         if (mHandshakeThread != null) {
@@ -166,10 +173,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mHandshakeThread = null;
         }
 
-        try {
-            mSocket.close();
-        } catch (IOException e) {
-            Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+        if (mSocket != null) {
+            try {
+                mSocket.close();
+            } catch (IOException e) {
+                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+            }
+
+            mSocket = null;
         }
     }
 
