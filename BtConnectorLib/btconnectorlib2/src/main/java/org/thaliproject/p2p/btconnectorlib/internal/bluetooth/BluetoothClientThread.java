@@ -37,7 +37,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 500;
+    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 1000;
     private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
     private final UUID mServiceRecordUuid;
@@ -89,7 +89,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             socketConnectAttempts++;
 
             try {
-                mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
+                mSocket = BluetoothUtils.createInsecureBluetoothSocketToServiceRecord(mBluetoothDeviceToConnectTo, mServiceRecordUuid, 1);
+                        //mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
                 mSocket.connect(); // Blocking call
                 socketConnectSucceeded = true;
                 Log.i(TAG, "Socket connection succeeded after " + socketConnectAttempts + " attempt(s)");
