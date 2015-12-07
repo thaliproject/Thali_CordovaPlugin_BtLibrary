@@ -47,10 +47,9 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
-    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 20000;
+    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 40000;
     private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
 
-    private final BluetoothConnector that = this;
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
     private final UUID mMyBluetoothUuid;
@@ -214,11 +213,12 @@ public class BluetoothConnector
             if (wasSuccessful) {
                 mClientThread.setRemotePeerProperties(peerProperties);
                 mClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mConnectionTimeoutTimer.cancel();
                 mConnectionTimeoutTimer.start();
                 mClientThread.start();
 
                 mListener.onConnecting(bluetoothDeviceName, bluetoothDeviceAddress);
-                Log.i(TAG, "connect: Started connecting to " + bluetoothDeviceName
+                Log.d(TAG, "connect: Started connecting to " + bluetoothDeviceName
                         + " in address " + bluetoothDeviceAddress);
             } else {
                 mListener.onConnectionFailed(errorMessage, peerProperties);

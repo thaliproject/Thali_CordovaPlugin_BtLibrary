@@ -157,7 +157,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mListener.onConnectionFailed(errorMessage, mPeerProperties);
         }
 
-        Log.i(TAG, "Exiting thread");
+        Log.i(TAG, "Exiting thread (thread ID: " + getId() + ")");
     }
 
     /**
