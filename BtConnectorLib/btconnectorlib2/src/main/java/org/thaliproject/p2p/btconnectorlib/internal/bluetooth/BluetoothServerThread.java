@@ -126,7 +126,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * Clears the list of IO threads and closes the server socket.
      */
     public synchronized void shutdown() {
-        Log.i(TAG, "Shutting down...");
+        Log.d(TAG, "shutdown");
         mStopThread = true;
 
         for (BluetoothSocketIoThread thread : mSocketIoThreads) {

@@ -22,12 +22,25 @@ public class BluetoothUtils {
     private static int mAlternativeChannel = 0;
 
     /**
-     *
-     * @param serviceRecordUuid
-     * @param port
-     * @return
+     * Sets the next alternative RFCOMM channel or L2CAP psm to use.
+     * @param channelOrPort The next alternative RFCOMM channel or L2CAP psm to use.
      */
-    public static BluetoothSocket createInsecureBluetoothSocketToServiceRecord(BluetoothDevice bluetoothDevice, UUID serviceRecordUuid, int port) {
+    public static void setNextAlternativeChannelOrPort(int channelOrPort) {
+        if (channelOrPort >= 0 && channelOrPort < MAX_ALTERNATIVE_CHANNEL) {
+            mAlternativeChannel = channelOrPort - 1;
+        }
+    }
+
+    /**
+     *
+     * @param bluetoothDevice The Bluetooth device.
+     * @param serviceRecordUuid The service record UUID.
+     * @param channelOrPort The RFCOMM channel or L2CAP psm to use.
+     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
+     */
+    public static BluetoothSocket createBluetoothSocketToServiceRecord(
+            BluetoothDevice bluetoothDevice, UUID serviceRecordUuid, int channelOrPort, boolean secure) {
         Constructor[] bluetoothSocketConstructors = BluetoothSocket.class.getDeclaredConstructors();
         Constructor bluetoothSocketConstructor = null;
 
@@ -37,8 +50,6 @@ public class BluetoothUtils {
             boolean takesParcelUuid = false;
 
             for (Class<?> parameterType : parameterTypes) {
-                Log.d(TAG, "Comparison: " + parameterType + " <> " + BluetoothDevice.class + " OR " + ParcelUuid.class); // TODO: REMOVE
-
                 if (parameterType.equals(BluetoothDevice.class)) {
                     takesBluetoothDevice = true;
                 } else if (parameterType.equals(ParcelUuid.class)) {
@@ -61,10 +72,10 @@ public class BluetoothUtils {
         Object[] parameters = new Object[] {
                 Integer.valueOf(1), // BluetoothSocket.TYPE_RFCOMM
                 Integer.valueOf(-1),
-                Boolean.valueOf(false),
-                Boolean.valueOf(false),
+                Boolean.valueOf(secure),
+                Boolean.valueOf(secure),
                 bluetoothDevice,
-                Integer.valueOf(port),
+                Integer.valueOf(channelOrPort),
                 new ParcelUuid(serviceRecordUuid)
         };
 
@@ -74,22 +85,38 @@ public class BluetoothUtils {
         try {
             bluetoothSocket = (BluetoothSocket)bluetoothSocketConstructor.newInstance(parameters);
         } catch (Exception e) {
-            Log.e(TAG, "createInsecureBluetoothSocketToServiceRecord: Failed to create a new Bluetooth socket instance: " + e.getMessage(), e);
+            Log.e(TAG, "createBluetoothSocketToServiceRecord: Failed to create a new Bluetooth socket instance: " + e.getMessage(), e);
         }
 
         return bluetoothSocket;
     }
 
     /**
+     * Creates a new Bluetooth socket with the given service record UUID using a rotating channel/port.
+     * @param bluetoothDevice The Bluetooth device.
+     * @param serviceRecordUuid The service record UUID.
+     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
+     */
+    public static BluetoothSocket createBluetoothSocketToServiceRecordWithNextPort(
+            BluetoothDevice bluetoothDevice, UUID serviceRecordUuid, boolean secure) {
+        if (mAlternativeChannel >= MAX_ALTERNATIVE_CHANNEL) {
+            mAlternativeChannel = 0;
+        }
+
+        return createBluetoothSocketToServiceRecord(bluetoothDevice, serviceRecordUuid, ++mAlternativeChannel, secure);
+    }
+
+    /**
      * Creates a new Bluetooth socket based on the given one using the given channel.
      * @param originalBluetoothSocket The original Bluetooth socket.
-     * @param channel The new channel/port for the Bluetooth socket.
+     * @param channelOrPort The RFCOMM channel or L2CAP psm to use.
      * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
-     * @return The new Bluetooth socket with the specified channel or null in case of a failure.
+     * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocket(
-            BluetoothSocket originalBluetoothSocket, int channel, boolean secure) {
-        Log.d(TAG, "createBluetoothSocketWithSpecifiedChannel: Channel: " + channel + ", secure: " + secure);
+            BluetoothSocket originalBluetoothSocket, int channelOrPort, boolean secure) {
+        Log.d(TAG, "createBluetoothSocketWithSpecifiedChannel: Channel/port: " + channelOrPort + ", secure: " + secure);
         Class<?> bluetoothDeviceClass = originalBluetoothSocket.getRemoteDevice().getClass();
         Class<?>[] parameterTypes = new Class<?>[] { Integer.TYPE };
 
@@ -101,7 +128,7 @@ public class BluetoothUtils {
 
         try {
             Method createSocketMethod = bluetoothDeviceClass.getMethod(methodName, parameterTypes);
-            Object[] parameters = new Object[] { Integer.valueOf(channel) };
+            Object[] parameters = new Object[] { Integer.valueOf(channelOrPort) };
             newSocket = (BluetoothSocket) createSocketMethod.invoke(originalBluetoothSocket.getRemoteDevice(), parameters);
         } catch (Exception e) {
             Log.e(TAG, "createBluetoothSocketWithSpecifiedChannel: Failed to create a new Bluetooth socket: " + e.getMessage(), e);
@@ -111,10 +138,10 @@ public class BluetoothUtils {
     }
 
     /**
-     * Creates a new Bluetooth socket based on the given one using a rotating channel.
+     * Creates a new Bluetooth socket based on the given one using a rotating channel/port.
      * @param originalBluetoothSocket The original Bluetooth socket.
      * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
-     * @return The new Bluetooth socket with the specified channel or null in case of a failure.
+     * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocketWithNextChannel(
             BluetoothSocket originalBluetoothSocket, boolean secure) {
