@@ -22,6 +22,13 @@ public class BluetoothUtils {
     private static int mAlternativeChannel = 0;
 
     /**
+     * @return The alternative RFCOMM channel/L2CAP psm used previously.
+     */
+    public static int getPreviouslyUsedAlternativeChannelOrPort() {
+        return mAlternativeChannel;
+    }
+
+    /**
      * Sets the next alternative RFCOMM channel or L2CAP psm to use.
      * @param channelOrPort The next alternative RFCOMM channel or L2CAP psm to use.
      */

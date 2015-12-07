@@ -123,9 +123,13 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                         mSocket.connect(); // Again blocking
                         mListener.onSocketConnected(mPeerProperties);
                         socketConnectSucceeded = true;
-                        Log.i(TAG, "Socket connection succeeded using alternative port (" + ALTERNATIVE_SOCKET_PORT
-                                + "), total number of attempts not including fallbacks: " + socketConnectAttemptNo
+                        
+                        Log.i(TAG, "Socket connection succeeded using alternative port ("
+                                + BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort()
+                                + "), total number of attempts not including fallbacks: "
+                                + socketConnectAttemptNo
                                 + " (thread ID: " + getId() + ")");
+
                     } catch (IOException e2) {
                         if (mSocket != null) {
                             try {
