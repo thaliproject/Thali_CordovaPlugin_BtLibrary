@@ -47,8 +47,8 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
-    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 40000;
-    private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 10000;
+    private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 5000;
 
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
