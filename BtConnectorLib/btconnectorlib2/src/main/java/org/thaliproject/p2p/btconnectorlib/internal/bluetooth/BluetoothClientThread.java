@@ -44,7 +44,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
     private static final String TAG = BluetoothClientThread.class.getName();
     private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 200;
-    private static final int MAX_NUMBER_OF_RETRIES = 3;
+    private static final int MAX_NUMBER_OF_RETRIES = 5;
     private static final int ALTERNATIVE_SOCKET_PORT = 1;
     private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
