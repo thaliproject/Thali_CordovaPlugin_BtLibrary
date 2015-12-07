@@ -5,7 +5,6 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.os.CountDownTimer;
 import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
@@ -38,7 +37,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 1000;
+    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 100;
     private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
     private final UUID mServiceRecordUuid;
