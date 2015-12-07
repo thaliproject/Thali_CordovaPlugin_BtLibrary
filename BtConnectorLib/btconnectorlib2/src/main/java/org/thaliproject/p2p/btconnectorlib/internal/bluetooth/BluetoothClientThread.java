@@ -89,7 +89,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     public void run() {
         Log.i(TAG, "Trying to connect to peer with address "
                 + mBluetoothDeviceToConnectTo.getAddress()
-                + " (thread ID: " + getId());
+                + " (thread ID: " + getId() + ")");
 
         boolean socketConnectSucceeded = false;
         String errorMessage = "";
@@ -113,8 +113,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 }
 
                 // Fallback: Try the alternative way and port to construct the socket
-                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
-                        mBluetoothDeviceToConnectTo, mServiceRecordUuid, ALTERNATIVE_SOCKET_PORT, false);
+                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
+                        mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
+                //mSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
+                //        mBluetoothDeviceToConnectTo, mServiceRecordUuid, ALTERNATIVE_SOCKET_PORT, false);
 
                 if (mSocket != null) {
                     try {

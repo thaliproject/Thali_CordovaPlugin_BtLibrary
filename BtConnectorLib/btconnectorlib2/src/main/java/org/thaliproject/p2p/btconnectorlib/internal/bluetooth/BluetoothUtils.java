@@ -84,6 +84,7 @@ public class BluetoothUtils {
 
         try {
             bluetoothSocket = (BluetoothSocket)bluetoothSocketConstructor.newInstance(parameters);
+            Log.d(TAG, "createBluetoothSocketToServiceRecord: Socket created with channel/port " + channelOrPort);
         } catch (Exception e) {
             Log.e(TAG, "createBluetoothSocketToServiceRecord: Failed to create a new Bluetooth socket instance: " + e.getMessage(), e);
         }
