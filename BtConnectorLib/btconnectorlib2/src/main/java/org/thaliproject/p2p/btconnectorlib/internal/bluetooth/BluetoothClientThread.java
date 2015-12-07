@@ -21,12 +21,18 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      */
     public interface Listener {
         /**
-         * Called when successfully connected to a peer.
+         * Called when socket connection with a peer succeeds.
+         * @param peerProperties The peer properties.
+         */
+        void onSocketConnected(PeerProperties peerProperties);
+
+        /**
+         * Called when successfully connected to and validated (handshake OK) a peer.
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          */
-        void onConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
+        void onAuthenticated(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
 
         /**
          * Called when connection attempt fails.
@@ -37,7 +43,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 500;
+    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 200;
     private static final int MAX_NUMBER_OF_RETRIES = 3;
     private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
@@ -94,6 +100,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 // First try the normal method to construct the socket
                 mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
                 mSocket.connect(); // Blocking call
+                mListener.onSocketConnected(mPeerProperties);
                 socketConnectSucceeded = true;
                 Log.i(TAG, "Socket connection succeeded, total number of attempts: "
                         + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
@@ -111,7 +118,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
                 if (mSocket != null) {
                     try {
-                        mSocket.connect();
+                        mSocket.connect(); // Again blocking
+                        mListener.onSocketConnected(mPeerProperties);
                         socketConnectSucceeded = true;
                         Log.i(TAG, "Socket connection succeeded using alternative port (" + alternativeSocketPort
                                 + "), total number of attempts not including fallbacks: " + socketConnectAttemptNo
@@ -154,7 +162,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             }
         }
 
-        if (socketConnectSucceeded) {
+        if (socketConnectSucceeded && !mIsShuttingDown) {
             boolean handshakeSucceeded = false;
 
             try {
@@ -248,7 +256,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 // listeners responsibility to close the socket once done. Thus, do not close the
                 // socket here. Do not either close the input and output streams, since that will
                 // invalidate the socket as well.
-                mListener.onConnected(who.getSocket(), peerProperties);
+                mListener.onAuthenticated(who.getSocket(), peerProperties);
                 mHandshakeThread = null;
             }
         }
