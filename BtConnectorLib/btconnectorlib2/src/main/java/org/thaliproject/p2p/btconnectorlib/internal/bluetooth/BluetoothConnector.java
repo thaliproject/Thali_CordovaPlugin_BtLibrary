@@ -47,10 +47,9 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
-    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 30000;
-    private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
+    private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = CONNECTION_TIMEOUT_IN_MILLISECONDS;
 
-    private final BluetoothConnector that = this;
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
     private final UUID mMyBluetoothUuid;
@@ -214,11 +213,12 @@ public class BluetoothConnector
             if (wasSuccessful) {
                 mClientThread.setRemotePeerProperties(peerProperties);
                 mClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mConnectionTimeoutTimer.cancel();
                 mConnectionTimeoutTimer.start();
                 mClientThread.start();
 
                 mListener.onConnecting(bluetoothDeviceName, bluetoothDeviceAddress);
-                Log.i(TAG, "connect: Started connecting to " + bluetoothDeviceName
+                Log.d(TAG, "connect: Started connecting to " + bluetoothDeviceName
                         + " in address " + bluetoothDeviceAddress);
             } else {
                 mListener.onConnectionFailed(errorMessage, peerProperties);
@@ -314,19 +314,30 @@ public class BluetoothConnector
     }
 
     /**
+     * Restarts the connection timeout timer.
+     * @param peerProperties The peer properties.
+     */
+    @Override
+    public void onSocketConnected(PeerProperties peerProperties) {
+        Log.i(TAG, "onSocketConnected: Authenticating next: " + peerProperties.toString());
+        mConnectionTimeoutTimer.cancel();
+        mConnectionTimeoutTimer.start();
+    }
+
+    /**
      * Forward the event to the listener.
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
      * @param peerProperties The peer properties.
      */
     @Override
-    public void onConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
-        Log.i(TAG, "onConnected: " + peerProperties.toString());
+    public void onAuthenticated(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
+        Log.i(TAG, "onAuthenticated: Fully connected: " + peerProperties.toString());
+        mConnectionTimeoutTimer.cancel();
+        mClientThread = null;
+
         final BluetoothConnector thisInstance = this;
         final BluetoothSocket tempSocket = bluetoothSocket;
         final PeerProperties tempPeerProperties = peerProperties;
-
-        mConnectionTimeoutTimer.cancel();
-        mClientThread = null;
 
         mHandler.post(new Runnable() {
             @Override

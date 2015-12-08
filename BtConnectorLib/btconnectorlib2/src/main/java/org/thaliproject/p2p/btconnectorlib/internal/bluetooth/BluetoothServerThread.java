@@ -81,8 +81,6 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      */
     @Override
     public void run() {
-        Log.i(TAG, "Entering thread");
-
         while (!mStopThread) {
             Log.i(TAG, "Waiting for incoming connections...");
             BluetoothSocket socket = null;
@@ -110,7 +108,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                     mSocketIoThreads.add(handshakeThread);
                     handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                     handshakeThread.start();
-                    Log.i(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
+                    Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
                 }
             } else {
                 Log.e(TAG, "Socket is null");
@@ -119,7 +117,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
             }
         }
 
-        Log.i(TAG, "Exiting thread");
+        Log.d(TAG, "Exiting thread");
         mListener.onServerStopped();
     }
 
@@ -128,7 +126,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * Clears the list of IO threads and closes the server socket.
      */
     public synchronized void shutdown() {
-        Log.i(TAG, "Shutting down...");
+        Log.d(TAG, "shutdown");
         mStopThread = true;
 
         for (BluetoothSocketIoThread thread : mSocketIoThreads) {
@@ -158,7 +156,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
+        Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
         String identityString = new String(bytes);
         PeerProperties peerProperties = new PeerProperties();
         boolean resolvedPropertiesOk = false;
@@ -201,14 +199,14 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesWritten(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
-        Log.i(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
+        Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
 
         // Remove the thread from the list, but do not close the socket associated with it, since
         // it is now the responsibility of the listener to do that.
         boolean threadRemoved = removeThreadFromList(who, false);
 
         if (threadRemoved) {
-            Log.i(TAG, "Handshake thread disposed (thread ID: " + threadId + ")");
+            Log.d(TAG, "Handshake thread disposed (thread ID: " + threadId + ")");
         } else {
             Log.e(TAG, "Failed to find the thread from the list (thread ID: " + threadId + ")");
         }
@@ -247,7 +245,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
 
         for (BluetoothSocketIoThread thread : mSocketIoThreads) {
             if (thread != null && thread.getId() == threadId) {
-                Log.i(TAG, "removeThreadFromList: Removing thread with ID " + threadId);
+                Log.d(TAG, "removeThreadFromList: Removing thread with ID " + threadId);
                 mSocketIoThreads.remove(thread);
 
                 if (closeSocketAndStreams) {
