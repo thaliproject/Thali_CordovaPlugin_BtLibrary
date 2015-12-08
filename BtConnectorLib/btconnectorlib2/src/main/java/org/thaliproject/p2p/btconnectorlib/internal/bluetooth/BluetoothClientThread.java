@@ -43,7 +43,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
-    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 200;
+    private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 300;
     private static final int MAX_NUMBER_OF_RETRIES = 5;
     private static final int ALTERNATIVE_SOCKET_PORT = 1;
     private final Listener mListener;
@@ -96,59 +96,34 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         int socketConnectAttemptNo = 1;
 
         while (!socketConnectSucceeded && !mIsShuttingDown) {
-            try {
-                // First try the normal method to construct the socket
-                mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
-                mSocket.connect(); // Blocking call
+            Exception socketException = createSocketAndConnect(ALTERNATIVE_SOCKET_PORT);
+
+            if (socketException == null) {
                 mListener.onSocketConnected(mPeerProperties);
                 socketConnectSucceeded = true;
-                Log.i(TAG, "Socket connection succeeded, total number of attempts: "
-                        + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
-            } catch (IOException e) {
-                if (mSocket != null) {
-                    try {
-                        mSocket.close();
-                    } catch (IOException e2) {
-                    }
-                }
 
-                // Fallback: Try the alternative way and port to construct the socket
-                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
-                        mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
-                //mSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
-                //        mBluetoothDeviceToConnectTo, mServiceRecordUuid, ALTERNATIVE_SOCKET_PORT, false);
+                Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
+                        + "), total number of attempts: " + socketConnectAttemptNo
+                        + " (thread ID: " + getId() + ")");
+            } else {
+                // Fallback to the standard method for creating a socket
+                socketException = createSocketAndConnect(-1);
 
-                if (mSocket != null) {
-                    try {
-                        mSocket.connect(); // Again blocking
-                        mListener.onSocketConnected(mPeerProperties);
-                        socketConnectSucceeded = true;
-                        
-                        Log.i(TAG, "Socket connection succeeded using alternative port ("
-                                + BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort()
-                                + "), total number of attempts not including fallbacks: "
-                                + socketConnectAttemptNo
-                                + " (thread ID: " + getId() + ")");
+                if (socketException == null) {
+                    mListener.onSocketConnected(mPeerProperties);
+                    socketConnectSucceeded = true;
 
-                    } catch (IOException e2) {
-                        if (mSocket != null) {
-                            try {
-                                mSocket.close();
-                            } catch (IOException e3) {
-                            }
-
-                            mSocket = null;
-                        }
-                    }
-                }
-
-                if (!socketConnectSucceeded && !mIsShuttingDown) {
-                    errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): " + e.getMessage();
-                    Log.d(TAG, errorMessage + " (thread ID: " + getId() + ")");
+                    Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
+                            + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                } else {
+                    errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
+                            + socketException.getMessage();
                 }
             }
 
             if (!socketConnectSucceeded && !mIsShuttingDown) {
+                Log.d(TAG, errorMessage + " (thread ID: " + getId() + ")");
+
                 if (socketConnectAttemptNo < MAX_NUMBER_OF_RETRIES) {
                     Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS
                             + " ms... (thread ID: " + getId() + ")");
@@ -166,6 +141,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             }
 
             socketConnectAttemptNo++;
+            errorMessage = "";
         } // while (!socketConnectSucceeded && !mIsShuttingDown)
 
         if (socketConnectSucceeded && !mIsShuttingDown) {
@@ -325,5 +301,65 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
             mSocket = null;
         }
+    }
+
+    /**
+     * Creates an insecure Bluetooth socket with the service record UUID and tries to connect.
+     * @param port If -1, will use a standard method for socket creation (OS decides).
+     *             If 0, will use a rotating port number (see BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort).
+     *             If greater than 0, will use the given port number.
+     * @return Null, if successfully connected. An exception in case of a failure.
+     */
+    private synchronized Exception createSocketAndConnect(final int port) {
+        // Make sure the current socket, if one exists, is closed
+        if (mSocket != null) {
+            try {
+                mSocket.close();
+            } catch (IOException e) {
+            }
+        }
+
+        boolean socketCreatedSuccessfully = false;
+        Exception exception = null;
+
+        try {
+            if (port == -1) {
+                // Use the standard method of creating a socket
+                mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
+            } else if (port == 0) {
+                // Use a rotating port number
+                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
+                        mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
+            } else {
+                // Use the given port number
+                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
+                        mBluetoothDeviceToConnectTo, mServiceRecordUuid, port, false);
+            }
+
+            socketCreatedSuccessfully = true;
+        } catch (IOException e) {
+            exception = e;
+        } catch (Exception e) {
+            Log.e(TAG, "createSocketAndConnect: This should not happen: " + e.getMessage(), e);
+            exception = e;
+        }
+
+        if (socketCreatedSuccessfully) {
+            try {
+                mSocket.connect(); // Blocking call
+            } catch (IOException e) {
+                exception = e;
+
+                try {
+                    mSocket.close();
+                } catch (IOException e2) {
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "createSocketAndConnect: This should not happen: " + e.getMessage(), e);
+                exception = e;
+            }
+        }
+
+        return exception;
     }
 }
