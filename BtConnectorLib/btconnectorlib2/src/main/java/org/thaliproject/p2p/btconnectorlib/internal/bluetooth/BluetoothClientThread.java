@@ -149,6 +149,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             try {
                 mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
                 mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
                 boolean handshakeSucceeded = mHandshakeThread.write(mMyIdentityString.getBytes()); // This does not throw exceptions
 

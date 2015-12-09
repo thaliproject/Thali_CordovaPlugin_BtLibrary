@@ -6,6 +6,7 @@ import java.util.*;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Build;
+import android.os.CountDownTimer;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
@@ -23,12 +24,14 @@ import android.view.ViewGroup;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 
 public class MainActivity
         extends AppCompatActivity
         implements
             ConnectionManager.ConnectionManagerListener,
             DiscoveryManager.DiscoveryManagerListener,
+            BluetoothSocketIoThread.Listener,
             ActionBar.TabListener {
 
     private static final String TAG = MainActivity.class.getName();
@@ -39,6 +42,9 @@ public class MainActivity
     private static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
     private static final String SERVICE_NAME = "Thali Native Sample App";
     private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
+
+    private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
+    private static final int SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -58,8 +64,10 @@ public class MainActivity
     private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
     private ArrayList<PeerProperties> mPeers = new ArrayList<PeerProperties>();
-    private HashMap<String, BluetoothSocket> mIncomingConnections = new HashMap<String, BluetoothSocket>();
-    private HashMap<String, BluetoothSocket> mOutgoingConnections = new HashMap<String, BluetoothSocket>();
+    private HashMap<String, BluetoothSocketIoThread> mIncomingConnections = new HashMap<String, BluetoothSocketIoThread>();
+    private HashMap<String, BluetoothSocketIoThread> mOutgoingConnections = new HashMap<String, BluetoothSocketIoThread>();
+    private CountDownTimer mCheckConnectionsTimer = null;
+    private boolean mShuttingDown = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -100,6 +108,21 @@ public class MainActivity
                             .setTabListener(this));
         }
 
+        mShuttingDown = false;
+
+        mCheckConnectionsTimer = new CountDownTimer(10000, 10000) {
+            @Override
+            public void onTick(long l) {
+                // Not used
+            }
+
+            @Override
+            public void onFinish() {
+                sendPingToAllPeers();
+                mCheckConnectionsTimer.start();
+            }
+        };
+
         Context context = this.getApplicationContext();
         mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
         mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_TYPE);
@@ -112,22 +135,17 @@ public class MainActivity
 
     @Override
     public void onDestroy() {
-        for (BluetoothSocket socket : mOutgoingConnections.values()) {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "onDestroy: Failed to close a socket of an outgoing connection: " + e.getMessage(), e);
-            }
+        mShuttingDown = true;
+        mCheckConnectionsTimer.cancel();
+
+        for (BluetoothSocketIoThread socketIoThread : mOutgoingConnections.values()) {
+            socketIoThread.close(true);
         }
 
         mOutgoingConnections.clear();
 
-        for (BluetoothSocket socket : mIncomingConnections.values()) {
-            try {
-                socket.close();
-            } catch (IOException e) {
-                Log.e(TAG, "onDestroy: Failed to close a socket of an incoming connection: " + e.getMessage(), e);
-            }
+        for (BluetoothSocketIoThread socketIoThread : mIncomingConnections.values()) {
+            socketIoThread.close(true);
         }
 
         mIncomingConnections.clear();
@@ -180,18 +198,49 @@ public class MainActivity
 
     }
 
+    /**
+     * Constructs a Bluetooth socket IO thread for the new connection and adds it to the list of
+     * connections.
+     * @param bluetoothSocket The Bluetooth socket.
+     * @param isIncoming If true, this is an incoming connection. If false, this is an outgoing connection.
+     * @param peerProperties The peer properties.
+     */
     @Override
     public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
         Log.i(TAG, "onConnected: " + (isIncoming ? "Incoming" : "Outgoing") + " connection: " + peerProperties.toString());
+        BluetoothSocketIoThread socketIoThread = null;
 
-        if (isIncoming) {
-            mIncomingConnections.put(peerProperties.getId(), bluetoothSocket);
-        } else {
-            mOutgoingConnections.put(peerProperties.getId(), bluetoothSocket);
+        try {
+            socketIoThread = new BluetoothSocketIoThread(bluetoothSocket, this);
+        } catch (Exception e) {
+            Log.e(TAG, "onConnected: Failed to create a socket IO thread instance: " + e.getMessage(), e);
+
+            try {
+                bluetoothSocket.close();
+            } catch (IOException e2) {
+            }
         }
 
-        Log.i(TAG, "onConnected: Total number of connections is now "
-                + (mOutgoingConnections.size() + mIncomingConnections.size()));
+        socketIoThread.setPeerProperties(peerProperties);
+        socketIoThread.setBufferSize(SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+
+        if (socketIoThread != null) {
+            if (isIncoming) {
+                mIncomingConnections.put(peerProperties.getId(), socketIoThread);
+            } else {
+                mOutgoingConnections.put(peerProperties.getId(), socketIoThread);
+            }
+        }
+
+        socketIoThread.start(); // Start listening for incoming data
+        final int totalNumberOfConnections = mOutgoingConnections.size() + mIncomingConnections.size();
+
+        Log.i(TAG, "onConnected: Total number of connections is now " + totalNumberOfConnections);
+
+        if (totalNumberOfConnections == 1) {
+            mCheckConnectionsTimer.cancel();
+            mCheckConnectionsTimer.start();
+        }
     }
 
     @Override
@@ -223,6 +272,63 @@ public class MainActivity
     @Override
     public void onPeerLost(PeerProperties peerProperties) {
 
+    }
+
+    @Override
+    public void onBytesRead(byte[] bytes, int numberOfBytesRead, BluetoothSocketIoThread bluetoothSocketIoThread) {
+        Log.i(TAG, "onBytesRead: Received " + numberOfBytesRead + " bytes from peer "
+                + (bluetoothSocketIoThread.getPeerProperties() != null
+                ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
+    }
+
+    @Override
+    public void onBytesWritten(byte[] bytes, int numberOfBytesWritten, BluetoothSocketIoThread bluetoothSocketIoThread) {
+        Log.i(TAG, "onBytesWritten: Sent " + numberOfBytesWritten + " bytes to peer "
+                + (bluetoothSocketIoThread.getPeerProperties() != null
+                    ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
+    }
+
+    @Override
+    public void onDisconnected(String reason, BluetoothSocketIoThread bluetoothSocketIoThread) {
+        PeerProperties peerProperties = bluetoothSocketIoThread.getPeerProperties();
+
+        if (peerProperties != null) {
+            Log.i(TAG, "onDisconnected: Peer " + bluetoothSocketIoThread.getPeerProperties().toString()
+                    + " disconnected: " + reason);
+
+            if (mIncomingConnections.values().contains(bluetoothSocketIoThread)) {
+                mIncomingConnections.remove(peerProperties.getId());
+            } else if (mOutgoingConnections.values().contains(bluetoothSocketIoThread)) {
+                mOutgoingConnections.remove(peerProperties.getId());
+            } else if (!mShuttingDown) {
+                Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
+            }
+
+            bluetoothSocketIoThread.close(true);
+        } else {
+            Log.e(TAG, "onDisconnected: No peer properties");
+        }
+
+        final int totalNumberOfConnections = mOutgoingConnections.size() + mIncomingConnections.size();
+
+        Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
+
+        if (totalNumberOfConnections == 0) {
+            mCheckConnectionsTimer.cancel();
+        }
+    }
+
+    /**
+     * Sends a ping message to all connected peers.
+     */
+    private synchronized void sendPingToAllPeers() {
+        for (BluetoothSocketIoThread socketIoThread : mOutgoingConnections.values()) {
+            socketIoThread.write(PING_PACKAGE);
+        }
+
+        for (BluetoothSocketIoThread socketIoThread : mIncomingConnections.values()) {
+            socketIoThread.write(PING_PACKAGE);
+        }
     }
 
     /**
