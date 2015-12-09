@@ -1,7 +1,7 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
-package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
+package org.thaliproject.p2p.btconnectorlib.utils;
 
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
@@ -12,8 +12,9 @@ import java.io.OutputStream;
 
 /**
  * Thread for reading bytes from a Bluetooth socket and provides a method to write bytes to a socket.
+ * This class is public, since the implementation is generic and can be utilized by client applications.
  */
-class BluetoothSocketIoThread extends Thread {
+public class BluetoothSocketIoThread extends Thread {
     /**
      * Thread listener.
      */
@@ -45,7 +46,7 @@ class BluetoothSocketIoThread extends Thread {
     private static final String TAG = BluetoothSocketIoThread.class.getName();
     private static final int BUFFER_SIZE_IN_BYTES = 256;
     private final BluetoothSocket mSocket;
-    private final Listener mHandler;
+    private final Listener mListener;
     private final InputStream mInputStream;
     private final OutputStream mOutputStream;
     private PeerProperties mPeerProperties;
@@ -64,7 +65,7 @@ class BluetoothSocketIoThread extends Thread {
             throw new NullPointerException("Either the Bluetooth socket or the listener instance is null");
         }
 
-        mHandler = listener;
+        mListener = listener;
         mSocket = socket;
         mInputStream = mSocket.getInputStream();
         mOutputStream = mSocket.getOutputStream();
@@ -90,19 +91,19 @@ class BluetoothSocketIoThread extends Thread {
      */
     @Override
     public void run() {
-        Log.i(TAG, "Entering thread (ID: " + getId() + ")");
+        Log.d(TAG, "Entering thread (ID: " + getId() + ")");
         byte[] buffer = new byte[BUFFER_SIZE_IN_BYTES];
         int numberOfBytesRead;
 
         try {
             numberOfBytesRead = mInputStream.read(buffer);
-            mHandler.onBytesRead(buffer, numberOfBytesRead, this);
+            mListener.onBytesRead(buffer, numberOfBytesRead, this);
         } catch (IOException e) {
-            Log.i(TAG, "Disconnected: " + e.getMessage());
-            mHandler.onDisconnected(e.getMessage(), this);
+            Log.d(TAG, "Disconnected: " + e.getMessage());
+            mListener.onDisconnected(e.getMessage(), this);
         }
 
-        Log.i(TAG, "Exiting thread (ID: " + getId() + ")");
+        Log.d(TAG, "Exiting thread (ID: " + getId() + ")");
     }
 
     /**
@@ -127,7 +128,7 @@ class BluetoothSocketIoThread extends Thread {
         }
 
         if (wasSuccessful) {
-            mHandler.onBytesWritten(bytes, bytes.length, this);
+            mListener.onBytesWritten(bytes, bytes.length, this);
         }
 
         return wasSuccessful;

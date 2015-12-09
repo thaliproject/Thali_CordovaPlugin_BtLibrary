@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
@@ -115,6 +115,14 @@ public class PeerProperties {
 
     @Override
     public String toString() {
-        return "[" + mId + " " + mName + " " + mBluetoothAddress + "]";
+        String returnValue = "";
+
+        if (mId.equals(mBluetoothAddress)) {
+            returnValue = "[" + mId + " " + mName + "]";
+        } else {
+            returnValue = "[" + mId + " " + mName + " " + mBluetoothAddress + "]";
+        }
+
+        return returnValue;
     }
 }

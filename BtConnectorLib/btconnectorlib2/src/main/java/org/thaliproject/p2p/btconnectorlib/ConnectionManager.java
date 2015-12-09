@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
@@ -64,8 +64,8 @@ public class ConnectionManager
      * Constructor.
      * @param context The application context.
      * @param listener The listener.
-     * @param myUuid Our UUID. Note that his has to match the one of the peers we are trying to
-     *               connect to, otherwise any connection attempt will fail.
+     * @param myUuid Our (service record) UUID. Note that his has to match the one of the peers we
+     *               are trying to connect to, otherwise any connection attempt will fail.
      * @param myName Our name.
      */
     public ConnectionManager(
@@ -129,6 +129,16 @@ public class ConnectionManager
         }
 
         return (mState == ConnectionManagerState.RUNNING);
+    }
+
+    /**
+     * Initializes the components and starts the listener for incoming connections. This method
+     * uses the Bluetooth address to set the value of the peer ID.
+     * @param myPeerName Our peer name (used for the identity).
+     * @return True, if started successfully or was already running. False otherwise.
+     */
+    public boolean start(String myPeerName) {
+        return start(mBluetoothManager.getBluetoothAddress(), myPeerName);
     }
 
     /**

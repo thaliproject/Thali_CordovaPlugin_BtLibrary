@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
@@ -296,19 +296,20 @@ public class BluetoothConnector
      */
     @Override
     public void onSocketConnected(PeerProperties peerProperties) {
-        Log.i(TAG, "onSocketConnected: Authenticating next: " + peerProperties.toString());
+        Log.i(TAG, "onSocketConnected: " + peerProperties.toString());
         mConnectionTimeoutTimer.cancel();
         mConnectionTimeoutTimer.start();
     }
 
     /**
-     * Forward the event to the listener.
+     * The connection is now established and validated by handshake protocol. Notifies the listener
+     * that we are now fully connected.
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
      * @param peerProperties The peer properties.
      */
     @Override
-    public void onAuthenticated(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
-        Log.i(TAG, "onAuthenticated: Fully connected: " + peerProperties.toString());
+    public void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
+        Log.i(TAG, "onHandshakeSucceeded: " + peerProperties.toString());
         mConnectionTimeoutTimer.cancel();
         mClientThread = null;
 

@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 import org.json.JSONException;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.io.IOException;
@@ -32,7 +33,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          */
-        void onAuthenticated(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
+        void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
 
         /**
          * Called when connection attempt fails.
@@ -239,7 +240,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 // listeners responsibility to close the socket once done. Thus, do not close the
                 // socket here. Do not either close the input and output streams, since that will
                 // invalidate the socket as well.
-                mListener.onAuthenticated(who.getSocket(), peerProperties);
+                mListener.onHandshakeSucceeded(who.getSocket(), peerProperties);
                 mHandshakeThread = null;
             }
         }

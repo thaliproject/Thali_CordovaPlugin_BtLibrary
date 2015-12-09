@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
@@ -69,7 +69,6 @@ public class DiscoveryManager
 
     private WifiDirectManager mWifiDirectManager = null;
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
-    private String mMyIdentityString = "";
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryMode mDiscoveryMode = DiscoveryMode.NOT_SET;
 
@@ -221,6 +220,16 @@ public class DiscoveryManager
         }
 
         return (mState == DiscoveryManagerState.RUNNING);
+    }
+
+    /**
+     * Starts the peer discovery.
+     * This method uses the Bluetooth address to set the value of the peer ID.
+     * @param myPeerName Our peer name (used for the identity).
+     * @return True, if started successfully or was already running. False otherwise.
+     */
+    public boolean start(String myPeerName) {
+        return start(mBluetoothManager.getBluetoothAddress(), myPeerName);
     }
 
     /**

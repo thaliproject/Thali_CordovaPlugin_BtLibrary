@@ -1,7 +1,11 @@
 package org.thaliproject.nativesample.app;
 
-import java.util.Locale;
+import java.io.IOException;
+import java.util.*;
 
+import android.bluetooth.BluetoothSocket;
+import android.content.Context;
+import android.os.Build;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
@@ -10,15 +14,31 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
-import android.view.Gravity;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
-public class MainActivity extends AppCompatActivity implements ActionBar.TabListener {
+public class MainActivity
+        extends AppCompatActivity
+        implements
+            ConnectionManager.ConnectionManagerListener,
+            DiscoveryManager.DiscoveryManagerListener,
+            ActionBar.TabListener {
+
+    private static final String TAG = MainActivity.class.getName();
+
+    // Service type and UUID has to be application/service specific.
+    // The app will only connect to peers with the matching values.
+    private static final String SERVICE_TYPE = "ThaliNativeSampleApp._tcp";
+    private static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
+    private static final String SERVICE_NAME = "Thali Native Sample App";
+    private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -34,6 +54,12 @@ public class MainActivity extends AppCompatActivity implements ActionBar.TabList
      * The {@link ViewPager} that will host the section contents.
      */
     ViewPager mViewPager;
+
+    private ConnectionManager mConnectionManager = null;
+    private DiscoveryManager mDiscoveryManager = null;
+    private ArrayList<PeerProperties> mPeers = new ArrayList<PeerProperties>();
+    private HashMap<String, BluetoothSocket> mIncomingConnections = new HashMap<String, BluetoothSocket>();
+    private HashMap<String, BluetoothSocket> mOutgoingConnections = new HashMap<String, BluetoothSocket>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,8 +99,44 @@ public class MainActivity extends AppCompatActivity implements ActionBar.TabList
                             .setText(mSectionsPagerAdapter.getPageTitle(i))
                             .setTabListener(this));
         }
+
+        Context context = this.getApplicationContext();
+        mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
+        mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_TYPE);
+
+        String peerName = Build.PRODUCT; // Use product (device) name as the peer name
+        mConnectionManager.start(peerName);
+        mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        mDiscoveryManager.start(peerName);
     }
 
+    @Override
+    public void onDestroy() {
+        for (BluetoothSocket socket : mOutgoingConnections.values()) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                Log.e(TAG, "onDestroy: Failed to close a socket of an outgoing connection: " + e.getMessage(), e);
+            }
+        }
+
+        mOutgoingConnections.clear();
+
+        for (BluetoothSocket socket : mIncomingConnections.values()) {
+            try {
+                socket.close();
+            } catch (IOException e) {
+                Log.e(TAG, "onDestroy: Failed to close a socket of an incoming connection: " + e.getMessage(), e);
+            }
+        }
+
+        mIncomingConnections.clear();
+
+        mConnectionManager.stop();
+        mDiscoveryManager.stop();
+
+        super.onDestroy();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -111,6 +173,56 @@ public class MainActivity extends AppCompatActivity implements ActionBar.TabList
 
     @Override
     public void onTabReselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
+    }
+
+    @Override
+    public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState connectionManagerState) {
+
+    }
+
+    @Override
+    public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
+        Log.i(TAG, "onConnected: " + (isIncoming ? "Incoming" : "Outgoing") + " connection: " + peerProperties.toString());
+
+        if (isIncoming) {
+            mIncomingConnections.put(peerProperties.getId(), bluetoothSocket);
+        } else {
+            mOutgoingConnections.put(peerProperties.getId(), bluetoothSocket);
+        }
+
+        Log.i(TAG, "onConnected: Total number of connections is now "
+                + (mOutgoingConnections.size() + mIncomingConnections.size()));
+    }
+
+    @Override
+    public void onConnectionFailed(PeerProperties peerProperties) {
+        Log.i(TAG, "onConnectionFailed: " + peerProperties);
+    }
+
+    @Override
+    public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
+
+    }
+
+    @Override
+    public void onPeerListChanged(List<PeerProperties> list) {
+
+    }
+
+    @Override
+    public void onPeerDiscovered(PeerProperties peerProperties) {
+        if (!mPeers.contains(peerProperties)) {
+            mPeers.add(peerProperties);
+            Log.i(TAG, "onPeerDiscovered: Peer " + peerProperties.toString() + " added to list");
+            mConnectionManager.connect(peerProperties);
+        } else {
+            Log.i(TAG, "onPeerDiscovered: Peer " + peerProperties.toString() + " already in the list");
+        }
+    }
+
+    @Override
+    public void onPeerLost(PeerProperties peerProperties) {
+
     }
 
     /**
@@ -183,5 +295,4 @@ public class MainActivity extends AppCompatActivity implements ActionBar.TabList
             return rootView;
         }
     }
-
 }
