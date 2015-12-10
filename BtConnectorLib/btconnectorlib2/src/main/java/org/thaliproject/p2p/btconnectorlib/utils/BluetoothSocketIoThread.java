@@ -44,7 +44,7 @@ public class BluetoothSocketIoThread extends Thread {
     }
 
     private static final String TAG = BluetoothSocketIoThread.class.getName();
-    private static final int DEFAULT_BUFFER_SIZE_IN_BYTES = 256;
+    protected static final int DEFAULT_BUFFER_SIZE_IN_BYTES = 256;
     private final BluetoothSocket mSocket;
     private final Listener mListener;
     private final InputStream mInputStream;

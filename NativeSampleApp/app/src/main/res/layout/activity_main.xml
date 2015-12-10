@@ -4,7 +4,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:paddingRight="@dimen/activity_horizontal_margin"
+        android:paddingLeft="0dp"
+        android:paddingRight="0dp"
         tools:mContext=".MainActivity">
 
     <org.thaliproject.nativesample.app.slidingtabs.SlidingTabLayout

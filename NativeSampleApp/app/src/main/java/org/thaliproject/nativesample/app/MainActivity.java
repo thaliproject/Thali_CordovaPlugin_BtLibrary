@@ -17,6 +17,7 @@ import android.support.v4.view.ViewPager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
 import org.thaliproject.nativesample.app.fragments.LogFragment;
 import org.thaliproject.nativesample.app.fragments.PeerListFragment;
 import org.thaliproject.nativesample.app.slidingtabs.SlidingTabLayout;
@@ -30,7 +31,8 @@ public class MainActivity
         implements
             ConnectionManager.ConnectionManagerListener,
             DiscoveryManager.DiscoveryManagerListener,
-            BluetoothSocketIoThread.Listener {
+            Connection.Listener,
+            PeerListFragment.Listener {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -42,7 +44,6 @@ public class MainActivity
     private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
 
     private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
-    private static final int SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -64,6 +65,7 @@ public class MainActivity
     private DiscoveryManager mDiscoveryManager = null;
     private CountDownTimer mCheckConnectionsTimer = null;
     private PeerAndConnectionModel mModel = null;
+    private PeerListFragment mPeerListFragment = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -108,6 +110,9 @@ public class MainActivity
             mConnectionManager.start(peerName);
             mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
             mDiscoveryManager.start(peerName);
+
+            mPeerListFragment = new PeerListFragment();
+            mPeerListFragment.setListener(this);
         }
     }
 
@@ -161,10 +166,10 @@ public class MainActivity
     @Override
     public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
         Log.i(TAG, "onConnected: " + (isIncoming ? "Incoming" : "Outgoing") + " connection: " + peerProperties.toString());
-        BluetoothSocketIoThread socketIoThread = null;
+        Connection connection = null;
 
         try {
-            socketIoThread = new BluetoothSocketIoThread(bluetoothSocket, this);
+            connection = new Connection(this, getApplicationContext(), bluetoothSocket, peerProperties, isIncoming);
         } catch (Exception e) {
             Log.e(TAG, "onConnected: Failed to create a socket IO thread instance: " + e.getMessage(), e);
 
@@ -174,12 +179,15 @@ public class MainActivity
             }
         }
 
-        socketIoThread.setPeerProperties(peerProperties);
-        socketIoThread.setBufferSize(SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+        if (connection != null) {
+            final String peerName = connection.getPeerProperties().getName();
+            final boolean wasIncoming = connection.getIsIncoming();
 
-        mModel.addConnection(peerProperties.getId(), socketIoThread, isIncoming);
+            mModel.addConnection(connection);
 
-        socketIoThread.start(); // Start listening for incoming data
+            showToast(peerName + " connected (is " + (wasIncoming ? "incoming" : "outgoing") + ")");
+        }
+
         final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
         Log.i(TAG, "onConnected: Total number of connections is now " + totalNumberOfConnections);
@@ -210,7 +218,8 @@ public class MainActivity
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
 
         if (mModel.addPeer(peerProperties)) {
-            mConnectionManager.connect(peerProperties);
+            // Uncomment the following to autoconnect
+            //mConnectionManager.connect(peerProperties);
         }
     }
 
@@ -234,21 +243,19 @@ public class MainActivity
     }
 
     @Override
-    public void onDisconnected(String reason, BluetoothSocketIoThread bluetoothSocketIoThread) {
-        PeerProperties peerProperties = bluetoothSocketIoThread.getPeerProperties();
+    public void onDisconnected(String reason, Connection connection) {
+        Log.i(TAG, "onDisconnected: Peer " + connection.getPeerProperties().toString()
+                + " disconnected: " + reason);
+        final String peerName = connection.getPeerProperties().getName();
+        final boolean wasIncoming = connection.getIsIncoming();
 
-        if (peerProperties != null) {
-            Log.i(TAG, "onDisconnected: Peer " + bluetoothSocketIoThread.getPeerProperties().toString()
-                    + " disconnected: " + reason);
-
-            if (!mModel.removeConnection(peerProperties.getId(), bluetoothSocketIoThread) && !mShuttingDown) {
-                Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
-            }
-
-            bluetoothSocketIoThread.close(true);
-        } else {
-            Log.e(TAG, "onDisconnected: No peer properties");
+        if (!mModel.removeConnection(connection) && !mShuttingDown) {
+            Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
+        } else if (!mShuttingDown) {
+            Log.d(TAG, "onDisconnected: Connection " + connection.toString() + " removed from the list");
         }
+
+        connection.close(true);
 
         final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
@@ -257,25 +264,45 @@ public class MainActivity
         if (totalNumberOfConnections == 0) {
             mCheckConnectionsTimer.cancel();
         }
+
+        showToast(peerName + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
+    }
+
+    @Override
+    public void onConnectRequest(PeerProperties peerProperties) {
+        mConnectionManager.connect(peerProperties);
+    }
+
+    @Override
+    public void onSendDataRequest(PeerProperties peerProperties) {
+
     }
 
     /**
      * Sends a ping message to all connected peers.
      */
     private synchronized void sendPingToAllPeers() {
-        for (BluetoothSocketIoThread socketIoThread : mModel.getOutgoingConnections().values()) {
-            socketIoThread.write(PING_PACKAGE);
+        for (Connection connection : mModel.getConnections()) {
+            connection.send(PING_PACKAGE);
         }
+    }
 
-        for (BluetoothSocketIoThread socketIoThread : mModel.getIncomingConnections().values()) {
-            socketIoThread.write(PING_PACKAGE);
-        }
+    /**
+     * Displays a toast with the given message.
+     * @param message The message to show.
+     */
+    private void showToast(String message) {
+        Context context = getApplicationContext();
+        CharSequence text = message;
+        int duration = Toast.LENGTH_SHORT;
+        Toast toast = Toast.makeText(context, text, duration);
+        toast.show();
     }
 
     /**
      *
      */
-    public static class MyFragmentAdapter extends FragmentPagerAdapter {
+    public class MyFragmentAdapter extends FragmentPagerAdapter {
         private static final int PEER_LIST_FRAGMENT = 0;
         private static final int LOG_FRAGMENT = 1;
 
@@ -286,7 +313,7 @@ public class MainActivity
         @Override
         public Fragment getItem(int index) {
             switch (index){
-                case PEER_LIST_FRAGMENT: return new PeerListFragment();
+                case PEER_LIST_FRAGMENT: return mPeerListFragment;
                 case LOG_FRAGMENT: return new LogFragment();
             }
 

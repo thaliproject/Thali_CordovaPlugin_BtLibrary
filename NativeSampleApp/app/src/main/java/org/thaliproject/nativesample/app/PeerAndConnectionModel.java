@@ -2,9 +2,7 @@ package org.thaliproject.nativesample.app;
 
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import java.util.ArrayList;
-import java.util.HashMap;
 
 /**
  *
@@ -17,8 +15,7 @@ public class PeerAndConnectionModel {
     private static final String TAG = PeerAndConnectionModel.class.getName();
     private static PeerAndConnectionModel mInstance = null;
     private ArrayList<PeerProperties> mPeers = new ArrayList<PeerProperties>();
-    private HashMap<String, BluetoothSocketIoThread> mIncomingConnections = new HashMap<String, BluetoothSocketIoThread>();
-    private HashMap<String, BluetoothSocketIoThread> mOutgoingConnections = new HashMap<String, BluetoothSocketIoThread>();
+    private ArrayList<Connection> mConnections = new ArrayList<Connection>();
     private Listener mListener = null;
 
     public static PeerAndConnectionModel getInstance() {
@@ -43,12 +40,8 @@ public class PeerAndConnectionModel {
         return mPeers;
     }
 
-    public HashMap<String, BluetoothSocketIoThread> getIncomingConnections() {
-        return mIncomingConnections;
-    }
-
-    public HashMap<String, BluetoothSocketIoThread> getOutgoingConnections() {
-        return mOutgoingConnections;
+    public ArrayList<Connection> getConnections() {
+        return mConnections;
     }
 
     /**
@@ -56,74 +49,81 @@ public class PeerAndConnectionModel {
      * @param peerProperties
      * @return
      */
-    public boolean addPeer(PeerProperties peerProperties) {
-        boolean wasAdded = false;
+    public synchronized boolean addPeer(PeerProperties peerProperties) {
+        boolean alreadyInTheList = false;
+        final String newPeerId = peerProperties.getId();
 
-        if (!mPeers.contains(peerProperties)) {
+        for (PeerProperties existingPeerProperties : mPeers) {
+            if (existingPeerProperties.getId().equals(newPeerId)) {
+                alreadyInTheList = true;
+                break;
+            }
+        }
+
+        if (alreadyInTheList) {
+            Log.i(TAG, "addPeer: Peer " + peerProperties.toString() + " already in the list");
+        } else {
             mPeers.add(peerProperties);
             Log.i(TAG, "addPeer: Peer " + peerProperties.toString() + " added to list");
-            wasAdded = true;
 
             if (mListener != null) {
                 mListener.onDataChanged();
             }
-        } else {
-            Log.i(TAG, "addPeer: Peer " + peerProperties.toString() + " already in the list");
         }
 
-        return wasAdded;
+        return !alreadyInTheList;
     }
 
     /**
      *
      * @return
      */
-    public int getTotalNumberOfConnections() {
-        return mOutgoingConnections.size() + mIncomingConnections.size();
+    public synchronized int getTotalNumberOfConnections() {
+        return mConnections.size();
     }
 
-    public boolean hasIncomingConnectionToPeer(String peerId) {
-        return (mIncomingConnections.containsKey(peerId));
-    }
+    /**
+     *
+     * @param peerId
+     * @param isIncoming
+     * @return
+     */
+    public synchronized boolean hasConnectionToPeer(final String peerId, boolean isIncoming) {
+        boolean hasConnection = false;
+        int i = 0;
 
-    public boolean hasOutgoingConnectionToPeer(String peerId) {
-        return (mOutgoingConnections.containsKey(peerId));
+        for (Connection connection : mConnections) {
+            Log.d(TAG, "hasConnectionToPeer: " + ++i + ": "
+                    + connection.getPeerProperties().toString() + ", is incoming: "
+                    + connection.getIsIncoming());
+
+            if (connection.getPeerId().equals(peerId) && connection.getIsIncoming() == isIncoming) {
+                hasConnection = true;
+                break;
+            }
+        }
+
+        return hasConnection;
     }
 
     /**
      *
      */
     public void closeAllConnections() {
-        for (BluetoothSocketIoThread socketIoThread : mOutgoingConnections.values()) {
-            socketIoThread.close(true);
+        for (Connection connection : mConnections) {
+            connection.close(true);
         }
 
-        mOutgoingConnections.clear();
-
-        for (BluetoothSocketIoThread socketIoThread : mIncomingConnections.values()) {
-            socketIoThread.close(true);
-        }
-
-        mIncomingConnections.clear();
-
-        if (mListener != null) {
-            mListener.onDataChanged();
-        }
+        mConnections.clear();
     }
 
     /**
      *
-     * @param peerId
-     * @param bluetoothSocketIoThread
-     * @param isIncoming
+     * @param connection
      */
-    public void addConnection(String peerId, BluetoothSocketIoThread bluetoothSocketIoThread, boolean isIncoming) {
-        if (bluetoothSocketIoThread != null) {
-            if (isIncoming) {
-                mIncomingConnections.put(peerId, bluetoothSocketIoThread);
-            } else {
-                mOutgoingConnections.put(peerId, bluetoothSocketIoThread);
-            }
+    public void addConnection(Connection connection) {
+        if (connection != null) {
+            mConnections.add(connection);
 
             if (mListener != null) {
                 mListener.onDataChanged();
@@ -133,20 +133,17 @@ public class PeerAndConnectionModel {
 
     /**
      *
-     * @param peerId
-     * @param bluetoothSocketIoThread
+     * @param connection
      * @return
      */
-    public boolean removeConnection(String peerId, BluetoothSocketIoThread bluetoothSocketIoThread) {
+    public synchronized boolean removeConnection(Connection connection) {
         boolean wasRemoved = false;
 
-        if (mIncomingConnections.values().contains(bluetoothSocketIoThread)) {
-            if (mIncomingConnections.remove(peerId) != null) {
+        for (Connection existingConnection : mConnections) {
+            if (existingConnection.equals(connection)) {
+                mConnections.remove(existingConnection);
                 wasRemoved = true;
-            }
-        } else if (mOutgoingConnections.values().contains(bluetoothSocketIoThread)) {
-            if (mOutgoingConnections.remove(peerId) != null) {
-                wasRemoved = true;
+                // Do not break just to make sure we get any excess connections
             }
         }
 

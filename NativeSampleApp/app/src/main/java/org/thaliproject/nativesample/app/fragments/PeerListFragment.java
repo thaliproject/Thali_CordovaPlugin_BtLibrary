@@ -3,9 +3,11 @@ package org.thaliproject.nativesample.app.fragments;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -19,11 +21,22 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  */
 public class PeerListFragment extends Fragment implements PeerAndConnectionModel.Listener {
+    public interface Listener {
+        void onConnectRequest(PeerProperties peerProperties);
+        void onSendDataRequest(PeerProperties peerProperties);
+    }
+
+    private static final String TAG = PeerListFragment.class.getName();
     private ListView mListView = null;
     private ListAdapter mListAdapter = null;
     private PeerAndConnectionModel mModel = null;
+    private Listener mListener = null;
 
     public PeerListFragment() {
+    }
+
+    public void setListener(Listener listener) {
+        mListener = listener;
     }
 
     @Override
@@ -36,13 +49,23 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_peers, container, false);
 
-        TextView textView = (TextView)view.findViewById(R.id.section_label);
-        textView.setText("List of peers");
-
         mModel = PeerAndConnectionModel.getInstance();
         mListAdapter = new ListAdapter(view.getContext());
         mListView = (ListView)view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
+
+        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(position);
+
+                if (mListener != null) {
+                    mListener.onConnectRequest(peerProperties);
+                } else {
+                    Log.i(TAG, "onItemClick: " + peerProperties.toString() + " clicked, but I have no listener");
+                }
+            }
+        });
 
         mModel.setListener(this);
 
@@ -59,6 +82,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
     @Override
     public void onDataChanged() {
+        Log.i(TAG, "onDataChanged");
         mListAdapter.notifyDataSetChanged();
     }
 
@@ -104,8 +128,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             text = (TextView)view.findViewById(R.id.peerId);
             text.setText(peerProperties.getId());
 
-            boolean hasIncomingConnection = mModel.hasIncomingConnectionToPeer(peerProperties.getId());
-            boolean hasOutgoingConnection = mModel.hasOutgoingConnectionToPeer(peerProperties.getId());
+            boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), true);
+            boolean hasOutgoingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), false);
             String connectionInformationText = "";
 
             if (hasIncomingConnection && hasOutgoingConnection) {
