@@ -1,8 +1,8 @@
 package org.thaliproject.nativesample.app;
 
 import java.io.IOException;
-import java.util.*;
-
+import java.util.List;
+import java.util.UUID;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Build;
@@ -11,16 +11,15 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentTransaction;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.os.Bundle;
 import android.support.v4.view.ViewPager;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
+import org.thaliproject.nativesample.app.fragments.LogFragment;
+import org.thaliproject.nativesample.app.fragments.PeerListFragment;
+import org.thaliproject.nativesample.app.slidingtabs.SlidingTabLayout;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -31,8 +30,7 @@ public class MainActivity
         implements
             ConnectionManager.ConnectionManagerListener,
             DiscoveryManager.DiscoveryManagerListener,
-            BluetoothSocketIoThread.Listener,
-            ActionBar.TabListener {
+            BluetoothSocketIoThread.Listener {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -54,19 +52,18 @@ public class MainActivity
      * may be best to switch to a
      * {@link android.support.v4.app.FragmentStatePagerAdapter}.
      */
-    SectionsPagerAdapter mSectionsPagerAdapter;
+    private MyFragmentAdapter mMyFragmentAdapter;
 
     /**
      * The {@link ViewPager} that will host the section contents.
      */
-    ViewPager mViewPager;
+    private ViewPager mViewPager;
 
+    private SlidingTabLayout mSlidingTabLayout;
     private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
-    private ArrayList<PeerProperties> mPeers = new ArrayList<PeerProperties>();
-    private HashMap<String, BluetoothSocketIoThread> mIncomingConnections = new HashMap<String, BluetoothSocketIoThread>();
-    private HashMap<String, BluetoothSocketIoThread> mOutgoingConnections = new HashMap<String, BluetoothSocketIoThread>();
     private CountDownTimer mCheckConnectionsTimer = null;
+    private PeerAndConnectionModel mModel = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -76,61 +73,42 @@ public class MainActivity
 
         // Set up the action bar.
         final ActionBar actionBar = getSupportActionBar();
-        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
 
-        // Create the adapter that will return a fragment for each of the three
-        // primary sections of the activity.
-        mSectionsPagerAdapter = new SectionsPagerAdapter(getSupportFragmentManager());
+        mMyFragmentAdapter = new MyFragmentAdapter(getSupportFragmentManager());
 
-        // Set up the ViewPager with the sections adapter.
-        mViewPager = (ViewPager) findViewById(R.id.pager);
-        mViewPager.setAdapter(mSectionsPagerAdapter);
+        mViewPager = (ViewPager)findViewById(R.id.pager);
+        mViewPager.setAdapter(mMyFragmentAdapter);
 
-        // When swiping between different sections, select the corresponding
-        // tab. We can also use ActionBar.Tab#select() to do this if we have
-        // a reference to the Tab.
-        mViewPager.setOnPageChangeListener(new ViewPager.SimpleOnPageChangeListener() {
-            @Override
-            public void onPageSelected(int position) {
-                actionBar.setSelectedNavigationItem(position);
-            }
-        });
-
-        // For each of the sections in the app, add a tab to the action bar.
-        for (int i = 0; i < mSectionsPagerAdapter.getCount(); i++) {
-            // Create a tab with text corresponding to the page title defined by
-            // the adapter. Also specify this Activity object, which implements
-            // the TabListener interface, as the callback (listener) for when
-            // this tab is selected.
-            actionBar.addTab(
-                    actionBar.newTab()
-                            .setText(mSectionsPagerAdapter.getPageTitle(i))
-                            .setTabListener(this));
-        }
+        mSlidingTabLayout = (SlidingTabLayout)findViewById(R.id.sliding_tabs);
+        mSlidingTabLayout.setViewPager(mViewPager);
 
         mShuttingDown = false;
 
-        mCheckConnectionsTimer = new CountDownTimer(10000, 10000) {
-            @Override
-            public void onTick(long l) {
-                // Not used
-            }
+        if (mConnectionManager == null) {
+            mModel = PeerAndConnectionModel.getInstance();
 
-            @Override
-            public void onFinish() {
-                sendPingToAllPeers();
-                mCheckConnectionsTimer.start();
-            }
-        };
+            mCheckConnectionsTimer = new CountDownTimer(10000, 10000) {
+                @Override
+                public void onTick(long l) {
+                    // Not used
+                }
 
-        Context context = this.getApplicationContext();
-        mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
-        mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_TYPE);
+                @Override
+                public void onFinish() {
+                    sendPingToAllPeers();
+                    mCheckConnectionsTimer.start();
+                }
+            };
 
-        String peerName = Build.PRODUCT; // Use product (device) name as the peer name
-        mConnectionManager.start(peerName);
-        mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-        mDiscoveryManager.start(peerName);
+            Context context = this.getApplicationContext();
+            mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
+            mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_TYPE);
+
+            String peerName = Build.PRODUCT; // Use product (device) name as the peer name
+            mConnectionManager.start(peerName);
+            mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+            mDiscoveryManager.start(peerName);
+        }
     }
 
     @Override
@@ -138,17 +116,7 @@ public class MainActivity
         mShuttingDown = true;
         mCheckConnectionsTimer.cancel();
 
-        for (BluetoothSocketIoThread socketIoThread : mOutgoingConnections.values()) {
-            socketIoThread.close(true);
-        }
-
-        mOutgoingConnections.clear();
-
-        for (BluetoothSocketIoThread socketIoThread : mIncomingConnections.values()) {
-            socketIoThread.close(true);
-        }
-
-        mIncomingConnections.clear();
+        mModel.closeAllConnections();
 
         mConnectionManager.stop();
         mDiscoveryManager.stop();
@@ -176,21 +144,6 @@ public class MainActivity
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onTabSelected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
-        // When the given tab is selected, switch to the corresponding page in
-        // the ViewPager.
-        mViewPager.setCurrentItem(tab.getPosition());
-    }
-
-    @Override
-    public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
-    }
-
-    @Override
-    public void onTabReselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
     }
 
     @Override
@@ -224,16 +177,10 @@ public class MainActivity
         socketIoThread.setPeerProperties(peerProperties);
         socketIoThread.setBufferSize(SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
 
-        if (socketIoThread != null) {
-            if (isIncoming) {
-                mIncomingConnections.put(peerProperties.getId(), socketIoThread);
-            } else {
-                mOutgoingConnections.put(peerProperties.getId(), socketIoThread);
-            }
-        }
+        mModel.addConnection(peerProperties.getId(), socketIoThread, isIncoming);
 
         socketIoThread.start(); // Start listening for incoming data
-        final int totalNumberOfConnections = mOutgoingConnections.size() + mIncomingConnections.size();
+        final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
         Log.i(TAG, "onConnected: Total number of connections is now " + totalNumberOfConnections);
 
@@ -260,12 +207,10 @@ public class MainActivity
 
     @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
-        if (!mPeers.contains(peerProperties)) {
-            mPeers.add(peerProperties);
-            Log.i(TAG, "onPeerDiscovered: Peer " + peerProperties.toString() + " added to list");
+        Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
+
+        if (mModel.addPeer(peerProperties)) {
             mConnectionManager.connect(peerProperties);
-        } else {
-            Log.i(TAG, "onPeerDiscovered: Peer " + peerProperties.toString() + " already in the list");
         }
     }
 
@@ -296,11 +241,7 @@ public class MainActivity
             Log.i(TAG, "onDisconnected: Peer " + bluetoothSocketIoThread.getPeerProperties().toString()
                     + " disconnected: " + reason);
 
-            if (mIncomingConnections.values().contains(bluetoothSocketIoThread)) {
-                mIncomingConnections.remove(peerProperties.getId());
-            } else if (mOutgoingConnections.values().contains(bluetoothSocketIoThread)) {
-                mOutgoingConnections.remove(peerProperties.getId());
-            } else if (!mShuttingDown) {
+            if (!mModel.removeConnection(peerProperties.getId(), bluetoothSocketIoThread) && !mShuttingDown) {
                 Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
             }
 
@@ -309,7 +250,7 @@ public class MainActivity
             Log.e(TAG, "onDisconnected: No peer properties");
         }
 
-        final int totalNumberOfConnections = mOutgoingConnections.size() + mIncomingConnections.size();
+        final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
         Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
 
@@ -322,83 +263,49 @@ public class MainActivity
      * Sends a ping message to all connected peers.
      */
     private synchronized void sendPingToAllPeers() {
-        for (BluetoothSocketIoThread socketIoThread : mOutgoingConnections.values()) {
+        for (BluetoothSocketIoThread socketIoThread : mModel.getOutgoingConnections().values()) {
             socketIoThread.write(PING_PACKAGE);
         }
 
-        for (BluetoothSocketIoThread socketIoThread : mIncomingConnections.values()) {
+        for (BluetoothSocketIoThread socketIoThread : mModel.getIncomingConnections().values()) {
             socketIoThread.write(PING_PACKAGE);
         }
     }
 
     /**
-     * A {@link FragmentPagerAdapter} that returns a fragment corresponding to
-     * one of the sections/tabs/pages.
+     *
      */
-    public class SectionsPagerAdapter extends FragmentPagerAdapter {
+    public static class MyFragmentAdapter extends FragmentPagerAdapter {
+        private static final int PEER_LIST_FRAGMENT = 0;
+        private static final int LOG_FRAGMENT = 1;
 
-        public SectionsPagerAdapter(FragmentManager fm) {
-            super(fm);
+        public MyFragmentAdapter(FragmentManager fragmentManager) {
+            super(fragmentManager);
         }
 
         @Override
-        public Fragment getItem(int position) {
-            // getItem is called to instantiate the fragment for the given page.
-            // Return a PlaceholderFragment (defined as a static inner class below).
-            return PlaceholderFragment.newInstance(position + 1);
-        }
+        public Fragment getItem(int index) {
+            switch (index){
+                case PEER_LIST_FRAGMENT: return new PeerListFragment();
+                case LOG_FRAGMENT: return new LogFragment();
+            }
 
-        @Override
-        public int getCount() {
-            // Show 3 total pages.
-            return 3;
+            return null;
         }
 
         @Override
         public CharSequence getPageTitle(int position) {
-            Locale l = Locale.getDefault();
             switch (position) {
-                case 0:
-                    return getString(R.string.title_section1).toUpperCase(l);
-                case 1:
-                    return getString(R.string.title_section2).toUpperCase(l);
-                case 2:
-                    return getString(R.string.title_section3).toUpperCase(l);
+                case PEER_LIST_FRAGMENT: return "Peers";
+                case LOG_FRAGMENT: return "Log";
             }
-            return null;
-        }
-    }
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
-        /**
-         * The fragment argument representing the section number for this
-         * fragment.
-         */
-        private static final String ARG_SECTION_NUMBER = "section_number";
-
-        /**
-         * Returns a new instance of this fragment for the given section
-         * number.
-         */
-        public static PlaceholderFragment newInstance(int sectionNumber) {
-            PlaceholderFragment fragment = new PlaceholderFragment();
-            Bundle args = new Bundle();
-            args.putInt(ARG_SECTION_NUMBER, sectionNumber);
-            fragment.setArguments(args);
-            return fragment;
-        }
-
-        public PlaceholderFragment() {
+            return super.getPageTitle(position);
         }
 
         @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
+        public int getCount() {
+            return 2;
         }
     }
 }
