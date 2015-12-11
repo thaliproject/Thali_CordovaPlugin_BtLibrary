@@ -66,8 +66,9 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         return mIsIncoming;
     }
 
-    public boolean send(byte[] bytes) {
-        return mBluetoothSocketIoThread.write(bytes);
+    public void send(byte[] bytes) {
+        SocketWriterThread thread = new SocketWriterThread();
+        thread.write(bytes);
     }
 
     public void ping() {
@@ -117,5 +118,21 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     @Override
     public void onDisconnected(String reason, BluetoothSocketIoThread bluetoothSocketIoThread) {
         mListener.onDisconnected(reason, this);
+    }
+
+    private class SocketWriterThread extends Thread {
+        private byte[] mBytesToWrite = null;
+
+        public void write(byte[] bytes) {
+            mBytesToWrite = bytes;
+            this.start();
+        }
+
+        @Override
+        public void run() {
+            if (!mBluetoothSocketIoThread.write(mBytesToWrite)) {
+                Log.e(TAG, "Failed to write " + mBytesToWrite.length + " bytes");
+            }
+        }
     }
 }

@@ -116,39 +116,33 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     *
-     * @param connection
+     * Adds/removes a connection from the list of connections.
+     * @param connection The connection to add/remove.
+     * @param add If true, will add the given connection. If false, will remove it.
+     * @return True, if was added/removed successfully. False otherwise.
      */
-    public synchronized void addConnection(Connection connection) {
+    public synchronized boolean addOrRemoveConnection(Connection connection, boolean add) {
+        boolean wasAddedOrRemoved = false;
+
         if (connection != null) {
-            mConnections.add(connection);
-
-            if (mListener != null) {
-                mListener.onDataChanged();
-            }
-        }
-    }
-
-    /**
-     *
-     * @param connection
-     * @return
-     */
-    public synchronized boolean removeConnection(Connection connection) {
-        boolean wasRemoved = false;
-
-        for (Connection existingConnection : mConnections) {
-            if (existingConnection.equals(connection)) {
-                mConnections.remove(existingConnection);
-                wasRemoved = true;
-                // Do not break just to make sure we get any excess connections
+            if (add) {
+                wasAddedOrRemoved = mConnections.add(connection);
+            } else {
+                // Remove
+                for (Connection existingConnection : mConnections) {
+                    if (existingConnection.equals(connection)) {
+                        mConnections.remove(existingConnection);
+                        wasAddedOrRemoved = true;
+                        // Do not break just to make sure we get any excess connections
+                    }
+                }
             }
         }
 
-        if (wasRemoved && mListener != null) {
+        if (wasAddedOrRemoved && mListener != null) {
             mListener.onDataChanged();
         }
 
-        return wasRemoved;
+        return wasAddedOrRemoved;
     }
 }

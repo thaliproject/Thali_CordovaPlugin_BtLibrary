@@ -47,8 +47,7 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
-    private static final long CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
-    private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
 
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
@@ -56,10 +55,12 @@ public class BluetoothConnector
     private final String mMyBluetoothName;
     private final String mMyIdentityString;
     private final Handler mHandler;
-    private final CountDownTimer mConnectionTimeoutTimer;
+    private final BluetoothConnector mBluetoothConnectorInstance;
     private final Thread.UncaughtExceptionHandler mUncaughtExceptionHandler;
     private BluetoothServerThread mServerThread = null;
     private BluetoothClientThread mClientThread = null;
+    private CountDownTimer mConnectionTimeoutTimer;
+    private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     private boolean mIsServerThreadAlive = false;
     private boolean mIsShuttingDown = false;
 
@@ -82,25 +83,7 @@ public class BluetoothConnector
         mMyIdentityString = myIdentityString;
         mHandler = new Handler(context.getMainLooper());
 
-        mConnectionTimeoutTimer = new CountDownTimer(
-                CONNECTION_TIMEOUT_IN_MILLISECONDS, CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
-            @Override
-            public void onTick(long millisUntilFinished) {
-                // Not used
-            }
-
-            @Override
-            public void onFinish() {
-                BluetoothClientThread tempClientThread = mClientThread;
-                mClientThread = null;
-
-                if (tempClientThread != null) {
-                    // Shut down the client thread and notify the listener (me)
-                    Log.i(TAG, "Connection timeout");
-                    tempClientThread.cancel("Connection timeout");
-                }
-            }
-        };
+        createConnectionTimeoutTimer();
 
         mUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
             @Override
@@ -116,6 +99,26 @@ public class BluetoothConnector
                 });
             }
         };
+
+        mBluetoothConnectorInstance = this;
+    }
+
+    /**
+     * Sets the connection timeout. If the given value is negative or zero, no timeout is set.
+     * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
+     */
+    public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
+        Log.i(TAG, "setConnectionTimeout: " + connectionTimeoutInMilliseconds);
+        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
+
+        if (mConnectionTimeoutInMilliseconds > 0) {
+            createConnectionTimeoutTimer();
+        } else {
+            if (mConnectionTimeoutTimer != null) {
+                mConnectionTimeoutTimer.cancel();
+                mConnectionTimeoutTimer = null;
+            }
+        }
     }
 
     /**
@@ -159,7 +162,10 @@ public class BluetoothConnector
     public synchronized void shutdown() {
         Log.i(TAG, "Shutting down...");
         mIsShuttingDown = true;
-        mConnectionTimeoutTimer.cancel();
+
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+        }
 
         if (mServerThread != null) {
             mServerThread.shutdown();
@@ -211,10 +217,14 @@ public class BluetoothConnector
             }
 
             if (wasSuccessful) {
-                mClientThread.setRemotePeerProperties(peerProperties);
+                mClientThread.setPeerProperties(peerProperties);
                 mClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
-                mConnectionTimeoutTimer.cancel();
-                mConnectionTimeoutTimer.start();
+
+                if (mConnectionTimeoutTimer != null) {
+                    mConnectionTimeoutTimer.cancel();
+                    mConnectionTimeoutTimer.start();
+                }
+
                 mClientThread.start();
 
                 mListener.onConnecting(bluetoothDeviceName, bluetoothDeviceAddress);
@@ -240,7 +250,6 @@ public class BluetoothConnector
             BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
 
         Log.i(TAG, "onIncomingConnectionConnected: " + peerProperties.toString());
-        final BluetoothConnector thisInstance = this;
         final BluetoothSocket tempSocket = bluetoothSocket;
         final PeerProperties tempPeerProperties = peerProperties;
 
@@ -248,9 +257,9 @@ public class BluetoothConnector
             @Override
             public void run() {
                 if (tempSocket.isConnected()) {
-                    thisInstance.mListener.onConnected(tempSocket, true, tempPeerProperties);
+                    mBluetoothConnectorInstance.mListener.onConnected(tempSocket, true, tempPeerProperties);
                 } else {
-                    thisInstance.onIncomingConnectionFailed("Disconnected");
+                    mBluetoothConnectorInstance.onIncomingConnectionFailed("Disconnected");
                 }
             }
         });
@@ -263,13 +272,12 @@ public class BluetoothConnector
     @Override
     public void onIncomingConnectionFailed(String reason) {
         Log.e(TAG, "onIncomingConnectionFailed: " + reason);
-        final BluetoothConnector thisInstance = this;
         final String tempReason = reason;
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                thisInstance.mListener.onConnectionFailed(tempReason, null);
+                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempReason, null);
             }
         });
     }
@@ -297,8 +305,11 @@ public class BluetoothConnector
     @Override
     public void onSocketConnected(PeerProperties peerProperties) {
         Log.i(TAG, "onSocketConnected: " + peerProperties.toString());
-        mConnectionTimeoutTimer.cancel();
-        mConnectionTimeoutTimer.start();
+
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+            mConnectionTimeoutTimer.start();
+        }
     }
 
     /**
@@ -310,10 +321,13 @@ public class BluetoothConnector
     @Override
     public void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties) {
         Log.i(TAG, "onHandshakeSucceeded: " + peerProperties.toString());
-        mConnectionTimeoutTimer.cancel();
+
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+        }
+
         mClientThread = null;
 
-        final BluetoothConnector thisInstance = this;
         final BluetoothSocket tempSocket = bluetoothSocket;
         final PeerProperties tempPeerProperties = peerProperties;
 
@@ -321,9 +335,9 @@ public class BluetoothConnector
             @Override
             public void run() {
                 if (tempSocket.isConnected()) {
-                    thisInstance.mListener.onConnected(tempSocket, false, tempPeerProperties);
+                    mBluetoothConnectorInstance.mListener.onConnected(tempSocket, false, tempPeerProperties);
                 } else {
-                    thisInstance.onConnectionFailed("Disconnected", tempPeerProperties);
+                    mBluetoothConnectorInstance.onConnectionFailed("Disconnected", tempPeerProperties);
                 }
             }
         });
@@ -337,24 +351,75 @@ public class BluetoothConnector
     @Override
     public void onConnectionFailed(String reason, PeerProperties peerProperties) {
         Log.e(TAG, "onConnectionFailed: " + reason);
-        final BluetoothConnector thisInstance = this;
         final String tempReason = reason;
         final PeerProperties tempPeerProperties = peerProperties;
 
-        mConnectionTimeoutTimer.cancel();
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+        }
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                thisInstance.mListener.onConnectionFailed(tempReason, tempPeerProperties);
-
-                BluetoothClientThread tempClientThread = mClientThread;
-                mClientThread = null;
-
-                if (tempClientThread != null) {
-                    tempClientThread.shutdown();
-                }
+                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempReason, tempPeerProperties);
             }
         });
+
+        final BluetoothClientThread clientThread = mClientThread;
+        mClientThread = null;
+
+        if (clientThread != null) {
+            new Thread() {
+                @Override
+                public void run() {
+                    clientThread.shutdown();
+                }
+            }.start();
+        }
+    }
+
+    /**
+     * Constructs the connection timeout timer. If a timer instance already exists, it is cancelled
+     * and then recreated.
+     */
+    private void createConnectionTimeoutTimer() {
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+            mConnectionTimeoutTimer = null;
+        }
+
+        mConnectionTimeoutTimer = new CountDownTimer(
+                mConnectionTimeoutInMilliseconds, mConnectionTimeoutInMilliseconds) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                // Not used
+            }
+
+            @Override
+            public void onFinish() {
+                final String connectionFailureReason = "Connection timeout";
+                Log.i(TAG, connectionFailureReason);
+                this.cancel();
+                final BluetoothClientThread clientThread = mClientThread;
+                mClientThread = null;
+
+                if (clientThread != null) {
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            clientThread.shutdown(); // Try to cancel
+                        }
+                    }.start();
+                }
+
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mBluetoothConnectorInstance.mListener.onConnectionFailed(
+                                connectionFailureReason, clientThread.getPeerProperties());
+                    }
+                });
+            }
+        };
     }
 }

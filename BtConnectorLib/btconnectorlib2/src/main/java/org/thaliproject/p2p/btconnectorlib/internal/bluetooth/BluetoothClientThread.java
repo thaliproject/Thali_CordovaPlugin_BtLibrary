@@ -87,6 +87,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * Tries to connect to the Bluetooth socket. If successful, will create a handshake instance to
      * handle the connecting process.
      */
+    @Override
     public void run() {
         Log.i(TAG, "Trying to connect to peer with address "
                 + mBluetoothDeviceToConnectTo.getAddress()
@@ -100,22 +101,32 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             Exception socketException = createSocketAndConnect(ALTERNATIVE_SOCKET_PORT);
 
             if (socketException == null) {
-                mListener.onSocketConnected(mPeerProperties);
-                socketConnectSucceeded = true;
+                if (!mIsShuttingDown) {
+                    mListener.onSocketConnected(mPeerProperties);
+                    socketConnectSucceeded = true;
 
-                Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
-                        + "), total number of attempts: " + socketConnectAttemptNo
-                        + " (thread ID: " + getId() + ")");
-            } else {
+                    Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
+                            + "), total number of attempts: " + socketConnectAttemptNo
+                            + " (thread ID: " + getId() + ")");
+                } else {
+                    // Shutting down due to probably connection timeout
+                    Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                }
+            } else if (!mIsShuttingDown) {
                 // Fallback to the standard method for creating a socket
                 socketException = createSocketAndConnect(-1);
 
                 if (socketException == null) {
-                    mListener.onSocketConnected(mPeerProperties);
-                    socketConnectSucceeded = true;
+                    if (!mIsShuttingDown) {
+                        mListener.onSocketConnected(mPeerProperties);
+                        socketConnectSucceeded = true;
 
-                    Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
-                            + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                        Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
+                                + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                    } else {
+                        // Shutting down due to probably connection timeout
+                        Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                    }
                 } else {
                     errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
                             + socketException.getMessage();
@@ -185,26 +196,20 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * is called.
      */
     public synchronized void shutdown() {
-        Log.d(TAG, "shutdown");
+        Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
         mIsShuttingDown = true;
         close();
     }
 
-    /**
-     * Cancels the thread.
-     * @param why Contains the reason why cancelled.
-     */
-    public synchronized void cancel(String why) {
-        Log.i(TAG, "cancel: " + why);
-        shutdown();
-        mListener.onConnectionFailed("Cancelled: " + why, mPeerProperties);
+    public PeerProperties getPeerProperties() {
+        return mPeerProperties;
     }
 
     /**
      * Stores the given properties to be used when reporting failures.
      * @param peerProperties The peer properties.
      */
-    public void setRemotePeerProperties(PeerProperties peerProperties) {
+    public void setPeerProperties(PeerProperties peerProperties) {
         mPeerProperties = peerProperties;
     }
 

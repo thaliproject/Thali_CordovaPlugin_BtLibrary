@@ -59,6 +59,7 @@ public class ConnectionManager
     private ConnectionManagerState mState = ConnectionManagerState.NOT_STARTED;
     private UUID mMyUuid = null;
     private String mMyName = null;
+    private long mConnectionTimeoutInMilliseconds = BluetoothConnector.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
 
     /**
      * Constructor.
@@ -103,6 +104,7 @@ public class ConnectionManager
                             mBluetoothConnector = new BluetoothConnector(
                                     mContext, this, bluetoothAdapter, mMyUuid, mMyName, mMyIdentityString);
 
+                            mBluetoothConnector.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
                             mBluetoothConnector.startListeningForIncomingConnections();
                             setState(ConnectionManagerState.RUNNING);
                             Log.i(TAG, "start: OK");
@@ -153,6 +155,14 @@ public class ConnectionManager
         shutdownAndDisposeBluetoothConnector();
         mBluetoothManager.release(this);
         setState(ConnectionManagerState.NOT_STARTED);
+    }
+
+    /**
+     * Sets the connection timeout. If the given value is negative or zero, no timeout is set.
+     * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
+     */
+    public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
+        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
     }
 
     /**

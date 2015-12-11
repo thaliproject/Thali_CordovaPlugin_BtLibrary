@@ -183,7 +183,7 @@ public class MainActivity
             final String peerName = connection.getPeerProperties().getName();
             final boolean wasIncoming = connection.getIsIncoming();
 
-            mModel.addConnection(connection);
+            mModel.addOrRemoveConnection(connection, true);
 
             showToast(peerName + " connected (is " + (wasIncoming ? "incoming" : "outgoing") + ")");
         }
@@ -201,6 +201,7 @@ public class MainActivity
     @Override
     public void onConnectionFailed(PeerProperties peerProperties) {
         Log.i(TAG, "onConnectionFailed: " + peerProperties);
+        showToast("Failed to connect to " + peerProperties.getName());
     }
 
     @Override
@@ -249,7 +250,7 @@ public class MainActivity
         final String peerName = connection.getPeerProperties().getName();
         final boolean wasIncoming = connection.getIsIncoming();
 
-        if (!mModel.removeConnection(connection) && !mShuttingDown) {
+        if (!mModel.addOrRemoveConnection(connection, false) && !mShuttingDown) {
             Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
         } else if (!mShuttingDown) {
             Log.d(TAG, "onDisconnected: Connection " + connection.toString() + " removed from the list");
