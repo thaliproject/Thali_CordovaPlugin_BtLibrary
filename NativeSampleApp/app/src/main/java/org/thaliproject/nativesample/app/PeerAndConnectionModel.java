@@ -90,12 +90,10 @@ public class PeerAndConnectionModel {
      */
     public synchronized boolean hasConnectionToPeer(final String peerId, boolean isIncoming) {
         boolean hasConnection = false;
-        int i = 0;
+        //int i = 0;
 
         for (Connection connection : mConnections) {
-            Log.d(TAG, "hasConnectionToPeer: " + ++i + ": "
-                    + connection.getPeerProperties().toString() + ", is incoming: "
-                    + connection.getIsIncoming());
+            //Log.d(TAG, "hasConnectionToPeer: " + ++i + ": " + connection.toString());
 
             if (connection.getPeerId().equals(peerId) && connection.getIsIncoming() == isIncoming) {
                 hasConnection = true;
@@ -109,7 +107,7 @@ public class PeerAndConnectionModel {
     /**
      *
      */
-    public void closeAllConnections() {
+    public synchronized void closeAllConnections() {
         for (Connection connection : mConnections) {
             connection.close(true);
         }
@@ -121,7 +119,7 @@ public class PeerAndConnectionModel {
      *
      * @param connection
      */
-    public void addConnection(Connection connection) {
+    public synchronized void addConnection(Connection connection) {
         if (connection != null) {
             mConnections.add(connection);
 

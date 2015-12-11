@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Build;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
@@ -43,8 +44,6 @@ public class MainActivity
     private static final String SERVICE_NAME = "Thali Native Sample App";
     private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
 
-    private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
-
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
      * fragments for each of the sections. We use a
@@ -61,6 +60,7 @@ public class MainActivity
     private ViewPager mViewPager;
 
     private SlidingTabLayout mSlidingTabLayout;
+    private Context mContext = null;
     private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
     private CountDownTimer mCheckConnectionsTimer = null;
@@ -102,9 +102,9 @@ public class MainActivity
                 }
             };
 
-            Context context = this.getApplicationContext();
-            mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
-            mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_TYPE);
+            mContext = this.getApplicationContext();
+            mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
+            mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_TYPE);
 
             String peerName = Build.PRODUCT; // Use product (device) name as the peer name
             mConnectionManager.start(peerName);
@@ -283,7 +283,7 @@ public class MainActivity
      */
     private synchronized void sendPingToAllPeers() {
         for (Connection connection : mModel.getConnections()) {
-            connection.send(PING_PACKAGE);
+            connection.ping();
         }
     }
 
@@ -291,12 +291,19 @@ public class MainActivity
      * Displays a toast with the given message.
      * @param message The message to show.
      */
-    private void showToast(String message) {
-        Context context = getApplicationContext();
-        CharSequence text = message;
-        int duration = Toast.LENGTH_SHORT;
-        Toast toast = Toast.makeText(context, text, duration);
-        toast.show();
+    private void showToast(final String message) {
+        Handler handler = new Handler(mContext.getMainLooper());
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                Context context = getApplicationContext();
+                CharSequence text = message;
+                int duration = Toast.LENGTH_SHORT;
+                Toast toast = Toast.makeText(context, text, duration);
+                toast.show();
+            }
+        });
     }
 
     /**

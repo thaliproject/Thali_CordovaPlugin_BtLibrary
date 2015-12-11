@@ -2,6 +2,7 @@ package org.thaliproject.nativesample.app.fragments;
 
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -15,8 +16,6 @@ import org.thaliproject.nativesample.app.PeerAndConnectionModel;
 import org.thaliproject.nativesample.app.R;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-
 /**
  *
  */
@@ -27,6 +26,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     }
 
     private static final String TAG = PeerListFragment.class.getName();
+    private Context mContext = null;
     private ListView mListView = null;
     private ListAdapter mListAdapter = null;
     private PeerAndConnectionModel mModel = null;
@@ -50,7 +50,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         View view = inflater.inflate(R.layout.fragment_peers, container, false);
 
         mModel = PeerAndConnectionModel.getInstance();
-        mListAdapter = new ListAdapter(view.getContext());
+        mContext = view.getContext();
+        mListAdapter = new ListAdapter(mContext);
         mListView = (ListView)view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
 
@@ -83,7 +84,14 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     @Override
     public void onDataChanged() {
         Log.i(TAG, "onDataChanged");
-        mListAdapter.notifyDataSetChanged();
+        Handler handler = new Handler(mContext.getMainLooper());
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                mListAdapter.notifyDataSetChanged();
+            }
+        });
     }
 
     class ListAdapter extends BaseAdapter {
