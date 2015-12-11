@@ -35,8 +35,23 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     public PeerListFragment() {
     }
 
-    public void setListener(Listener listener) {
+    public synchronized void setListener(Listener listener) {
         mListener = listener;
+        
+        if (mListener != null && mListView != null) {
+            mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
+                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(position);
+
+                    if (mListener != null) {
+                        mListener.onConnectRequest(peerProperties);
+                    } else {
+                        Log.i(TAG, "onItemClick: " + peerProperties.toString() + " clicked, but I have no listener");
+                    }
+                }
+            });
+        }
     }
 
     @Override
@@ -52,25 +67,12 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         mModel = PeerAndConnectionModel.getInstance();
         mContext = view.getContext();
         mListAdapter = new ListAdapter(mContext);
+
         mListView = (ListView)view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
-
-        mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(position);
-
-                if (mListener != null) {
-                    mListener.onConnectRequest(peerProperties);
-                } else {
-                    Log.i(TAG, "onItemClick: " + peerProperties.toString() + " clicked, but I have no listener");
-                }
-            }
-        });
+        setListener(mListener);
 
         mModel.setListener(this);
-
-        mListAdapter.notifyDataSetChanged();
 
         return view;
     }

@@ -172,10 +172,7 @@ public class BluetoothConnector
             mServerThread = null;
         }
 
-        if (mClientThread != null) {
-            mClientThread.shutdown();
-            mClientThread = null;
-        }
+        shutdownClientThread();
 
         mIsServerThreadAlive = false;
     }
@@ -202,10 +199,7 @@ public class BluetoothConnector
             Log.i(TAG, "connect: Trying to start connecting to " + bluetoothDeviceName
                     + " in address " + bluetoothDeviceAddress);
 
-            if (mClientThread != null) {
-                mClientThread.shutdown();
-                mClientThread = null;
-            }
+            shutdownClientThread();
 
             try {
                 mClientThread = new BluetoothClientThread(
@@ -365,17 +359,7 @@ public class BluetoothConnector
             }
         });
 
-        final BluetoothClientThread clientThread = mClientThread;
-        mClientThread = null;
-
-        if (clientThread != null) {
-            new Thread() {
-                @Override
-                public void run() {
-                    clientThread.shutdown();
-                }
-            }.start();
-        }
+        shutdownClientThread();
     }
 
     /**
@@ -421,5 +405,25 @@ public class BluetoothConnector
                 });
             }
         };
+    }
+
+    /**
+     * Shuts down the client thread.
+     *
+     * This is safer to do in its own thread, because closing the socket of the client thread may
+     * block is the socket is still trying to connect.
+     */
+    private synchronized void shutdownClientThread() {
+        final BluetoothClientThread clientThread = mClientThread;
+        mClientThread = null;
+
+        if (clientThread != null) {
+            new Thread() {
+                @Override
+                public void run() {
+                    clientThread.shutdown();
+                }
+            }.start();
+        }
     }
 }
