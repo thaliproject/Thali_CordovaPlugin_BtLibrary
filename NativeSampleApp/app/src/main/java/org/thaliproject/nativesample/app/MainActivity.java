@@ -169,7 +169,7 @@ public class MainActivity
         Connection connection = null;
 
         try {
-            connection = new Connection(this, getApplicationContext(), bluetoothSocket, peerProperties, isIncoming);
+            connection = new Connection(this, bluetoothSocket, peerProperties, isIncoming);
         } catch (Exception e) {
             Log.e(TAG, "onConnected: Failed to create a socket IO thread instance: " + e.getMessage(), e);
 
@@ -186,6 +186,11 @@ public class MainActivity
             mModel.addOrRemoveConnection(connection, true);
 
             showToast(peerName + " connected (is " + (wasIncoming ? "incoming" : "outgoing") + ")");
+
+            if (isIncoming) {
+                // Add peer, if it was not discovered before
+                mModel.addPeer(peerProperties);
+            }
         }
 
         final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
@@ -201,7 +206,12 @@ public class MainActivity
     @Override
     public void onConnectionFailed(PeerProperties peerProperties) {
         Log.i(TAG, "onConnectionFailed: " + peerProperties);
-        showToast("Failed to connect to " + peerProperties.getName());
+
+        if (peerProperties != null) {
+            showToast("Failed to connect to " + peerProperties.getName());
+        } else {
+            showToast("Failed to connect");
+        }
     }
 
     @Override
@@ -247,24 +257,30 @@ public class MainActivity
     public void onDisconnected(String reason, Connection connection) {
         Log.i(TAG, "onDisconnected: Peer " + connection.getPeerProperties().toString()
                 + " disconnected: " + reason);
+        final Connection finalConnection = connection;
         final String peerName = connection.getPeerProperties().getName();
         final boolean wasIncoming = connection.getIsIncoming();
 
-        if (!mModel.addOrRemoveConnection(connection, false) && !mShuttingDown) {
-            Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
-        } else if (!mShuttingDown) {
-            Log.d(TAG, "onDisconnected: Connection " + connection.toString() + " removed from the list");
-        }
+        new Thread() {
+            @Override
+            public void run() {
+                if (!mModel.addOrRemoveConnection(finalConnection, false) && !mShuttingDown) {
+                    Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
+                } else if (!mShuttingDown) {
+                    Log.d(TAG, "onDisconnected: Connection " + finalConnection.toString() + " removed from the list");
+                }
 
-        connection.close(true);
+                finalConnection.close(true);
 
-        final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
+                final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
-        Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
+                Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
 
-        if (totalNumberOfConnections == 0) {
-            mCheckConnectionsTimer.cancel();
-        }
+                if (totalNumberOfConnections == 0) {
+                    mCheckConnectionsTimer.cancel();
+                }
+            }
+        }.start();
 
         showToast(peerName + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
     }

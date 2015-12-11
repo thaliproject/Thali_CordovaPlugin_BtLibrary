@@ -1,7 +1,6 @@
 package org.thaliproject.nativesample.app;
 
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
@@ -21,7 +20,6 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
     private static final int SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
     private Listener mListener = null;
-    private Context mContext = null;
     private BluetoothSocketIoThread mBluetoothSocketIoThread = null;
     private PeerProperties mPeerProperties = null;
     private String mPeerId = null;
@@ -30,7 +28,6 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     /**
      * Constructor.
      * @param listener The listener.
-     * @param context The application context (for using handler in onDisconnected).
      * @param bluetoothSocket The Bluetooth socket associated with this connection.
      * @param peerProperties The peer properties.
      * @param isIncoming If true, this connection is incoming. If false, this is an outgoing connection.
@@ -38,12 +35,11 @@ public class Connection implements BluetoothSocketIoThread.Listener {
      * @throws NullPointerException
      */
     public Connection(
-            Listener listener, Context context,
+            Listener listener,
             BluetoothSocket bluetoothSocket, PeerProperties peerProperties,
             boolean isIncoming)
         throws IOException, NullPointerException {
         mListener = listener;
-        mContext = context;
         mBluetoothSocketIoThread = new BluetoothSocketIoThread(bluetoothSocket, this);
         mBluetoothSocketIoThread.setPeerProperties(peerProperties);
         mBluetoothSocketIoThread.setBufferSize(SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
