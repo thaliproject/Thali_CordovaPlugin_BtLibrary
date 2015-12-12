@@ -7,4 +7,5 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
  *
  */
 public class BlePeerDiscoverer {
+    // Not implemented yet
 }

@@ -411,7 +411,7 @@ public class BluetoothConnector
      * Shuts down the client thread.
      *
      * This is safer to do in its own thread, because closing the socket of the client thread may
-     * block is the socket is still trying to connect.
+     * block (and in worst case freeze the device), if the socket is still trying to connect.
      */
     private synchronized void shutdownClientThread() {
         final BluetoothClientThread clientThread = mClientThread;

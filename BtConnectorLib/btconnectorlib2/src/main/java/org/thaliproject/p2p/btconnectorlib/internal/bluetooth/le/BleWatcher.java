@@ -6,6 +6,6 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 /**
  *
  */
-class BleScanner {
+class BleWatcher {
     // Not implemented yet
 }

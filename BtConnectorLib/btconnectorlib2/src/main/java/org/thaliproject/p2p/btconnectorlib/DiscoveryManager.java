@@ -121,6 +121,9 @@ public class DiscoveryManager
                         discoveryModeSet = true;
                     }
 
+                    // Not implemented yet
+                    discoveryModeSet = false;
+
                     break;
 
                 case WIFI:
@@ -134,6 +137,9 @@ public class DiscoveryManager
                         mDiscoveryMode = discoveryMode;
                         discoveryModeSet = true;
                     }
+
+                    // BLE discovery not implemented yet
+                    discoveryModeSet = false;
 
                     break;
             }

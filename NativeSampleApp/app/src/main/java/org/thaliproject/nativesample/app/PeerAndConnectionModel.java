@@ -3,6 +3,7 @@ package org.thaliproject.nativesample.app;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.ArrayList;
+import java.util.Iterator;
 
 /**
  *
@@ -129,7 +130,9 @@ public class PeerAndConnectionModel {
                 wasAddedOrRemoved = mConnections.add(connection);
             } else {
                 // Remove
-                for (Connection existingConnection : mConnections) {
+                for (Iterator<Connection> iterator = mConnections.iterator(); iterator.hasNext();) {
+                    Connection existingConnection = iterator.next();
+
                     if (existingConnection.equals(connection)) {
                         mConnections.remove(existingConnection);
                         wasAddedOrRemoved = true;

@@ -37,7 +37,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
     public synchronized void setListener(Listener listener) {
         mListener = listener;
-        
+
         if (mListener != null && mListView != null) {
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
