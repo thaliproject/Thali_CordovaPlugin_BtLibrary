@@ -17,7 +17,7 @@ import java.util.Collection;
 import static android.net.wifi.p2p.WifiP2pManager.WIFI_P2P_PEERS_CHANGED_ACTION;
 
 /**
- *
+ * Discoverer for Wi-Fi P2P devices.
  */
 class WifiP2pDeviceDiscoverer {
     /**
@@ -40,7 +40,7 @@ class WifiP2pDeviceDiscoverer {
     private final WifiP2pManager mP2pManager;
     private final WifiP2pManager.Channel mP2pChannel;
     private final Listener mListener;
-    private final CountDownTimer mDiscoveryTimeoutTimer;
+    private final CountDownTimer mRestartDiscoveryTimer;
     private final CountDownTimer mStartTimer;
     private BroadcastReceiver mPeerDiscoveryBroadcastReceiver = null;
     private WifiP2pManager.PeerListListener mPeerListListener = null;
@@ -64,7 +64,7 @@ class WifiP2pDeviceDiscoverer {
 
         mPeerListListener = new MyPeerListListener();
 
-        mDiscoveryTimeoutTimer = new CountDownTimer(
+        mRestartDiscoveryTimer = new CountDownTimer(
                 DISCOVERY_TIMEOUT_IN_MILLISECONDS,
                 DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
             public void onTick(long millisUntilFinished) {
@@ -73,7 +73,7 @@ class WifiP2pDeviceDiscoverer {
 
             public void onFinish() {
                 Log.i(TAG, "Got discovery timeout, restarting...");
-                mDiscoveryTimeoutTimer.cancel();
+                mRestartDiscoveryTimer.cancel();
                 restart();
             }
         };
@@ -133,7 +133,7 @@ class WifiP2pDeviceDiscoverer {
             mPeerDiscoveryBroadcastReceiver = null;
         }
 
-        mDiscoveryTimeoutTimer.cancel();
+        mRestartDiscoveryTimer.cancel();
         stop();
 
         mIsInitialized = false;
@@ -147,7 +147,10 @@ class WifiP2pDeviceDiscoverer {
         boolean wasSuccessful = false;
 
         if (mIsInitialized && (!mIsPeerDiscoveryStarted || mIsRestartPending)) {
-            Log.i(TAG, "start: Starting P2P device discovery...");
+            if (!mIsRestartPending) {
+                Log.i(TAG, "start: Starting P2P device discovery...");
+            }
+
             mIsRestartPending = false;
 
             mP2pManager.discoverPeers(mP2pChannel, new WifiP2pManager.ActionListener() {
@@ -163,8 +166,8 @@ class WifiP2pDeviceDiscoverer {
                     Log.e(TAG, "Failed to P2P device discovery, got error code: " + reason);
 
                     // Try again after awhile
-                    mDiscoveryTimeoutTimer.cancel();
-                    mDiscoveryTimeoutTimer.start();
+                    mRestartDiscoveryTimer.cancel();
+                    mRestartDiscoveryTimer.start();
                 }
             });
 
@@ -184,14 +187,17 @@ class WifiP2pDeviceDiscoverer {
      * Stops the P2P device discovery.
      */
     public synchronized void stop() {
-        if (mIsPeerDiscoveryStarted) {
+        if (mIsPeerDiscoveryStarted && !mIsRestartPending) {
             Log.i(TAG, "stop: Stopping P2P device discovery...");
         }
 
         mP2pManager.stopPeerDiscovery(mP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.d(TAG, "P2P device discovery stopped successfully");
+                if (!mIsRestartPending) {
+                    Log.d(TAG, "P2P device discovery stopped successfully");
+                }
+
                 mIsPeerDiscoveryStarted = false;
 
                 if (mIsRestartPending) {
@@ -218,7 +224,7 @@ class WifiP2pDeviceDiscoverer {
     public synchronized void restart() {
         if (mIsInitialized) {
             Log.i(TAG, "restart: Restarting...");
-            mDiscoveryTimeoutTimer.cancel();
+            mRestartDiscoveryTimer.cancel();
             mIsRestartPending = true;
             stop();
         } else {
@@ -241,8 +247,8 @@ class WifiP2pDeviceDiscoverer {
             }
 
             // Restart the timeout timer
-            mDiscoveryTimeoutTimer.cancel();
-            mDiscoveryTimeoutTimer.start();
+            mRestartDiscoveryTimer.cancel();
+            mRestartDiscoveryTimer.start();
         }
     }
 

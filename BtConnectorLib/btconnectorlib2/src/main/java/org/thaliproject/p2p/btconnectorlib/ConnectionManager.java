@@ -258,9 +258,19 @@ public class ConnectionManager
     }
 
     /**
-     * Notifies the listener about a failed connection.
+     * Notifies the listener about this failed connection attempt.
+     * @param peerProperties The peer properties of the peer we we're trying to connect to.
+     */
+    @Override
+    public void onConnectionTimeout(PeerProperties peerProperties) {
+        Log.w(TAG, "onConnectionTimeout: " + peerProperties.toString());
+        onConnectionFailed("Connection timeout", peerProperties);
+    }
+
+    /**
+     * Notifies the listener about this failed connection attempt.
      * @param reason The reason of the failure.
-     * @param peerProperties The properties of the peer. Note: Can be null!
+     * @param peerProperties The peer properties of the peer we we're trying to connect to. Note: Can be null!
      */
     @Override
     public void onConnectionFailed(String reason, PeerProperties peerProperties) {

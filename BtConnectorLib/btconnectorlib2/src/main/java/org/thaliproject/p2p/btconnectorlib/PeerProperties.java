@@ -114,6 +114,18 @@ public class PeerProperties {
     }
 
     @Override
+    public boolean equals(Object otherPeerProperties) {
+        PeerProperties other = (PeerProperties)otherPeerProperties;
+        boolean isMatch = false;
+
+        if (other != null && other.getId() != null && mId != null) {
+            isMatch = other.getId().equalsIgnoreCase(mId);
+        }
+
+        return isMatch;
+    }
+
+    @Override
     public String toString() {
         String returnValue = "";
 

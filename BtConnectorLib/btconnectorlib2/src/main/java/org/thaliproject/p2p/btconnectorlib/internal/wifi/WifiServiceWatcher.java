@@ -7,14 +7,12 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.WifiP2pManager.DnsSdServiceResponseListener;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.ServiceDiscoveryListener;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Watcher for Wi-Fi P2P services (peers) matching the desired service type and which also have a
@@ -22,15 +20,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 class WifiServiceWatcher {
     private static final String TAG = WifiServiceWatcher.class.getName();
-    private static final long DISCOVERY_TIMEOUT_IN_MILLISECONDS = 30000;
-    private static final long DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = DISCOVERY_TIMEOUT_IN_MILLISECONDS;
     private static final long START_SERVICE_DISCOVERY_DELAY_IN_MILLISECONDS = 1000;
     private final WifiP2pManager mP2pManager;
     private final WifiP2pManager.Channel mP2pChannel;
     private final ServiceDiscoveryListener mListener;
     private final String mServiceType;
-    private final CopyOnWriteArrayList<PeerProperties> mPeerPropertiesList;
-    private final CountDownTimer mDiscoveryTimeoutTimer;
     private DnsSdServiceResponseListener mDnsSdServiceResponseListener = null;
     private boolean mIsRestarting = false;
 
@@ -48,21 +42,6 @@ class WifiServiceWatcher {
         mListener = listener;
         mServiceType = serviceType;
 
-        mDiscoveryTimeoutTimer = new CountDownTimer(
-                DISCOVERY_TIMEOUT_IN_MILLISECONDS,
-                DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS) {
-            public void onTick(long millisUntilFinished) {
-                // Not used
-            }
-
-            public void onFinish() {
-                Log.i(TAG, "Got discovery timeout, restarting...");
-                mDiscoveryTimeoutTimer.cancel();
-                restart();
-            }
-        };
-
-        mPeerPropertiesList = new CopyOnWriteArrayList<>();
         mDnsSdServiceResponseListener = new MyDnsSdServiceResponseListener();
         mP2pManager.setDnsSdResponseListeners(mP2pChannel, mDnsSdServiceResponseListener, null);
     }
@@ -71,6 +50,7 @@ class WifiServiceWatcher {
      * Starts the service discovery.
      */
     public synchronized void start() {
+        mIsRestarting = false;
         WifiP2pDnsSdServiceRequest request = WifiP2pDnsSdServiceRequest.newInstance(mServiceType);
         final WifiServiceWatcher thisInstance = this;
         final Handler handler = new Handler();
@@ -107,9 +87,6 @@ class WifiServiceWatcher {
                 thisInstance.stop(true); // Restart
             }
         });
-
-        mDiscoveryTimeoutTimer.cancel();
-        mDiscoveryTimeoutTimer.start();
     }
 
     /**
@@ -117,16 +94,15 @@ class WifiServiceWatcher {
      * @param restart If true, will restart.
      */
     public synchronized void stop(boolean restart) {
-        mDiscoveryTimeoutTimer.cancel();
         mIsRestarting = restart;
 
         mP2pManager.clearServiceRequests(mP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.d(TAG, "Service requests cleared successfully");
-
                 if (mIsRestarting) {
                     start();
+                } else {
+                    Log.d(TAG, "Service requests cleared successfully");
                 }
             }
 
@@ -139,9 +115,6 @@ class WifiServiceWatcher {
                 }
             }
         });
-
-        mPeerPropertiesList.clear();
-        mListener.onServiceListChanged(mPeerPropertiesList);
     }
 
     /**
@@ -155,26 +128,8 @@ class WifiServiceWatcher {
      * Restarts the service discovery.
      */
     public synchronized void restart() {
-        Log.d(TAG, "restart");
+        Log.d(TAG, "restart: Restarting...");
         stop(true);
-    }
-
-    /**
-     * Checks if the list of peer devices contains a device with the given address.
-     * @param peerDeviceAddress The address of the peer device to find.
-     * @return True, if the list contains a peer device with the given address. False otherwise.
-     */
-    private synchronized boolean listContainsPeerDevice(String peerDeviceAddress) {
-        boolean peerDeviceFound = false;
-
-        for (PeerProperties peerProperties : mPeerPropertiesList) {
-            if (peerProperties != null && peerProperties.getDeviceAddress().equals(peerDeviceAddress)) {
-                peerDeviceFound = true;
-                break;
-            }
-        }
-
-        return peerDeviceFound;
     }
 
     /**
@@ -194,39 +149,27 @@ class WifiServiceWatcher {
                     + "\", service type: \"" + serviceType + "\"");
 
             if (serviceType.startsWith(mServiceType)) {
-                if (!listContainsPeerDevice(p2pDevice.deviceAddress)) {
-                    PeerProperties peerProperties = new PeerProperties();
-                    boolean resolvedPropertiesOk = false;
+                PeerProperties peerProperties = new PeerProperties();
+                boolean resolvedPropertiesOk = false;
 
-                    try {
-                        resolvedPropertiesOk = CommonUtils.getPropertiesFromIdentityString(
-                                identityString, peerProperties);
-                    } catch (JSONException e) {
-                        Log.e(TAG, "onDnsSdServiceAvailable: Failed to resolve peer properties: " + e.getMessage(), e);
-                    }
-
-                    if (resolvedPropertiesOk) {
-                        Log.d(TAG, "onDnsSdServiceAvailable: Resolved peer properties: " + peerProperties.toString());
-                        peerProperties.setServiceType(serviceType);
-                        peerProperties.setDeviceName(p2pDevice.deviceName);
-                        peerProperties.setDeviceAddress(p2pDevice.deviceAddress);
-                    }
-
-                    // Inform the listener of this individual peer so that it does not have to wait
-                    // for the complete list in case it wants to connect right away.
-                    mListener.onServiceDiscovered(peerProperties);
-
-                    mPeerPropertiesList.add(peerProperties);
-                    mListener.onServiceListChanged(mPeerPropertiesList);
-                } else {
-                    Log.d(TAG, "onDnsSdServiceAvailable: Peer already exists in the list of peers");
+                try {
+                    resolvedPropertiesOk = CommonUtils.getPropertiesFromIdentityString(
+                            identityString, peerProperties);
+                } catch (JSONException e) {
+                    Log.e(TAG, "onDnsSdServiceAvailable: Failed to resolve peer properties: " + e.getMessage(), e);
                 }
+
+                if (resolvedPropertiesOk) {
+                    Log.d(TAG, "onDnsSdServiceAvailable: Resolved peer properties: " + peerProperties.toString());
+                    peerProperties.setServiceType(serviceType);
+                    peerProperties.setDeviceName(p2pDevice.deviceName);
+                    peerProperties.setDeviceAddress(p2pDevice.deviceAddress);
+                }
+
+                mListener.onServiceDiscovered(peerProperties);
             } else {
                 Log.i(TAG, "onDnsSdServiceAvailable: This not our service: " + mServiceType + " != " + serviceType);
             }
-
-            mDiscoveryTimeoutTimer.cancel();
-            mDiscoveryTimeoutTimer.start();
         }
     }
 }

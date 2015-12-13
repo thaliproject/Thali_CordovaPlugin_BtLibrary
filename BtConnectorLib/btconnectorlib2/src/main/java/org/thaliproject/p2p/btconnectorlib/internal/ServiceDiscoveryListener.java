@@ -11,12 +11,6 @@ import java.util.List;
  */
 public interface ServiceDiscoveryListener {
     /**
-     * Called when the list of discovered peers (with the appropriate services) is changed.
-     * @param peerPropertiesList The new list of peers (with the appropriate services) available.
-     */
-    void onServiceListChanged(List<PeerProperties> peerPropertiesList);
-
-    /**
      * Called when a new peer (with an appropriate service) is discovered.
      * @param peerProperties The discovered peer device with an appropriate service.
      */

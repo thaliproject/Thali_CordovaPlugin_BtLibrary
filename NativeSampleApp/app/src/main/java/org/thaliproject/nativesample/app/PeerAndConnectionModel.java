@@ -46,9 +46,9 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     *
-     * @param peerProperties
-     * @return
+     * Adds the given peer to the list.
+     * @param peerProperties The peer to add.
+     * @return True, if the peer was added. False, if it was already in the list.
      */
     public synchronized boolean addPeer(PeerProperties peerProperties) {
         boolean alreadyInTheList = false;
@@ -76,18 +76,59 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     *
-     * @return
+     * Tries to remove the given peer.
+     * @return True, if the peer was found and removed. False otherwise.
+     */
+    public boolean removePeer(final PeerProperties peerProperties) {
+        boolean wasRemoved = false;
+
+        for (Iterator<PeerProperties> iterator = mPeers.iterator(); iterator.hasNext();) {
+            PeerProperties existingPeer = iterator.next();
+
+            if (existingPeer.equals(peerProperties)) {
+                iterator.remove();
+                wasRemoved = true;
+                break;
+            }
+        }
+
+        if (wasRemoved && mListener != null) {
+            mListener.onDataChanged();
+        }
+
+        return wasRemoved;
+    }
+
+    /**
+     * @return The total number of connections.
      */
     public synchronized int getTotalNumberOfConnections() {
         return mConnections.size();
     }
 
     /**
-     *
-     * @param peerId
-     * @param isIncoming
-     * @return
+     * Checks if we are connected to the given peer (incoming or outgoing).
+     * @param peerProperties The peer properties.
+     * @return True, if connected. False otherwise.
+     */
+    public synchronized boolean hasConnectionToPeer(PeerProperties peerProperties) {
+        boolean hasConnection = false;
+
+        for (Connection connection : mConnections) {
+            if (connection.getPeerProperties().equals(peerProperties)) {
+                hasConnection = true;
+                break;
+            }
+        }
+
+        return hasConnection;
+    }
+
+    /**
+     * Checks if we are connected to the given peer.
+     * @param peerId The peer ID.
+     * @param isIncoming If true, will check if we have an incoming connection. If false, check if we have an outgoing connection.
+     * @return True, if connected. False otherwise.
      */
     public synchronized boolean hasConnectionToPeer(final String peerId, boolean isIncoming) {
         boolean hasConnection = false;
@@ -134,7 +175,7 @@ public class PeerAndConnectionModel {
                     Connection existingConnection = iterator.next();
 
                     if (existingConnection.equals(connection)) {
-                        mConnections.remove(existingConnection);
+                        iterator.remove();
                         wasAddedOrRemoved = true;
                         // Do not break just to make sure we get any excess connections
                     }

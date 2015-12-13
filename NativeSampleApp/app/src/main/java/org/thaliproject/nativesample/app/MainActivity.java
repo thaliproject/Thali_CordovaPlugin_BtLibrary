@@ -190,6 +190,7 @@ public class MainActivity
             if (isIncoming) {
                 // Add peer, if it was not discovered before
                 mModel.addPeer(peerProperties);
+                mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
             }
         }
 
@@ -220,11 +221,6 @@ public class MainActivity
     }
 
     @Override
-    public void onPeerListChanged(List<PeerProperties> list) {
-
-    }
-
-    @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
 
@@ -236,7 +232,14 @@ public class MainActivity
 
     @Override
     public void onPeerLost(PeerProperties peerProperties) {
+        Log.i(TAG, "onPeerLost: " + peerProperties.toString());
 
+        if (mModel.hasConnectionToPeer(peerProperties)) {
+            // We are connected so it can't be lost
+            mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
+        } else {
+            mModel.removePeer(peerProperties);
+        }
     }
 
     @Override

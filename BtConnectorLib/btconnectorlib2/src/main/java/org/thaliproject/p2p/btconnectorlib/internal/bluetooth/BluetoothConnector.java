@@ -39,9 +39,15 @@ public class BluetoothConnector
         void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties);
 
         /**
+         * Called when the connection attempt times out.
+         * @param peerProperties The peer properties of the peer we we're trying to connect to.
+         */
+        void onConnectionTimeout(PeerProperties peerProperties);
+
+        /**
          * Called when a connection fails.
          * @param reason The reason of the failure.
-         * @param peerProperties The properties of the peer. Note: Can be null!
+         * @param peerProperties The peer properties of the peer we we're trying to connect to. Note: Can be null!
          */
         void onConnectionFailed(String reason, PeerProperties peerProperties);
     }
@@ -381,8 +387,7 @@ public class BluetoothConnector
 
             @Override
             public void onFinish() {
-                final String connectionFailureReason = "Connection timeout";
-                Log.i(TAG, connectionFailureReason);
+                Log.i(TAG, "Connection timeout");
                 this.cancel();
                 final BluetoothClientThread clientThread = mClientThread;
                 mClientThread = null;
@@ -399,8 +404,8 @@ public class BluetoothConnector
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mBluetoothConnectorInstance.mListener.onConnectionFailed(
-                                connectionFailureReason, clientThread.getPeerProperties());
+                        mBluetoothConnectorInstance.mListener.onConnectionTimeout(
+                                clientThread.getPeerProperties());
                     }
                 });
             }
