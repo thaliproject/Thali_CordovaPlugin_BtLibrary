@@ -62,7 +62,6 @@ public class ConnectionManager
     private final Context mContext;
     private final ConnectionManagerListener mListener;
     private final Handler mHandler;
-    private BluetoothManager mBluetoothManager = null;
     private BluetoothConnector mBluetoothConnector = null;
     private ConnectionManagerState mState = ConnectionManagerState.NOT_STARTED;
     private UUID mMyUuid = null;
@@ -80,7 +79,7 @@ public class ConnectionManager
     public ConnectionManager(
             Context context, ConnectionManagerListener listener,
             UUID myUuid, String myName) {
-        super(context);
+        super(context); // Gets the BluetoothManager instance
 
         mContext = context;
         mListener = listener;
@@ -88,7 +87,6 @@ public class ConnectionManager
         mMyName = myName;
 
         mHandler = new Handler(mContext.getMainLooper());
-        mBluetoothManager = BluetoothManager.getInstance(mContext);
     }
 
     /**

@@ -83,7 +83,7 @@ public class DiscoveryManager
      * @param serviceType The service type (both ours and requirement for the peer).
      */
     public DiscoveryManager(Context context, DiscoveryManagerListener listener, String serviceType) {
-        super(context);
+        super(context); // Gets the BluetoothManager instance
 
         mContext = context;
         mListener = listener;
@@ -98,6 +98,16 @@ public class DiscoveryManager
         }
     }
 
+    /**
+     * @return True, if Bluetooth LE advertising is supported. False otherwise.
+     */
+    public boolean isBleAdvertisingSupported() {
+        return mBluetoothManager.isBleSupported();
+    }
+
+    /**
+     * @return The discovery mode currently set.
+     */
     public DiscoveryMode getDiscoveryMode() {
         return mDiscoveryMode;
     }
