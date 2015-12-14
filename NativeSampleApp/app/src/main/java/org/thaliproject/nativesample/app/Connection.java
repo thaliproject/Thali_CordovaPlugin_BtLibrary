@@ -1,3 +1,6 @@
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.nativesample.app;
 
 import android.bluetooth.BluetoothSocket;
@@ -62,6 +65,10 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         return mIsIncoming;
     }
 
+    /**
+     * Tries to send the given bytes to the peer.
+     * @param bytes The bytes to send.
+     */
     public void send(byte[] bytes) {
         SocketWriterThread thread = new SocketWriterThread();
         thread.write(bytes);
@@ -116,6 +123,9 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         mListener.onDisconnected(reason, this);
     }
 
+    /**
+     * Thread for sending data to a peer using "fire and forget" principle.
+     */
     private class SocketWriterThread extends Thread {
         private byte[] mBytesToWrite = null;
 

@@ -1,7 +1,9 @@
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.nativesample.app;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
@@ -66,6 +68,7 @@ public class MainActivity
     private CountDownTimer mCheckConnectionsTimer = null;
     private PeerAndConnectionModel mModel = null;
     private PeerListFragment mPeerListFragment = null;
+    private LogFragment mLogFragment = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -106,13 +109,15 @@ public class MainActivity
             mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
             mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_TYPE);
 
-            String peerName = Build.PRODUCT; // Use product (device) name as the peer name
+            String peerName = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
             mConnectionManager.start(peerName);
             mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
             mDiscoveryManager.start(peerName);
 
             mPeerListFragment = new PeerListFragment();
             mPeerListFragment.setListener(this);
+
+            mLogFragment = new LogFragment();
         }
     }
 
@@ -153,7 +158,7 @@ public class MainActivity
 
     @Override
     public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState connectionManagerState) {
-
+        mLogFragment.logMessage("Connection manager state changed: " + connectionManagerState);
     }
 
     /**
@@ -192,6 +197,8 @@ public class MainActivity
                 mModel.addPeer(peerProperties);
                 mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
             }
+
+            mLogFragment.logMessage((isIncoming ? "Incoming" : "Outgoing") + " connection established to peer " + peerProperties.toString());
         }
 
         final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
@@ -205,19 +212,34 @@ public class MainActivity
     }
 
     @Override
+    public void onConnectionTimeout(PeerProperties peerProperties) {
+        Log.i(TAG, "onConnectionTimeout: " + peerProperties);
+
+        if (peerProperties != null) {
+            showToast("Failed to connect to " + peerProperties.getName() + ": Connection timeout");
+            mLogFragment.logError("Failed to connect to peer " + peerProperties.toString() + ": Connection timeout");
+        } else {
+            showToast("Failed to connect: Connection timeout");
+            mLogFragment.logError("Failed to connect: Connection timeout");
+        }
+    }
+
+    @Override
     public void onConnectionFailed(PeerProperties peerProperties) {
         Log.i(TAG, "onConnectionFailed: " + peerProperties);
 
         if (peerProperties != null) {
             showToast("Failed to connect to " + peerProperties.getName());
+            mLogFragment.logError("Failed to connect to peer " + peerProperties.toString());
         } else {
             showToast("Failed to connect");
+            mLogFragment.logError("Failed to connect");
         }
     }
 
     @Override
     public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
-
+        mLogFragment.logMessage("Discovery manager state changed: " + discoveryManagerState);
     }
 
     @Override
@@ -227,6 +249,8 @@ public class MainActivity
         if (mModel.addPeer(peerProperties)) {
             // Uncomment the following to autoconnect
             //mConnectionManager.connect(peerProperties);
+
+            mLogFragment.logMessage("Peer " + peerProperties.toString() + " discovered");
         }
     }
 
@@ -239,6 +263,7 @@ public class MainActivity
             mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
         } else {
             mModel.removePeer(peerProperties);
+            mLogFragment.logMessage("Peer " + peerProperties.toString() + " lost");
         }
     }
 
@@ -261,7 +286,8 @@ public class MainActivity
         Log.i(TAG, "onDisconnected: Peer " + connection.getPeerProperties().toString()
                 + " disconnected: " + reason);
         final Connection finalConnection = connection;
-        final String peerName = connection.getPeerProperties().getName();
+        final PeerProperties peerProperties = connection.getPeerProperties();
+        final String peerName = peerProperties.getName();
         final boolean wasIncoming = connection.getIsIncoming();
 
         new Thread() {
@@ -286,11 +312,13 @@ public class MainActivity
         }.start();
 
         showToast(peerName + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
+        mLogFragment.logMessage("Peer " + peerProperties.toString() + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
     }
 
     @Override
     public void onConnectRequest(PeerProperties peerProperties) {
         mConnectionManager.connect(peerProperties);
+        mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
     }
 
     @Override
@@ -327,7 +355,7 @@ public class MainActivity
     }
 
     /**
-     *
+     * The fragment adapter for tabs.
      */
     public class MyFragmentAdapter extends FragmentPagerAdapter {
         private static final int PEER_LIST_FRAGMENT = 0;
@@ -341,7 +369,7 @@ public class MainActivity
         public Fragment getItem(int index) {
             switch (index){
                 case PEER_LIST_FRAGMENT: return mPeerListFragment;
-                case LOG_FRAGMENT: return new LogFragment();
+                case LOG_FRAGMENT: return mLogFragment;
             }
 
             return null;

@@ -39,13 +39,21 @@ public class ConnectionManager
          * Note that the ownership of the bluetooth socket is transferred to the listener.
          * @param bluetoothSocket The Bluetooth socket associated with the peer.
          * @param isIncoming True, if the connection was incoming. False, if outgoing.
-         * @param peerProperties The peer properties including the peer ID, name and the Bluetooth address.
+         * @param peerProperties The properties of the peer we're connected to.
          */
         void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties);
 
         /**
+         * Notifies the listener about this failed connection attempt.
+         * @param peerProperties The properties of the peer we we're trying to connect to.
+         *                       Note: This can be null.
+         */
+        void onConnectionTimeout(PeerProperties peerProperties);
+
+        /**
          * Called in case of a failure to connect to a peer.
-         * @param peerProperties The peer properties including the peer ID, name and the Bluetooth address.
+         * @param peerProperties The properties of the peer we we're trying to connect to.
+         *                       Note: This can be null.
          */
         void onConnectionFailed(PeerProperties peerProperties);
     }
@@ -259,18 +267,28 @@ public class ConnectionManager
 
     /**
      * Notifies the listener about this failed connection attempt.
-     * @param peerProperties The peer properties of the peer we we're trying to connect to.
+     * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
      */
     @Override
     public void onConnectionTimeout(PeerProperties peerProperties) {
         Log.w(TAG, "onConnectionTimeout: " + peerProperties.toString());
-        onConnectionFailed("Connection timeout", peerProperties);
+
+        if (mListener != null) {
+            final PeerProperties tempPeerProperties = peerProperties;
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onConnectionTimeout(tempPeerProperties);
+                }
+            });
+        }
     }
 
     /**
      * Notifies the listener about this failed connection attempt.
      * @param reason The reason of the failure.
-     * @param peerProperties The peer properties of the peer we we're trying to connect to. Note: Can be null!
+     * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
      */
     @Override
     public void onConnectionFailed(String reason, PeerProperties peerProperties) {

@@ -40,14 +40,14 @@ public class BluetoothConnector
 
         /**
          * Called when the connection attempt times out.
-         * @param peerProperties The peer properties of the peer we we're trying to connect to.
+         * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
          */
         void onConnectionTimeout(PeerProperties peerProperties);
 
         /**
          * Called when a connection fails.
          * @param reason The reason of the failure.
-         * @param peerProperties The peer properties of the peer we we're trying to connect to. Note: Can be null!
+         * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
          */
         void onConnectionFailed(String reason, PeerProperties peerProperties);
     }

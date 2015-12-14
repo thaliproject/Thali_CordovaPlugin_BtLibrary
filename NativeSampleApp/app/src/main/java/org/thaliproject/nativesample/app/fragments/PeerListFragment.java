@@ -1,3 +1,6 @@
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.nativesample.app.fragments;
 
 import android.content.Context;
@@ -17,7 +20,7 @@ import org.thaliproject.nativesample.app.R;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
- *
+ * A fragment containing the list of discovered peers.
  */
 public class PeerListFragment extends Fragment implements PeerAndConnectionModel.Listener {
     public interface Listener {
@@ -100,7 +103,6 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         private LayoutInflater mInflater = null;
         private Context mContext;
 
-
         public ListAdapter(Context context) {
             mContext = context;
             mInflater = (LayoutInflater) mContext
@@ -132,11 +134,11 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
             PeerProperties peerProperties = mModel.getPeers().get(position);
 
-            TextView text = (TextView)view.findViewById(R.id.peerName);
-            text.setText(peerProperties.getName());
+            TextView textView = (TextView)view.findViewById(R.id.peerName);
+            textView.setText(peerProperties.getName());
 
-            text = (TextView)view.findViewById(R.id.peerId);
-            text.setText(peerProperties.getId());
+            textView = (TextView)view.findViewById(R.id.peerId);
+            textView.setText(peerProperties.getId());
 
             boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), true);
             boolean hasOutgoingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), false);
@@ -152,8 +154,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 connectionInformationText = "Not connected";
             }
 
-            text = (TextView)view.findViewById(R.id.connectionsInformation);
-            text.setText(connectionInformationText);
+            textView = (TextView)view.findViewById(R.id.connectionsInformation);
+            textView.setText(connectionInformationText);
 
             return view;
         }

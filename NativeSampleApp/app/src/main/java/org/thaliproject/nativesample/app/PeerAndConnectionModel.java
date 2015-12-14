@@ -1,3 +1,6 @@
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.nativesample.app;
 
 import android.util.Log;
@@ -6,7 +9,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 /**
- *
+ * The model containing discovered peers and connections.
  */
 public class PeerAndConnectionModel {
     public interface Listener {
@@ -147,7 +150,7 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     *
+     * Closes all connections.
      */
     public synchronized void closeAllConnections() {
         for (Connection connection : mConnections) {
