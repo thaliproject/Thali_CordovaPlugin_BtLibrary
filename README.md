@@ -1,20 +1,50 @@
-# Thali_CordovaPlugin_BtLibrary
+# Thali CordovaPlugin Android Connector Library #
 
-### Goals
-This project is intended to be used with the https://github.com/thaliproject/Thali_CordovaPlugin plugin to implement the Android Bluetooth communication library needed for it.
+This Android library is part of [Thali Project](http://thaliproject.org/) and
+provides means to discover other peer-to-peer devices and establish connections
+using insecure RFCOMM (Bluetooth) sockets.
 
-### Usage
-1. For command line build process, you should use gradle, thus you need to set system environment variable ANDROID_BUILD to gradle
+This project is intended to be used with the
+[Thali Cordova Plug-in](https://github.com/thaliproject/Thali_CordovaPlugin),
+but can be used to build native Android applications.
 
-2. for android implementation you need to build the p2p library to local maven (development time only)
+## Usage ##
 
-Get maven and install it locally: http://maven.apache.org/download.cgi
+### Prerequisites ###
 
-get the library from: https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary
+Download and install Maven: http://maven.apache.org/download.cgi
 
-go to root of the library project and build with "gradlew build install" and the library should be visible in <user folder>\.m2\repository\org\thaliproject\p2p\btconnectorlib\btconnectorlib2\0.0.0
+In case you decide to use the development phase versions (not the version in the
+master branch), you may need to compile the library into your local Maven
+repository.
+
+The version in the master branch can be found from Bintray repository:
+https://bintray.com/thali
+
+### Building the library ###
+
+1. Using command line tool, navigate to location where you have the library
+   cloned or downloaded
+2. Go to `BtConnectorLib` folder, where you should find `gradlew` and
+   `gradlew.bat` files
+3. Build and install the library into your local Maven repository:
+
+    **Windows:**
+    ```
+    gradlew build install
+    ```
+    
+    **Linux/Mac:**
+    ```
+    ./gradlew build install
+    ```
+    
+    * If you have permission denied issue in Linux or Mac, make sure that the
+      `gradlew` file has execution permission; run command `chmod 744 gradlew`
+
+If the library was built and installed successfully, you should now see the
+library in your local Maven repository:
+```
+<user folder>\.m2\repository\org\thaliproject\p2p\btconnectorlib\btconnectorlib2\<version number>
+```
  
- 
-### untested shortcut
-
-I would assume (not tested at all) that the build process simply looks for the files in right place, thus you can try extracting the .m2.zip into your user folder and see whether it works.
