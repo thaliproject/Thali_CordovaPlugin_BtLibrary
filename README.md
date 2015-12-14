@@ -1,4 +1,4 @@
-# Thali CordovaPlugin Android Connector Library #
+# Thali Android Connector Library #
 
 This Android library is part of [Thali Project](http://thaliproject.org/) and
 provides means to discover other peer-to-peer devices and establish connections
@@ -39,8 +39,9 @@ https://bintray.com/thali
     ./gradlew build install
     ```
     
-    * If you have permission denied issue in Linux or Mac, make sure that the
-      `gradlew` file has execution permission; run command `chmod 744 gradlew`
+    * If you run into a permission denied issue in Linux or Mac, make sure that
+      the `gradlew` file has execution permission; run command
+      `chmod 744 gradlew`
 
 If the library was built and installed successfully, you should now see the
 library in your local Maven repository:
