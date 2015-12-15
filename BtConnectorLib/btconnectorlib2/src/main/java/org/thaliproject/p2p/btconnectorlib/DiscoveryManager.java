@@ -279,7 +279,11 @@ public class DiscoveryManager
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
 
-        mCheckExpiredPeersTimer.cancel();
+        if (mCheckExpiredPeersTimer != null) {
+            mCheckExpiredPeersTimer.cancel();
+            mCheckExpiredPeersTimer = null;
+        }
+
         mDiscoveredPeers.clear();
 
         setState(DiscoveryManagerState.NOT_STARTED);
