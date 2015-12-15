@@ -59,6 +59,8 @@ public class ConnectionManager
     }
 
     private static final String TAG = ConnectionManager.class.getName();
+    public static final int SYSTEM_DECIDED_INSERCURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     private final Context mContext;
     private final ConnectionManagerListener mListener;
     private final Handler mHandler;
@@ -111,7 +113,7 @@ public class ConnectionManager
                                     mContext, this, bluetoothAdapter, mMyUuid, mMyName, mMyIdentityString);
 
                             mBluetoothConnector.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
-                            mBluetoothConnector.startListeningForIncomingConnections();
+                            startListeningForIncomingConnetions();
                             setState(ConnectionManagerState.RUNNING);
                             Log.i(TAG, "start: OK");
                         } else {
@@ -164,11 +166,79 @@ public class ConnectionManager
     }
 
     /**
+     * Starts listening for incoming connections. If already listening, this method does nothing.
+     * @return True, if started or already listening. False, if failed to start.
+     */
+    public boolean startListeningForIncomingConnetions() {
+        boolean started = false;
+
+        if (mBluetoothConnector != null) {
+            Log.d(TAG, "startListeningForIncomingConnetions");
+            started = startListeningForIncomingConnetions();
+        } else {
+            Log.e(TAG, "startListeningForIncomingConnections: No connector instance, did you forget to call start()");
+        }
+
+        return started;
+    }
+
+    /**
+     * Stops listening for incoming connections. This can be used to block new incoming connections,
+     * if maximum number of connections (from application's point of view) is reached.
+     */
+    public void stopListeningForIncomingConnections() {
+        if (mBluetoothConnector != null) {
+            Log.d(TAG, "stopListeningForIncomingConnections");
+            mBluetoothConnector.stopListeningForIncomingConnections();
+        } else {
+            Log.e(TAG, "stopListeningForIncomingConnections: No connector instance, did you forget to call start()");
+        }
+    }
+
+    /**
      * Sets the connection timeout. If the given value is negative or zero, no timeout is set.
      * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
      */
     public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
         mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
+    }
+
+    /**
+     * Sets the preferred port to be used by the insecure RFCOMM socket when connecting.
+     * @param insecureRfcommSocketPort The port to use.
+     * @return True, if the port was set successfully. False otherwise.
+     */
+    public boolean setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
+        boolean wasSet = false;
+
+        if (mBluetoothConnector != null) {
+            Log.i(TAG, "setInsecureRfcommSocketPort: Will use port " + insecureRfcommSocketPort + " when trying to connect");
+            mBluetoothConnector.setInsecureRfcommSocketPort(insecureRfcommSocketPort);
+            wasSet = true;
+        } else {
+            Log.e(TAG, "setInsecureRfcommSocketPort: Cannot set port, because not started yet");
+        }
+
+        return wasSet;
+    }
+
+    /**
+     * Sets the maximum number of (outgoing) socket connection  attempt retries (0 means only one attempt).
+     * @param maxNumberOfRetries The maximum number of socket connection attempt retries for outgoing connections.
+     * @return True, if was set successfully. False otherwise.
+     */
+    public boolean setMaxNumberOfOutgoingConnectionAttemptRetries(int maxNumberOfRetries) {
+        boolean wasSet = false;
+
+        if (mBluetoothConnector != null) {
+            Log.i(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: " + maxNumberOfRetries);
+            mBluetoothConnector.setMaxNumberOfOutgoingConnectionAttemptRetries(maxNumberOfRetries);
+            wasSet = true;
+        } else {
+            Log.e(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: Cannot set port, because not started yet");
+        }
+
+        return wasSet;
     }
 
     /**
