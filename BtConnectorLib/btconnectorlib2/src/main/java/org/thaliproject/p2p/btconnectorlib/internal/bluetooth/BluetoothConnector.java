@@ -390,6 +390,14 @@ public class BluetoothConnector
                 Log.i(TAG, "Connection timeout");
                 this.cancel();
                 final BluetoothClientThread clientThread = mClientThread;
+                final PeerProperties peerProperties;
+
+                if (clientThread != null) {
+                    peerProperties = clientThread.getPeerProperties();
+                } else {
+                    peerProperties = null;
+                }
+
                 mClientThread = null;
 
                 if (clientThread != null) {
@@ -404,8 +412,7 @@ public class BluetoothConnector
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mBluetoothConnectorInstance.mListener.onConnectionTimeout(
-                                clientThread.getPeerProperties());
+                        mBluetoothConnectorInstance.mListener.onConnectionTimeout(peerProperties);
                     }
                 });
             }
