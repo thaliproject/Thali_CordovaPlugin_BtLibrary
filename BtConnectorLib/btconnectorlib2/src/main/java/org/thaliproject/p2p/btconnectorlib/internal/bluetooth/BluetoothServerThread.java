@@ -90,9 +90,12 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                 socket = mServerSocket.accept(); // Blocking call
                 Log.i(TAG, "Incoming connection accepted");
             } catch (IOException e) {
-                Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
-                mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
-                mStopThread = true;
+                if (!mStopThread) {
+                    Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
+                    mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
+                    mStopThread = true;
+                }
+
                 socket = null;
             }
 
@@ -112,7 +115,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                     handshakeThread.start();
                     Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
                 }
-            } else {
+            } else if (!mStopThread) {
                 Log.e(TAG, "Socket is null");
                 mListener.onIncomingConnectionFailed("Socket is null");
                 mStopThread = true;

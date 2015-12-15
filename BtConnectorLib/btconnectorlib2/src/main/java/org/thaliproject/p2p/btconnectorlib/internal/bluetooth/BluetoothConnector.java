@@ -72,6 +72,7 @@ public class BluetoothConnector
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private int mMaxNumberOfOutgoingConnectionAttemptRetries = BluetoothClientThread.DEFAULT_MAX_NUMBER_OF_RETRIES;
     private boolean mIsServerThreadAlive = false;
+    private boolean mIsStoppingServer = false;
     private boolean mIsShuttingDown = false;
 
     /**
@@ -159,7 +160,7 @@ public class BluetoothConnector
      * @return True, if the connector was started successfully or was already running. False otherwise.
      */
     public synchronized boolean startListeningForIncomingConnections() {
-        if (!mIsServerThreadAlive && !mIsShuttingDown) {
+        if (!mIsServerThreadAlive && !mIsStoppingServer) {
             Log.i(TAG, "startListeningForIncomingConnections: Starting...");
 
             if (mServerThread != null) {
@@ -191,13 +192,13 @@ public class BluetoothConnector
      * Stops listening for incoming connections.
      */
     public synchronized void stopListeningForIncomingConnections() {
+        mIsStoppingServer = true; // So that we don't automatically restart
+
         if (mServerThread != null) {
             Log.i(TAG, "stopListeningForIncomingConnections: Stopping...");
             mServerThread.shutdown();
             mServerThread = null;
         }
-
-        mIsServerThreadAlive = false;
     }
 
     /**
@@ -215,8 +216,6 @@ public class BluetoothConnector
 
         stopListeningForIncomingConnections();
         shutdownClientThread();
-
-        mIsServerThreadAlive = false;
     }
 
     /**
@@ -329,11 +328,14 @@ public class BluetoothConnector
         Log.i(TAG, "onServerStopped");
         mIsServerThreadAlive = false;
 
-        if (!mIsShuttingDown) {
-            // This instance is still valid, let's try to restart the server
+        if (!mIsStoppingServer) {
+            // Was not stopped deliberately.
+            // This instance is still valid, let's try to restart the server.
             Log.i(TAG, "onServerStopped: Restarting the server...");
             startListeningForIncomingConnections();
         }
+
+        mIsStoppingServer = false;
     }
 
     /**
