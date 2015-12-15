@@ -132,6 +132,13 @@ public class BluetoothConnector
     }
 
     /**
+     * @return The port to be used by the insecure RFCOMM socket of the client thread.
+     */
+    public int getInsecureRfcommSocketPort() {
+        return mInsecureRfcommSocketPort;
+    }
+
+    /**
      * Sets the preferred port to be used by the insecure RFCOMM socket of the client thread.
      * @param insecureRfcommSocketPort The port to use.
      */

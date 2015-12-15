@@ -204,8 +204,28 @@ public class ConnectionManager
     }
 
     /**
+     * Returns the port to be used by the insecure RFCOMM socket when connecting.
+     * -1: The system decides (the default method).
+     * 0: Using a rotating port number.
+     * 1-30: Using a custom port.
+     * @return The port to be used by the insecure RFCOMM socket when connecting.
+     */
+    public int getInsecureRfcommSocketPort() {
+        int port = DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
+
+        if (mBluetoothConnector != null) {
+            port = mBluetoothConnector.getInsecureRfcommSocketPort();
+        }
+
+        return port;
+    }
+
+    /**
      * Sets the preferred port to be used by the insecure RFCOMM socket when connecting.
      * @param insecureRfcommSocketPort The port to use.
+     *                                 Use -1 for to let the system decide (the default method).
+     *                                 Use 0 for rotating port number.
+     *                                 Values 1-30 are valid custom ports (1 is recommended).
      * @return True, if the port was set successfully. False otherwise.
      */
     public boolean setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
