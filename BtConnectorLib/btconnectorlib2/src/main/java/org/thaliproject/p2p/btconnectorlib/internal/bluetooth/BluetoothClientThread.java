@@ -145,6 +145,9 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                     errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
                             + socketException.getMessage();
                 }
+            } else if (!mIsShuttingDown) {
+                errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
+                        + socketException.getMessage();
             }
 
             if (!socketConnectSucceeded && !mIsShuttingDown) {
