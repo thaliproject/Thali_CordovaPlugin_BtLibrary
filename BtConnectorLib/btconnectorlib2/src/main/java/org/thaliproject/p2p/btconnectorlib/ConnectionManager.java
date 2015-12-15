@@ -356,7 +356,11 @@ public class ConnectionManager
      */
     @Override
     public void onConnectionTimeout(PeerProperties peerProperties) {
-        Log.w(TAG, "onConnectionTimeout: " + peerProperties.toString());
+        if (peerProperties != null) {
+            Log.w(TAG, "onConnectionTimeout: " + peerProperties.toString());
+        } else {
+            Log.w(TAG, "onConnectionTimeout");
+        }
 
         if (mListener != null) {
             final PeerProperties tempPeerProperties = peerProperties;
