@@ -104,6 +104,7 @@ public class ConnectionManager
 
         switch (mState) {
             case NOT_STARTED:
+            case WAITING_FOR_SERVICES_TO_BE_ENABLED:
                 if (mBluetoothManager.bind(this)) {
                     if (mBluetoothManager.isBluetoothEnabled()) {
                         if (verifyIdentityString()) {
@@ -127,10 +128,6 @@ public class ConnectionManager
                     Log.e(TAG, "start: Failed to start, this may indicate that Bluetooth is not supported on this device");
                 }
 
-                break;
-
-            case WAITING_FOR_SERVICES_TO_BE_ENABLED:
-                Log.w(TAG, "start: Still waiting for Bluetooth to be enabled...");
                 break;
 
             case RUNNING:
