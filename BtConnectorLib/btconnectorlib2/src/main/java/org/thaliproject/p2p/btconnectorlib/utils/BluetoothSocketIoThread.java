@@ -1,19 +1,20 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
-package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
+package org.thaliproject.p2p.btconnectorlib.utils;
 
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
  * Thread for reading bytes from a Bluetooth socket and provides a method to write bytes to a socket.
+ * This class is public, since the implementation is generic and can be utilized by client applications.
  */
-class BluetoothSocketIoThread extends Thread {
+public class BluetoothSocketIoThread extends Thread {
     /**
      * Thread listener.
      */
@@ -43,13 +44,15 @@ class BluetoothSocketIoThread extends Thread {
     }
 
     private static final String TAG = BluetoothSocketIoThread.class.getName();
-    private static final int BUFFER_SIZE_IN_BYTES = 256;
+    protected static final int DEFAULT_BUFFER_SIZE_IN_BYTES = 256;
     private final BluetoothSocket mSocket;
-    private final Listener mHandler;
+    private final Listener mListener;
     private final InputStream mInputStream;
     private final OutputStream mOutputStream;
     private PeerProperties mPeerProperties;
-    private boolean mIsClosingSocket = false;
+    private int mBufferSizeInBytes = DEFAULT_BUFFER_SIZE_IN_BYTES;
+    private boolean mExitThreadAfterRead = false;
+    private boolean mIsShuttingDown = false;
 
     /**
      * Constructor.
@@ -64,7 +67,7 @@ class BluetoothSocketIoThread extends Thread {
             throw new NullPointerException("Either the Bluetooth socket or the listener instance is null");
         }
 
-        mHandler = listener;
+        mListener = listener;
         mSocket = socket;
         mInputStream = mSocket.getInputStream();
         mOutputStream = mSocket.getOutputStream();
@@ -84,25 +87,66 @@ class BluetoothSocketIoThread extends Thread {
     }
 
     /**
+     * Sets whether the thread should exit after on read() call or not.
+     * @param exit If true, will exit after one read() call. If false, will keep reading until closed.
+     */
+    public void setExitThreadAfterRead(boolean exit) {
+        mExitThreadAfterRead = exit;
+    }
+
+    /**
+     * Returns the buffer size used by the input stream.
+     * @return The buffer size in bytes.
+     */
+    public int getBufferSize() {
+        return mBufferSizeInBytes;
+    }
+
+    /**
+     * Sets the buffer size used by the input stream.
+     * Note that the buffer size needs to be set before calling start(). Otherwise, it will have no effect.
+     * @param bufferSizeInBytes The buffer size in bytes.
+     */
+    public void setBufferSize(int bufferSizeInBytes) {
+        if (bufferSizeInBytes > 0) {
+            mBufferSizeInBytes = bufferSizeInBytes;
+        }
+    }
+
+    /**
      * From Thread.
      *
-     * Keeps reading the input stream of the socket until disconnected.
+     * Keeps reading the input stream of the socket until closed or disconnected (unless is set to
+     * exit after one read() call).
      */
     @Override
     public void run() {
-        Log.i(TAG, "Entering thread (ID: " + getId() + ")");
-        byte[] buffer = new byte[BUFFER_SIZE_IN_BYTES];
-        int numberOfBytesRead;
+        Log.d(TAG, "Entering thread (ID: " + getId() + ")");
+        byte[] buffer = new byte[mBufferSizeInBytes];
+        int numberOfBytesRead = 0;
 
-        try {
-            numberOfBytesRead = mInputStream.read(buffer);
-            mHandler.onBytesRead(buffer, numberOfBytesRead, this);
-        } catch (IOException e) {
-            Log.i(TAG, "Disconnected: " + e.getMessage());
-            mHandler.onDisconnected(e.getMessage(), this);
+        while (!mIsShuttingDown) {
+            try {
+                numberOfBytesRead = mInputStream.read(buffer); // Blocking call
+            } catch (IOException e) {
+                if (!mIsShuttingDown) {
+                    Log.d(TAG, "Disconnected: " + e.getMessage());
+                    mListener.onDisconnected(e.getMessage(), this);
+                }
+
+                break;
+            }
+
+            if (numberOfBytesRead > 0) {
+                mListener.onBytesRead(buffer, numberOfBytesRead, this);
+            }
+
+            if (mExitThreadAfterRead) {
+                break;
+            }
         }
 
-        Log.i(TAG, "Exiting thread (ID: " + getId() + ")");
+        Log.d(TAG, "Exiting thread (ID: " + getId() + ")");
     }
 
     /**
@@ -118,7 +162,7 @@ class BluetoothSocketIoThread extends Thread {
                 mOutputStream.write(bytes);
                 wasSuccessful = true;
             } catch (IOException e) {
-                if (!mIsClosingSocket) {
+                if (!mIsShuttingDown) {
                     Log.e(TAG, "write: Failed to write to output stream: " + e.getMessage(), e);
                 }
             }
@@ -127,26 +171,26 @@ class BluetoothSocketIoThread extends Thread {
         }
 
         if (wasSuccessful) {
-            mHandler.onBytesWritten(bytes, bytes.length, this);
+            mListener.onBytesWritten(bytes, bytes.length, this);
         }
 
         return wasSuccessful;
     }
 
     /**
-     * Closes the input and output streams in addition to the socket.
+     * Closes the input and output streams and, if requested, the socket.
      * Note that after calling this method, this instance is no longer in valid state and must be
      * disposed of.
      * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
      */
     public synchronized void close(boolean closeSocket) {
-        mIsClosingSocket = true;
+        mIsShuttingDown = true;
 
         if (mInputStream != null) {
             try {
                 mInputStream.close();
             } catch (IOException e) {
-                Log.w(TAG, "Failed to close the input stream: " + e.getMessage());
+                Log.w(TAG, "Failed to close the input stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
             }
         }
 
@@ -154,7 +198,7 @@ class BluetoothSocketIoThread extends Thread {
             try {
                 mOutputStream.close();
             } catch (IOException e) {
-                Log.w(TAG, "Failed to close the output stream: " + e.getMessage());
+                Log.w(TAG, "Failed to close the output stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
             }
         }
 
@@ -162,7 +206,7 @@ class BluetoothSocketIoThread extends Thread {
             try {
                 mSocket.close();
             } catch (IOException e) {
-                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+                Log.w(TAG, "Failed to close the socket: " + e.getMessage() + " (thread ID: " + getId() + ")");
             }
         }
     }

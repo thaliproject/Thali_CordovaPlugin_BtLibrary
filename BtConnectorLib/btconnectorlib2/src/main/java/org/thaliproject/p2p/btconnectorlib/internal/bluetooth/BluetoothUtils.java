@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
@@ -14,7 +14,7 @@ import java.util.UUID;
 /**
  * General Bluetooth utils.
  */
-public class BluetoothUtils {
+class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
@@ -39,7 +39,7 @@ public class BluetoothUtils {
     }
 
     /**
-     *
+     * Creates a new Bluetooth socket with the given service record UUID and the given channel/port.
      * @param bluetoothDevice The Bluetooth device.
      * @param serviceRecordUuid The service record UUID.
      * @param channelOrPort The RFCOMM channel or L2CAP psm to use.

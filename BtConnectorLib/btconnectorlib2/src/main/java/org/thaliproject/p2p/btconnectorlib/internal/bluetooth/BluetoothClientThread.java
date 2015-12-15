@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
@@ -7,8 +7,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 import org.json.JSONException;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
 
@@ -32,7 +33,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          */
-        void onAuthenticated(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
+        void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
 
         /**
          * Called when connection attempt fails.
@@ -86,6 +87,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * Tries to connect to the Bluetooth socket. If successful, will create a handshake instance to
      * handle the connecting process.
      */
+    @Override
     public void run() {
         Log.i(TAG, "Trying to connect to peer with address "
                 + mBluetoothDeviceToConnectTo.getAddress()
@@ -99,22 +101,32 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             Exception socketException = createSocketAndConnect(ALTERNATIVE_SOCKET_PORT);
 
             if (socketException == null) {
-                mListener.onSocketConnected(mPeerProperties);
-                socketConnectSucceeded = true;
+                if (!mIsShuttingDown) {
+                    mListener.onSocketConnected(mPeerProperties);
+                    socketConnectSucceeded = true;
 
-                Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
-                        + "), total number of attempts: " + socketConnectAttemptNo
-                        + " (thread ID: " + getId() + ")");
-            } else {
+                    Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
+                            + "), total number of attempts: " + socketConnectAttemptNo
+                            + " (thread ID: " + getId() + ")");
+                } else {
+                    // Shutting down due to probably connection timeout
+                    Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                }
+            } else if (!mIsShuttingDown) {
                 // Fallback to the standard method for creating a socket
                 socketException = createSocketAndConnect(-1);
 
                 if (socketException == null) {
-                    mListener.onSocketConnected(mPeerProperties);
-                    socketConnectSucceeded = true;
+                    if (!mIsShuttingDown) {
+                        mListener.onSocketConnected(mPeerProperties);
+                        socketConnectSucceeded = true;
 
-                    Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
-                            + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                        Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
+                                + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                    } else {
+                        // Shutting down due to probably connection timeout
+                        Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                    }
                 } else {
                     errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
                             + socketException.getMessage();
@@ -148,6 +160,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             try {
                 mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
                 mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
                 boolean handshakeSucceeded = mHandshakeThread.write(mMyIdentityString.getBytes()); // This does not throw exceptions
 
@@ -183,26 +196,20 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * is called.
      */
     public synchronized void shutdown() {
-        Log.d(TAG, "shutdown");
+        Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
         mIsShuttingDown = true;
         close();
     }
 
-    /**
-     * Cancels the thread.
-     * @param why Contains the reason why cancelled.
-     */
-    public synchronized void cancel(String why) {
-        Log.i(TAG, "cancel: " + why);
-        shutdown();
-        mListener.onConnectionFailed("Cancelled: " + why, mPeerProperties);
+    public PeerProperties getPeerProperties() {
+        return mPeerProperties;
     }
 
     /**
      * Stores the given properties to be used when reporting failures.
      * @param peerProperties The peer properties.
      */
-    public void setRemotePeerProperties(PeerProperties peerProperties) {
+    public void setPeerProperties(PeerProperties peerProperties) {
         mPeerProperties = peerProperties;
     }
 
@@ -239,7 +246,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 // listeners responsibility to close the socket once done. Thus, do not close the
                 // socket here. Do not either close the input and output streams, since that will
                 // invalidate the socket as well.
-                mListener.onAuthenticated(who.getSocket(), peerProperties);
+                mListener.onHandshakeSucceeded(who.getSocket(), peerProperties);
                 mHandshakeThread = null;
             }
         }

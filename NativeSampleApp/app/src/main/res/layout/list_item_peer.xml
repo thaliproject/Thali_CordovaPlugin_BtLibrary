@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="fill_parent"
+                android:layout_height="match_parent">
+
+    <LinearLayout android:layout_width="fill_parent"
+                  android:layout_height="match_parent"
+                  android:layout_alignParentLeft="true"
+                  android:layout_alignParentTop="true"
+                  android:layout_alignWithParentIfMissing="true"
+                  android:orientation="vertical"
+                  android:gravity="top"
+                  android:padding="@dimen/list_item_padding">
+        <TextView
+                android:id="@+id/peerName"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:singleLine="true"
+                android:text="Peer name"
+                android:textSize="16sp" />
+        <TextView
+                android:id="@+id/peerId"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="marquee"
+                android:singleLine="true"
+                android:text="Peer ID"
+                android:textSize="12sp" />
+        <TextView
+                android:id="@+id/connectionsInformation"
+                android:layout_width="fill_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="marquee"
+                android:singleLine="true"
+                android:text="Connection information"
+                android:textSize="12sp" />
+    </LinearLayout>
+</RelativeLayout>

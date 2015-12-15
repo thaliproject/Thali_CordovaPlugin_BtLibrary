@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.wifi;
 
@@ -16,6 +16,9 @@ class WifiServiceAdvertiser {
     private static final String TAG = WifiServiceAdvertiser.class.getName();
     private final WifiP2pManager mP2pManager;
     private final WifiP2pManager.Channel mP2pChannel;
+    private String mIdentityString = null;
+    private String mServiceType = null;
+    private boolean mIsRestarting = false;
 
     /**
      * Constructor.
@@ -32,8 +35,13 @@ class WifiServiceAdvertiser {
      * @param myIdentityString Our identity string.
      * @param serviceType The service type.
      */
-    public void start(String myIdentityString, String serviceType) {
-        Log.i(TAG, "start: Identity string: \"" + myIdentityString + "\", service type: \"" + serviceType + "\"");
+    public synchronized void start(String myIdentityString, String serviceType) {
+        mIdentityString = myIdentityString;
+        mServiceType = serviceType;
+        mIsRestarting = false;
+
+        Log.i(TAG, "start: Identity string: \"" + mIdentityString + "\", service type: \"" + mServiceType + "\"");
+
         Map<String, String> record = new HashMap<String, String>();
         record.put("available", "visible");
 
@@ -43,12 +51,40 @@ class WifiServiceAdvertiser {
         mP2pManager.addLocalService(mP2pChannel, service, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                Log.i(TAG,"Local service added successfully");
+                Log.i(TAG, "Local service added successfully");
             }
 
             @Override
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to add local service, got error code: " + reason);
+                restart();
+            }
+        });
+    }
+
+    /**
+     * Stops advertising the service.
+     * @param restart If true, will try to restart after stopped.
+     */
+    public synchronized void stop(boolean restart) {
+        mIsRestarting = restart;
+
+        mP2pManager.clearLocalServices(mP2pChannel, new WifiP2pManager.ActionListener() {
+            @Override
+            public void onSuccess() {
+                Log.i(TAG, "Local services cleared successfully");
+
+                if (mIsRestarting) {
+                    start(mIdentityString, mServiceType);
+                }
+            }
+
+            public void onFailure(int reason) {
+                Log.e(TAG, "Failed to clear local services, got error code: " + reason);
+
+                if (mIsRestarting) {
+                    start(mIdentityString, mServiceType);
+                }
             }
         });
     }
@@ -57,15 +93,13 @@ class WifiServiceAdvertiser {
      * Stops advertising the service.
      */
     public void stop() {
-        mP2pManager.clearLocalServices(mP2pChannel, new WifiP2pManager.ActionListener() {
-            @Override
-            public void onSuccess() {
-                Log.i(TAG, "Local services cleared successfully");
-            }
+        stop(false);
+    }
 
-            public void onFailure(int reason) {
-                Log.e(TAG, "Failed to clear local services, got error code: " + reason);
-            }
-        });
+    /**
+     * Restarts the service advertisement.
+     */
+    public void restart() {
+        stop(true);
     }
 }

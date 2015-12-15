@@ -1,5 +1,5 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
@@ -8,8 +8,9 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 import org.json.JSONException;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -105,8 +106,9 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                 }
 
                 if (handshakeThread != null) {
-                    mSocketIoThreads.add(handshakeThread);
                     handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                    handshakeThread.setExitThreadAfterRead(true);
+                    mSocketIoThreads.add(handshakeThread);
                     handshakeThread.start();
                     Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
                 }

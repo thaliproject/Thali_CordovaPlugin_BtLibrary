@@ -1,15 +1,20 @@
-/* Copyright (c) Microsoft. All Rights Reserved. Licensed under the MIT License.
- * See license.txt in the project root for further information.
+/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
+import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
+import java.util.ArrayList;
 
 /**
  * Manages the device Bluetooth settings and provides information on Bluetooth status on the
@@ -19,7 +24,7 @@ public class BluetoothManager {
     /**
      * A listener interface for Bluetooth scan ode changes.
      */
-    public interface BluetoothAdapterScanModeListener {
+    public interface BluetoothManagerListener {
         /**
          * Called when the mode of the Bluetooth adapter changes.
          * @param mode The new mode.
@@ -28,68 +33,112 @@ public class BluetoothManager {
     }
 
     private static final String TAG = BluetoothManager.class.getName();
-    private final BluetoothAdapter mBluetoothAdapter;
-    private final BluetoothAdapterScanModeListener mBluetoothAdapterScanModeListener;
+    private static BluetoothManager mInstance = null;
     private final Context mContext;
+    private final BluetoothAdapter mBluetoothAdapter;
+    private final ArrayList<BluetoothManagerListener> mListeners = new ArrayList<>();
     private BluetoothModeBroadCastReceiver mBluetoothBroadcastReceiver = null;
     private boolean mInitialized = false;
 
     /**
+     * Getter for the singleton instance of this class.
+     * @param context The application context.
+     * @return The singleton instance of this class.
+     */
+    public static BluetoothManager getInstance(Context context) {
+        if (mInstance == null) {
+            mInstance = new BluetoothManager(context);
+        }
+
+        return mInstance;
+    }
+
+    /**
      * Constructor.
      * @param context The application context.
-     * @param listener A listener for bluetooth adapter scan mode changes.
      */
-    public BluetoothManager(Context context, BluetoothAdapterScanModeListener listener) {
+    private BluetoothManager(Context context) {
         mContext = context;
-        mBluetoothAdapterScanModeListener = listener;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
 
     /**
-     * Registers the broadcast receiver to listen to Bluetooth scan mode changes.
-     * @return True, if successfully initialized (even if that the initialization was done earlier).
-     * If false is returned, this could indicate the lack of Bluetooth hardware support.
+     * Binds the given listener to this instance. If already bound, this method does nothing excepts
+     * verifies the Bluetooth support.
+     *
+     * Note that the listener acts as a sort of a reference counter. You must call release() after
+     * you're done using the instance.
+     *
+     * @param listener The listener.
+     * @return True, if bound successfully (or already bound). If false is returned, this could
+     * indicate the lack of Bluetooth hardware support.
      */
-    public synchronized boolean initialize() {
-        if (!mInitialized) {
-            if (mBluetoothAdapter != null) {
-                Log.i(TAG, "initialize: My bluetooth address is " + getBluetoothAddress());
-
-                mBluetoothBroadcastReceiver = new BluetoothModeBroadCastReceiver();
-                IntentFilter filter = new IntentFilter();
-                filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
-
-                try {
-                    mContext.registerReceiver(mBluetoothBroadcastReceiver, filter);
-                    mInitialized = true;
-                } catch (IllegalArgumentException e) {
-                    Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
-                    mBluetoothBroadcastReceiver = null;
-                }
-            } else {
-                Log.e(TAG, "initialize: No bluetooth adapter!");
-            }
-        } else {
-            Log.w(TAG, "initialize: Already initialized, call deinitialize() first to reinitialize");
+    public boolean bind(BluetoothManagerListener listener) {
+        if (!mListeners.contains(listener)) {
+            Log.i(TAG, "bind: Binding a new listener");
+            mListeners.add(listener);
         }
 
-        return mInitialized;
+        return initialize();
     }
 
     /**
-     * Unregisters and disposes the broadcast receiver listening to bluetooth adapter mode changes.
+     *
+     * @param listener The listener.
      */
-    public synchronized void deinitialize() {
-        if (mBluetoothBroadcastReceiver != null) {
-            try {
-                mContext.unregisterReceiver(mBluetoothBroadcastReceiver);
-            } catch (IllegalArgumentException e) {
-                Log.e(TAG, "deinitialize: Failed to unregister the broadcast receiver: " + e.getMessage(), e);
-            }
-
-            mBluetoothBroadcastReceiver = null;
-            mInitialized = false;
+    public void release(BluetoothManagerListener listener) {
+        if (!mListeners.remove(listener)) {
+            Log.e(TAG, "release: The given listener does not exist in the list");
         }
+
+        if (mListeners.size() == 0) {
+            Log.i(TAG, "release: No more listeners, de-initializing...");
+            deinitialize();
+        } else {
+            Log.d(TAG, "release: " + mListeners.size() + " listener(s) left");
+        }
+    }
+
+    /**
+     * Checks whether the device has a Bluetooth support or not.
+     * @return True, if the device supports Bluetooth. False otherwise.
+     */
+    public boolean isBluetoothSupported() {
+        boolean isSupported = initialize();
+
+        if (mListeners.size() == 0) {
+            // No reason to keep the broadcast receiver around since there is no-one to listen to it
+            deinitialize();
+        }
+
+        return isSupported;
+    }
+
+    public boolean isBleSupported() {
+        return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
+    }
+
+    @TargetApi(18)
+    @SuppressLint("NewApi")
+    public boolean isBleAdvertisingSupported() {
+        boolean isSupported = false;
+
+        if (isBleSupported()) {
+            android.bluetooth.BluetoothManager androidBluetoothManager =
+                    (android.bluetooth.BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+
+            if (androidBluetoothManager != null) {
+                BluetoothAdapter bluetoothAdapter = androidBluetoothManager.getAdapter();
+
+                if (bluetoothAdapter != null) {
+                    isSupported = bluetoothAdapter.isMultipleAdvertisementSupported();
+                }
+            } else {
+                isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+            }
+        }
+
+        return isSupported;
     }
 
     public boolean isBluetoothEnabled() {
@@ -119,12 +168,57 @@ public class BluetoothManager {
         return mBluetoothAdapter == null ? null : mBluetoothAdapter.getAddress();
     }
 
-    public String getName() {
+    public String getBluetoothName() {
         return mBluetoothAdapter == null ? null : mBluetoothAdapter.getName();
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
         return mBluetoothAdapter == null ? null : mBluetoothAdapter.getRemoteDevice(address);
+    }
+
+    /**
+     * Registers the broadcast receiver to listen to Bluetooth scan mode changes.
+     * @return True, if successfully initialized (even if that the initialization was done earlier).
+     * If false is returned, this could indicate the lack of Bluetooth hardware support.
+     */
+    private synchronized boolean initialize() {
+        if (!mInitialized) {
+            if (mBluetoothAdapter != null) {
+                Log.i(TAG, "initialize: My bluetooth address is " + getBluetoothAddress());
+
+                mBluetoothBroadcastReceiver = new BluetoothModeBroadCastReceiver();
+                IntentFilter filter = new IntentFilter();
+                filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
+
+                try {
+                    mContext.registerReceiver(mBluetoothBroadcastReceiver, filter);
+                    mInitialized = true;
+                } catch (IllegalArgumentException e) {
+                    Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
+                    mBluetoothBroadcastReceiver = null;
+                }
+            } else {
+                Log.e(TAG, "initialize: No bluetooth adapter!");
+            }
+        }
+
+        return mInitialized;
+    }
+
+    /**
+     * Unregisters and disposes the broadcast receiver listening to bluetooth adapter mode changes.
+     */
+    private synchronized void deinitialize() {
+        if (mBluetoothBroadcastReceiver != null) {
+            try {
+                mContext.unregisterReceiver(mBluetoothBroadcastReceiver);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "deinitialize: Failed to unregister the broadcast receiver: " + e.getMessage(), e);
+            }
+
+            mBluetoothBroadcastReceiver = null;
+            mInitialized = false;
+        }
     }
 
     /**
@@ -138,8 +232,8 @@ public class BluetoothManager {
             if (BluetoothAdapter.ACTION_SCAN_MODE_CHANGED.equals(action)) {
                 int mode = intent.getIntExtra(BluetoothAdapter.EXTRA_SCAN_MODE, BluetoothAdapter.ERROR);
 
-                if (mBluetoothAdapterScanModeListener != null) {
-                    mBluetoothAdapterScanModeListener.onBluetoothAdapterScanModeChanged(mode);
+                for (BluetoothManagerListener listener : mListeners) {
+                    listener.onBluetoothAdapterScanModeChanged(mode);
                 }
             }
         }
