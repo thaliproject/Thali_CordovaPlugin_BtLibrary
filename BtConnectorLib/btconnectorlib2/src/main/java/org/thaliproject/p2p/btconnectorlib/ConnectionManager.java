@@ -113,7 +113,7 @@ public class ConnectionManager
                                     mContext, this, bluetoothAdapter, mMyUuid, mMyName, mMyIdentityString);
 
                             mBluetoothConnector.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
-                            startListeningForIncomingConnetions();
+                            startListeningForIncomingConnections();
                             setState(ConnectionManagerState.RUNNING);
                             Log.i(TAG, "start: OK");
                         } else {
@@ -169,12 +169,12 @@ public class ConnectionManager
      * Starts listening for incoming connections. If already listening, this method does nothing.
      * @return True, if started or already listening. False, if failed to start.
      */
-    public boolean startListeningForIncomingConnetions() {
+    public boolean startListeningForIncomingConnections() {
         boolean started = false;
 
         if (mBluetoothConnector != null) {
-            Log.d(TAG, "startListeningForIncomingConnetions");
-            started = startListeningForIncomingConnetions();
+            Log.d(TAG, "startListeningForIncomingConnections");
+            started = mBluetoothConnector.startListeningForIncomingConnections();
         } else {
             Log.e(TAG, "startListeningForIncomingConnections: No connector instance, did you forget to call start()");
         }
