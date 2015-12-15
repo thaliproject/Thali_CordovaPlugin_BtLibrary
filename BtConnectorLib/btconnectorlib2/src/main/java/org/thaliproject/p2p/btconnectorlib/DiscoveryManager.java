@@ -209,6 +209,7 @@ public class DiscoveryManager
 
         switch (mState) {
             case NOT_STARTED:
+            case WAITING_FOR_SERVICES_TO_BE_ENABLED:
                 if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
                     if (mBluetoothManager.isBluetoothEnabled()) {
                         if (verifyIdentityString()) {
@@ -243,9 +244,6 @@ public class DiscoveryManager
                 }
 
                 break;
-            case WAITING_FOR_SERVICES_TO_BE_ENABLED:
-                Log.w(TAG, "start: Still waiting for Wi-Fi/Bluetooth to be enabled...");
-                break;
 
             case RUNNING:
                 Log.d(TAG, "start: Already running, call stop() first in order to restart");
@@ -279,7 +277,11 @@ public class DiscoveryManager
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
 
-        mCheckExpiredPeersTimer.cancel();
+        if (mCheckExpiredPeersTimer != null) {
+            mCheckExpiredPeersTimer.cancel();
+            mCheckExpiredPeersTimer = null;
+        }
+
         mDiscoveredPeers.clear();
 
         setState(DiscoveryManagerState.NOT_STARTED);

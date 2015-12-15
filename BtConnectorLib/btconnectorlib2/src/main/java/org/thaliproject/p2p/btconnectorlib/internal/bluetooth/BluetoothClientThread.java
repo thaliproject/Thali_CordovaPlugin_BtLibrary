@@ -44,9 +44,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
+    public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = -1;
+    public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = 1;
+    public static final int DEFAULT_MAX_NUMBER_OF_RETRIES = 0;
     private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 300;
-    private static final int MAX_NUMBER_OF_RETRIES = 5;
-    private static final int ALTERNATIVE_SOCKET_PORT = 1;
     private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
     private final UUID mServiceRecordUuid;
@@ -54,6 +55,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     private BluetoothSocket mSocket = null;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
+    private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    private int mMaxNumberOfRetries = DEFAULT_MAX_NUMBER_OF_RETRIES;
     private boolean mIsShuttingDown = false;
 
     /**
@@ -98,30 +101,41 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         int socketConnectAttemptNo = 1;
 
         while (!socketConnectSucceeded && !mIsShuttingDown) {
-            Exception socketException = createSocketAndConnect(ALTERNATIVE_SOCKET_PORT);
+            Exception socketException = createSocketAndConnect(mInsecureRfcommSocketPort);
 
             if (socketException == null) {
                 if (!mIsShuttingDown) {
                     mListener.onSocketConnected(mPeerProperties);
                     socketConnectSucceeded = true;
 
-                    Log.i(TAG, "Socket connection succeeded using port (" + ALTERNATIVE_SOCKET_PORT
-                            + "), total number of attempts: " + socketConnectAttemptNo
-                            + " (thread ID: " + getId() + ")");
+                    // Log the choice of port
+                    String logMessage = "Socket connection succeeded";
+
+                    if (mInsecureRfcommSocketPort == 0) {
+                        logMessage += " (using port" + BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort() + ")";
+                    } else if (mInsecureRfcommSocketPort > 0) {
+                        logMessage += " (using port " + mInsecureRfcommSocketPort + ")";
+                    } else {
+                        logMessage += " (using system decided port)";
+                    }
+
+                    logMessage += ", total number of attempts: " + socketConnectAttemptNo
+                            + " (thread ID: " + getId() + ")";
+                    Log.i(TAG, logMessage);
                 } else {
-                    // Shutting down due to probably connection timeout
+                    // Shutting down probably due to connection timeout
                     Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
                 }
-            } else if (!mIsShuttingDown) {
-                // Fallback to the standard method for creating a socket
-                socketException = createSocketAndConnect(-1);
+            } else if (mInsecureRfcommSocketPort >= 0 && !mIsShuttingDown) {
+                // We were using a custom port, fallback to the standard method of creating a socket
+                socketException = createSocketAndConnect(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
 
                 if (socketException == null) {
                     if (!mIsShuttingDown) {
                         mListener.onSocketConnected(mPeerProperties);
                         socketConnectSucceeded = true;
 
-                        Log.i(TAG, "Socket connection succeeded using system decided port, total number of attempts: "
+                        Log.i(TAG, "Socket connection succeeded (using system decided port), total number of attempts: "
                                 + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
                     } else {
                         // Shutting down due to probably connection timeout
@@ -131,12 +145,15 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                     errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
                             + socketException.getMessage();
                 }
+            } else if (!mIsShuttingDown) {
+                errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
+                        + socketException.getMessage();
             }
 
             if (!socketConnectSucceeded && !mIsShuttingDown) {
                 Log.d(TAG, errorMessage + " (thread ID: " + getId() + ")");
 
-                if (socketConnectAttemptNo < MAX_NUMBER_OF_RETRIES) {
+                if (socketConnectAttemptNo < mMaxNumberOfRetries + 1) {
                     Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS
                             + " ms... (thread ID: " + getId() + ")");
 
@@ -145,7 +162,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                     } catch (InterruptedException e) {
                     }
                 } else {
-                    Log.d(TAG, "Maximum number of retries (" + MAX_NUMBER_OF_RETRIES
+                    Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
                             + ") reached, giving up... (thread ID: " + getId() + ")");
                     mListener.onConnectionFailed(errorMessage, mPeerProperties);
                     break;
@@ -188,6 +205,24 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         }
 
         Log.i(TAG, "Exiting thread (thread ID: " + getId() + ")");
+    }
+
+    /**
+     * Sets the preferred port to be used by the insecure RFCOMM socket.
+     * @param insecureRfcommSocketPort The port to use.
+     */
+    public void setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
+        Log.i(TAG, "setInsecureRfcommSocketPort: Using port " + insecureRfcommSocketPort);
+        mInsecureRfcommSocketPort = insecureRfcommSocketPort;
+    }
+
+    /**
+     * Sets the maximum number of socket connection attempt retries (0 means only one attempt).
+     * @param maxNumberOfRetries The maximum number of socket connection attempt retries.
+     */
+    public void setMaxNumberOfRetries(int maxNumberOfRetries) {
+        Log.i(TAG, "setMaxNumberOfRetries: " + maxNumberOfRetries);
+        mMaxNumberOfRetries = maxNumberOfRetries;
     }
 
     /**
@@ -330,7 +365,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         Exception exception = null;
 
         try {
-            if (port == -1) {
+            if (port == SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT) {
                 // Use the standard method of creating a socket
                 mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
             } else if (port == 0) {

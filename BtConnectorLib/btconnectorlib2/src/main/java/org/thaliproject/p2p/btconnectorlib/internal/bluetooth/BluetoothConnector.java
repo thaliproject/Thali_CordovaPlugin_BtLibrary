@@ -53,6 +53,8 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
+    public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
 
     private final BluetoothAdapter mBluetoothAdapter;
@@ -67,7 +69,10 @@ public class BluetoothConnector
     private BluetoothClientThread mClientThread = null;
     private CountDownTimer mConnectionTimeoutTimer;
     private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    private int mMaxNumberOfOutgoingConnectionAttemptRetries = BluetoothClientThread.DEFAULT_MAX_NUMBER_OF_RETRIES;
     private boolean mIsServerThreadAlive = false;
+    private boolean mIsStoppingServer = false;
     private boolean mIsShuttingDown = false;
 
     /**
@@ -128,11 +133,34 @@ public class BluetoothConnector
     }
 
     /**
+     * @return The port to be used by the insecure RFCOMM socket of the client thread.
+     */
+    public int getInsecureRfcommSocketPort() {
+        return mInsecureRfcommSocketPort;
+    }
+
+    /**
+     * Sets the preferred port to be used by the insecure RFCOMM socket of the client thread.
+     * @param insecureRfcommSocketPort The port to use.
+     */
+    public void setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
+        mInsecureRfcommSocketPort = insecureRfcommSocketPort;
+    }
+
+    /**
+     * Sets the maximum number of (outgoing) socket connection  attempt retries (0 means only one attempt).
+     * @param maxNumberOfRetries The maximum number of socket connection attempt retries for outgoing connections.
+     */
+    public void setMaxNumberOfOutgoingConnectionAttemptRetries(int maxNumberOfRetries) {
+        mMaxNumberOfOutgoingConnectionAttemptRetries = maxNumberOfRetries;
+    }
+
+    /**
      * Starts to listen for incoming connections.
      * @return True, if the connector was started successfully or was already running. False otherwise.
      */
     public synchronized boolean startListeningForIncomingConnections() {
-        if (!mIsServerThreadAlive && !mIsShuttingDown) {
+        if (!mIsServerThreadAlive && !mIsStoppingServer) {
             Log.i(TAG, "startListeningForIncomingConnections: Starting...");
 
             if (mServerThread != null) {
@@ -161,6 +189,19 @@ public class BluetoothConnector
     }
 
     /**
+     * Stops listening for incoming connections.
+     */
+    public synchronized void stopListeningForIncomingConnections() {
+        mIsStoppingServer = true; // So that we don't automatically restart
+
+        if (mServerThread != null) {
+            Log.i(TAG, "stopListeningForIncomingConnections: Stopping...");
+            mServerThread.shutdown();
+            mServerThread = null;
+        }
+    }
+
+    /**
      * Shuts down all operations.
      * Note that after calling this method, this instance cannot be used anymore and must be
      * disposed of. To start using this class again one must create a new instance.
@@ -173,14 +214,8 @@ public class BluetoothConnector
             mConnectionTimeoutTimer.cancel();
         }
 
-        if (mServerThread != null) {
-            mServerThread.shutdown();
-            mServerThread = null;
-        }
-
+        stopListeningForIncomingConnections();
         shutdownClientThread();
-
-        mIsServerThreadAlive = false;
     }
 
     /**
@@ -217,8 +252,10 @@ public class BluetoothConnector
             }
 
             if (wasSuccessful) {
-                mClientThread.setPeerProperties(peerProperties);
                 mClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mClientThread.setPeerProperties(peerProperties);
+                mClientThread.setInsecureRfcommSocketPort(mInsecureRfcommSocketPort);
+                mClientThread.setMaxNumberOfRetries(mMaxNumberOfOutgoingConnectionAttemptRetries);
 
                 if (mConnectionTimeoutTimer != null) {
                     mConnectionTimeoutTimer.cancel();
@@ -291,11 +328,14 @@ public class BluetoothConnector
         Log.i(TAG, "onServerStopped");
         mIsServerThreadAlive = false;
 
-        if (!mIsShuttingDown) {
-            // This instance is still valid, let's try to restart the server
+        if (!mIsStoppingServer) {
+            // Was not stopped deliberately.
+            // This instance is still valid, let's try to restart the server.
             Log.i(TAG, "onServerStopped: Restarting the server...");
             startListeningForIncomingConnections();
         }
+
+        mIsStoppingServer = false;
     }
 
     /**
