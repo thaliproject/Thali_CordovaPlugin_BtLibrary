@@ -107,11 +107,10 @@ public class MainActivity
 
             mContext = this.getApplicationContext();
             mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
-            mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_TYPE);
+            mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
 
             String peerName = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
             mConnectionManager.start(peerName);
-            mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
             mDiscoveryManager.start(peerName);
 
             mPeerListFragment = new PeerListFragment();

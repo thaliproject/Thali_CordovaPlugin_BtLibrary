@@ -19,7 +19,7 @@ import java.util.UUID;
  */
 public class ConnectionManager
         extends AbstractBluetoothConnectivityAgent
-        implements BluetoothManager.BluetoothManagerListener, BluetoothConnector.BluetoothConnectorListener {
+        implements BluetoothConnector.BluetoothConnectorListener {
 
     public enum ConnectionManagerState {
         NOT_STARTED,
