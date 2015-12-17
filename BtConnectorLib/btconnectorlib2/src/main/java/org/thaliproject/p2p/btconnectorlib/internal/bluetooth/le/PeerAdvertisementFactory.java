@@ -26,6 +26,8 @@ class PeerAdvertisementFactory {
     public static final int MANUFACTURER_ID = 76;
     private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
+    private static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
+    private static final int ADVERTISEMENT_BYTE_COUNT = 25;
 
     /**
      * Tries to create an advertise data based on the given peer properties.
@@ -38,7 +40,7 @@ class PeerAdvertisementFactory {
         Log.i(TAG, "createAdvertiseData: From: " + peerName + " " + serviceUuid + " " + bluetoothAddress);
         AdvertiseData advertiseData = null;
         AdvertiseData.Builder builder = new AdvertiseData.Builder();
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(25);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(ADVERTISEMENT_BYTE_COUNT);
         DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
         boolean ok = false;
 
@@ -67,15 +69,13 @@ class PeerAdvertisementFactory {
 
             Log.i(TAG, int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array));
 
-            if (bluetoothAddressAsInt8Array != null && bluetoothAddressAsInt8Array.length == 6) {
+            if (bluetoothAddressAsInt8Array != null && bluetoothAddressAsInt8Array.length == BLUETOOTH_ADDRESS_BYTE_COUNT) {
                 for (int bluetoothAddressByte : bluetoothAddressAsInt8Array) {
                     dataOutputStream.writeByte(bluetoothAddressByte);
                 }
 
                 ok = true;
             }
-
-            ok = true;
         } catch (IOException e) {
             Log.e(TAG, "createAdvertiseData: " + e.getMessage(), e);
         }
@@ -123,7 +123,7 @@ class PeerAdvertisementFactory {
             serviceUuidAsByteArray = new byte[16];
             dataInputStream.read(serviceUuidAsByteArray);
 
-            bluetoothAddressAsInt8Array = new int[6];
+            bluetoothAddressAsInt8Array = new int[BLUETOOTH_ADDRESS_BYTE_COUNT];
 
             for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
                 bluetoothAddressAsInt8Array[i] = dataInputStream.readByte();
@@ -209,7 +209,7 @@ class PeerAdvertisementFactory {
         String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
         int[] intArray = null;
 
-        if (hexStringArray.length >= 6) {
+        if (hexStringArray.length >= BLUETOOTH_ADDRESS_BYTE_COUNT) {
             intArray = new int[hexStringArray.length];
 
             for (int i = 0; i < hexStringArray.length; ++i) {
