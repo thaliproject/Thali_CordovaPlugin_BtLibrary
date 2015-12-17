@@ -67,7 +67,7 @@ public class DiscoveryManager
 
     private static final String TAG = DiscoveryManager.class.getName();
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
-    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 45000;
+    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
 
     private final Context mContext;
     private final DiscoveryManagerListener mListener;
