@@ -108,35 +108,37 @@ class PeerAdvertisementFactory {
      */
     public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData, UUID serviceUuid) {
         PeerProperties peerProperties = null;
-        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(manufacturerData);
-        DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
-
         byte[] adLengthAndType = null;
         byte[] serviceUuidAsByteArray = null;
         int[] bluetoothAddressAsInt8Array = null;
-        boolean ok = false;
+        boolean bytesExtracted = false;
 
-        try {
-            adLengthAndType = new byte[2];
-            dataInputStream.read(adLengthAndType);
+        if (manufacturerData != null && manufacturerData.length >= ADVERTISEMENT_BYTE_COUNT) {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(manufacturerData);
+            DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
 
-            serviceUuidAsByteArray = new byte[16];
-            dataInputStream.read(serviceUuidAsByteArray);
+            try {
+                adLengthAndType = new byte[2];
+                dataInputStream.read(adLengthAndType);
 
-            bluetoothAddressAsInt8Array = new int[BLUETOOTH_ADDRESS_BYTE_COUNT];
+                serviceUuidAsByteArray = new byte[16];
+                dataInputStream.read(serviceUuidAsByteArray);
 
-            for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
-                bluetoothAddressAsInt8Array[i] = dataInputStream.readByte();
+                bluetoothAddressAsInt8Array = new int[BLUETOOTH_ADDRESS_BYTE_COUNT];
+
+                for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
+                    bluetoothAddressAsInt8Array[i] = dataInputStream.readByte();
+                }
+
+                bytesExtracted = true;
+            } catch (IOException e) {
+                Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
+            } catch (Exception e) {
+                Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
             }
-
-            ok = true;
-        } catch (IOException e) {
-            Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
-        } catch (Exception e) {
-            Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
         }
 
-        if (ok) {
+        if (bytesExtracted) {
             ByteBuffer byteBuffer = ByteBuffer.wrap(serviceUuidAsByteArray);
             long mostSignificantBits = byteBuffer.getLong();
             long leastSignificantBits = byteBuffer.getLong();
