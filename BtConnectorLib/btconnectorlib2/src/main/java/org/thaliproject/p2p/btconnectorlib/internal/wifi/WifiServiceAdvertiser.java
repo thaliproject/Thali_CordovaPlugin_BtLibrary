@@ -7,7 +7,6 @@ import android.net.wifi.p2p.WifiP2pManager;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceInfo;
 import android.util.Log;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**

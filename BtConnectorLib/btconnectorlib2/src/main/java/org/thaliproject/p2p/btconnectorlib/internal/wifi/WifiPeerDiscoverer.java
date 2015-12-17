@@ -157,13 +157,13 @@ public class WifiPeerDiscoverer implements
                 if (timestampNow.getTime() - mWifiServiceWatcherLastRestarted.getTime() > RESTART_WATCHER_DELAY_IN_MILLISECONDS) {
                     mWifiServiceWatcherLastRestarted = timestampNow;
                     mWifiServiceWatcher.restart();
-
-                    if (!mWifiServiceAdvertiser.isStarted()) {
-                        // Try to (re)start the service advertiser
-                        mWifiServiceAdvertiser.start(mIdentityString, mServiceType);
-                    }
                 }
             }
+        }
+
+        if (!mWifiServiceAdvertiser.isStarted()) {
+            // Try to (re)start the service advertiser
+            mWifiServiceAdvertiser.start(mIdentityString, mServiceType);
         }
     }
 
