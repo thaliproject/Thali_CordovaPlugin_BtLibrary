@@ -174,10 +174,13 @@ class WifiP2pDeviceDiscoverer {
                     Log.e(TAG, "Failed to P2P device discovery, got error code: " + reason);
                     setState(State.INITIALIZED);
 
-                    // Try again after awhile
                     mStartTimer.cancel();
                     mRestartDiscoveryTimer.cancel();
-                    mRestartDiscoveryTimer.start();
+
+                    if (!mIsStopping) {
+                        // Try again after awhile
+                        mRestartDiscoveryTimer.start();
+                    }
                 }
             });
 

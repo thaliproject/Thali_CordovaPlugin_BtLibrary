@@ -27,7 +27,7 @@ class PeerAdvertisementFactory {
     private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
     private static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
-    private static final int ADVERTISEMENT_BYTE_COUNT = 25;
+    private static final int ADVERTISEMENT_BYTE_COUNT = 24;
 
     /**
      * Tries to create an advertise data based on the given peer properties.
