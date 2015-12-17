@@ -6,14 +6,19 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 import android.annotation.TargetApi;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.ScanFilter;
+import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.UUID;
 
 /**
- *
+ * Contains utility methods for BLE peer discovery.
  */
 @TargetApi(21)
 class PeerAdvertisementFactory {
@@ -23,10 +28,10 @@ class PeerAdvertisementFactory {
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
 
     /**
-     *
-     * @param peerName
-     * @param serviceUuid
-     * @param bluetoothAddress
+     * Tries to create an advertise data based on the given peer properties.
+     * @param peerName The peer name.
+     * @param serviceUuid The service UUID.
+     * @param bluetoothAddress The Bluetooth address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
     public static AdvertiseData createAdvertiseData(String peerName, UUID serviceUuid, String bluetoothAddress) {
@@ -94,17 +99,20 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     *
-     * @param manufacturerData
-     * @return
+     * Parses peer properties from the given manufacturer data byte array.
+     * @param manufacturerData The manufacturer data.
+     * @param serviceUuid The service UUID. Will return peer properties, if and only if this UUID
+     *                    matches the one provided in manufacturer data. If this is null, no
+     *                    comparison is made and all UUIDs are accepted.
+     * @return The peer properties or null in case of a failure or UUID mismatch.
      */
-    public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData) {
+    public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData, UUID serviceUuid) {
         PeerProperties peerProperties = null;
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(manufacturerData);
         DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
 
         byte[] adLengthAndType = null;
-        byte[] serviceUuid = null;
+        byte[] serviceUuidAsByteArray = null;
         int[] bluetoothAddressAsInt8Array = null;
         boolean ok = false;
 
@@ -112,8 +120,8 @@ class PeerAdvertisementFactory {
             adLengthAndType = new byte[2];
             dataInputStream.read(adLengthAndType);
 
-            serviceUuid = new byte[16];
-            dataInputStream.read(serviceUuid);
+            serviceUuidAsByteArray = new byte[16];
+            dataInputStream.read(serviceUuidAsByteArray);
 
             bluetoothAddressAsInt8Array = new int[6];
 
@@ -129,12 +137,22 @@ class PeerAdvertisementFactory {
         }
 
         if (ok) {
-            String bluetoothAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+            ByteBuffer byteBuffer = ByteBuffer.wrap(serviceUuidAsByteArray);
+            long mostSignificantBits = byteBuffer.getLong();
+            long leastSignificantBits = byteBuffer.getLong();
+            UUID uuid = new UUID(mostSignificantBits, leastSignificantBits);
 
-            if (bluetoothAddress != null) {
-                peerProperties = new PeerProperties(bluetoothAddress, "<no peer name>", bluetoothAddress);
+            if (serviceUuid != null && serviceUuid.compareTo(uuid) == 0) {
+                // The UUID is a match, do continue
+                String bluetoothAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+
+                if (bluetoothAddress != null) {
+                    peerProperties = new PeerProperties(bluetoothAddress, "<no peer name>", bluetoothAddress);
+                } else {
+                    Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth address");
+                }
             } else {
-                Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth address");
+                Log.d(TAG, "manufacturerDataToPeerProperties: UUID mismatch");
             }
         }
 
@@ -142,15 +160,21 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     *
-     * @return
+     * Creates a new scan filter using the given service UUID.
+     * @param serviceUuid The service UUID for the scan filter.
+     * @return A newly created scan filter or null in case of a failure.
      */
-    public static ScanFilter createScanFilter() {
+    public static ScanFilter createScanFilter(UUID serviceUuid) {
         ScanFilter scanFilter = null;
         ScanFilter.Builder builder = new ScanFilter.Builder();
 
         try {
             builder.setManufacturerData(MANUFACTURER_ID, null);
+
+            if (serviceUuid != null) {
+                builder.setServiceUuid(new ParcelUuid(serviceUuid));
+            }
+
             scanFilter = builder.build();
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
@@ -160,9 +184,9 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     *
-     * @param peerName
-     * @return
+     * Converts the given peer name into an array of two bytes (sort of like a hash, but not quite).
+     * @param peerName The peer name to convert.
+     * @return An array of two bytes.
      */
     private static byte[] peerNameAsTwoByteArray(String peerName) {
         byte[] twoByteArray =  new byte[2];
@@ -176,18 +200,10 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     *
-     * @param twoBytes
-     * @return
-     */
-    private static String twoBytesToPeerName(byte[] twoBytes) {
-        return twoBytes.toString();
-    }
-
-    /**
+     * Converts the given Bluetooth address into an integer array.
      * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
-     * @param bluetoothAddress
-     * @return
+     * @param bluetoothAddress The Bluetooth address to convert.
+     * @return An integer array containing the Bluetooth address.
      */
     private static int[] bluetoothAddressToInt8Array(String bluetoothAddress) {
         String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
@@ -211,9 +227,10 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     *
-     * @param bluetoothAddressAsInt8Array
-     * @return
+     * Tries to parse a Bluetooth address from the given integer array.
+     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     * @param bluetoothAddressAsInt8Array The integer array containing the Bluetooth address.
+     * @return The parsed Bluetooth address.
      */
     private static String int8ArrayToBluetoothAddress(int[] bluetoothAddressAsInt8Array) {
         StringBuilder stringBuilder = new StringBuilder();

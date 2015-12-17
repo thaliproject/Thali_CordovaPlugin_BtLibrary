@@ -8,7 +8,6 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-import org.thaliproject.p2p.btconnectorlib.internal.ServiceDiscoveryListener;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.Date;
@@ -17,7 +16,7 @@ import java.util.Date;
  * The main interface for peer discovery via Wi-Fi.
  */
 public class WifiPeerDiscoverer implements
-        WifiP2pDeviceDiscoverer.Listener, ServiceDiscoveryListener {
+        WifiP2pDeviceDiscoverer.Listener, WifiServiceWatcher.Listener {
     /**
      * A listener for peer discovery events.
      */
@@ -26,7 +25,7 @@ public class WifiPeerDiscoverer implements
          * Called when the discovery is started or stopped.
          * @param isStarted If true, the discovery was started. If false, it was stopped.
          */
-        void onIsDiscoveryStartedChanged(boolean isStarted);
+        void onIsWifiPeerDiscoveryStartedChanged(boolean isStarted);
 
         /**
          * Called when the content of the P2P devices list is changed.
@@ -185,7 +184,7 @@ public class WifiPeerDiscoverer implements
             mIsStarted = isStarted;
 
             if (mWifiPeerDiscoveryListener != null) {
-                mWifiPeerDiscoveryListener.onIsDiscoveryStartedChanged(mIsStarted);
+                mWifiPeerDiscoveryListener.onIsWifiPeerDiscoveryStartedChanged(mIsStarted);
             }
         }
     }

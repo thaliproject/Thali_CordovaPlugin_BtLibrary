@@ -12,7 +12,7 @@ import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.util.Log;
 
 /**
- *
+ * General BLE advertiser.
  */
 @TargetApi(21)
 class BleAdvertiser extends AdvertiseCallback {
@@ -85,18 +85,15 @@ class BleAdvertiser extends AdvertiseCallback {
     public synchronized boolean start() {
         if (mState == State.NOT_STARTED) {
             if (mAdvertiseData != null) {
-                setState(State.STARTING);
-
                 try {
                     mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
+                    setState(State.STARTING);
                 } catch (Exception e) {
                     Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
-                    setState(State.NOT_STARTED);
                 }
             } else {
                 Log.e(TAG, "start: No advertisement data set");
             }
-
         }
 
         return (mState != State.NOT_STARTED);
@@ -106,10 +103,18 @@ class BleAdvertiser extends AdvertiseCallback {
      * Stops advertising.
      */
     public synchronized void stop() {
-        mBluetoothLeAdvertiser.stopAdvertising(this);
+        try {
+            mBluetoothLeAdvertiser.stopAdvertising(this);
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "stop: " + e.getMessage(), e);
+        }
+
         setState(State.NOT_STARTED);
     }
 
+    /**
+     * @return True, if the BLE advertising is started. False otherwise.
+     */
     public boolean isStarted() {
         return (mState == State.RUNNING);
     }

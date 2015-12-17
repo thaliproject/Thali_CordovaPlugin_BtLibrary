@@ -11,7 +11,6 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
-import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
@@ -68,7 +67,7 @@ public class DiscoveryManager
 
     private static final String TAG = DiscoveryManager.class.getName();
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
-    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 30000;
+    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 45000;
 
     private final Context mContext;
     private final DiscoveryManagerListener mListener;
@@ -213,47 +212,36 @@ public class DiscoveryManager
         mMyPeerId = myPeerId;
         mMyPeerName = myPeerName;
 
-        switch (mState) {
-            case NOT_STARTED:
-            case WAITING_FOR_SERVICES_TO_BE_ENABLED:
-                if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
-                    if (mBluetoothManager.isBluetoothEnabled()) {
-                        boolean bleDiscoveryStarted = false;
-                        boolean wifiDiscoveryStarted = false;
+        if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
+            if (mBluetoothManager.isBluetoothEnabled()) {
+                boolean bleDiscoveryStarted = false;
+                boolean wifiDiscoveryStarted = false;
 
-                        if (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                            // Try to start BLE based discovery
-                            bleDiscoveryStarted = startBlePeerDiscovery();
-                        }
-
-                        if (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                            if (verifyIdentityString()) {
-                                // Try to start Wi-Fi Direct based discovery
-                                wifiDiscoveryStarted = startWifiPeerDiscovery();
-                            } else {
-                                Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
-                            }
-                        }
-
-                        if ((mDiscoveryMode != DiscoveryMode.BLE_AND_WIFI
-                                && (bleDiscoveryStarted || wifiDiscoveryStarted))
-                                || (mDiscoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
-                                || (mDiscoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
-                            Log.i(TAG, "start: OK");
-                            setState(DiscoveryManagerState.RUNNING);
-                        }
-                    } else {
-                        setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    }
-                } else {
-                    Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
+                if (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    // Try to start BLE based discovery
+                    bleDiscoveryStarted = startBlePeerDiscovery();
                 }
 
-                break;
+                if (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    if (verifyIdentityString()) {
+                        // Try to start Wi-Fi Direct based discovery
+                        wifiDiscoveryStarted = startWifiPeerDiscovery();
+                    } else {
+                        Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
+                    }
+                }
 
-            case RUNNING:
-                Log.d(TAG, "start: Already running, call stop() first in order to restart");
-                break;
+                if ((mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
+                        || (mDiscoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
+                        || (mDiscoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
+                    Log.i(TAG, "start: OK");
+                    setState(DiscoveryManagerState.RUNNING);
+                }
+            } else {
+                setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+            }
+        } else {
+            Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
         }
 
         return (mState == DiscoveryManagerState.RUNNING);
@@ -376,8 +364,17 @@ public class DiscoveryManager
      * @param isStarted If true, the discovery was started. If false, it was stopped.
      */
     @Override
-    public void onIsDiscoveryStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsDiscoveryStartedChanged: " + isStarted);
+    public void onIsWifiPeerDiscoveryStartedChanged(boolean isStarted) {
+        Log.i(TAG, "onIsWifiPeerDiscoveryStartedChanged: " + isStarted);
+    }
+
+    /**
+     * Does nothing but logs the event.
+     * @param isStarted If true, the discovery was started. If false, it was stopped.
+     */
+    @Override
+    public void onIsBlePeerDiscoveryStartedChanged(boolean isStarted) {
+        Log.i(TAG, "onIsBlePeerDiscoveryStartedChanged: " + isStarted);
     }
 
     /**
@@ -446,6 +443,9 @@ public class DiscoveryManager
                 } else {
                     Log.e(TAG, "startBlePeerDiscovery: No BLE service UUID");
                 }
+            } else {
+                Log.d(TAG, "startBlePeerDiscovery: Already running");
+                started = true;
             }
         }
 

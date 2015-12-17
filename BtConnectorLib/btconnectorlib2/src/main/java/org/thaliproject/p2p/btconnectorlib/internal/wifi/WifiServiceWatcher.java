@@ -12,18 +12,25 @@ import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import org.thaliproject.p2p.btconnectorlib.internal.ServiceDiscoveryListener;
 
 /**
  * Watcher for Wi-Fi P2P services (peers) matching the desired service type and which also have a
  * valid identity.
  */
 class WifiServiceWatcher {
+    public interface Listener {
+        /**
+         * Called when a new peer (with an appropriate service) is discovered.
+         * @param peerProperties The discovered peer device with an appropriate service.
+         */
+        void onServiceDiscovered(PeerProperties peerProperties);
+    }
+
     private static final String TAG = WifiServiceWatcher.class.getName();
     private static final long START_SERVICE_DISCOVERY_DELAY_IN_MILLISECONDS = 1000;
     private final WifiP2pManager mP2pManager;
     private final WifiP2pManager.Channel mP2pChannel;
-    private final ServiceDiscoveryListener mListener;
+    private final Listener mListener;
     private final String mServiceType;
     private DnsSdServiceResponseListener mDnsSdServiceResponseListener = null;
     private boolean mIsRestarting = false;
@@ -36,7 +43,7 @@ class WifiServiceWatcher {
      * @param serviceType The service type.
      */
     public WifiServiceWatcher(
-            ServiceDiscoveryListener listener, WifiP2pManager p2pManager, WifiP2pManager.Channel p2pChannel, String serviceType) {
+            Listener listener, WifiP2pManager p2pManager, WifiP2pManager.Channel p2pChannel, String serviceType) {
         mP2pManager = p2pManager;
         mP2pChannel = p2pChannel;
         mListener = listener;
@@ -74,7 +81,9 @@ class WifiServiceWatcher {
                                     @Override
                                     public void onFailure(int reason) {
                                         Log.e(TAG, "Failed to start the service discovery, got error code: " + reason);
-                                        thisInstance.stop(true); // Restart
+
+                                        // Uncomment the following to auto-restart
+                                        //thisInstance.stop(true); // Restart
                                     }
                                 });
                     }
@@ -84,7 +93,9 @@ class WifiServiceWatcher {
             @Override
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to add a service request, got error code: " + reason);
-                thisInstance.stop(true); // Restart
+
+                // Uncomment the following to auto-restart
+                //thisInstance.stop(true); // Restart
             }
         });
     }
@@ -139,9 +150,9 @@ class WifiServiceWatcher {
         /**
          * Handles found services. Checks if the service type matches ours and that the received
          * identity string is valid. Notifies the listener, when peers are found.
-         * @param identityString
-         * @param serviceType
-         * @param p2pDevice
+         * @param identityString The identity string.
+         * @param serviceType The service type.
+         * @param p2pDevice The P2P device associated with the service.
          */
         @Override
         public void onDnsSdServiceAvailable(String identityString, String serviceType, WifiP2pDevice p2pDevice) {

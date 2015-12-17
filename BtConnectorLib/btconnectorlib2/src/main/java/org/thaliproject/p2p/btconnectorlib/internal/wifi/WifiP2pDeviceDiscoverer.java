@@ -31,6 +31,13 @@ class WifiP2pDeviceDiscoverer {
         void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList);
     }
 
+    private enum State {
+        NOT_INITIALIZED,
+        INITIALIZED, // Initialized, but not started
+        STARTED,
+        RESTARTING
+    };
+
     private static final String TAG = WifiP2pDeviceDiscoverer.class.getName();
     private static final long DISCOVERY_TIMEOUT_IN_MILLISECONDS = 30000;
     private static final long DISCOVERY_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = DISCOVERY_TIMEOUT_IN_MILLISECONDS;
@@ -44,9 +51,8 @@ class WifiP2pDeviceDiscoverer {
     private final CountDownTimer mStartTimer;
     private BroadcastReceiver mPeerDiscoveryBroadcastReceiver = null;
     private WifiP2pManager.PeerListListener mPeerListListener = null;
-    private boolean mIsInitialized = false;
-    private boolean mIsPeerDiscoveryStarted = false;
-    private boolean mIsRestartPending = false;
+    private State mState = State.NOT_INITIALIZED;
+    private boolean mIsStopping = false;
 
     /**
      * Constructor.
@@ -72,9 +78,12 @@ class WifiP2pDeviceDiscoverer {
             }
 
             public void onFinish() {
-                Log.i(TAG, "Got discovery timeout, restarting...");
                 mRestartDiscoveryTimer.cancel();
-                restart();
+
+                if (!mIsStopping) {
+                    Log.i(TAG, "Got discovery timeout, restarting...");
+                    restart();
+                }
             }
         };
 
@@ -88,9 +97,12 @@ class WifiP2pDeviceDiscoverer {
             }
 
             public void onFinish() {
-                Log.i(TAG, "Start timer timeout, starting now...");
                 mStartTimer.cancel();
-                thisInstance.start();
+
+                if (!mIsStopping) {
+                    Log.i(TAG, "Start timer timeout, starting now...");
+                    thisInstance.start();
+                }
             }
         };
     }
@@ -101,7 +113,7 @@ class WifiP2pDeviceDiscoverer {
      * @return True, if the successfully initialized (or was already initialized). False otherwise.
      */
     public synchronized boolean initialize() {
-        if (!mIsInitialized) {
+        if (mState == State.NOT_INITIALIZED) {
             mPeerDiscoveryBroadcastReceiver = new PeerDiscoveryBroadcastReceiver();
             IntentFilter filter = new IntentFilter();
             filter.addAction(WifiP2pManager.WIFI_P2P_DISCOVERY_CHANGED_ACTION);
@@ -109,14 +121,14 @@ class WifiP2pDeviceDiscoverer {
 
             try {
                 mContext.registerReceiver(mPeerDiscoveryBroadcastReceiver, filter);
-                mIsInitialized = true;
+                setState(State.INITIALIZED);
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
                 mPeerDiscoveryBroadcastReceiver = null;
             }
         }
 
-        return mIsInitialized;
+        return (mState != State.NOT_INITIALIZED);
     }
 
     /**
@@ -133,10 +145,8 @@ class WifiP2pDeviceDiscoverer {
             mPeerDiscoveryBroadcastReceiver = null;
         }
 
-        mRestartDiscoveryTimer.cancel();
         stop();
-
-        mIsInitialized = false;
+        setState(State.NOT_INITIALIZED);
     }
 
     /**
@@ -146,26 +156,26 @@ class WifiP2pDeviceDiscoverer {
     public synchronized boolean start() {
         boolean wasSuccessful = false;
 
-        if (mIsInitialized && (!mIsPeerDiscoveryStarted || mIsRestartPending)) {
-            if (!mIsRestartPending) {
+        if (!mIsStopping && (mState == State.INITIALIZED || mState == State.RESTARTING)) {
+            if (mState != State.RESTARTING) {
                 Log.i(TAG, "start: Starting P2P device discovery...");
             }
-
-            mIsRestartPending = false;
 
             mP2pManager.discoverPeers(mP2pChannel, new WifiP2pManager.ActionListener() {
                 @Override
                 public void onSuccess() {
-                    mStartTimer.cancel();
-                    mIsPeerDiscoveryStarted = true;
                     Log.d(TAG, "P2P device discovery started successfully");
+                    mStartTimer.cancel();
+                    setState(State.STARTED);
                 }
 
                 @Override
                 public void onFailure(int reason) {
                     Log.e(TAG, "Failed to P2P device discovery, got error code: " + reason);
+                    setState(State.INITIALIZED);
 
                     // Try again after awhile
+                    mStartTimer.cancel();
                     mRestartDiscoveryTimer.cancel();
                     mRestartDiscoveryTimer.start();
                 }
@@ -173,34 +183,41 @@ class WifiP2pDeviceDiscoverer {
 
             wasSuccessful = true;
         } else {
-            if (!mIsInitialized) {
+            if (mState == State.NOT_INITIALIZED) {
                 Log.e(TAG, "start: Cannot start, because not initialized");
-            } else if (mIsPeerDiscoveryStarted) {
+            } else if (mState == State.STARTED) {
                 Log.w(TAG, "start: Already started");
             }
         }
 
-        return (wasSuccessful || mIsPeerDiscoveryStarted);
+        return (wasSuccessful || mState == State.STARTED);
     }
 
     /**
-     * Stops the P2P device discovery.
+     * Stops or tries to restart the P2P device discovery.
+     * @param restart If true, will try to restart once stopped. If false, does only stop.
      */
-    public synchronized void stop() {
-        if (mIsPeerDiscoveryStarted && !mIsRestartPending) {
+    private synchronized void stop(boolean restart) {
+        if (mState != State.NOT_INITIALIZED && restart) {
+            setState(State.RESTARTING);
+        } else {
             Log.i(TAG, "stop: Stopping P2P device discovery...");
+            mIsStopping = true;
         }
+
+        mStartTimer.cancel();
+        mRestartDiscoveryTimer.cancel();
 
         mP2pManager.stopPeerDiscovery(mP2pChannel, new WifiP2pManager.ActionListener() {
             @Override
             public void onSuccess() {
-                if (!mIsRestartPending) {
+                if (mState != State.RESTARTING) {
                     Log.d(TAG, "P2P device discovery stopped successfully");
                 }
 
-                mIsPeerDiscoveryStarted = false;
+                mIsStopping = false;
 
-                if (mIsRestartPending) {
+                if (mState == State.RESTARTING) {
                     mStartTimer.cancel();
                     mStartTimer.start();
                 }
@@ -209,8 +226,9 @@ class WifiP2pDeviceDiscoverer {
             @Override
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to shutdown P2P device discovery, got error code: " + reason);
+                mIsStopping = false;
 
-                if (mIsRestartPending) {
+                if (mState == State.RESTARTING) {
                     mStartTimer.cancel();
                     mStartTimer.start();
                 }
@@ -219,16 +237,34 @@ class WifiP2pDeviceDiscoverer {
     }
 
     /**
+     * Stops the P2P device discovery.
+     */
+    public synchronized void stop() {
+        stop(false);
+    }
+
+    /**
      * Restarts the P2P device discovery.
      */
     public synchronized void restart() {
-        if (mIsInitialized) {
-            Log.i(TAG, "restart: Restarting...");
-            mRestartDiscoveryTimer.cancel();
-            mIsRestartPending = true;
-            stop();
-        } else {
+        if (mState == State.NOT_INITIALIZED) {
             Log.e(TAG, "restart: Cannot restart, because not initialized");
+        } else if (mState == State.RESTARTING) {
+            // Do nothing
+        } else {
+            Log.i(TAG, "restart: Restarting...");
+            stop(true);
+        }
+    }
+
+    /**
+     * Sets the state.
+     * @param state The new state.
+     */
+    private synchronized void setState(State state) {
+        if (mState != state) {
+            Log.d(TAG, "setState: " + state);
+            mState = state;
         }
     }
 
@@ -246,9 +282,11 @@ class WifiP2pDeviceDiscoverer {
                 mListener.onP2pDeviceListChanged(p2pDeviceList.getDeviceList());
             }
 
-            // Restart the timeout timer
-            mRestartDiscoveryTimer.cancel();
-            mRestartDiscoveryTimer.start();
+            if (!mIsStopping) {
+                // Restart the timeout timer
+                mRestartDiscoveryTimer.cancel();
+                mRestartDiscoveryTimer.start();
+            }
         }
     }
 
@@ -273,8 +311,12 @@ class WifiP2pDeviceDiscoverer {
                         WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED);
 
                 if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STOPPED) {
-                    Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P device discovery stopped, restarting...");
-                    restart();
+                    if (!mIsStopping && mState != State.NOT_INITIALIZED && mState != State.RESTARTING) {
+                        Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P device discovery stopped, restarting...");
+                        restart();
+                    } else {
+                        Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P device discovery stopped");
+                    }
                 } else if (state == WifiP2pManager.WIFI_P2P_DISCOVERY_STARTED) {
                     Log.d(TAG, "PeerDiscoveryBroadcastReceiver.onReceive: Wi-Fi P2P device discovery started");
                 } else {

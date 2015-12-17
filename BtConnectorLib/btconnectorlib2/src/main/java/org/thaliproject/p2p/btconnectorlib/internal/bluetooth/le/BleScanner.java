@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- *
+ * General BLE scanner.
  */
 @TargetApi(21)
 class BleScanner extends ScanCallback {
@@ -33,8 +33,8 @@ class BleScanner extends ScanCallback {
         void onIsScannerStartedChanged(boolean isStarted);
 
         /**
-         *
-         * @param result
+         * Called when the scanner has picked up a result.
+         * @param result The scan result.
          */
         void onScanResult(ScanResult result);
     }
@@ -88,7 +88,12 @@ class BleScanner extends ScanCallback {
      * Stops the scanning.
      */
     public synchronized void stop() {
-        mBluetoothLeScanner.stopScan(this);
+        try {
+            mBluetoothLeScanner.stopScan(this);
+        } catch (IllegalStateException e) {
+            Log.e(TAG, "stop: " + e.getMessage(), e);
+        }
+
         setState(State.NOT_STARTED);
     }
 
@@ -130,8 +135,8 @@ class BleScanner extends ScanCallback {
     }
 
     /**
-     *
-     * @param scanSettings
+     * Sets the scan settings. If not set explicitly, default settings will be used.
+     * @param scanSettings The new scan settings.
      */
     public void setScanSettings(ScanSettings scanSettings) {
         if (scanSettings != null) {
@@ -147,7 +152,7 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onBatchScanResults(List<ScanResult> results) {
-
+        // Not used
     }
 
     @Override
