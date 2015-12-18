@@ -16,6 +16,7 @@ public class PeerProperties {
 
     /**
      * Constructor.
+     * Not recommended to be used.
      */
     public PeerProperties() {
     }
@@ -129,7 +130,7 @@ public class PeerProperties {
     public String toString() {
         String returnValue = "";
 
-        if (mId.equals(mBluetoothAddress)) {
+        if (mId != null && mId.equals(mBluetoothAddress)) {
             returnValue = "[" + mId + " " + mName + "]";
         } else {
             returnValue = "[" + mId + " " + mName + " " + mBluetoothAddress + "]";

@@ -103,6 +103,32 @@ public class PeerAndConnectionModel {
     }
 
     /**
+     * Updates the name of the peer in the list.
+     * @param peerProperties The peer properties containing the new name.
+     * @return True, if the name was updated. False, if not found.
+     */
+    public synchronized boolean updatePeerName(final PeerProperties peerProperties) {
+        boolean wasUpdated = false;
+
+        for (int i = 0; i < mPeers.size(); ++i) {
+            try {
+                if (mPeers.get(i).equals(peerProperties)) {
+                    mPeers.get(i).setName(peerProperties.getName());
+                    wasUpdated = true;
+                    break;
+                }
+            } catch (Exception e) {
+            }
+        }
+
+        if (wasUpdated && mListener != null) {
+            mListener.onDataChanged();
+        }
+
+        return wasUpdated;
+    }
+
+    /**
      * @return The total number of connections.
      */
     public synchronized int getTotalNumberOfConnections() {

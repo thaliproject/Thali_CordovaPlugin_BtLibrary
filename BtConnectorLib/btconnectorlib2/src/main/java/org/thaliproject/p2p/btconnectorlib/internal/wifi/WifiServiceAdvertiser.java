@@ -19,6 +19,7 @@ class WifiServiceAdvertiser {
     private String mIdentityString = null;
     private String mServiceType = null;
     private boolean mIsRestarting = false;
+    private boolean mIsStarted = false;
 
     /**
      * Constructor.
@@ -26,8 +27,8 @@ class WifiServiceAdvertiser {
      * @param p2pChannel The Wi-Fi P2P channel.
      */
     public WifiServiceAdvertiser(WifiP2pManager p2pManager, WifiP2pManager.Channel p2pChannel) {
-        this.mP2pManager = p2pManager;
-        this.mP2pChannel = p2pChannel;
+        mP2pManager = p2pManager;
+        mP2pChannel = p2pChannel;
     }
 
     /**
@@ -52,12 +53,16 @@ class WifiServiceAdvertiser {
             @Override
             public void onSuccess() {
                 Log.i(TAG, "Local service added successfully");
+                setIsStarted(true);
             }
 
             @Override
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to add local service, got error code: " + reason);
-                restart();
+                setIsStarted(false);
+
+                // Uncomment the following to auto-restart
+                //restart();
             }
         });
     }
@@ -73,6 +78,7 @@ class WifiServiceAdvertiser {
             @Override
             public void onSuccess() {
                 Log.i(TAG, "Local services cleared successfully");
+                setIsStarted(false);
 
                 if (mIsRestarting) {
                     start(mIdentityString, mServiceType);
@@ -81,6 +87,7 @@ class WifiServiceAdvertiser {
 
             public void onFailure(int reason) {
                 Log.e(TAG, "Failed to clear local services, got error code: " + reason);
+                setIsStarted(false); // Set the state anyway
 
                 if (mIsRestarting) {
                     start(mIdentityString, mServiceType);
@@ -101,5 +108,22 @@ class WifiServiceAdvertiser {
      */
     public void restart() {
         stop(true);
+    }
+
+    /**
+     * @return True, if started. False otherwise.
+     */
+    public boolean isStarted() {
+        return mIsStarted;
+    }
+
+    /**
+     * Sets the state and notifies the listener.
+     * @param isStarted True, if was started. False, if stopped.
+     */
+    public synchronized void setIsStarted(boolean isStarted) {
+        if (mIsStarted != isStarted) {
+            mIsStarted = isStarted;
+        }
     }
 }
