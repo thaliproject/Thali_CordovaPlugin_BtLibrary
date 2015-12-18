@@ -59,7 +59,7 @@ public class ConnectionManager
     }
 
     private static final String TAG = ConnectionManager.class.getName();
-    public static final int SYSTEM_DECIDED_INSERCURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     private final Context mContext;
     private final ConnectionManagerListener mListener;
