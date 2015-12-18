@@ -199,7 +199,7 @@ public class MainActivity
 
             if (isIncoming) {
                 // Add peer, if it was not discovered before
-                mModel.addPeer(peerProperties);
+                mModel.addOrUpdatePeer(peerProperties);
                 mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
             }
 
@@ -254,7 +254,7 @@ public class MainActivity
     public void onPeerDiscovered(PeerProperties peerProperties) {
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
 
-        if (mModel.addPeer(peerProperties)) {
+        if (mModel.addOrUpdatePeer(peerProperties)) {
             // Uncomment the following to autoconnect
             //mConnectionManager.connect(peerProperties);
 

@@ -4,6 +4,7 @@
 package org.thaliproject.nativesample.app;
 
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -53,26 +54,46 @@ public class PeerAndConnectionModel {
      * @param peerProperties The peer to add.
      * @return True, if the peer was added. False, if it was already in the list.
      */
-    public synchronized boolean addPeer(PeerProperties peerProperties) {
+    public synchronized boolean addOrUpdatePeer(PeerProperties peerProperties) {
         boolean alreadyInTheList = false;
+        boolean wasUpdated = false;
         final String newPeerId = peerProperties.getId();
+        int index = 0;
 
         for (PeerProperties existingPeerProperties : mPeers) {
             if (existingPeerProperties.getId().equals(newPeerId)) {
+                if (existingPeerProperties.getName().equals(DiscoveryManager.NO_PEER_NAME_STRING)
+                        && !peerProperties.getName().equals(DiscoveryManager.NO_PEER_NAME_STRING)) {
+                    // Update the peer name
+                    try {
+                        mPeers.get(index).setName(peerProperties.getName());
+                        wasUpdated = true;
+                    } catch (Exception e) {
+                        Log.e(TAG, "addOrUpdatePeer: Failed to update the peer name of peer "
+                                + peerProperties + ": " + e.getMessage(), e);
+                    }
+                }
+
                 alreadyInTheList = true;
                 break;
             }
+
+            index++;
         }
 
         if (alreadyInTheList) {
-            Log.i(TAG, "addPeer: Peer " + peerProperties.toString() + " already in the list");
+            if (wasUpdated) {
+                Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " updated");
+            } else {
+                Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " already in the list");
+            }
         } else {
             mPeers.add(peerProperties);
-            Log.i(TAG, "addPeer: Peer " + peerProperties.toString() + " added to list");
+            Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " added to list or updated");
+        }
 
-            if (mListener != null) {
-                mListener.onDataChanged();
-            }
+        if (!alreadyInTheList || wasUpdated && mListener != null) {
+            mListener.onDataChanged();
         }
 
         return !alreadyInTheList;

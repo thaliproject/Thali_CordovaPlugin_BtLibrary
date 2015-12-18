@@ -24,6 +24,7 @@ import java.util.UUID;
 class PeerAdvertisementFactory {
     private static final String TAG = PeerAdvertisementFactory.class.getName();
     public static final int MANUFACTURER_ID = 76;
+    public static final String NO_PEER_NAME_STRING = "<no peer name>";
     private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
     private static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
@@ -149,7 +150,7 @@ class PeerAdvertisementFactory {
                 String bluetoothAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
 
                 if (bluetoothAddress != null) {
-                    peerProperties = new PeerProperties(bluetoothAddress, "<no peer name>", bluetoothAddress);
+                    peerProperties = new PeerProperties(bluetoothAddress, NO_PEER_NAME_STRING, bluetoothAddress);
                 } else {
                     Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth address");
                 }
