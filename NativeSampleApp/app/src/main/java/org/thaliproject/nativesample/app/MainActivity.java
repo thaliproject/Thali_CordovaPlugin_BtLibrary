@@ -263,6 +263,13 @@ public class MainActivity
     }
 
     @Override
+    public void onPeerUpdated(PeerProperties peerProperties) {
+        Log.i(TAG, "onPeerUpdated: " + peerProperties.toString());
+        mModel.addOrUpdatePeer(peerProperties);
+        mLogFragment.logMessage("Peer " + peerProperties.toString() + " updated");
+    }
+
+    @Override
     public void onPeerLost(PeerProperties peerProperties) {
         Log.i(TAG, "onPeerLost: " + peerProperties.toString());
 

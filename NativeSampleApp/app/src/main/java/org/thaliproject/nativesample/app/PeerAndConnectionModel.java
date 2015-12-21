@@ -4,7 +4,6 @@
 package org.thaliproject.nativesample.app;
 
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -62,16 +61,13 @@ public class PeerAndConnectionModel {
 
         for (PeerProperties existingPeerProperties : mPeers) {
             if (existingPeerProperties.getId().equals(newPeerId)) {
-                if (existingPeerProperties.getName().equals(DiscoveryManager.NO_PEER_NAME_STRING)
-                        && !peerProperties.getName().equals(DiscoveryManager.NO_PEER_NAME_STRING)) {
-                    // Update the peer name
-                    try {
-                        mPeers.get(index).setName(peerProperties.getName());
-                        wasUpdated = true;
-                    } catch (Exception e) {
-                        Log.e(TAG, "addOrUpdatePeer: Failed to update the peer name of peer "
-                                + peerProperties + ": " + e.getMessage(), e);
-                    }
+                // Update the peer
+                try {
+                    mPeers.get(index).copyFrom(peerProperties);
+                    wasUpdated = true;
+                } catch (Exception e) {
+                    Log.e(TAG, "addOrUpdatePeer: Failed to update the peer name of peer "
+                            + peerProperties + ": " + e.getMessage(), e);
                 }
 
                 alreadyInTheList = true;
@@ -89,7 +85,7 @@ public class PeerAndConnectionModel {
             }
         } else {
             mPeers.add(peerProperties);
-            Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " added to list or updated");
+            Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " added to list");
         }
 
         if (!alreadyInTheList || wasUpdated && mListener != null) {

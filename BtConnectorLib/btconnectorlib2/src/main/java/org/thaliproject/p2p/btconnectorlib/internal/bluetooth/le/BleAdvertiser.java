@@ -84,16 +84,20 @@ class BleAdvertiser extends AdvertiseCallback {
      */
     public synchronized boolean start() {
         if (mState == State.NOT_STARTED) {
-            if (mAdvertiseData != null) {
-                try {
-                    mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
-                    setState(State.STARTING);
-                } catch (Exception e) {
-                    Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
+            if (mBluetoothLeAdvertiser != null) {
+                if (mAdvertiseData != null) {
+                    try {
+                        mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
+                        setState(State.STARTING);
+                    } catch (Exception e) {
+                        Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
+                    }
+                } else {
+                    Log.e(TAG, "start: No advertisement data set");
                 }
-            } else {
-                Log.e(TAG, "start: No advertisement data set");
             }
+        } else {
+            Log.e(TAG, "start: No BLE advertiser instance");
         }
 
         return (mState != State.NOT_STARTED);
@@ -103,10 +107,12 @@ class BleAdvertiser extends AdvertiseCallback {
      * Stops advertising.
      */
     public synchronized void stop() {
-        try {
-            mBluetoothLeAdvertiser.stopAdvertising(this);
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "stop: " + e.getMessage(), e);
+        if (mBluetoothLeAdvertiser != null) {
+            try {
+                mBluetoothLeAdvertiser.stopAdvertising(this);
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "stop: " + e.getMessage(), e);
+            }
         }
 
         setState(State.NOT_STARTED);

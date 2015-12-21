@@ -43,7 +43,7 @@ class BleScanner extends ScanCallback {
         NOT_STARTED,
         STARTING,
         RUNNING
-    };
+    }
 
     private static final String TAG = BleScanner.class.getName();
     public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_LOW_POWER;
@@ -73,11 +73,15 @@ class BleScanner extends ScanCallback {
      */
     public synchronized boolean start() {
         if (mState == State.NOT_STARTED) {
-            try {
-                mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
-                setState(State.STARTING);
-            } catch (Exception e) {
-                Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
+            if (mBluetoothLeScanner != null) {
+                try {
+                    mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
+                    setState(State.STARTING);
+                } catch (Exception e) {
+                    Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
+                }
+            } else {
+                Log.e(TAG, "start: No BLE scanner instance");
             }
         }
 
@@ -88,10 +92,12 @@ class BleScanner extends ScanCallback {
      * Stops the scanning.
      */
     public synchronized void stop() {
-        try {
-            mBluetoothLeScanner.stopScan(this);
-        } catch (IllegalStateException e) {
-            Log.e(TAG, "stop: " + e.getMessage(), e);
+        if (mBluetoothLeScanner != null) {
+            try {
+                mBluetoothLeScanner.stopScan(this);
+            } catch (IllegalStateException e) {
+                Log.e(TAG, "stop: " + e.getMessage(), e);
+            }
         }
 
         setState(State.NOT_STARTED);

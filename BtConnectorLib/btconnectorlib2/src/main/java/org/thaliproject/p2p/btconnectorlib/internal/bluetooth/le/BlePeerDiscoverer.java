@@ -33,7 +33,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     private static final String TAG = BlePeerDiscoverer.class.getName();
-    public static final String NO_PEER_NAME_STRING = PeerAdvertisementFactory.NO_PEER_NAME_STRING;
     private final BlePeerDiscoveryListener mListener;
     private final UUID mServiceUuid;
     private BleAdvertiser mBleAdvertiser = null;
