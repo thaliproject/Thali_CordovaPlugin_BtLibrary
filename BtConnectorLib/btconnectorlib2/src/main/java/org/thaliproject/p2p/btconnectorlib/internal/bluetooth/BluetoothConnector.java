@@ -46,10 +46,10 @@ public class BluetoothConnector
 
         /**
          * Called when a connection fails.
-         * @param reason The reason of the failure.
          * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
+         * @param errorMessage The error message. Note: Can be null.
          */
-        void onConnectionFailed(String reason, PeerProperties peerProperties);
+        void onConnectionFailed(PeerProperties peerProperties, String errorMessage);
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
@@ -268,7 +268,7 @@ public class BluetoothConnector
                 Log.d(TAG, "connect: Started connecting to " + bluetoothDeviceName
                         + " in address " + bluetoothDeviceAddress);
             } else {
-                mListener.onConnectionFailed(errorMessage, peerProperties);
+                mListener.onConnectionFailed(peerProperties, errorMessage);
             }
         } else {
             Log.e(TAG, "connect: No bluetooth device!");
@@ -304,17 +304,17 @@ public class BluetoothConnector
 
     /**
      * Forward the event to the listener.
-     * @param reason The reason for the failure.
+     * @param errorMessage The error message.
      */
     @Override
-    public void onIncomingConnectionFailed(String reason) {
-        Log.e(TAG, "onIncomingConnectionFailed: " + reason);
-        final String tempReason = reason;
+    public void onIncomingConnectionFailed(String errorMessage) {
+        Log.e(TAG, "onIncomingConnectionFailed: " + errorMessage);
+        final String tempErrorMessage = errorMessage;
 
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempReason, null);
+                mBluetoothConnectorInstance.mListener.onConnectionFailed(null, tempErrorMessage);
             }
         });
     }
@@ -377,7 +377,7 @@ public class BluetoothConnector
                 if (tempSocket.isConnected()) {
                     mBluetoothConnectorInstance.mListener.onConnected(tempSocket, false, tempPeerProperties);
                 } else {
-                    mBluetoothConnectorInstance.onConnectionFailed("Disconnected", tempPeerProperties);
+                    mBluetoothConnectorInstance.onConnectionFailed(tempPeerProperties, "Disconnected");
                 }
             }
         });
@@ -385,13 +385,13 @@ public class BluetoothConnector
 
     /**
      * Forward the event to the listener.
-     * @param reason The reason for the failure.
      * @param peerProperties The peer properties.
+     * @param errorMessage The error message.
      */
     @Override
-    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
-        Log.e(TAG, "onConnectionFailed: " + reason);
-        final String tempReason = reason;
+    public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
+        Log.e(TAG, "onConnectionFailed: " + errorMessage);
+        final String tempErrorMessage = errorMessage;
         final PeerProperties tempPeerProperties = peerProperties;
 
         if (mConnectionTimeoutTimer != null) {
@@ -401,7 +401,7 @@ public class BluetoothConnector
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempReason, tempPeerProperties);
+                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempPeerProperties, tempErrorMessage);
             }
         });
 

@@ -1,7 +1,7 @@
 /* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app;
+package org.thaliproject.nativesample.app.model;
 
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
@@ -20,8 +20,9 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     }
 
     private static final String TAG = Connection.class.getName();
+    public static final int DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
+    public static final long DEFAULT_DATA_AMOUNT_IN_BYTES = 1024 * 1024;
     private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
-    private static final int SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
     private Listener mListener = null;
     private BluetoothSocketIoThread mBluetoothSocketIoThread = null;
     private PeerProperties mPeerProperties = null;
@@ -45,7 +46,7 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         mListener = listener;
         mBluetoothSocketIoThread = new BluetoothSocketIoThread(bluetoothSocket, this);
         mBluetoothSocketIoThread.setPeerProperties(peerProperties);
-        mBluetoothSocketIoThread.setBufferSize(SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+        mBluetoothSocketIoThread.setBufferSize(DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
         mIsIncoming = isIncoming;
         mPeerProperties = peerProperties;
         mPeerId = mPeerProperties.getId();

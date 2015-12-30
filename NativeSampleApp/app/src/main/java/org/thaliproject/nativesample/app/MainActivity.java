@@ -23,6 +23,10 @@ import android.view.MenuItem;
 import android.widget.Toast;
 import org.thaliproject.nativesample.app.fragments.LogFragment;
 import org.thaliproject.nativesample.app.fragments.PeerListFragment;
+import org.thaliproject.nativesample.app.fragments.SettingsFragment;
+import org.thaliproject.nativesample.app.model.Connection;
+import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
+import org.thaliproject.nativesample.app.model.Settings;
 import org.thaliproject.nativesample.app.slidingtabs.SlidingTabLayout;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
@@ -44,7 +48,9 @@ public class MainActivity
     private static final String SERVICE_TYPE = "ThaliNativeSampleApp._tcp";
     private static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
     private static final String SERVICE_NAME = "Thali Native Sample App";
+    public static final String PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
     private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
+    private static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -63,12 +69,14 @@ public class MainActivity
 
     private SlidingTabLayout mSlidingTabLayout;
     private Context mContext = null;
+    private Settings mSettings = null;
     private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
     private CountDownTimer mCheckConnectionsTimer = null;
     private PeerAndConnectionModel mModel = null;
     private PeerListFragment mPeerListFragment = null;
     private LogFragment mLogFragment = null;
+    private SettingsFragment mSettingsFragment = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -89,10 +97,16 @@ public class MainActivity
 
         mShuttingDown = false;
 
+        mContext = this.getApplicationContext();
+        mSettings = Settings.getInstance(mContext);
+        mSettings.load();
+
         if (mConnectionManager == null) {
             mModel = PeerAndConnectionModel.getInstance();
 
-            mCheckConnectionsTimer = new CountDownTimer(10000, 10000) {
+            mCheckConnectionsTimer = new CountDownTimer(
+                    CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS,
+                    CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS) {
                 @Override
                 public void onTick(long l) {
                     // Not used
@@ -105,24 +119,24 @@ public class MainActivity
                 }
             };
 
-            mContext = this.getApplicationContext();
             mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
+            mSettings.setConnectionManager(mConnectionManager);
+            mConnectionManager.setConnectionTimeout(mSettings.getConnectionTimeout());
+            mConnectionManager.setInsecureRfcommSocketPort(mSettings.getPortNumber());
+
             mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
+            mSettings.setDiscoveryManager(mDiscoveryManager);
+            mSettings.setDesiredDiscoveryMode();
 
-            if (!mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI)) {
-                if (!mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE)) {
-                    mDiscoveryManager.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-                }
-            }
-
-            String peerName = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
-            mConnectionManager.start(peerName);
-            mDiscoveryManager.start(peerName);
+            mConnectionManager.start(PEER_NAME);
+            mDiscoveryManager.start(PEER_NAME);
 
             mPeerListFragment = new PeerListFragment();
             mPeerListFragment.setListener(this);
 
             mLogFragment = new LogFragment();
+
+            mSettingsFragment = new SettingsFragment();
         }
     }
 
@@ -233,21 +247,24 @@ public class MainActivity
     }
 
     @Override
-    public void onConnectionFailed(PeerProperties peerProperties) {
-        Log.i(TAG, "onConnectionFailed: " + peerProperties);
+    public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
+        Log.i(TAG, "onConnectionFailed: " + errorMessage + ": " + peerProperties);
 
         if (peerProperties != null) {
-            showToast("Failed to connect to " + peerProperties.getName());
-            mLogFragment.logError("Failed to connect to peer " + peerProperties.toString());
+            showToast("Failed to connect to " + peerProperties.getName()
+                    + ((errorMessage != null) ? (": " + errorMessage) : ""));
+            mLogFragment.logError("Failed to connect to peer " + peerProperties.toString()
+                    + ((errorMessage != null) ? (": " + errorMessage) : ""));
         } else {
-            showToast("Failed to connect");
-            mLogFragment.logError("Failed to connect");
+            showToast("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
+            mLogFragment.logError("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
         }
     }
 
     @Override
     public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
         mLogFragment.logMessage("Discovery manager state changed: " + discoveryManagerState);
+        showToast("Discovery manager state changed: " + discoveryManagerState);
     }
 
     @Override
@@ -255,10 +272,16 @@ public class MainActivity
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
 
         if (mModel.addOrUpdatePeer(peerProperties)) {
-            // Uncomment the following to autoconnect
-            //mConnectionManager.connect(peerProperties);
-
             mLogFragment.logMessage("Peer " + peerProperties.toString() + " discovered");
+        }
+
+        if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
+            if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
+                || !mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
+                // Do auto-connect
+                Log.i(TAG, "onPeerDiscovered: Auto-connecting to peer " + peerProperties.toString());
+                mConnectionManager.connect(peerProperties);
+            }
         }
     }
 
@@ -375,6 +398,7 @@ public class MainActivity
     public class MyFragmentAdapter extends FragmentPagerAdapter {
         private static final int PEER_LIST_FRAGMENT = 0;
         private static final int LOG_FRAGMENT = 1;
+        private static final int SETTINGS_FRAGMENT = 2;
 
         public MyFragmentAdapter(FragmentManager fragmentManager) {
             super(fragmentManager);
@@ -385,6 +409,7 @@ public class MainActivity
             switch (index){
                 case PEER_LIST_FRAGMENT: return mPeerListFragment;
                 case LOG_FRAGMENT: return mLogFragment;
+                case SETTINGS_FRAGMENT: return mSettingsFragment;
             }
 
             return null;
@@ -395,6 +420,7 @@ public class MainActivity
             switch (position) {
                 case PEER_LIST_FRAGMENT: return "Peers";
                 case LOG_FRAGMENT: return "Log";
+                case SETTINGS_FRAGMENT: return "Settings";
             }
 
             return super.getPageTitle(position);
@@ -402,7 +428,7 @@ public class MainActivity
 
         @Override
         public int getCount() {
-            return 2;
+            return 3;
         }
     }
 }

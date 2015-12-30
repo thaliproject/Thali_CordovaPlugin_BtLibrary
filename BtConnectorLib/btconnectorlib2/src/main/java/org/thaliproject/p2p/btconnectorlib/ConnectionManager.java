@@ -54,11 +54,13 @@ public class ConnectionManager
          * Called in case of a failure to connect to a peer.
          * @param peerProperties The properties of the peer we we're trying to connect to.
          *                       Note: This can be null.
+         * @param errorMessage The error message. Note: This can be null.
          */
-        void onConnectionFailed(PeerProperties peerProperties);
+        void onConnectionFailed(PeerProperties peerProperties, String errorMessage);
     }
 
     private static final String TAG = ConnectionManager.class.getName();
+    public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = BluetoothConnector.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     private final Context mContext;
@@ -68,7 +70,7 @@ public class ConnectionManager
     private ConnectionManagerState mState = ConnectionManagerState.NOT_STARTED;
     private UUID mMyUuid = null;
     private String mMyName = null;
-    private long mConnectionTimeoutInMilliseconds = BluetoothConnector.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
 
     /**
      * Constructor.
@@ -376,24 +378,25 @@ public class ConnectionManager
 
     /**
      * Notifies the listener about this failed connection attempt.
-     * @param reason The reason of the failure.
      * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
+     * @param errorMessage The error message. Note: Can be null.
      */
     @Override
-    public void onConnectionFailed(String reason, PeerProperties peerProperties) {
+    public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
         if (peerProperties != null) {
-            Log.w(TAG, "onConnectionFailed: " + reason + " " + peerProperties.toString());
+            Log.w(TAG, "onConnectionFailed: " + errorMessage + " " + peerProperties.toString());
         } else {
-            Log.w(TAG, "onConnectionFailed: " + reason);
+            Log.w(TAG, "onConnectionFailed: " + errorMessage);
         }
 
         if (mListener != null) {
             final PeerProperties tempPeerProperties = peerProperties;
+            final String tempErrorMessage = errorMessage;
 
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onConnectionFailed(tempPeerProperties);
+                    mListener.onConnectionFailed(tempPeerProperties, tempErrorMessage);
                 }
             });
         }

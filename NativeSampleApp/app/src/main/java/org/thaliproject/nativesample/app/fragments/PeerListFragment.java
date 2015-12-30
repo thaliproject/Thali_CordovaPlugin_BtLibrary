@@ -15,7 +15,7 @@ import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-import org.thaliproject.nativesample.app.PeerAndConnectionModel;
+import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativesample.app.R;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 

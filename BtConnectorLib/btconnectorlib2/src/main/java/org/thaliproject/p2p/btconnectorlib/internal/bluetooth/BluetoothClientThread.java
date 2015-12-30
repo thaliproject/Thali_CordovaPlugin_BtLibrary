@@ -37,10 +37,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
         /**
          * Called when connection attempt fails.
-         * @param reason The reason for the failure.
          * @param peerProperties The peer properties.
+         * @param errorMessage The error message.
          */
-        void onConnectionFailed(String reason, PeerProperties peerProperties);
+        void onConnectionFailed(PeerProperties peerProperties, String errorMessage);
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
@@ -164,7 +164,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 } else {
                     Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
                             + ") reached, giving up... (thread ID: " + getId() + ")");
-                    mListener.onConnectionFailed(errorMessage, mPeerProperties);
+                    mListener.onConnectionFailed(mPeerProperties, errorMessage);
                     break;
                 }
             }
@@ -187,16 +187,16 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 } else if (!mIsShuttingDown) {
                     Log.e(TAG, "Failed to initiate handshake");
                     close();
-                    mListener.onConnectionFailed(errorMessage, mPeerProperties);
+                    mListener.onConnectionFailed(mPeerProperties, errorMessage);
                 }
             } catch (IOException e) {
                 errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
-                mListener.onConnectionFailed(errorMessage, mPeerProperties);
+                mListener.onConnectionFailed(mPeerProperties, errorMessage);
             } catch (NullPointerException e) {
                 errorMessage = "Unexpected error: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
-                mListener.onConnectionFailed(errorMessage, mPeerProperties);
+                mListener.onConnectionFailed(mPeerProperties, errorMessage);
             }
         }
 
@@ -290,7 +290,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
             Log.e(TAG, errorMessage);
             shutdown();
-            mListener.onConnectionFailed(errorMessage, mPeerProperties);
+            mListener.onConnectionFailed(mPeerProperties, errorMessage);
         }
     }
 
@@ -320,7 +320,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
         // If we were successful, the handshake thread instance was set to null
         if (mHandshakeThread != null) {
-            mListener.onConnectionFailed("Socket disconnected", peerProperties);
+            mListener.onConnectionFailed(peerProperties, "Socket disconnected");
             shutdown();
         }
     }
