@@ -11,10 +11,8 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.BaseAdapter;
-import android.widget.ListView;
-import android.widget.TextView;
+import android.widget.*;
+import org.thaliproject.nativesample.app.model.Connection;
 import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativesample.app.R;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -44,14 +42,41 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         if (mListener != null && mListView != null) {
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(position);
+                public void onItemClick(AdapterView<?> adapterView, View view, int index, long l) {
+                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
 
                     if (mListener != null) {
                         mListener.onConnectRequest(peerProperties);
                     } else {
                         Log.i(TAG, "onItemClick: " + peerProperties.toString() + " clicked, but I have no listener");
                     }
+                }
+            });
+
+            mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                @Override
+                public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
+                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
+                    Log.i(TAG, "onItemLongClick: " + peerProperties.toString());
+
+                    if (mListener != null) {
+                        mListener.onSendDataRequest(peerProperties);
+                        return true; // Consumed
+                    }
+
+                    return false;
+                }
+            });
+
+            mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
+                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
+                    Log.i(TAG, "onItemSelected: " + peerProperties.toString());
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> adapterView) {
                 }
             });
         }
@@ -134,10 +159,10 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
             PeerProperties peerProperties = mModel.getPeers().get(position);
 
-            TextView textView = (TextView)view.findViewById(R.id.peerName);
+            TextView textView = (TextView) view.findViewById(R.id.peerName);
             textView.setText(peerProperties.getName());
 
-            textView = (TextView)view.findViewById(R.id.peerId);
+            textView = (TextView) view.findViewById(R.id.peerId);
             textView.setText(peerProperties.getId());
 
             boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), true);
@@ -154,7 +179,31 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 connectionInformationText = "Not connected";
             }
 
-            textView = (TextView)view.findViewById(R.id.connectionsInformation);
+            Connection connectionResponsibleForSendingData = null;
+
+            if (hasOutgoingConnection) {
+                connectionResponsibleForSendingData = mModel.getConnectionToPeer(peerProperties, false);
+            } else if (hasIncomingConnection) {
+                connectionResponsibleForSendingData = mModel.getConnectionToPeer(peerProperties, true);
+            }
+
+            ProgressBar progressBar = (ProgressBar) view.findViewById(R.id.sendDataProgressBar);
+            progressBar.setIndeterminate(false);
+            progressBar.setMax(100);
+
+            if (connectionResponsibleForSendingData != null
+                    && connectionResponsibleForSendingData.isSendingData()) {
+                progressBar.setProgress((int)(connectionResponsibleForSendingData.getSendDataProgress() * 100));
+
+                connectionInformationText += ", sending "
+                        + String.format("%.2f", connectionResponsibleForSendingData.getTotalDataAmountCurrentlySendingInMegaBytes())
+                        + " MB (" + String.format("%.3f", connectionResponsibleForSendingData.getCurrentDataTransferSpeedInMegaBytesPerSecond())
+                        + " MB/s)";
+            } else {
+                progressBar.setProgress(0);
+            }
+
+            textView = (TextView) view.findViewById(R.id.connectionsInformation);
             textView.setText(connectionInformationText);
 
             return view;

@@ -8,6 +8,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import java.io.IOException;
+import java.util.Date;
 
 /**
  * Represents a two-way connection to a peer.
@@ -17,17 +18,24 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who);
         void onBytesWritten(byte[] bytes, int size, BluetoothSocketIoThread who);
         void onDisconnected(String reason, Connection who);
+        void onSendDataProgress(float progressInPercentages, float transferSpeed, PeerProperties receivingPeer);
+        void onDataSent(float dataSentInMegaBytes, float transferSpeed, PeerProperties receivingPeer);
     }
 
     private static final String TAG = Connection.class.getName();
-    public static final int DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 2;
+    public static final int DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES = 1024 * 10;
     public static final long DEFAULT_DATA_AMOUNT_IN_BYTES = 1024 * 1024;
+    private static final int REPORT_PROGRESS_INTERVAL_IN_MILLISECONDS = 1000;
     private static final byte[] PING_PACKAGE = new String("Is there anybody out there?").getBytes();
     private Listener mListener = null;
     private BluetoothSocketIoThread mBluetoothSocketIoThread = null;
     private PeerProperties mPeerProperties = null;
     private String mPeerId = null;
     private boolean mIsIncoming = false;
+    private DataSenderHelper mDataSenderHelper = null;
+    private long mTimeSinceLastReportedProgress = 0;
+    private float mSendDataProgressInPercentages = 0f;
+    private float mCurrentDataTransferSpeedInMegaBytesPerSecond = 0f;
 
     /**
      * Constructor.
@@ -46,12 +54,24 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         mListener = listener;
         mBluetoothSocketIoThread = new BluetoothSocketIoThread(bluetoothSocket, this);
         mBluetoothSocketIoThread.setPeerProperties(peerProperties);
-        mBluetoothSocketIoThread.setBufferSize(DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+
+        Settings settings = Settings.getInstance(null);
+
+        if (settings != null) {
+            mBluetoothSocketIoThread.setBufferSize(settings.getBufferSize());
+        } else {
+            mBluetoothSocketIoThread.setBufferSize(DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+        }
+
         mIsIncoming = isIncoming;
         mPeerProperties = peerProperties;
         mPeerId = mPeerProperties.getId();
 
         mBluetoothSocketIoThread.start();
+    }
+
+    public void setBufferSize(int bufferSizeInBytes) {
+        mBluetoothSocketIoThread.setBufferSize(bufferSizeInBytes);
     }
 
     public String getPeerId() {
@@ -66,6 +86,29 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         return mIsIncoming;
     }
 
+    public boolean isSendingData() {
+        return (mDataSenderHelper != null);
+    }
+
+    public float getTotalDataAmountCurrentlySendingInMegaBytes() {
+        if (mDataSenderHelper != null) {
+            return mDataSenderHelper.getTotalDataAmountInMegaBytes();
+        }
+
+        return 0f;
+    }
+
+    public float getCurrentDataTransferSpeedInMegaBytesPerSecond() {
+        return mCurrentDataTransferSpeedInMegaBytesPerSecond;
+    }
+
+    /**
+     * @return The progress in percentages.
+     */
+    public float getSendDataProgress() {
+        return mSendDataProgressInPercentages;
+    }
+
     /**
      * Tries to send the given bytes to the peer.
      * @param bytes The bytes to send.
@@ -75,8 +118,29 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         thread.write(bytes);
     }
 
+    /**
+     * Starts sending large amount of data.
+     */
+    public void sendData() {
+        Settings settings = Settings.getInstance(null);
+
+        if (settings != null) {
+            mDataSenderHelper = new DataSenderHelper(settings.getDataAmount());
+        } else {
+            mDataSenderHelper = new DataSenderHelper(DEFAULT_DATA_AMOUNT_IN_BYTES);
+        }
+
+        Log.i(TAG, "sendData: Sending data now...");
+        mDataSenderHelper.sendNextChunk();
+        mTimeSinceLastReportedProgress = new Date().getTime();
+        mSendDataProgressInPercentages = 0f;
+        mCurrentDataTransferSpeedInMegaBytesPerSecond = 0f;
+    }
+
     public void ping() {
-        send(PING_PACKAGE);
+        if (mDataSenderHelper == null) {
+            send(PING_PACKAGE);
+        }
     }
 
     public void close(boolean closeSocket) {
@@ -111,6 +175,41 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     @Override
     public void onBytesWritten(byte[] bytes, int i, BluetoothSocketIoThread bluetoothSocketIoThread) {
         mListener.onBytesWritten(bytes, i, bluetoothSocketIoThread);
+
+        if (mDataSenderHelper != null) {
+            long dataAmountLeft = mDataSenderHelper.getDataAmountLeft();
+
+            if (dataAmountLeft == 0) {
+                final DataSenderHelper dataSenderHelper = mDataSenderHelper;
+                mDataSenderHelper = null;
+                mSendDataProgressInPercentages = 1.0f;
+                mCurrentDataTransferSpeedInMegaBytesPerSecond = 0f;
+
+                mListener.onDataSent(
+                        dataSenderHelper.getTotalDataAmountInMegaBytes(),
+                        dataSenderHelper.calculateFinalTransferSpeed(),
+                        mPeerProperties);
+            } else {
+                mDataSenderHelper.sendNextChunk();
+
+                long currentTime = new Date().getTime();
+
+                if (currentTime >= mTimeSinceLastReportedProgress + REPORT_PROGRESS_INTERVAL_IN_MILLISECONDS) {
+                    long totalDataAmount = mDataSenderHelper.getTotalDataAmount();
+                    double percentage = (double)(totalDataAmount - dataAmountLeft) / totalDataAmount;
+                    mSendDataProgressInPercentages = (float)percentage;
+                    mCurrentDataTransferSpeedInMegaBytesPerSecond =
+                            mDataSenderHelper.calculateCurrentTransferSpeed(currentTime);
+
+                    mListener.onSendDataProgress(
+                            mSendDataProgressInPercentages,
+                            mCurrentDataTransferSpeedInMegaBytesPerSecond,
+                            mPeerProperties);
+
+                    mTimeSinceLastReportedProgress = currentTime;
+                }
+            }
+        }
     }
 
     /**
@@ -121,6 +220,10 @@ public class Connection implements BluetoothSocketIoThread.Listener {
      */
     @Override
     public void onDisconnected(String reason, BluetoothSocketIoThread bluetoothSocketIoThread) {
+        if (mDataSenderHelper != null) {
+            mDataSenderHelper = null;
+        }
+
         mListener.onDisconnected(reason, this);
     }
 
@@ -138,7 +241,82 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         @Override
         public void run() {
             if (!mBluetoothSocketIoThread.write(mBytesToWrite)) {
-                Log.e(TAG, "Failed to write " + mBytesToWrite.length + " bytes");
+                Log.e(TAG, "SocketWriterThread: Failed to write " + mBytesToWrite.length + " bytes");
+            }
+        }
+    }
+
+    /**
+     * Helper for sending large amounts of data in chunks.
+     */
+    private class DataSenderHelper {
+        private byte[] mDataChunk = null;
+        private long mDataAmount = 0;
+        private double mDataAmountInMegaBytes = 0;
+        private long mDataAmountLeft = 0;
+        private long mStartTime = 0;
+        private long mEndTime = 0;
+
+        public DataSenderHelper(long dataAmount) {
+            mDataAmount = dataAmount;
+            mDataAmountLeft = mDataAmount;
+            mDataAmountInMegaBytes = (double)mDataAmount / (1024 * 1024);
+            Log.i(TAG, "DataSendHelper: Set to send " + mDataAmountInMegaBytes + " MB");
+        }
+
+        public long getTotalDataAmount() {
+            return mDataAmount;
+        }
+
+        public long getDataAmountLeft() {
+            return mDataAmountLeft;
+        }
+
+        public float getTotalDataAmountInMegaBytes() {
+            return (float)mDataAmountInMegaBytes;
+        }
+
+        /**
+         * @param currentTime The current time.
+         * @return The overall transfer speed to this point (current time) in megabytes.
+         */
+        public float calculateCurrentTransferSpeed(long currentTime) {
+            if (currentTime > mStartTime) {
+                long secondsElapsed = (currentTime - mStartTime) / 1000;
+                double dataSentSoFar = (double)(mDataAmount - mDataAmountLeft);
+                return (float)(dataSentSoFar / (1024 * 1024)) / secondsElapsed;
+            }
+
+            return 0;
+        }
+
+        /**
+         * @return The final transfer speed in megabytes.
+         */
+        public float calculateFinalTransferSpeed() {
+            if (mEndTime != 0) {
+                long secondsElapsed = (mEndTime - mStartTime) / 1000;
+                return (float)mDataAmountInMegaBytes / secondsElapsed;
+            }
+
+            return 0;
+        }
+
+        public void sendNextChunk() {
+            if (mStartTime == 0) {
+                mStartTime = new Date().getTime();
+            }
+
+            if (mDataAmountLeft > 0) {
+                int bufferSize = mBluetoothSocketIoThread.getBufferSize();
+                int chunkSize = (mDataAmountLeft < bufferSize) ? (int)mDataAmountLeft : bufferSize;
+                mDataChunk = new byte[chunkSize];
+                mDataAmountLeft -= chunkSize;
+                send(mDataChunk);
+
+                if (mDataAmountLeft == 0) {
+                    mEndTime = new Date().getTime();
+                }
             }
         }
     }

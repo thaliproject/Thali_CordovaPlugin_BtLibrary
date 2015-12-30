@@ -126,7 +126,7 @@ public class SettingsFragment extends Fragment {
             public void afterTextChanged(Editable editable) {
                 if (editable.length() > 0) {
                     try {
-                        mSettings.setDataAmount(Long.parseLong(editable.toString()));
+                        mSettings.setBufferSize(Integer.parseInt(editable.toString()));
                     } catch (NumberFormatException e) {
                         Log.e(TAG, e.getMessage(), e);
                         mBufferSizeEditText.setText(String.valueOf(mSettings.getBufferSize()));

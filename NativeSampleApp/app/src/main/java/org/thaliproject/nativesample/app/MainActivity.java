@@ -273,14 +273,14 @@ public class MainActivity
 
         if (mModel.addOrUpdatePeer(peerProperties)) {
             mLogFragment.logMessage("Peer " + peerProperties.toString() + " discovered");
-        }
 
-        if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
-            if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
-                || !mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
-                // Do auto-connect
-                Log.i(TAG, "onPeerDiscovered: Auto-connecting to peer " + peerProperties.toString());
-                mConnectionManager.connect(peerProperties);
+            if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
+                if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
+                        || !mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
+                    // Do auto-connect
+                    Log.i(TAG, "onPeerDiscovered: Auto-connecting to peer " + peerProperties.toString());
+                    mConnectionManager.connect(peerProperties);
+                }
             }
         }
     }
@@ -354,6 +354,23 @@ public class MainActivity
     }
 
     @Override
+    public void onSendDataProgress(float progressInPercentages, float transferSpeed, PeerProperties receivingPeer) {
+        Log.i(TAG, "onSendDataProgress: " + Math.round(progressInPercentages * 100) + " % " + transferSpeed + " MB/s");
+        mModel.requestUpdateUi(); // To update the progress bar
+    }
+
+    @Override
+    public void onDataSent(float dataSentInMegaBytes, float transferSpeed, PeerProperties receivingPeer) {
+        String message = "Sent " + String.format("%.2f", dataSentInMegaBytes)
+                + " MB with transfer speed of " + String.format("%.3f", transferSpeed) + " MB/s";
+
+        Log.i(TAG, "onDataSent: " + message + " to peer " + receivingPeer);
+        mLogFragment.logMessage(message + " to peer " + receivingPeer);
+        showToast(message + " to peer " + receivingPeer.getName());
+        mModel.requestUpdateUi(); // To update the progress bar
+    }
+
+    @Override
     public void onConnectRequest(PeerProperties peerProperties) {
         mConnectionManager.connect(peerProperties);
         mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
@@ -361,7 +378,21 @@ public class MainActivity
 
     @Override
     public void onSendDataRequest(PeerProperties peerProperties) {
+        Connection connection = mModel.getConnectionToPeer(peerProperties, false);
 
+        if (connection == null) {
+            connection = mModel.getConnectionToPeer(peerProperties, true);
+        }
+
+        if (connection != null) {
+            connection.sendData();
+            mLogFragment.logMessage("Sending "
+                    + String.format("%.2f", connection.getTotalDataAmountCurrentlySendingInMegaBytes())
+                    + " MB to peer " + peerProperties.toString());
+            mModel.requestUpdateUi(); // To update the progress bar
+        } else {
+            Log.e(TAG, "onSendDataRequest: No connection found");
+        }
     }
 
     /**

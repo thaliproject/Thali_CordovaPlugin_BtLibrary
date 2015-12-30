@@ -40,6 +40,12 @@ public class PeerAndConnectionModel {
         mListener = listener;
     }
 
+    public void requestUpdateUi() {
+        if (mListener != null) {
+            mListener.onDataChanged();
+        }
+    }
+
     public ArrayList<PeerProperties> getPeers() {
         return mPeers;
     }
@@ -193,6 +199,26 @@ public class PeerAndConnectionModel {
     }
 
     /**
+     * Tries to find a connection to the given peer.
+     * @param peerProperties The peer properties.
+     * @param isIncoming If true, will try to get an incoming connection. If false, an outgoing connection.
+     * @return The connection instance or null if not found.
+     */
+    public synchronized Connection getConnectionToPeer(PeerProperties peerProperties, boolean isIncoming) {
+        Connection connection = null;
+
+        for (Connection existingConnection : mConnections) {
+            if (existingConnection.getPeerProperties().equals(peerProperties)
+                    && existingConnection.getIsIncoming() == isIncoming) {
+                connection = existingConnection;
+                break;
+            }
+        }
+
+        return connection;
+    }
+
+    /**
      * Closes all connections.
      */
     public synchronized void closeAllConnections() {
@@ -234,5 +260,15 @@ public class PeerAndConnectionModel {
         }
 
         return wasAddedOrRemoved;
+    }
+
+    /**
+     * Sets the given buffer size to all existing connections.
+     * @param bufferSize The buffer size in bytes.
+     */
+    public void setBufferSizeOfConnections(int bufferSize) {
+        for (Connection connection : mConnections) {
+            connection.setBufferSize(bufferSize);
+        }
     }
 }

@@ -223,6 +223,7 @@ public class Settings {
         mBufferSizeInBytes = bufferSizeInBytes;
         mSharedPreferencesEditor.putInt(KEY_BUFFER_SIZE, mBufferSizeInBytes);
         mSharedPreferencesEditor.apply();
+        PeerAndConnectionModel.getInstance().setBufferSizeOfConnections(mBufferSizeInBytes);
     }
 
     public boolean getAutoConnect() {
