@@ -3,14 +3,14 @@
  */
 package org.thaliproject.nativesample.app.fragments;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
 import android.widget.*;
 import org.thaliproject.nativesample.app.model.Connection;
 import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
@@ -20,18 +20,27 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 /**
  * A fragment containing the list of discovered peers.
  */
+@TargetApi(22)
 public class PeerListFragment extends Fragment implements PeerAndConnectionModel.Listener {
     public interface Listener {
+        void onPeerSelected(PeerProperties peerProperties);
         void onConnectRequest(PeerProperties peerProperties);
         void onSendDataRequest(PeerProperties peerProperties);
     }
 
     private static final String TAG = PeerListFragment.class.getName();
     private Context mContext = null;
+    private Drawable mIncomingConnectionIconNotConnected = null;
+    private Drawable mIncomingConnectionIconConnected = null;
+    private Drawable mIncomingConnectionIconDataFlowing = null;
+    private Drawable mOutgoingConnectionIconNotConnected = null;
+    private Drawable mOutgoingConnectionIconConnected = null;
+    private Drawable mOutgoingConnectionIconDataFlowing = null;
     private ListView mListView = null;
     private ListAdapter mListAdapter = null;
     private PeerAndConnectionModel mModel = null;
     private Listener mListener = null;
+    private PeerProperties mSelectedPeerProperties = null;
 
     public PeerListFragment() {
     }
@@ -43,17 +52,17 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
+                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
+                    Log.i(TAG, "onItemClick: " + mSelectedPeerProperties.toString());
 
                     if (mListener != null) {
-                        mListener.onConnectRequest(peerProperties);
-                    } else {
-                        Log.i(TAG, "onItemClick: " + peerProperties.toString() + " clicked, but I have no listener");
+                        mListener.onPeerSelected(mSelectedPeerProperties);
                     }
                 }
             });
 
-            mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            // Uncomment the following to send data when long tapped
+            /*mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
                     PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
@@ -66,13 +75,17 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
                     return false;
                 }
-            });
+            });*/
 
             mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
-                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemSelected: " + peerProperties.toString());
+                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
+                    Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
+
+                    if (mListener != null) {
+                        mListener.onPeerSelected(mSelectedPeerProperties);
+                    }
                 }
 
                 @Override
@@ -94,10 +107,20 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
         mModel = PeerAndConnectionModel.getInstance();
         mContext = view.getContext();
+
+        mIncomingConnectionIconNotConnected = getResources().getDrawable(R.drawable.ic_arrow_downward_gray_24dp, mContext.getTheme());
+        mIncomingConnectionIconConnected = getResources().getDrawable(R.drawable.ic_arrow_downward_blue_24dp, mContext.getTheme());
+        mIncomingConnectionIconDataFlowing = getResources().getDrawable(R.drawable.ic_arrow_downward_green_24dp, mContext.getTheme());
+        mOutgoingConnectionIconNotConnected = getResources().getDrawable(R.drawable.ic_arrow_upward_gray_24dp, mContext.getTheme());
+        mOutgoingConnectionIconConnected = getResources().getDrawable(R.drawable.ic_arrow_upward_blue_24dp, mContext.getTheme());
+        mOutgoingConnectionIconDataFlowing = getResources().getDrawable(R.drawable.ic_arrow_upward_green_24dp, mContext.getTheme());
+
         mListAdapter = new ListAdapter(mContext);
 
         mListView = (ListView)view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
+        mListView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
+        registerForContextMenu(mListView);
         setListener(mListener);
 
         mModel.setListener(this);
@@ -109,6 +132,59 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     public void onDestroy() {
         mModel.setListener(null);
         super.onDestroy();
+    }
+
+    @Override
+    public void onCreateContextMenu(ContextMenu menu, View view, ContextMenu.ContextMenuInfo menuInfo) {
+        MenuInflater inflater = getActivity().getMenuInflater();
+        inflater.inflate(R.menu.menu_peers, menu);
+
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+        int position = info.position;
+        PeerProperties peerProperties = (PeerProperties) mListView.getItemAtPosition(position);
+
+        if (mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
+            // We have an outgoing connection to this peer, so hide the connect action
+            menu.getItem(0).setEnabled(false);
+        } else {
+            // No outgoing connection, hide the disconnect action
+            menu.getItem(1).setEnabled(false);
+
+            if (!mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
+                // No incoming/outgoing connection, hide the send data action
+                menu.getItem(2).setEnabled(false);
+            }
+        }
+    }
+
+    @Override
+    public boolean onContextItemSelected(MenuItem item) {
+        boolean wasConsumed = false;
+
+        if (mListener != null) {
+            int id = item.getItemId();
+
+            switch (id) {
+                case R.id.action_connect:
+                    mListener.onConnectRequest(mSelectedPeerProperties); // Has a null check
+                    wasConsumed = true;
+                    break;
+                case R.id.action_disconnect:
+                    if (mSelectedPeerProperties != null) {
+                        if (mModel.closeConnection(mSelectedPeerProperties)) {
+                            wasConsumed = true;
+                        }
+                    }
+
+                    break;
+                case R.id.action_send_data:
+                    mListener.onSendDataRequest(mSelectedPeerProperties); // Has a null check
+                    wasConsumed = true;
+                    break;
+            }
+        }
+
+        return wasConsumed || super.onContextItemSelected(item);
     }
 
     @Override
@@ -167,15 +243,25 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
             boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), true);
             boolean hasOutgoingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), false);
+            ImageView outgoingConnectionIconImageView = (ImageView) view.findViewById(R.id.outgoingConnectionIconImageView);
+            ImageView incomingConnectionIconImageView = (ImageView) view.findViewById(R.id.incomingConnectionIconImageView);
             String connectionInformationText = "";
 
             if (hasIncomingConnection && hasOutgoingConnection) {
+                incomingConnectionIconImageView.setImageDrawable(mIncomingConnectionIconConnected);
+                outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconConnected);
                 connectionInformationText = "Connected (incoming and outgoing)";
             } else if (hasIncomingConnection) {
+                incomingConnectionIconImageView.setImageDrawable(mIncomingConnectionIconConnected);
+                outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconNotConnected);
                 connectionInformationText = "Connected (incoming)";
             } else if (hasOutgoingConnection) {
+                incomingConnectionIconImageView.setImageDrawable(mIncomingConnectionIconNotConnected);
+                outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconConnected);
                 connectionInformationText = "Connected (outgoing)";
             } else {
+                incomingConnectionIconImageView.setImageDrawable(mIncomingConnectionIconNotConnected);
+                outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconNotConnected);
                 connectionInformationText = "Not connected";
             }
 
@@ -193,9 +279,15 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
             if (connectionResponsibleForSendingData != null
                     && connectionResponsibleForSendingData.isSendingData()) {
+                if (connectionResponsibleForSendingData.getIsIncoming()) {
+                    incomingConnectionIconImageView.setImageDrawable(mIncomingConnectionIconDataFlowing);
+                } else {
+                    outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconDataFlowing);
+                }
+
                 progressBar.setProgress((int)(connectionResponsibleForSendingData.getSendDataProgress() * 100));
 
-                connectionInformationText += ", sending "
+                connectionInformationText = "Sending "
                         + String.format("%.2f", connectionResponsibleForSendingData.getTotalDataAmountCurrentlySendingInMegaBytes())
                         + " MB (" + String.format("%.3f", connectionResponsibleForSendingData.getCurrentDataTransferSpeedInMegaBytesPerSecond())
                         + " MB/s)";

@@ -8,4 +8,8 @@
     <string name="hello_world">Hello world!</string>
 
     <string name="action_settings">Settings</string>
+    <string name="action_connect">Connect</string>
+    <string name="action_disconnect">Disconnect</string>
+    <string name="action_send_data">Send data</string>
+    <string name="action_kill_all_connections">Kill all connections</string>
 </resources>

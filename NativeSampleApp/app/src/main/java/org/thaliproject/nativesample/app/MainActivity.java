@@ -74,9 +74,11 @@ public class MainActivity
     private DiscoveryManager mDiscoveryManager = null;
     private CountDownTimer mCheckConnectionsTimer = null;
     private PeerAndConnectionModel mModel = null;
+    private PeerProperties mSelectedPeerProperties = null;
     private PeerListFragment mPeerListFragment = null;
     private LogFragment mLogFragment = null;
     private SettingsFragment mSettingsFragment = null;
+    private Menu mMainMenu = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -157,6 +159,62 @@ public class MainActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        mMainMenu = menu;
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        if (mSelectedPeerProperties == null) {
+            menu.getItem(0).setVisible(false);
+            menu.getItem(1).setVisible(false);
+            menu.getItem(0).setEnabled(false);
+            menu.getItem(1).setEnabled(false);
+            menu.getItem(2).setEnabled(false);
+        } else {
+            Connection connection = mModel.getConnectionToPeer(mSelectedPeerProperties, false);
+
+            if (connection != null) {
+                // We have an outgoing connection
+                menu.getItem(0).setVisible(false);
+                menu.getItem(0).setEnabled(false);
+
+                if (connection.isSendingData()) {
+                    menu.getItem(1).setVisible(true);
+                    menu.getItem(1).setEnabled(false);
+                } else {
+                    menu.getItem(1).setVisible(true);
+                    menu.getItem(1).setEnabled(true);
+                }
+
+                menu.getItem(2).setEnabled(true);
+            } else {
+                // No outgoing connection
+                menu.getItem(0).setVisible(true);
+                menu.getItem(0).setEnabled(true);
+                menu.getItem(2).setEnabled(false);
+
+                connection = mModel.getConnectionToPeer(mSelectedPeerProperties, true);
+
+                if (connection != null) {
+                    if (connection.isSendingData()) {
+                        menu.getItem(1).setVisible(true);
+                        menu.getItem(1).setEnabled(false);
+                    } else {
+                        menu.getItem(1).setVisible(true);
+                        menu.getItem(1).setEnabled(true);
+                    }
+                } else {
+                    // No incoming/outgoing connection
+                    menu.getItem(0).setVisible(true);
+                    menu.getItem(0).setEnabled(true);
+                    menu.getItem(1).setVisible(false);
+                    menu.getItem(1).setEnabled(false);
+                    menu.getItem(2).setEnabled(false);
+                }
+            }
+        }
+
         return true;
     }
 
@@ -166,13 +224,32 @@ public class MainActivity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
+        boolean wasConsumed = false;
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+        switch (id) {
+            case R.id.action_connect:
+                onConnectRequest(mSelectedPeerProperties); // Has a null check
+                wasConsumed = true;
+                break;
+            case R.id.action_disconnect:
+                if (mSelectedPeerProperties != null) {
+                    if (mModel.closeConnection(mSelectedPeerProperties)) {
+                        wasConsumed = true;
+                    }
+                }
+
+                break;
+            case R.id.action_send_data:
+                onSendDataRequest(mSelectedPeerProperties); // Has a null check
+                wasConsumed = true;
+                break;
+            case R.id.action_kill_all_connections:
+                mModel.closeAllConnections();
+                wasConsumed = true;
+                break;
         }
 
-        return super.onOptionsItemSelected(item);
+        return wasConsumed || super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -231,6 +308,8 @@ public class MainActivity
             mCheckConnectionsTimer.cancel();
             mCheckConnectionsTimer.start();
         }
+
+        onPrepareOptionsMenu(mMainMenu); // Update the main menu
     }
 
     @Override
@@ -244,6 +323,8 @@ public class MainActivity
             showToast("Failed to connect: Connection timeout");
             mLogFragment.logError("Failed to connect: Connection timeout");
         }
+
+        onPrepareOptionsMenu(mMainMenu); // Update the main menu
     }
 
     @Override
@@ -259,6 +340,8 @@ public class MainActivity
             showToast("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
             mLogFragment.logError("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
         }
+
+        onPrepareOptionsMenu(mMainMenu); // Update the main menu
     }
 
     @Override
@@ -303,6 +386,10 @@ public class MainActivity
             mModel.removePeer(peerProperties);
             mLogFragment.logMessage("Peer " + peerProperties.toString() + " lost");
         }
+
+        if (mSelectedPeerProperties.equals(peerProperties)) {
+            onPeerSelected(null);
+        }
     }
 
     @Override
@@ -346,6 +433,8 @@ public class MainActivity
                 if (totalNumberOfConnections == 0) {
                     mCheckConnectionsTimer.cancel();
                 }
+
+                onPrepareOptionsMenu(mMainMenu); // Update the main menu
             }
         }.start();
 
@@ -368,12 +457,22 @@ public class MainActivity
         mLogFragment.logMessage(message + " to peer " + receivingPeer);
         showToast(message + " to peer " + receivingPeer.getName());
         mModel.requestUpdateUi(); // To update the progress bar
+        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+    }
+
+    @Override
+    public void onPeerSelected(PeerProperties peerProperties) {
+        mSelectedPeerProperties = peerProperties;
+        onPrepareOptionsMenu(mMainMenu); // Update the main menu
     }
 
     @Override
     public void onConnectRequest(PeerProperties peerProperties) {
-        mConnectionManager.connect(peerProperties);
-        mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
+        if (peerProperties != null) {
+            mConnectionManager.connect(peerProperties);
+            mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
+            onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        }
     }
 
     @Override
@@ -390,6 +489,7 @@ public class MainActivity
                     + String.format("%.2f", connection.getTotalDataAmountCurrentlySendingInMegaBytes())
                     + " MB to peer " + peerProperties.toString());
             mModel.requestUpdateUi(); // To update the progress bar
+            onPrepareOptionsMenu(mMainMenu); // Update the main menu
         } else {
             Log.e(TAG, "onSendDataRequest: No connection found");
         }

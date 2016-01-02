@@ -219,6 +219,23 @@ public class PeerAndConnectionModel {
     }
 
     /**
+     * Tries to close an outgoing connection to a peer with the given properties.
+     * @param peerProperties The peer properties.
+     * @return True, if the connection was closed. False otherwise.
+     */
+    public synchronized boolean closeConnection(PeerProperties peerProperties) {
+        boolean wasClosed = false;
+        Connection connection = getConnectionToPeer(peerProperties, false); // Outgoing connections only
+
+        if (connection != null) {
+            connection.disconnect();
+            wasClosed = true;
+        }
+
+        return wasClosed;
+    }
+
+    /**
      * Closes all connections.
      */
     public synchronized void closeAllConnections() {

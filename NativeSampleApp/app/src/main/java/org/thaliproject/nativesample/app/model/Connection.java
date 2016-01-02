@@ -36,6 +36,7 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     private long mTimeSinceLastReportedProgress = 0;
     private float mSendDataProgressInPercentages = 0f;
     private float mCurrentDataTransferSpeedInMegaBytesPerSecond = 0f;
+    private boolean mIsClosed = false;
 
     /**
      * Constructor.
@@ -90,6 +91,10 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         return (mDataSenderHelper != null);
     }
 
+    public boolean isClosed() {
+        return mIsClosed;
+    }
+    
     public float getTotalDataAmountCurrentlySendingInMegaBytes() {
         if (mDataSenderHelper != null) {
             return mDataSenderHelper.getTotalDataAmountInMegaBytes();
@@ -143,9 +148,17 @@ public class Connection implements BluetoothSocketIoThread.Listener {
         }
     }
 
+    public void disconnect() {
+        close(true);
+        mListener.onDisconnected("Disconnected by the user", this);
+    }
+
     public void close(boolean closeSocket) {
-        mBluetoothSocketIoThread.close(closeSocket);
-        Log.d(TAG, "close: Closed");
+        if (!mIsClosed) {
+            mBluetoothSocketIoThread.close(closeSocket);
+            Log.d(TAG, "close: Closed");
+            mIsClosed = true;
+        }
     }
 
     @Override
