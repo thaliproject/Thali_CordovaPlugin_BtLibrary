@@ -28,6 +28,7 @@ import org.thaliproject.nativesample.app.model.Connection;
 import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativesample.app.model.Settings;
 import org.thaliproject.nativesample.app.slidingtabs.SlidingTabLayout;
+import org.thaliproject.nativesample.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -165,55 +166,20 @@ public class MainActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        if (mSelectedPeerProperties == null) {
-            menu.getItem(0).setVisible(false);
-            menu.getItem(1).setVisible(false);
-            menu.getItem(0).setEnabled(false);
-            menu.getItem(1).setEnabled(false);
-            menu.getItem(2).setEnabled(false);
-        } else {
-            Connection connection = mModel.getConnectionToPeer(mSelectedPeerProperties, false);
+        MenuUtils.PeerMenuItemsAvailability availability =
+                MenuUtils.resolvePeerMenuItemsAvailability(mSelectedPeerProperties, mModel);
 
-            if (connection != null) {
-                // We have an outgoing connection
-                menu.getItem(0).setVisible(false);
-                menu.getItem(0).setEnabled(false);
+        MenuItem connectMenuItem = menu.getItem(0);
+        MenuItem sendDataMenuItem = menu.getItem(1);
+        MenuItem disconnectMenuItem = menu.getItem(2);
+        MenuItem killAllConnectionsMenuItem = menu.getItem(3);
 
-                if (connection.isSendingData()) {
-                    menu.getItem(1).setVisible(true);
-                    menu.getItem(1).setEnabled(false);
-                } else {
-                    menu.getItem(1).setVisible(true);
-                    menu.getItem(1).setEnabled(true);
-                }
-
-                menu.getItem(2).setEnabled(true);
-            } else {
-                // No outgoing connection
-                menu.getItem(0).setVisible(true);
-                menu.getItem(0).setEnabled(true);
-                menu.getItem(2).setEnabled(false);
-
-                connection = mModel.getConnectionToPeer(mSelectedPeerProperties, true);
-
-                if (connection != null) {
-                    if (connection.isSendingData()) {
-                        menu.getItem(1).setVisible(true);
-                        menu.getItem(1).setEnabled(false);
-                    } else {
-                        menu.getItem(1).setVisible(true);
-                        menu.getItem(1).setEnabled(true);
-                    }
-                } else {
-                    // No incoming/outgoing connection
-                    menu.getItem(0).setVisible(true);
-                    menu.getItem(0).setEnabled(true);
-                    menu.getItem(1).setVisible(false);
-                    menu.getItem(1).setEnabled(false);
-                    menu.getItem(2).setEnabled(false);
-                }
-            }
-        }
+        connectMenuItem.setVisible(availability.connectMenuItemAvailable);
+        connectMenuItem.setEnabled(availability.connectMenuItemAvailable);
+        sendDataMenuItem.setVisible(availability.sendDataMenuItemAvailable);
+        sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
+        disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
+        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);
 
         return true;
     }
@@ -267,6 +233,7 @@ public class MainActivity
     @Override
     public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
         Log.i(TAG, "onConnected: " + (isIncoming ? "Incoming" : "Outgoing") + " connection: " + peerProperties.toString());
+        mModel.removePeerBeingConnectedTo(peerProperties);
         Connection connection = null;
 
         try {
@@ -317,6 +284,7 @@ public class MainActivity
         Log.i(TAG, "onConnectionTimeout: " + peerProperties);
 
         if (peerProperties != null) {
+            mModel.removePeerBeingConnectedTo(peerProperties);
             showToast("Failed to connect to " + peerProperties.getName() + ": Connection timeout");
             mLogFragment.logError("Failed to connect to peer " + peerProperties.toString() + ": Connection timeout");
         } else {
@@ -332,6 +300,7 @@ public class MainActivity
         Log.i(TAG, "onConnectionFailed: " + errorMessage + ": " + peerProperties);
 
         if (peerProperties != null) {
+            mModel.removePeerBeingConnectedTo(peerProperties);
             showToast("Failed to connect to " + peerProperties.getName()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
             mLogFragment.logError("Failed to connect to peer " + peerProperties.toString()
@@ -357,9 +326,9 @@ public class MainActivity
         if (mModel.addOrUpdatePeer(peerProperties)) {
             mLogFragment.logMessage("Peer " + peerProperties.toString() + " discovered");
 
-            if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
+            if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
                 if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
-                        || !mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
+                        || !mModel.hasConnectionToPeer(peerProperties, true)) {
                     // Do auto-connect
                     Log.i(TAG, "onPeerDiscovered: Auto-connecting to peer " + peerProperties.toString());
                     mConnectionManager.connect(peerProperties);
@@ -469,9 +438,16 @@ public class MainActivity
     @Override
     public void onConnectRequest(PeerProperties peerProperties) {
         if (peerProperties != null) {
-            mConnectionManager.connect(peerProperties);
-            mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
-            onPrepareOptionsMenu(mMainMenu); // Update the main menu
+            if (mConnectionManager.connect(peerProperties)) {
+                mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
+                mModel.addPeerBeingConnectedTo(peerProperties);
+                onPrepareOptionsMenu(mMainMenu); // Update the main menu
+            } else {
+                String errorMessageStub = "Failed to start connecting to peer ";
+                Log.e(TAG, "onConnectRequest: " + errorMessageStub + peerProperties.toString());
+                mLogFragment.logError(errorMessageStub + peerProperties.toString());
+                showToast(errorMessageStub + peerProperties.getName());
+            }
         }
     }
 

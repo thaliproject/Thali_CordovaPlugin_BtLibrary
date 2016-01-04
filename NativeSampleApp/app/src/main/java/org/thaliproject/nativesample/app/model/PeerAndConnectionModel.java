@@ -7,6 +7,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /**
  * The model containing discovered peers and connections.
@@ -19,9 +20,13 @@ public class PeerAndConnectionModel {
     private static final String TAG = PeerAndConnectionModel.class.getName();
     private static PeerAndConnectionModel mInstance = null;
     private ArrayList<PeerProperties> mPeers = new ArrayList<PeerProperties>();
+    private ArrayList<PeerProperties> mPeersBeingConnectedTo = new ArrayList<PeerProperties>();
     private ArrayList<Connection> mConnections = new ArrayList<Connection>();
     private Listener mListener = null;
 
+    /**
+     * @return The singleton instance of this class.
+     */
     public static PeerAndConnectionModel getInstance() {
         if (mInstance == null) {
             mInstance = new PeerAndConnectionModel();
@@ -36,27 +41,34 @@ public class PeerAndConnectionModel {
     private PeerAndConnectionModel() {
     }
 
+    /**
+     * Sets the listener of this model.
+     * @param listener The listener to set.
+     */
     public void setListener(Listener listener) {
         mListener = listener;
     }
 
+    /**
+     * Notifies the listener that the data of this model has changed. This should update the UI.
+     */
     public void requestUpdateUi() {
         if (mListener != null) {
             mListener.onDataChanged();
         }
     }
 
+    /**
+     * @return All the peers.
+     */
     public ArrayList<PeerProperties> getPeers() {
         return mPeers;
     }
 
-    public ArrayList<Connection> getConnections() {
-        return mConnections;
-    }
-
     /**
-     * Adds the given peer to the list.
-     * @param peerProperties The peer to add.
+     * Adds the given peer properties to the list or tries to update an existing properties, if they
+     * share the same peer ID. Notifies the listener, if added to the list or updated.
+     * @param peerProperties The peer to add or update.
      * @return True, if the peer was added. False, if it was already in the list.
      */
     public synchronized boolean addOrUpdatePeer(PeerProperties peerProperties) {
@@ -102,21 +114,12 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     * Tries to remove the given peer.
+     * Tries to remove a peer with the given properties from the list of discovered peers.
+     * Notifies the listener, if removed.
      * @return True, if the peer was found and removed. False otherwise.
      */
     public boolean removePeer(final PeerProperties peerProperties) {
-        boolean wasRemoved = false;
-
-        for (Iterator<PeerProperties> iterator = mPeers.iterator(); iterator.hasNext();) {
-            PeerProperties existingPeer = iterator.next();
-
-            if (existingPeer.equals(peerProperties)) {
-                iterator.remove();
-                wasRemoved = true;
-                break;
-            }
-        }
+        boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeers);
 
         if (wasRemoved && mListener != null) {
             mListener.onDataChanged();
@@ -126,7 +129,7 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     * Updates the name of the peer in the list.
+     * Updates the name of the peer in the list. Notifies the listener, if updated.
      * @param peerProperties The peer properties containing the new name.
      * @return True, if the name was updated. False, if not found.
      */
@@ -151,6 +154,46 @@ public class PeerAndConnectionModel {
         return wasUpdated;
     }
 
+    public synchronized boolean isConnectingToPeer(final PeerProperties peerProperties) {
+        return doesListContainPeerProperties(peerProperties, mPeersBeingConnectedTo);
+    }
+
+    /**
+     * Adds the properties of a peer currently being connected to to the list.
+     * Notifies the listener, if added to the list.
+     * @param peerProperties The peer properties to add.
+     * @return True, if added. False, if already in the list.
+     */
+    public synchronized boolean addPeerBeingConnectedTo(final PeerProperties peerProperties) {
+        boolean alreadyInTheList = doesListContainPeerProperties(peerProperties, mPeersBeingConnectedTo);
+
+        if (!alreadyInTheList) {
+            mPeersBeingConnectedTo.add(peerProperties);
+
+            if (mListener != null) {
+                mListener.onDataChanged();
+            }
+        }
+
+        return !alreadyInTheList;
+    }
+
+    /**
+     * Tries to remove a peer with the given properties from the list of peers being currently
+     * connected to. Notifies the listener, if removed.
+     * @param peerProperties The peer properties.
+     * @return True, if found and removed. False otherwise.
+     */
+    public synchronized boolean removePeerBeingConnectedTo(final PeerProperties peerProperties) {
+        boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeersBeingConnectedTo);
+
+        if (wasRemoved && mListener != null) {
+            mListener.onDataChanged();
+        }
+
+        return wasRemoved;
+    }
+
     /**
      * @return The total number of connections.
      */
@@ -159,43 +202,10 @@ public class PeerAndConnectionModel {
     }
 
     /**
-     * Checks if we are connected to the given peer (incoming or outgoing).
-     * @param peerProperties The peer properties.
-     * @return True, if connected. False otherwise.
+     * @return All the connections.
      */
-    public synchronized boolean hasConnectionToPeer(PeerProperties peerProperties) {
-        boolean hasConnection = false;
-
-        for (Connection connection : mConnections) {
-            if (connection.getPeerProperties().equals(peerProperties)) {
-                hasConnection = true;
-                break;
-            }
-        }
-
-        return hasConnection;
-    }
-
-    /**
-     * Checks if we are connected to the given peer.
-     * @param peerId The peer ID.
-     * @param isIncoming If true, will check if we have an incoming connection. If false, check if we have an outgoing connection.
-     * @return True, if connected. False otherwise.
-     */
-    public synchronized boolean hasConnectionToPeer(final String peerId, boolean isIncoming) {
-        boolean hasConnection = false;
-        //int i = 0;
-
-        for (Connection connection : mConnections) {
-            //Log.d(TAG, "hasConnectionToPeer: " + ++i + ": " + connection.toString());
-
-            if (connection.getPeerId().equals(peerId) && connection.getIsIncoming() == isIncoming) {
-                hasConnection = true;
-                break;
-            }
-        }
-
-        return hasConnection;
+    public ArrayList<Connection> getConnections() {
+        return mConnections;
     }
 
     /**
@@ -204,7 +214,7 @@ public class PeerAndConnectionModel {
      * @param isIncoming If true, will try to get an incoming connection. If false, an outgoing connection.
      * @return The connection instance or null if not found.
      */
-    public synchronized Connection getConnectionToPeer(PeerProperties peerProperties, boolean isIncoming) {
+    public synchronized Connection getConnectionToPeer(final PeerProperties peerProperties, boolean isIncoming) {
         Connection connection = null;
 
         for (Connection existingConnection : mConnections) {
@@ -216,6 +226,27 @@ public class PeerAndConnectionModel {
         }
 
         return connection;
+    }
+
+    /**
+     * Checks if we are connected to the given peer.
+     * @param peerProperties The peer properties.
+     * @param isIncoming If true, will check if we have an incoming connection.
+     *                   If false, check if we have an outgoing connection.
+     * @return True, if connected. False otherwise.
+     */
+    public synchronized boolean hasConnectionToPeer(final PeerProperties peerProperties, boolean isIncoming) {
+        return (getConnectionToPeer(peerProperties, isIncoming) != null);
+    }
+
+    /**
+     * Checks if we are connected to the given peer (incoming or outgoing).
+     * @param peerProperties The peer properties.
+     * @return True, if connected. False otherwise.
+     */
+    public synchronized boolean hasConnectionToPeer(final PeerProperties peerProperties) {
+        return (getConnectionToPeer(peerProperties, true) != null
+                || getConnectionToPeer(peerProperties, false) != null);
     }
 
     /**
@@ -240,7 +271,7 @@ public class PeerAndConnectionModel {
      */
     public synchronized void closeAllConnections() {
         for (Connection connection : mConnections) {
-            connection.close(true);
+            connection.disconnect();
         }
 
         mConnections.clear();
@@ -287,5 +318,48 @@ public class PeerAndConnectionModel {
         for (Connection connection : mConnections) {
             connection.setBufferSize(bufferSize);
         }
+    }
+
+    /**
+     * Checks if the given peer properties exist in the given list.
+     * @param peerProperties The peer properties to find.
+     * @param peerPropertiesList The list of peer properties to search from.
+     * @return True, if found. False otherwise.
+     */
+    private synchronized boolean doesListContainPeerProperties(
+            final PeerProperties peerProperties, final List<PeerProperties> peerPropertiesList) {
+        boolean peerPropertiesFound = false;
+
+        for (PeerProperties existingPeerProperties : peerPropertiesList) {
+            if (existingPeerProperties.equals(peerProperties)) {
+                peerPropertiesFound = true;
+                break;
+            }
+        }
+
+        return peerPropertiesFound;
+    }
+
+    /**
+     * Tries to remove the given peer properties from the given list.
+     * @param peerProperties The peer properties to remove.
+     * @param peerPropertiesList The list of peer properties to remove from.
+     * @return True, if found and removed. False otherwise.
+     */
+    private synchronized boolean removePeerPropertiesFromList(
+            final PeerProperties peerProperties, List<PeerProperties> peerPropertiesList) {
+        boolean wasRemoved = false;
+
+        for (Iterator<PeerProperties> iterator = peerPropertiesList.iterator(); iterator.hasNext();) {
+            PeerProperties existingPeerProperties = iterator.next();
+
+            if (existingPeerProperties.equals(peerProperties)) {
+                iterator.remove();
+                wasRemoved = true;
+                break;
+            }
+        }
+
+        return wasRemoved;
     }
 }

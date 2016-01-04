@@ -4,6 +4,7 @@
     <dimen name="activity_vertical_margin">16dp</dimen>
     <dimen name="list_item_padding">12dp</dimen>
     <dimen name="default_padding">6dp</dimen>
+    <dimen name="padding_small">6dp</dimen>
     <dimen name="padding_medium">12dp</dimen>
     <dimen name="padding_large">24dp</dimen>
     <dimen name="settings_section_padding">24dp</dimen>

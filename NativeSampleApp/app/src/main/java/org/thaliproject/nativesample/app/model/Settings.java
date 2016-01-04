@@ -10,6 +10,7 @@ import android.util.Log;
 import org.thaliproject.nativesample.app.MainActivity;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 
 /**
  * Manages the application settings.
@@ -24,6 +25,9 @@ public class Settings {
     private static final String KEY_PORT_NUMBER = "port_number";
     private static final String KEY_ENABLE_WIFI_DISCOVERY = "enable_wifi_discovery";
     private static final String KEY_ENABLE_BLE_DISCOVERY = "enable_ble_discovery";
+    private static final String KEY_ADVERTISE_MODE = "advertise_mode";
+    private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
+    private static final String KEY_SCAN_MODE = "scan_mode";
     private static final String KEY_DATA_AMOUNT = "data_amount";
     private static final String KEY_BUFFER_SIZE = "buffer_size";
     private static final String KEY_AUTO_CONNECT = "auto_connect";
@@ -35,6 +39,9 @@ public class Settings {
     private int mPortNumber = ConnectionManager.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
+    private int mAdvertiseMode = DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE;
+    private int mAdvertiseTxPowerLevel = DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL;
+    private int mScanMode = DiscoveryManagerSettings.DEFAULT_SCAN_MODE;
     private long mDataAmountInBytes = Connection.DEFAULT_DATA_AMOUNT_IN_BYTES;
     private int mBufferSizeInBytes = Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES;
     private boolean mAutoConnect = false;
@@ -80,6 +87,10 @@ public class Settings {
                 KEY_PORT_NUMBER, ConnectionManager.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
         mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
         mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
+        mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
+        mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
+                KEY_ADVERTISE_TX_POWER_LEVEL, DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
+        mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DiscoveryManagerSettings.DEFAULT_SCAN_MODE);
         mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
         mBufferSizeInBytes = mSharedPreferences.getInt(
                 KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
@@ -92,6 +103,9 @@ public class Settings {
                 + mPortNumber + ", "
                 + mEnableWifiDiscovery + ", "
                 + mEnableBleDiscovery + ", "
+                + mAdvertiseMode + ", "
+                + mAdvertiseTxPowerLevel + ", "
+                + mScanMode + ", "
                 + mDataAmountInBytes + ", "
                 + mBufferSizeInBytes + ", "
                 + mAutoConnect + ", "
@@ -189,6 +203,39 @@ public class Settings {
         mSharedPreferencesEditor.putBoolean(KEY_ENABLE_BLE_DISCOVERY, mEnableBleDiscovery);
         mSharedPreferencesEditor.apply();
         setDesiredDiscoveryMode();
+    }
+
+    public int getAdvertiseMode() {
+        return mAdvertiseMode;
+    }
+
+    public void setAdvertiseMode(int advertiseMode) {
+        mAdvertiseMode = advertiseMode;
+        mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
+        mSharedPreferencesEditor.apply();
+        DiscoveryManagerSettings.getInstance().setAdvertiseMode(mAdvertiseMode);
+    }
+
+    public int getAdvertiseTxPowerLevel() {
+        return mAdvertiseTxPowerLevel;
+    }
+
+    public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
+        mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
+        mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
+        mSharedPreferencesEditor.apply();
+        DiscoveryManagerSettings.getInstance().setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
+    }
+
+    public int getScanMode() {
+        return mScanMode;
+    }
+
+    public void setScanMode(int scanMode) {
+        mScanMode = scanMode;
+        mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
+        mSharedPreferencesEditor.apply();
+        DiscoveryManagerSettings.getInstance().setScanMode(mScanMode);
     }
 
     /**

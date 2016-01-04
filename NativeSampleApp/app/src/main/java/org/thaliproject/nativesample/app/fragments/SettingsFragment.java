@@ -3,6 +3,7 @@
  */
 package org.thaliproject.nativesample.app.fragments;
 
+import android.bluetooth.le.AdvertiseSettings;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
@@ -11,9 +12,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.CheckBox;
-import android.widget.CompoundButton;
-import android.widget.EditText;
+import android.widget.*;
 import org.thaliproject.nativesample.app.R;
 import org.thaliproject.nativesample.app.model.Settings;
 
@@ -108,6 +107,54 @@ public class SettingsFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 mSettings.setEnableBleDiscovery(b);
+            }
+        });
+
+        Spinner spinner = (Spinner) view.findViewById(R.id.advertiseModeSpinner);
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                view.getContext(), R.array.advertise_mode_string_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
+                mSettings.setAdvertiseMode(index);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+
+        spinner = (Spinner) view.findViewById(R.id.advertiseTxPowerLevelSpinner);
+        adapter = ArrayAdapter.createFromResource(
+                view.getContext(), R.array.advertise_tx_power_level_string_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
+                mSettings.setAdvertiseTxPowerLevel(index);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+
+        spinner = (Spinner) view.findViewById(R.id.scanModeSpinner);
+        adapter = ArrayAdapter.createFromResource(
+                view.getContext(), R.array.scan_mode_string_array, android.R.layout.simple_spinner_item);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
+                mSettings.setScanMode(index);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
             }
         });
 

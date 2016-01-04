@@ -30,7 +30,8 @@ public class DiscoveryManager
         implements
             WifiDirectManager.WifiStateListener,
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
-            BlePeerDiscoverer.BlePeerDiscoveryListener {
+            BlePeerDiscoverer.BlePeerDiscoveryListener,
+            DiscoveryManagerSettings.Listener {
 
     public enum DiscoveryManagerState {
         NOT_STARTED,
@@ -75,8 +76,6 @@ public class DiscoveryManager
     }
 
     private static final String TAG = DiscoveryManager.class.getName();
-    public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
-    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
 
     private final Context mContext;
     private final DiscoveryManagerListener mListener;
@@ -89,8 +88,8 @@ public class DiscoveryManager
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
     private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
-    private DiscoveryMode mDiscoveryMode = DiscoveryMode.NOT_SET;
-    private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
+    private DiscoveryMode mDiscoveryMode = DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE;
+    private DiscoveryManagerSettings mSettings = null;
     private boolean mShouldBeRunning = false;
 
     /**
@@ -110,27 +109,16 @@ public class DiscoveryManager
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
 
+        mSettings = DiscoveryManagerSettings.getInstance();
+        mSettings.setListener(this);
+
         mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
 
-        if (!setDiscoveryMode(DEFAULT_DISCOVERY_MODE)) {
+        if (!setDiscoveryMode(DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE)) {
             // Try to fallback to Wi-Fi Direct
             setDiscoveryMode(DiscoveryMode.WIFI);
         }
-    }
-
-    /**
-     * @return True, if Bluetooth LE advertising is supported. False otherwise.
-     */
-    public boolean isBleAdvertisingSupported() {
-        return mBluetoothManager.isBleSupported();
-    }
-
-    /**
-     * @return The discovery mode currently set.
-     */
-    public DiscoveryMode getDiscoveryMode() {
-        return mDiscoveryMode;
     }
 
     /**
@@ -205,16 +193,10 @@ public class DiscoveryManager
     }
 
     /**
-     * Sets the peer expiration time. If the given value is zero or less, peers will not expire.
-     * @param peerExpirationInMilliseconds The peer expiration time in milliseconds.
+     * @return True, if Bluetooth LE advertising is supported. False otherwise.
      */
-    public void setPeerExpiration(long peerExpirationInMilliseconds) {
-        mPeerExpirationInMilliseconds = peerExpirationInMilliseconds;
-
-        if (mCheckExpiredPeersTimer != null) {
-            // Recreate the timer
-            createCheckPeerExpirationTimer();
-        }
+    public boolean isBleAdvertisingSupported() {
+        return mBluetoothManager.isBleSupported();
     }
 
     /**
@@ -343,6 +325,24 @@ public class DiscoveryManager
     public void addOrUpdateDiscoveredPeer(PeerProperties peerProperties) {
         Log.i(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
         modifyListOfDiscoveredPeers(peerProperties, true);
+    }
+
+    @Override
+    public void onPeerExpirationChanged(long peerExpirationInMilliseconds) {
+        if (mCheckExpiredPeersTimer != null) {
+            // Recreate the timer
+            createCheckPeerExpirationTimer();
+        }
+    }
+
+    @Override
+    public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
+        mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+    }
+
+    @Override
+    public void onScanModeChanged(int scanMode) {
+        mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
     }
 
     /**
@@ -693,7 +693,7 @@ public class DiscoveryManager
             //Log.v(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " is now "
             //        + ((timestampNow.getTime() - entryTimestamp.getTime()) / 1000) + " seconds old");
 
-            if (timestampNow.getTime() - entryTimestamp.getTime() > mPeerExpirationInMilliseconds) {
+            if (timestampNow.getTime() - entryTimestamp.getTime() > mSettings.getPeerExpiration()) {
                 Log.d(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " expired");
                 expiredPeers.add(entryPeerProperties);
             }
@@ -729,8 +729,10 @@ public class DiscoveryManager
             mCheckExpiredPeersTimer = null;
         }
 
-        if (mPeerExpirationInMilliseconds > 0) {
-            long timerTimeout = mPeerExpirationInMilliseconds / 2;
+        long peerExpirationInMilliseconds = mSettings.getPeerExpiration();
+
+        if (peerExpirationInMilliseconds > 0) {
+            long timerTimeout = peerExpirationInMilliseconds / 2;
 
             mCheckExpiredPeersTimer = new CountDownTimer(timerTimeout, timerTimeout) {
                 @Override

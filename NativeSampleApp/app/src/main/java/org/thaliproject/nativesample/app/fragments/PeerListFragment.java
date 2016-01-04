@@ -15,6 +15,7 @@ import android.widget.*;
 import org.thaliproject.nativesample.app.model.Connection;
 import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativesample.app.R;
+import org.thaliproject.nativesample.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
@@ -143,18 +144,16 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         int position = info.position;
         PeerProperties peerProperties = (PeerProperties) mListView.getItemAtPosition(position);
 
-        if (mModel.hasConnectionToPeer(peerProperties.getId(), false)) {
-            // We have an outgoing connection to this peer, so hide the connect action
-            menu.getItem(0).setEnabled(false);
-        } else {
-            // No outgoing connection, hide the disconnect action
-            menu.getItem(1).setEnabled(false);
+        MenuUtils.PeerMenuItemsAvailability availability =
+                MenuUtils.resolvePeerMenuItemsAvailability(peerProperties, mModel);
 
-            if (!mModel.hasConnectionToPeer(peerProperties.getId(), true)) {
-                // No incoming/outgoing connection, hide the send data action
-                menu.getItem(2).setEnabled(false);
-            }
-        }
+        MenuItem connectMenuItem = menu.getItem(0);
+        MenuItem sendDataMenuItem = menu.getItem(1);
+        MenuItem disconnectMenuItem = menu.getItem(2);
+
+        connectMenuItem.setEnabled(availability.connectMenuItemAvailable);
+        sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
+        disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
     }
 
     @Override
@@ -241,8 +240,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             textView = (TextView) view.findViewById(R.id.peerId);
             textView.setText(peerProperties.getId());
 
-            boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), true);
-            boolean hasOutgoingConnection = mModel.hasConnectionToPeer(peerProperties.getId(), false);
+            boolean hasIncomingConnection = mModel.hasConnectionToPeer(peerProperties, true);
+            boolean hasOutgoingConnection = mModel.hasConnectionToPeer(peerProperties, false);
             ImageView outgoingConnectionIconImageView = (ImageView) view.findViewById(R.id.outgoingConnectionIconImageView);
             ImageView incomingConnectionIconImageView = (ImageView) view.findViewById(R.id.incomingConnectionIconImageView);
             String connectionInformationText = "";

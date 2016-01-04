@@ -11,6 +11,8 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,7 +48,6 @@ class BleScanner extends ScanCallback {
     }
 
     private static final String TAG = BleScanner.class.getName();
-    public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_LOW_POWER;
     private Listener mListener = null;
     private BluetoothLeScanner mBluetoothLeScanner = null;
     private List<ScanFilter> mScanFilters = new ArrayList<>();
@@ -63,7 +64,14 @@ class BleScanner extends ScanCallback {
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         ScanSettings.Builder builder = new ScanSettings.Builder();
-        builder.setScanMode(DEFAULT_SCAN_MODE);
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+
+        try {
+            builder.setScanMode(settings.getScanMode());
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "BleScanner: Failed to apply scan mode setting: " + e.getMessage(), e);
+        }
+
         setScanSettings(builder.build());
     }
 

@@ -10,6 +10,7 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 
 /**
  * General BLE advertiser.
@@ -37,8 +38,6 @@ class BleAdvertiser extends AdvertiseCallback {
     };
 
     private static final String TAG = BleAdvertiser.class.getName();
-    public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;
-    public static final int DEFAULT_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
     private Listener mListener = null;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser = null;
     private AdvertiseSettings mAdvertiseSettings = null;
@@ -55,8 +54,15 @@ class BleAdvertiser extends AdvertiseCallback {
         mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
 
         AdvertiseSettings.Builder builder = new AdvertiseSettings.Builder();
-        builder.setAdvertiseMode(DEFAULT_ADVERTISE_MODE);
-        builder.setTxPowerLevel(DEFAULT_TX_POWER_LEVEL);
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+
+        try {
+            builder.setAdvertiseMode(settings.getAdvertiseMode());
+            builder.setTxPowerLevel(settings.getAdvertiseTxPowerLevel());
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "BleAdvertiser: Failed to apply settings: " + e.getMessage(), e);
+        }
+
         setAdvertiseSettings(builder.build());
     }
 
