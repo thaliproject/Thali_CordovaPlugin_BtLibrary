@@ -21,9 +21,9 @@ public class DiscoveryManagerSettings {
     // Default settings
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
-    public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_LOW_POWER;
+    public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
-    public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_LOW_POWER;
+    public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
 
     private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
