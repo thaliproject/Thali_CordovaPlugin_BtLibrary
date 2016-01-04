@@ -8,7 +8,7 @@ import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.nativesample.app.MainActivity;
-import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
+import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 
@@ -33,10 +33,9 @@ public class Settings {
     private static final String KEY_AUTO_CONNECT = "auto_connect";
     private static final String KEY_AUTO_CONNECT_WHEN_INCOMING = "auto_connect_when_incoming";
 
-    private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
-    private long mConnectionTimeoutInMilliseconds = ConnectionManager.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
-    private int mPortNumber = ConnectionManager.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    private long mConnectionTimeoutInMilliseconds = ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    private int mPortNumber = ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
     private int mAdvertiseMode = DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE;
@@ -69,12 +68,11 @@ public class Settings {
         mSharedPreferencesEditor = mSharedPreferences.edit();
     }
 
-    public void setConnectionManager(ConnectionManager connectionManager) {
-        mConnectionManager = connectionManager;
-    }
-
     public void setDiscoveryManager(DiscoveryManager discoveryManager) {
-        mDiscoveryManager = discoveryManager;
+        if (discoveryManager != null) {
+            mDiscoveryManager = discoveryManager;
+            setDesiredDiscoveryMode();
+        }
     }
 
     /**
@@ -82,9 +80,9 @@ public class Settings {
      */
     public void load() {
         mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
-                KEY_CONNECTION_TIMEOUT, ConnectionManager.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
+                KEY_CONNECTION_TIMEOUT, ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
         mPortNumber = mSharedPreferences.getInt(
-                KEY_PORT_NUMBER, ConnectionManager.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+                KEY_PORT_NUMBER, ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
         mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
         mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
         mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
@@ -110,6 +108,15 @@ public class Settings {
                 + mBufferSizeInBytes + ", "
                 + mAutoConnect + ", "
                 + mAutoConnectEvenWhenIncomingConnectionEstablished);
+
+        ConnectionManagerSettings connectionManagerSettings = ConnectionManagerSettings.getInstance();
+        connectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
+        connectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
+
+        DiscoveryManagerSettings discoveryManagerSettings = DiscoveryManagerSettings.getInstance();
+        discoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
+        discoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
+        discoveryManagerSettings.setScanMode(mScanMode);
     }
 
     /**
@@ -127,10 +134,7 @@ public class Settings {
         mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
         mSharedPreferencesEditor.putLong(KEY_CONNECTION_TIMEOUT, mConnectionTimeoutInMilliseconds);
         mSharedPreferencesEditor.apply();
-
-        if (mConnectionManager != null) {
-            mConnectionManager.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
-        }
+        ConnectionManagerSettings.getInstance().setConnectionTimeout(mConnectionTimeoutInMilliseconds);
     }
 
     public int getPortNumber() {
@@ -142,10 +146,7 @@ public class Settings {
         mPortNumber = portNumber;
         mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mPortNumber);
         mSharedPreferencesEditor.apply();
-
-        if (mConnectionManager != null) {
-            mConnectionManager.setInsecureRfcommSocketPort(mPortNumber);
-        }
+        ConnectionManagerSettings.getInstance().setInsecureRfcommSocketPortNumber(mPortNumber);
     }
 
     /**

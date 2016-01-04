@@ -212,7 +212,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * @param insecureRfcommSocketPort The port to use.
      */
     public void setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
-        Log.i(TAG, "setInsecureRfcommSocketPort: Using port " + insecureRfcommSocketPort);
+        Log.i(TAG, "setInsecureRfcommSocketPortNumber: Using port " + insecureRfcommSocketPort);
         mInsecureRfcommSocketPort = insecureRfcommSocketPort;
     }
 

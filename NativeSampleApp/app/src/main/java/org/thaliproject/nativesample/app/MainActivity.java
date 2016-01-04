@@ -123,13 +123,9 @@ public class MainActivity
             };
 
             mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
-            mSettings.setConnectionManager(mConnectionManager);
-            mConnectionManager.setConnectionTimeout(mSettings.getConnectionTimeout());
-            mConnectionManager.setInsecureRfcommSocketPort(mSettings.getPortNumber());
 
             mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
             mSettings.setDiscoveryManager(mDiscoveryManager);
-            mSettings.setDesiredDiscoveryMode();
 
             mConnectionManager.start(PEER_NAME);
             mDiscoveryManager.start(PEER_NAME);

@@ -10,7 +10,6 @@ import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
-import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import java.util.UUID;
 
@@ -19,7 +18,9 @@ import java.util.UUID;
  */
 public class ConnectionManager
         extends AbstractBluetoothConnectivityAgent
-        implements BluetoothConnector.BluetoothConnectorListener {
+        implements
+            BluetoothConnector.BluetoothConnectorListener,
+            ConnectionManagerSettings.Listener {
 
     public enum ConnectionManagerState {
         NOT_STARTED,
@@ -60,9 +61,6 @@ public class ConnectionManager
     }
 
     private static final String TAG = ConnectionManager.class.getName();
-    public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = BluetoothConnector.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
-    public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
-    public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     private final Context mContext;
     private final ConnectionManagerListener mListener;
     private final Handler mHandler;
@@ -70,7 +68,7 @@ public class ConnectionManager
     private ConnectionManagerState mState = ConnectionManagerState.NOT_STARTED;
     private UUID mMyUuid = null;
     private String mMyName = null;
-    private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    private ConnectionManagerSettings mSettings = null;
 
     /**
      * Constructor.
@@ -89,6 +87,9 @@ public class ConnectionManager
         mListener = listener;
         mMyUuid = myUuid;
         mMyName = myName;
+
+        mSettings = ConnectionManagerSettings.getInstance();
+        mSettings.setListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());
     }
@@ -115,7 +116,7 @@ public class ConnectionManager
                             mBluetoothConnector = new BluetoothConnector(
                                     mContext, this, bluetoothAdapter, mMyUuid, mMyName, mMyIdentityString);
 
-                            mBluetoothConnector.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
+                            mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
                             startListeningForIncomingConnections();
                             setState(ConnectionManagerState.RUNNING);
                             Log.i(TAG, "start: OK");
@@ -195,72 +196,6 @@ public class ConnectionManager
     }
 
     /**
-     * Sets the connection timeout. If the given value is negative or zero, no timeout is set.
-     * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
-     */
-    public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
-        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
-    }
-
-    /**
-     * Returns the port to be used by the insecure RFCOMM socket when connecting.
-     * -1: The system decides (the default method).
-     * 0: Using a rotating port number.
-     * 1-30: Using a custom port.
-     * @return The port to be used by the insecure RFCOMM socket when connecting.
-     */
-    public int getInsecureRfcommSocketPort() {
-        int port = DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
-
-        if (mBluetoothConnector != null) {
-            port = mBluetoothConnector.getInsecureRfcommSocketPort();
-        }
-
-        return port;
-    }
-
-    /**
-     * Sets the preferred port to be used by the insecure RFCOMM socket when connecting.
-     * @param insecureRfcommSocketPort The port to use.
-     *                                 Use -1 for to let the system decide (the default method).
-     *                                 Use 0 for rotating port number.
-     *                                 Values 1-30 are valid custom ports (1 is recommended).
-     * @return True, if the port was set successfully. False otherwise.
-     */
-    public boolean setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
-        boolean wasSet = false;
-
-        if (mBluetoothConnector != null) {
-            Log.i(TAG, "setInsecureRfcommSocketPort: Will use port " + insecureRfcommSocketPort + " when trying to connect");
-            mBluetoothConnector.setInsecureRfcommSocketPort(insecureRfcommSocketPort);
-            wasSet = true;
-        } else {
-            Log.e(TAG, "setInsecureRfcommSocketPort: Cannot set port, because not started yet");
-        }
-
-        return wasSet;
-    }
-
-    /**
-     * Sets the maximum number of (outgoing) socket connection  attempt retries (0 means only one attempt).
-     * @param maxNumberOfRetries The maximum number of socket connection attempt retries for outgoing connections.
-     * @return True, if was set successfully. False otherwise.
-     */
-    public boolean setMaxNumberOfOutgoingConnectionAttemptRetries(int maxNumberOfRetries) {
-        boolean wasSet = false;
-
-        if (mBluetoothConnector != null) {
-            Log.i(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: " + maxNumberOfRetries);
-            mBluetoothConnector.setMaxNumberOfOutgoingConnectionAttemptRetries(maxNumberOfRetries);
-            wasSet = true;
-        } else {
-            Log.e(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: Cannot set port, because not started yet");
-        }
-
-        return wasSet;
-    }
-
-    /**
      * Tries to connect to the given device.
      * Note that even when this method returns true, it does not yet indicate a successful
      * connection, but merely that the connection process was started successfully.
@@ -293,6 +228,18 @@ public class ConnectionManager
      */
     public ConnectionManagerState getState() {
         return mState;
+    }
+
+    /**
+     * Applies the changed settings, if the connector instance already exists.
+     */
+    @Override
+    public void onConnectionManagerSettingsChanged() {
+        if (mBluetoothConnector != null) {
+            mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
+            mBluetoothConnector.setInsecureRfcommSocketPort(mSettings.getInsecureRfcommSocketPortNumber());
+            mBluetoothConnector.setMaxNumberOfOutgoingConnectionAttemptRetries(mSettings.getMaxNumberOfConnectionAttemptRetries());
+        }
     }
 
     /**

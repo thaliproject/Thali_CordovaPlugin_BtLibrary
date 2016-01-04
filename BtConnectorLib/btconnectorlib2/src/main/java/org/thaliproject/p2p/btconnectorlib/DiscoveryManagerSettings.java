@@ -13,12 +13,10 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
  */
 public class DiscoveryManagerSettings {
     public interface Listener {
-        void onPeerExpirationChanged(long peerExpirationInMilliseconds);
+        void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
         void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel);
-        void onScanModeChanged(int scanMode);
+        void onScanModeSettingChanged(int scanMode);
     }
-
-    private static DiscoveryManagerSettings mInstance = null;
 
     // Default settings
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
@@ -27,6 +25,7 @@ public class DiscoveryManagerSettings {
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
     public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_LOW_POWER;
 
+    private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
@@ -74,7 +73,7 @@ public class DiscoveryManagerSettings {
         mPeerExpirationInMilliseconds = peerExpirationInMilliseconds;
 
         if (mListener != null) {
-            mListener.onPeerExpirationChanged(mPeerExpirationInMilliseconds);
+            mListener.onPeerExpirationSettingChanged(mPeerExpirationInMilliseconds);
         }
     }
 
@@ -131,7 +130,7 @@ public class DiscoveryManagerSettings {
         mScanMode = scanMode;
 
         if (mListener != null) {
-            mListener.onScanModeChanged(mScanMode);
+            mListener.onScanModeSettingChanged(mScanMode);
         }
     }
 }

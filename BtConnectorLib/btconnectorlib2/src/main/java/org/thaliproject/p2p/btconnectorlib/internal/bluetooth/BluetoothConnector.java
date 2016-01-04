@@ -10,6 +10,7 @@ import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.IOException;
 import java.util.UUID;
@@ -53,9 +54,10 @@ public class BluetoothConnector
     }
 
     private static final String TAG = BluetoothConnector.class.getName();
+    public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
     public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
-    public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = 15000;
+    public static final int DEFAULT_MAX_NUMBER_OF_RETRIES = BluetoothClientThread.DEFAULT_MAX_NUMBER_OF_RETRIES;
 
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothConnectorListener mListener;
@@ -70,7 +72,7 @@ public class BluetoothConnector
     private CountDownTimer mConnectionTimeoutTimer;
     private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
-    private int mMaxNumberOfOutgoingConnectionAttemptRetries = BluetoothClientThread.DEFAULT_MAX_NUMBER_OF_RETRIES;
+    private int mMaxNumberOfOutgoingConnectionAttemptRetries = DEFAULT_MAX_NUMBER_OF_RETRIES;
     private boolean mIsServerThreadAlive = false;
     private boolean mIsStoppingServer = false;
     private boolean mIsShuttingDown = false;
@@ -93,6 +95,11 @@ public class BluetoothConnector
         mMyBluetoothName = myBluetoothName;
         mMyIdentityString = myIdentityString;
         mHandler = new Handler(context.getMainLooper());
+
+        ConnectionManagerSettings settings = ConnectionManagerSettings.getInstance();
+        mConnectionTimeoutInMilliseconds = settings.getConnectionTimeout();
+        mInsecureRfcommSocketPort = settings.getInsecureRfcommSocketPortNumber();
+        mMaxNumberOfOutgoingConnectionAttemptRetries = settings.getMaxNumberOfConnectionAttemptRetries();
 
         createConnectionTimeoutTimer();
 

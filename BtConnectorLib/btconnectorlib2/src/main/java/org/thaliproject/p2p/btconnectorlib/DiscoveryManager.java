@@ -328,7 +328,7 @@ public class DiscoveryManager
     }
 
     @Override
-    public void onPeerExpirationChanged(long peerExpirationInMilliseconds) {
+    public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
         if (mCheckExpiredPeersTimer != null) {
             // Recreate the timer
             createCheckPeerExpirationTimer();
@@ -341,7 +341,7 @@ public class DiscoveryManager
     }
 
     @Override
-    public void onScanModeChanged(int scanMode) {
+    public void onScanModeSettingChanged(int scanMode) {
         mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
     }
 
