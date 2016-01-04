@@ -162,7 +162,7 @@ public class MainActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuUtils.PeerMenuItemsAvailability availability =
+        /*MenuUtils.PeerMenuItemsAvailability availability =
                 MenuUtils.resolvePeerMenuItemsAvailability(mSelectedPeerProperties, mModel);
 
         MenuItem connectMenuItem = menu.getItem(0);
@@ -175,7 +175,7 @@ public class MainActivity
         sendDataMenuItem.setVisible(availability.sendDataMenuItemAvailable);
         sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
         disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
-        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);
+        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);*/
 
         return true;
     }

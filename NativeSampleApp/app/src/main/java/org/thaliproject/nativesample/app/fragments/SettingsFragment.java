@@ -115,6 +115,7 @@ public class SettingsFragment extends Fragment {
                 view.getContext(), R.array.advertise_mode_string_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setSelection(mSettings.getAdvertiseMode());
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
@@ -131,6 +132,7 @@ public class SettingsFragment extends Fragment {
                 view.getContext(), R.array.advertise_tx_power_level_string_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setSelection(mSettings.getAdvertiseTxPowerLevel());
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
@@ -147,6 +149,7 @@ public class SettingsFragment extends Fragment {
                 view.getContext(), R.array.scan_mode_string_array, android.R.layout.simple_spinner_item);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+        spinner.setSelection(mSettings.getScanMode());
         spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {

@@ -62,21 +62,20 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 }
             });
 
-            // Uncomment the following to send data when long tapped
-            /*mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
                     PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
                     Log.i(TAG, "onItemLongClick: " + peerProperties.toString());
+                    mSelectedPeerProperties = peerProperties;
 
                     if (mListener != null) {
-                        mListener.onSendDataRequest(peerProperties);
-                        return true; // Consumed
+                        mListener.onPeerSelected(mSelectedPeerProperties);
                     }
 
-                    return false;
+                    return false; // Let the event propagate
                 }
-            });*/
+            });
 
             mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
@@ -148,8 +147,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 MenuUtils.resolvePeerMenuItemsAvailability(peerProperties, mModel);
 
         MenuItem connectMenuItem = menu.getItem(0);
-        MenuItem sendDataMenuItem = menu.getItem(1);
-        MenuItem disconnectMenuItem = menu.getItem(2);
+        MenuItem disconnectMenuItem = menu.getItem(1);
+        MenuItem sendDataMenuItem = menu.getItem(2);
 
         connectMenuItem.setEnabled(availability.connectMenuItemAvailable);
         sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
