@@ -337,12 +337,16 @@ public class DiscoveryManager
 
     @Override
     public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
-        mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+        }
     }
 
     @Override
     public void onScanModeSettingChanged(int scanMode) {
-        mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
+        }
     }
 
     /**

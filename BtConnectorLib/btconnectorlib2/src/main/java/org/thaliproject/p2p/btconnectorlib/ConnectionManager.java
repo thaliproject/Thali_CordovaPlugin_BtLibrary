@@ -95,6 +95,13 @@ public class ConnectionManager
     }
 
     /**
+     * @return The current state of this instance.
+     */
+    public ConnectionManagerState getState() {
+        return mState;
+    }
+
+    /**
      * Initializes the components and starts the listener for incoming connections.
      * @param myPeerId Our peer ID (used for the identity).
      * @param myPeerName Our peer name (used for the identity).
@@ -224,10 +231,18 @@ public class ConnectionManager
     }
 
     /**
-     * @return The current state of this instance.
+     * Cancels an ongoing connection attempt to the peer with the given properties.
+     * @param peerConnectingTo The properties of the peer whose connection attempt to cancel.
+     * @return True, if cancelled successfully. False otherwise.
      */
-    public ConnectionManagerState getState() {
-        return mState;
+    public synchronized boolean cancelConnectionAttempt(PeerProperties peerConnectingTo) {
+        boolean wasCancelled = false;
+
+        if (mBluetoothConnector != null) {
+            wasCancelled = mBluetoothConnector.cancelConnectionAttempt(peerConnectingTo);
+        }
+
+        return wasCancelled;
     }
 
     /**

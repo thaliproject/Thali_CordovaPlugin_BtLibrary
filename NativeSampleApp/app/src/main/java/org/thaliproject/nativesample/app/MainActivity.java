@@ -380,28 +380,30 @@ public class MainActivity
         final String peerName = peerProperties.getName();
         final boolean wasIncoming = connection.getIsIncoming();
 
-        new Thread() {
-            @Override
-            public void run() {
-                if (!mModel.addOrRemoveConnection(finalConnection, false) && !mShuttingDown) {
-                    Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
-                } else if (!mShuttingDown) {
-                    Log.d(TAG, "onDisconnected: Connection " + finalConnection.toString() + " removed from the list");
+        synchronized (this) {
+            new Thread() {
+                @Override
+                public void run() {
+                    if (!mModel.addOrRemoveConnection(finalConnection, false) && !mShuttingDown) {
+                        Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
+                    } else if (!mShuttingDown) {
+                        Log.d(TAG, "onDisconnected: Connection " + finalConnection.toString() + " removed from the list");
+                    }
+
+                    finalConnection.close(true);
+
+                    final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
+
+                    Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
+
+                    if (totalNumberOfConnections == 0) {
+                        mCheckConnectionsTimer.cancel();
+                    }
+
+                    onPrepareOptionsMenu(mMainMenu); // Update the main menu
                 }
-
-                finalConnection.close(true);
-
-                final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
-
-                Log.i(TAG, "onDisconnected: Total number of connections is now " + totalNumberOfConnections);
-
-                if (totalNumberOfConnections == 0) {
-                    mCheckConnectionsTimer.cancel();
-                }
-
-                onPrepareOptionsMenu(mMainMenu); // Update the main menu
-            }
-        }.start();
+            }.start();
+        }
 
         showToast(peerName + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
         mLogFragment.logMessage("Peer " + peerProperties.toString() + " disconnected (was " + (wasIncoming ? "incoming" : "outgoing") + ")");
