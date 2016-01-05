@@ -256,7 +256,7 @@ public class BluetoothConnector
             if (bluetoothClientThread != null) {
                 bluetoothClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
                 bluetoothClientThread.setPeerProperties(peerProperties);
-                bluetoothClientThread.setInsecureRfcommSocketPort(mInsecureRfcommSocketPort);
+                bluetoothClientThread.setInsecureRfcommSocketPortNumber(mInsecureRfcommSocketPort);
                 bluetoothClientThread.setMaxNumberOfRetries(mMaxNumberOfOutgoingConnectionAttemptRetries);
                 mClientThreads.add(bluetoothClientThread);
 
