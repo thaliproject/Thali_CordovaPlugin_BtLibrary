@@ -146,7 +146,7 @@ public class WifiPeerDiscoverer implements
             mWifiPeerDiscoveryListener.onP2pDeviceListChanged(p2pDeviceList);
         }
 
-        if (p2pDeviceList != null && p2pDeviceList.size() > 0) {
+        if (mWifiServiceWatcher != null && p2pDeviceList != null && p2pDeviceList.size() > 0) {
             if (mWifiServiceWatcherLastRestarted == null) {
                 // First time
                 mWifiServiceWatcherLastRestarted = new Timestamp(new Date().getTime());
@@ -161,7 +161,7 @@ public class WifiPeerDiscoverer implements
             }
         }
 
-        if (!mWifiServiceAdvertiser.isStarted()) {
+        if (mWifiServiceAdvertiser != null && !mWifiServiceAdvertiser.isStarted()) {
             // Try to (re)start the service advertiser
             mWifiServiceAdvertiser.start(mIdentityString, mServiceType);
         }

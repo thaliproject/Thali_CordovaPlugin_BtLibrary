@@ -149,7 +149,7 @@ class PeerAdvertisementFactory {
                 String bluetoothAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
 
                 if (bluetoothAddress != null) {
-                    peerProperties = new PeerProperties(bluetoothAddress, "<no peer name>", bluetoothAddress);
+                    peerProperties = new PeerProperties(bluetoothAddress, PeerProperties.NO_PEER_NAME_STRING, bluetoothAddress);
                 } else {
                     Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth address");
                 }

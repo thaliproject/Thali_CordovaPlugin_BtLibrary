@@ -5,7 +5,9 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
 import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.UUID;
@@ -63,6 +65,51 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         mBleScanner = new BleScanner(this, bluetoothAdapter);
         //mBleScanner.addFilter(PeerAdvertisementFactory.createScanFilter(mServiceUuid));
         mBleScanner.addFilter(PeerAdvertisementFactory.createScanFilter(null));
+    }
+
+    /**
+     * Sets the settings for both the BLE advertiser and the scanner.
+     * @param advertiseMode The advertise mode for the BLE advertiser.
+     * @param advertiseTxPowerLevel The advertise TX power level for the BLE advertiser.
+     * @param scanMode The scan mode for the BLE scanner.
+     * @return True, if all the settings were applied successfully. False, if at least one of
+     * settings failed to be applied.
+     */
+    public boolean applySettings(int advertiseMode, int advertiseTxPowerLevel, int scanMode) {
+        Log.i(TAG, "applySettings: Advertise mode: " + advertiseMode
+                + ", advertise TX power level: " + advertiseTxPowerLevel
+                + ", scan mode: " + scanMode);
+
+        boolean advertiserSettingsWereSet = false;
+        AdvertiseSettings.Builder advertiseSettingsBuilder = new AdvertiseSettings.Builder();
+
+        try {
+            advertiseSettingsBuilder.setAdvertiseMode(advertiseMode);
+            advertiseSettingsBuilder.setTxPowerLevel(advertiseTxPowerLevel);
+            advertiserSettingsWereSet = true;
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "applySettings: Failed to apply advertiser settings: " + e.getMessage(), e);
+        }
+
+        if (advertiserSettingsWereSet && mBleAdvertiser != null) {
+            mBleAdvertiser.setAdvertiseSettings(advertiseSettingsBuilder.build());
+        }
+
+        boolean scannerSettingsWereSet = false;
+        ScanSettings.Builder scanSettingsBuilder = new ScanSettings.Builder();
+
+        try {
+            scanSettingsBuilder.setScanMode(scanMode);
+            scannerSettingsWereSet = true;
+        } catch (IllegalArgumentException e) {
+            Log.e(TAG, "applySettings: Failed to apply scan mode setting: " + e.getMessage(), e);
+        }
+
+        if (scannerSettingsWereSet && mBleScanner != null) {
+            mBleScanner.setScanSettings(scanSettingsBuilder.build());
+        }
+
+        return (advertiserSettingsWereSet && scannerSettingsWereSet);
     }
 
     /**

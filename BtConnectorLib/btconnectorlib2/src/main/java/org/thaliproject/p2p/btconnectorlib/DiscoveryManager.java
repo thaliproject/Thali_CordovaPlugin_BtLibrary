@@ -30,12 +30,15 @@ public class DiscoveryManager
         implements
             WifiDirectManager.WifiStateListener,
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
-            BlePeerDiscoverer.BlePeerDiscoveryListener {
+            BlePeerDiscoverer.BlePeerDiscoveryListener,
+            DiscoveryManagerSettings.Listener {
 
     public enum DiscoveryManagerState {
         NOT_STARTED,
         WAITING_FOR_SERVICES_TO_BE_ENABLED, // When the chosen peer discovery method is disabled and waiting for it to be enabled to start
-        RUNNING
+        RUNNING_BLE,
+        RUNNING_WIFI,
+        RUNNING_BLE_AND_WIFI
     }
 
     public enum DiscoveryMode {
@@ -59,6 +62,13 @@ public class DiscoveryManager
         void onPeerDiscovered(PeerProperties peerProperties);
 
         /**
+         * Called when a peer data is updated (missing data is added). This callback is never
+         * called, if data is lost.
+         * @param peerProperties The updated properties of a discovered peer.
+         */
+        void onPeerUpdated(PeerProperties peerProperties);
+
+        /**
          * Called when an existing peer is lost (i.e. not available anymore).
          * @param peerProperties The properties of the lost peer.
          */
@@ -66,8 +76,6 @@ public class DiscoveryManager
     }
 
     private static final String TAG = DiscoveryManager.class.getName();
-    public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
-    public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
 
     private final Context mContext;
     private final DiscoveryManagerListener mListener;
@@ -80,8 +88,9 @@ public class DiscoveryManager
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
     private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
-    private DiscoveryMode mDiscoveryMode = DiscoveryMode.NOT_SET;
-    private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
+    private DiscoveryMode mDiscoveryMode = DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE;
+    private DiscoveryManagerSettings mSettings = null;
+    private boolean mShouldBeRunning = false;
 
     /**
      * Constructor.
@@ -100,27 +109,16 @@ public class DiscoveryManager
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
 
+        mSettings = DiscoveryManagerSettings.getInstance();
+        mSettings.setListener(this);
+
         mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
 
-        if (!setDiscoveryMode(DEFAULT_DISCOVERY_MODE)) {
+        if (!setDiscoveryMode(DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE)) {
             // Try to fallback to Wi-Fi Direct
             setDiscoveryMode(DiscoveryMode.WIFI);
         }
-    }
-
-    /**
-     * @return True, if Bluetooth LE advertising is supported. False otherwise.
-     */
-    public boolean isBleAdvertisingSupported() {
-        return mBluetoothManager.isBleSupported();
-    }
-
-    /**
-     * @return The discovery mode currently set.
-     */
-    public DiscoveryMode getDiscoveryMode() {
-        return mDiscoveryMode;
     }
 
     /**
@@ -139,9 +137,12 @@ public class DiscoveryManager
         }
 
         if (!wasRunning || forceRestart) {
+            boolean isBleSupported = isBleAdvertisingSupported();
+            boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
+
             switch (discoveryMode) {
                 case BLE:
-                    if (mBluetoothManager.isBleAdvertisingSupported()) {
+                    if (isBleSupported) {
                         mDiscoveryMode = discoveryMode;
                         discoveryModeSet = true;
                     }
@@ -149,13 +150,15 @@ public class DiscoveryManager
                     break;
 
                 case WIFI:
-                    mDiscoveryMode = discoveryMode;
-                    discoveryModeSet = true;
+                    if (isWifiSupported) {
+                        mDiscoveryMode = discoveryMode;
+                        discoveryModeSet = true;
+                    }
+
                     break;
 
                 case BLE_AND_WIFI:
-                    if (mBluetoothManager.isBleAdvertisingSupported()
-                            && mWifiDirectManager.isWifiDirectSupported()) {
+                    if (isBleSupported && isWifiSupported) {
                         mDiscoveryMode = discoveryMode;
                         discoveryModeSet = true;
                     }
@@ -164,7 +167,8 @@ public class DiscoveryManager
             }
 
             if (!discoveryModeSet) {
-                Log.w(TAG, "setDiscoveryMode: Failed to set discovery mode to " + discoveryMode);
+                Log.w(TAG, "setDiscoveryMode: Failed to set discovery mode to " + discoveryMode
+                        + ", BLE supported: " + isBleSupported + ", Wi-Fi supported: " + isWifiSupported);
                 mDiscoveryMode = DiscoveryMode.NOT_SET;
             } else {
                 Log.i(TAG, "setDiscoveryMode: Mode set to " + mDiscoveryMode);
@@ -189,16 +193,27 @@ public class DiscoveryManager
     }
 
     /**
-     * Sets the peer expiration time. If the given value is zero or less, peers will not expire.
-     * @param peerExpirationInMilliseconds The peer expiration time in milliseconds.
+     * @return True, if Bluetooth LE advertising is supported. False otherwise.
      */
-    public void setPeerExpiration(long peerExpirationInMilliseconds) {
-        mPeerExpirationInMilliseconds = peerExpirationInMilliseconds;
+    public boolean isBleAdvertisingSupported() {
+        return mBluetoothManager.isBleSupported();
+    }
 
-        if (mCheckExpiredPeersTimer != null) {
-            // Recreate the timer
-            createCheckPeerExpirationTimer();
-        }
+    /**
+     * @return The current state.
+     */
+    public DiscoveryManagerState getState() {
+        return mState;
+    }
+
+    /**
+     * Checks the current state and returns true, if running regardless of the discovery mode in use.
+     * @return True, if running regardless of the mode. False otherwise.
+     */
+    public boolean isRunning() {
+        return (mState == DiscoveryManagerState.RUNNING_BLE
+                || mState == DiscoveryManagerState.RUNNING_WIFI
+                || mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
     }
 
     /**
@@ -209,42 +224,55 @@ public class DiscoveryManager
      */
     public synchronized boolean start(String myPeerId, String myPeerName) {
         Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
+        mShouldBeRunning = true;
         mMyPeerId = myPeerId;
         mMyPeerName = myPeerName;
 
+        mBluetoothManager.bind(this);
+        mWifiDirectManager.bind(this);
+
         if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
-            if (mBluetoothManager.isBluetoothEnabled()) {
-                boolean bleDiscoveryStarted = false;
-                boolean wifiDiscoveryStarted = false;
+            boolean bleDiscoveryStarted = false;
+            boolean wifiDiscoveryStarted = false;
 
-                if (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                    // Try to start BLE based discovery
-                    bleDiscoveryStarted = startBlePeerDiscovery();
-                }
+            if (mBluetoothManager.isBluetoothEnabled()
+                    && (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
+                // Try to start BLE based discovery
+                bleDiscoveryStarted = startBlePeerDiscovery();
+            }
 
-                if (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                    if (verifyIdentityString()) {
-                        // Try to start Wi-Fi Direct based discovery
-                        wifiDiscoveryStarted = startWifiPeerDiscovery();
+            if (mWifiDirectManager.isWifiEnabled()
+                    && (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
+                if (verifyIdentityString()) {
+                    // Try to start Wi-Fi Direct based discovery
+                    wifiDiscoveryStarted = startWifiPeerDiscovery();
+                } else {
+                    if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
+                        Log.e(TAG, "start: Identity string is null or empty");
                     } else {
                         Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
                     }
                 }
+            }
 
-                if ((mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
-                        || (mDiscoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
-                        || (mDiscoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
-                    Log.i(TAG, "start: OK");
-                    setState(DiscoveryManagerState.RUNNING);
+            if ((mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
+                    || (mDiscoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
+                    || (mDiscoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
+                Log.i(TAG, "start: OK");
+
+                if (bleDiscoveryStarted && wifiDiscoveryStarted) {
+                    setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+                } else if (bleDiscoveryStarted) {
+                    setState(DiscoveryManagerState.RUNNING_BLE);
+                } else if (wifiDiscoveryStarted) {
+                    setState(DiscoveryManagerState.RUNNING_WIFI);
                 }
-            } else {
-                setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
             }
         } else {
             Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
         }
 
-        return (mState == DiscoveryManagerState.RUNNING);
+        return isRunning();
     }
 
     /**
@@ -265,6 +293,8 @@ public class DiscoveryManager
         if (mState != DiscoveryManagerState.NOT_STARTED) {
             Log.i(TAG, "stop: Stopping peer discovery...");
         }
+
+        mShouldBeRunning = false;
 
         stopBlePeerDiscovery();
         stopWifiPeerDiscovery();
@@ -297,6 +327,28 @@ public class DiscoveryManager
         modifyListOfDiscoveredPeers(peerProperties, true);
     }
 
+    @Override
+    public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
+        if (mCheckExpiredPeersTimer != null) {
+            // Recreate the timer
+            createCheckPeerExpirationTimer();
+        }
+    }
+
+    @Override
+    public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+        }
+    }
+
+    @Override
+    public void onScanModeSettingChanged(int scanMode) {
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
+        }
+    }
+
     /**
      * Stops/restarts the BLE based peer discovery depending on the given mode.
      * @param mode The new mode.
@@ -315,11 +367,12 @@ public class DiscoveryManager
                             (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI &&
                                     !mWifiDirectManager.isWifiEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                    } else if (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                        setState(DiscoveryManagerState.RUNNING_WIFI);
                     }
                 }
             } else {
-                if (mState != DiscoveryManagerState.NOT_STARTED
-                        && mBluetoothManager.isBluetoothEnabled()) {
+                if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
                     start(mMyPeerId, mMyPeerName);
                 }
@@ -341,17 +394,16 @@ public class DiscoveryManager
                     Log.w(TAG, "onWifiStateChanged: Wi-Fi disabled, pausing Wi-Fi Direct based peer discovery...");
                     stopWifiPeerDiscovery();
 
-                    if (mDiscoveryMode == DiscoveryMode.WIFI ||
-                            (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI &&
-                                    !mBluetoothManager.isBluetoothEnabled())) {
+                    if (mDiscoveryMode == DiscoveryMode.WIFI
+                            || (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI
+                                && !mBluetoothManager.isBluetoothEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                    } else if (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                        setState(DiscoveryManagerState.RUNNING_BLE);
                     }
                 }
             } else {
-                if ((mDiscoveryMode == DiscoveryMode.WIFI
-                        && mState == DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)
-                    || (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI
-                        && mState == DiscoveryManagerState.RUNNING)) {
+                if (mShouldBeRunning) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
                     start(mMyPeerId, mMyPeerName);
                 }
@@ -567,7 +619,7 @@ public class DiscoveryManager
     private synchronized boolean modifyListOfDiscoveredPeers(PeerProperties peerProperties, boolean addOrUpdate) {
         Log.v(TAG, "modifyListOfDiscoveredPeers: " + peerProperties.toString() + ", add/update: " + addOrUpdate);
         Iterator iterator = mDiscoveredPeers.entrySet().iterator();
-        boolean wasRemoved = false;
+        PeerProperties oldPeerProperties = null;
 
         // Always remove first
         while (iterator.hasNext()) {
@@ -577,8 +629,8 @@ public class DiscoveryManager
                 PeerProperties existingPeerProperties = (PeerProperties) entry.getValue();
 
                 if (existingPeerProperties.equals(peerProperties)) {
+                    oldPeerProperties = existingPeerProperties;
                     iterator.remove();
-                    wasRemoved = true;
                     break;
                 }
             }
@@ -587,7 +639,25 @@ public class DiscoveryManager
         boolean success = false;
 
         if (addOrUpdate) {
-            if (wasRemoved) {
+            if (oldPeerProperties != null) {
+                // This one was already in the list (same ID)
+                // Make sure we don't lose any data when updating
+                PeerProperties.checkNewPeerForMissingInformation(oldPeerProperties, peerProperties);
+
+                if (peerProperties.hasMoreInformation(oldPeerProperties)) {
+                    // The new discovery result has more information than the old one
+                    if (mListener != null) {
+                        final PeerProperties updatedPeerProperties = peerProperties;
+
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mListener.onPeerUpdated(updatedPeerProperties);
+                            }
+                        });
+                    }
+                }
+
                 Log.d(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
                         + peerProperties.toString());
             } else {
@@ -602,7 +672,7 @@ public class DiscoveryManager
             }
 
             success = true;
-        } else if (wasRemoved) {
+        } else if (oldPeerProperties != null) {
             Log.d(TAG, "modifyListOfDiscoveredPeers: Removed " + peerProperties.toString());
             success = true;
         }
@@ -627,7 +697,7 @@ public class DiscoveryManager
             //Log.v(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " is now "
             //        + ((timestampNow.getTime() - entryTimestamp.getTime()) / 1000) + " seconds old");
 
-            if (timestampNow.getTime() - entryTimestamp.getTime() > mPeerExpirationInMilliseconds) {
+            if (timestampNow.getTime() - entryTimestamp.getTime() > mSettings.getPeerExpiration()) {
                 Log.d(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " expired");
                 expiredPeers.add(entryPeerProperties);
             }
@@ -663,8 +733,10 @@ public class DiscoveryManager
             mCheckExpiredPeersTimer = null;
         }
 
-        if (mPeerExpirationInMilliseconds > 0) {
-            long timerTimeout = mPeerExpirationInMilliseconds / 2;
+        long peerExpirationInMilliseconds = mSettings.getPeerExpiration();
+
+        if (peerExpirationInMilliseconds > 0) {
+            long timerTimeout = peerExpirationInMilliseconds / 2;
 
             mCheckExpiredPeersTimer = new CountDownTimer(timerTimeout, timerTimeout) {
                 @Override

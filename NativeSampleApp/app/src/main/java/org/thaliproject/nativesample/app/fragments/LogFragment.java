@@ -15,6 +15,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import org.thaliproject.nativesample.app.model.LogItem;
 import org.thaliproject.nativesample.app.R;
 import java.sql.Timestamp;
 import java.util.Date;

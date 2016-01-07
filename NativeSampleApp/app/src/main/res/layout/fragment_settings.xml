@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:layout_width="fill_parent"
+                android:layout_height="fill_parent">
+    <ScrollView
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content">
+        <LinearLayout android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="vertical"
+                      android:gravity="top"
+                      android:layout_alignParentLeft="true"
+                      android:layout_alignParentTop="true"
+                      android:layout_alignWithParentIfMissing="true"
+                      android:padding="@dimen/default_padding">
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:singleLine="true"
+                      android:text="CONNECTION MANAGER"
+                      android:textSize="@dimen/separator_title_text_size" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Connection timeout (ms)"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:id="@+id/connectionTimeoutEditText"/>
+            </LinearLayout>
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:singleLine="true"
+                      android:layout_marginLeft="6dp"
+                      android:text="Use 0 for no timeout"
+                      android:textSize="@dimen/text_size_small" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Insecure RFCOMM port"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="numberSigned"
+                        android:ems="10"
+                        android:id="@+id/portNumberEditText"/>
+            </LinearLayout>
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:singleLine="true"
+                      android:layout_marginLeft="6dp"
+                      android:text="Use -1 to let the platform decide or 0 for rotating port number"
+                      android:textSize="@dimen/text_size_small" />
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:paddingTop="@dimen/settings_section_padding"
+                      android:singleLine="true"
+                      android:text="DISCOVERY MANAGER"
+                      android:textSize="@dimen/separator_title_text_size" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <CheckBox android:id="@+id/enableWifiCheckBox"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content" />
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Enable Wi-Fi Direct"
+                        android:textSize="@dimen/text_size_medium" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <CheckBox android:id="@+id/enableBleCheckBox"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content" />
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Enable Bluetooth LE"
+                        android:textSize="@dimen/text_size_medium" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="wrap_content"
+                          android:paddingRight="@dimen/list_item_padding"
+                          android:orientation="vertical">
+                <TextView android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:paddingTop="@dimen/padding_small"
+                          android:singleLine="true"
+                          android:text="Advertise mode"
+                          android:textSize="@dimen/text_size_medium" />
+                <Spinner android:id="@+id/advertiseModeSpinner"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:spinnerMode="dropdown" />
+                <TextView android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:paddingTop="@dimen/padding_small"
+                          android:singleLine="true"
+                          android:text="Advertise TX power level"
+                          android:textSize="@dimen/text_size_medium" />
+                <Spinner android:id="@+id/advertiseTxPowerLevelSpinner"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:spinnerMode="dropdown" />
+                <TextView android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:paddingTop="@dimen/padding_small"
+                          android:singleLine="true"
+                          android:text="Scan mode"
+                          android:textSize="@dimen/text_size_medium" />
+                <Spinner android:id="@+id/scanModeSpinner"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:spinnerMode="dropdown" />
+            </LinearLayout>
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:paddingTop="@dimen/settings_section_padding"
+                      android:singleLine="true"
+                      android:text="OTHER (APPLICATION SPECIFIC)"
+                      android:textSize="@dimen/separator_title_text_size" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Buffer size (bytes)"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:id="@+id/bufferSizeEditText"/>
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Data amount to send (bytes)"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:id="@+id/dataAmountEditText"/>
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <CheckBox android:id="@+id/autoConnectCheckBox"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content" />
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Enable auto-connect"
+                        android:textSize="@dimen/text_size_medium" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <CheckBox android:id="@+id/autoConnectEvenWhenIncomingCheckBox"
+                          android:layout_width="wrap_content"
+                          android:layout_height="wrap_content" />
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="Auto-connect even with incoming connections"
+                        android:textSize="@dimen/text_size_medium" />
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

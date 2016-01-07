@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
                 android:layout_width="fill_parent"
-                android:layout_height="match_parent">
+                android:layout_height="wrap_content"
+                android:foreground="?android:attr/colorActivatedHighlight"
+                android:background="?android:attr/activatedBackgroundIndicator">
 
-    <LinearLayout android:layout_width="fill_parent"
-                  android:layout_height="match_parent"
+    <LinearLayout android:id="@+id/textLayout"
+                  android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
                   android:layout_alignParentLeft="true"
                   android:layout_alignParentTop="true"
                   android:layout_alignWithParentIfMissing="true"
                   android:orientation="vertical"
-                  android:gravity="top"
-                  android:padding="@dimen/list_item_padding">
+                  android:paddingTop="@dimen/list_item_padding"
+                  android:paddingLeft="@dimen/list_item_padding"
+                  android:paddingRight="@dimen/list_item_padding">
         <TextView
                 android:id="@+id/peerName"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:singleLine="true"
                 android:text="Peer name"
-                android:textSize="16sp" />
+                android:textSize="@dimen/text_size_medium" />
         <TextView
                 android:id="@+id/peerId"
                 android:layout_width="fill_parent"
@@ -25,7 +29,7 @@
                 android:ellipsize="marquee"
                 android:singleLine="true"
                 android:text="Peer ID"
-                android:textSize="12sp" />
+                android:textSize="@dimen/text_size_small" />
         <TextView
                 android:id="@+id/connectionsInformation"
                 android:layout_width="fill_parent"
@@ -33,6 +37,31 @@
                 android:ellipsize="marquee"
                 android:singleLine="true"
                 android:text="Connection information"
-                android:textSize="12sp" />
+                android:textSize="@dimen/text_size_small" />
     </LinearLayout>
+
+    <LinearLayout android:layout_width="wrap_content"
+                  android:layout_height="wrap_content"
+                  android:orientation="horizontal"
+                  android:layout_alignParentRight="true"
+                  android:layout_alignParentTop="true"
+                  android:padding="@dimen/list_item_padding">
+        <ImageView android:id="@+id/outgoingConnectionIconImageView"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:src="@drawable/ic_arrow_upward_gray_24dp" />
+        <ImageView android:id="@+id/incomingConnectionIconImageView"
+                   android:layout_width="wrap_content"
+                   android:layout_height="wrap_content"
+                   android:src="@drawable/ic_arrow_downward_gray_24dp" />
+    </LinearLayout>
+    <ProgressBar
+            android:id="@+id/sendDataProgressBar"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/textLayout"
+            android:paddingLeft="@dimen/list_item_padding"
+            android:paddingRight="@dimen/list_item_padding"
+            android:paddingBottom="@dimen/list_item_padding"
+            style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Horizontal" />
 </RelativeLayout>

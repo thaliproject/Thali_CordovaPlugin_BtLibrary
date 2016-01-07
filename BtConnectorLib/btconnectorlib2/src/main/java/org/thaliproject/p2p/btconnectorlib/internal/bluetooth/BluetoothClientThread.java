@@ -11,6 +11,7 @@ import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.io.IOException;
+import java.util.Date;
 import java.util.UUID;
 
 /**
@@ -24,23 +25,26 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         /**
          * Called when socket connection with a peer succeeds.
          * @param peerProperties The peer properties.
+         * @param who The Bluetooth client thread instance calling this callback.
          */
-        void onSocketConnected(PeerProperties peerProperties);
+        void onSocketConnected(PeerProperties peerProperties, BluetoothClientThread who);
 
         /**
          * Called when successfully connected to and validated (handshake OK) a peer.
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
+         * @param who The Bluetooth client thread instance calling this callback.
          */
-        void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
+        void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties, BluetoothClientThread who);
 
         /**
          * Called when connection attempt fails.
-         * @param reason The reason for the failure.
          * @param peerProperties The peer properties.
+         * @param errorMessage The error message.
+         * @param who The Bluetooth client thread instance calling this callback.
          */
-        void onConnectionFailed(String reason, PeerProperties peerProperties);
+        void onConnectionFailed(PeerProperties peerProperties, String errorMessage, BluetoothClientThread who);
     }
 
     private static final String TAG = BluetoothClientThread.class.getName();
@@ -48,15 +52,16 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = 1;
     public static final int DEFAULT_MAX_NUMBER_OF_RETRIES = 0;
     private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 300;
-    private final Listener mListener;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
     private final UUID mServiceRecordUuid;
     private final String mMyIdentityString;
+    private Listener mListener = null;
     private BluetoothSocket mSocket = null;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private int mMaxNumberOfRetries = DEFAULT_MAX_NUMBER_OF_RETRIES;
+    private long mTimeStarted = 0;
     private boolean mIsShuttingDown = false;
 
     /**
@@ -85,6 +90,13 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     /**
+     * @return The time this thread was started.
+     */
+    public long getTimeStarted() {
+        return mTimeStarted;
+    }
+
+    /**
      * From Thread.
      *
      * Tries to connect to the Bluetooth socket. If successful, will create a handshake instance to
@@ -96,6 +108,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 + mBluetoothDeviceToConnectTo.getAddress()
                 + " (thread ID: " + getId() + ")");
 
+        mTimeStarted = new Date().getTime();
         boolean socketConnectSucceeded = false;
         String errorMessage = "";
         int socketConnectAttemptNo = 1;
@@ -105,7 +118,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
             if (socketException == null) {
                 if (!mIsShuttingDown) {
-                    mListener.onSocketConnected(mPeerProperties);
+                    if (mListener != null) {
+                        mListener.onSocketConnected(mPeerProperties, this);
+                    }
+
                     socketConnectSucceeded = true;
 
                     // Log the choice of port
@@ -132,7 +148,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
                 if (socketException == null) {
                     if (!mIsShuttingDown) {
-                        mListener.onSocketConnected(mPeerProperties);
+                        if (mListener != null) {
+                            mListener.onSocketConnected(mPeerProperties, this);
+                        }
+
                         socketConnectSucceeded = true;
 
                         Log.i(TAG, "Socket connection succeeded (using system decided port), total number of attempts: "
@@ -164,7 +183,11 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 } else {
                     Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
                             + ") reached, giving up... (thread ID: " + getId() + ")");
-                    mListener.onConnectionFailed(errorMessage, mPeerProperties);
+
+                    if (mListener != null) {
+                        mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+                    }
+
                     break;
                 }
             }
@@ -187,16 +210,25 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 } else if (!mIsShuttingDown) {
                     Log.e(TAG, "Failed to initiate handshake");
                     close();
-                    mListener.onConnectionFailed(errorMessage, mPeerProperties);
+
+                    if (mListener != null) {
+                        mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+                    }
                 }
             } catch (IOException e) {
                 errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
-                mListener.onConnectionFailed(errorMessage, mPeerProperties);
+
+                if (mListener != null) {
+                    mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+                }
             } catch (NullPointerException e) {
                 errorMessage = "Unexpected error: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
-                mListener.onConnectionFailed(errorMessage, mPeerProperties);
+
+                if (mListener != null) {
+                    mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+                }
             }
         }
 
@@ -211,8 +243,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * Sets the preferred port to be used by the insecure RFCOMM socket.
      * @param insecureRfcommSocketPort The port to use.
      */
-    public void setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
-        Log.i(TAG, "setInsecureRfcommSocketPort: Using port " + insecureRfcommSocketPort);
+    public void setInsecureRfcommSocketPortNumber(int insecureRfcommSocketPort) {
+        Log.i(TAG, "setInsecureRfcommSocketPortNumber: Using port " + insecureRfcommSocketPort);
         mInsecureRfcommSocketPort = insecureRfcommSocketPort;
     }
 
@@ -233,6 +265,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     public synchronized void shutdown() {
         Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
         mIsShuttingDown = true;
+        mListener = null;
         close();
     }
 
@@ -277,12 +310,17 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 // Set the resolved properties to the associated thread
                 who.setPeerProperties(peerProperties);
 
-                // On successful handshake, we'll pass the socket for the listener, so it's now the
-                // listeners responsibility to close the socket once done. Thus, do not close the
-                // socket here. Do not either close the input and output streams, since that will
-                // invalidate the socket as well.
-                mListener.onHandshakeSucceeded(who.getSocket(), peerProperties);
-                mHandshakeThread = null;
+                if (mListener != null) {
+                    // On successful handshake, we'll pass the socket for the listener, so it's now
+                    // the listeners responsibility to close the socket once done. Thus, do not
+                    // close the socket here. Do not either close the input and output streams,
+                    // since that will invalidate the socket as well.
+                    mListener.onHandshakeSucceeded(who.getSocket(), peerProperties, this);
+                    mHandshakeThread = null;
+                } else {
+                    // No listener to deal with the socket, shut it down
+                    shutdown();
+                }
             }
         }
 
@@ -290,7 +328,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
             Log.e(TAG, errorMessage);
             shutdown();
-            mListener.onConnectionFailed(errorMessage, mPeerProperties);
+
+            if (mListener != null) {
+                mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+            }
         }
     }
 
@@ -320,7 +361,10 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
         // If we were successful, the handshake thread instance was set to null
         if (mHandshakeThread != null) {
-            mListener.onConnectionFailed("Socket disconnected", peerProperties);
+            if (mListener != null) {
+                mListener.onConnectionFailed(peerProperties, "Socket disconnected", this);
+            }
+
             shutdown();
         }
     }
