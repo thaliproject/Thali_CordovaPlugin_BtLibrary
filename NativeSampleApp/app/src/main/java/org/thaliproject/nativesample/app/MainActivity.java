@@ -79,7 +79,6 @@ public class MainActivity
     private PeerListFragment mPeerListFragment = null;
     private LogFragment mLogFragment = null;
     private SettingsFragment mSettingsFragment = null;
-    private Menu mMainMenu = null;
     private boolean mShuttingDown = false;
 
     @Override
@@ -156,13 +155,12 @@ public class MainActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-        mMainMenu = menu;
         return true;
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        /*MenuUtils.PeerMenuItemsAvailability availability =
+        MenuUtils.PeerMenuItemsAvailability availability =
                 MenuUtils.resolvePeerMenuItemsAvailability(mSelectedPeerProperties, mModel);
 
         MenuItem connectMenuItem = menu.getItem(0);
@@ -175,7 +173,7 @@ public class MainActivity
         sendDataMenuItem.setVisible(availability.sendDataMenuItemAvailable);
         sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
         disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
-        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);*/
+        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);
 
         return true;
     }
@@ -272,7 +270,7 @@ public class MainActivity
             mCheckConnectionsTimer.start();
         }
 
-        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        invalidateOptionsMenu(); // Update the main menu
     }
 
     @Override
@@ -288,7 +286,7 @@ public class MainActivity
             mLogFragment.logError("Failed to connect: Connection timeout");
         }
 
-        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        invalidateOptionsMenu(); // Update the main menu
     }
 
     @Override
@@ -306,7 +304,7 @@ public class MainActivity
             mLogFragment.logError("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
         }
 
-        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        invalidateOptionsMenu(); // Update the main menu
     }
 
     @Override
@@ -400,7 +398,7 @@ public class MainActivity
                         mCheckConnectionsTimer.cancel();
                     }
 
-                    onPrepareOptionsMenu(mMainMenu); // Update the main menu
+                    invalidateOptionsMenu(); // Update the main menu
                 }
             }.start();
         }
@@ -424,13 +422,13 @@ public class MainActivity
         mLogFragment.logMessage(message + " to peer " + receivingPeer);
         showToast(message + " to peer " + receivingPeer.getName());
         mModel.requestUpdateUi(); // To update the progress bar
-        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        invalidateOptionsMenu(); // Update the main menu
     }
 
     @Override
     public void onPeerSelected(PeerProperties peerProperties) {
         mSelectedPeerProperties = peerProperties;
-        onPrepareOptionsMenu(mMainMenu); // Update the main menu
+        invalidateOptionsMenu(); // Update the main menu
     }
 
     @Override
@@ -439,7 +437,7 @@ public class MainActivity
             if (mConnectionManager.connect(peerProperties)) {
                 mLogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
                 mModel.addPeerBeingConnectedTo(peerProperties);
-                onPrepareOptionsMenu(mMainMenu); // Update the main menu
+                invalidateOptionsMenu(); // Update the main menu
             } else {
                 String errorMessageStub = "Failed to start connecting to peer ";
                 Log.e(TAG, "onConnectRequest: " + errorMessageStub + peerProperties.toString());
@@ -463,7 +461,7 @@ public class MainActivity
                     + String.format("%.2f", connection.getTotalDataAmountCurrentlySendingInMegaBytes())
                     + " MB to peer " + peerProperties.toString());
             mModel.requestUpdateUi(); // To update the progress bar
-            onPrepareOptionsMenu(mMainMenu); // Update the main menu
+            invalidateOptionsMenu(); // Update the main menu
         } else {
             Log.e(TAG, "onSendDataRequest: No connection found");
         }
