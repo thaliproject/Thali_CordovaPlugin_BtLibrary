@@ -122,6 +122,13 @@ public class DiscoveryManager
     }
 
     /**
+     * @return The current discovery mode.
+     */
+    public DiscoveryMode getDiscoveryMode() {
+        return mDiscoveryMode;
+    }
+
+    /**
      * Sets the discovery mode.
      * @param discoveryMode The discovery mode to set.
      * @param forceRestart If true and the discovery was running, will try to do a restart.
