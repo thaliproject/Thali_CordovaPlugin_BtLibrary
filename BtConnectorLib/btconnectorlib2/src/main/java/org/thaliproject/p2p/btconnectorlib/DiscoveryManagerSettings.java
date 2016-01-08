@@ -5,6 +5,7 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.ScanSettings;
+import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 
 /**
@@ -24,6 +25,8 @@ public class DiscoveryManagerSettings {
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
     public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
+
+    private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
@@ -89,10 +92,13 @@ public class DiscoveryManagerSettings {
      * @param advertiseMode The advertise mode to set.
      */
     public void setAdvertiseMode(int advertiseMode) {
-        mAdvertiseMode = advertiseMode;
+        if (mAdvertiseMode != advertiseMode) {
+            Log.d(TAG, "setAdvertiseMode: " + advertiseMode);
+            mAdvertiseMode = advertiseMode;
 
-        if (mListener != null) {
-            mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            if (mListener != null) {
+                mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            }
         }
     }
 
@@ -108,10 +114,13 @@ public class DiscoveryManagerSettings {
      * @param advertiseTxPowerLevel The power level to set.
      */
     public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
-        mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
+        if (mAdvertiseTxPowerLevel != advertiseTxPowerLevel) {
+            Log.d(TAG, "setAdvertiseTxPowerLevel: " + advertiseTxPowerLevel);
+            mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
 
-        if (mListener != null) {
-            mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            if (mListener != null) {
+                mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            }
         }
     }
 
@@ -127,10 +136,13 @@ public class DiscoveryManagerSettings {
      * @param scanMode The scan mode to set.
      */
     public void setScanMode(int scanMode) {
-        mScanMode = scanMode;
+        if (mScanMode != scanMode) {
+            Log.d(TAG, "setScanMode: " + scanMode);
+            mScanMode = scanMode;
 
-        if (mListener != null) {
-            mListener.onScanModeSettingChanged(mScanMode);
+            if (mListener != null) {
+                mListener.onScanModeSettingChanged(mScanMode);
+            }
         }
     }
 }

@@ -464,24 +464,13 @@ public class DiscoveryManager
     }
 
     /**
-     * Forward this event to the listener.
+     * Adds or updates the discovered peer.
      * @param peerProperties The properties of the discovered peer.
      */
     @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
-        modifyListOfDiscoveredPeers(peerProperties, true);
-
-        if (mListener != null) {
-            final PeerProperties tempPeerProperties = peerProperties;
-
-            mHandler.post(new Runnable() {
-                @Override
-                public void run() {
-                    mListener.onPeerDiscovered(tempPeerProperties);
-                }
-            });
-        }
+        modifyListOfDiscoveredPeers(peerProperties, true); // Will notify the listener
     }
 
     /**
@@ -668,7 +657,19 @@ public class DiscoveryManager
                 Log.d(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
                         + peerProperties.toString());
             } else {
-                Log.d(TAG, "modifyListOfDiscoveredPeers: Adding new peer: " + peerProperties.toString());
+                // The given peer was not in the list before, hence it is a new one
+                Log.d(TAG, "modifyListOfDiscoveredPeers: Adding a new peer: " + peerProperties.toString());
+
+                if (mListener != null) {
+                    final PeerProperties tempPeerProperties = peerProperties;
+
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            mListener.onPeerDiscovered(tempPeerProperties);
+                        }
+                    });
+                }
             }
 
             mDiscoveredPeers.put(new Timestamp(new Date().getTime()), peerProperties);
@@ -680,7 +681,7 @@ public class DiscoveryManager
 
             success = true;
         } else if (oldPeerProperties != null) {
-            Log.d(TAG, "modifyListOfDiscoveredPeers: Removed " + peerProperties.toString());
+            Log.d(TAG, "modifyListOfDiscoveredPeers: Removed peer " + peerProperties.toString());
             success = true;
         }
 

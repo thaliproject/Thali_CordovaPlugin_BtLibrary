@@ -76,6 +76,13 @@ class BleScanner extends ScanCallback {
     }
 
     /**
+     * @return True, if the scanner is either starting or running. False otherwise.
+     */
+    public boolean isStarted() {
+        return (mState != State.NOT_STARTED);
+    }
+
+    /**
      * Tries to start the BLE scanning.
      * @return True, if starting. False in case of an error.
      */
@@ -200,7 +207,7 @@ class BleScanner extends ScanCallback {
     @Override
     public void onScanResult(int callbackType, ScanResult result) {
         if (result != null) {
-            Log.i(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
+            Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
 
             if (mListener != null) {
                 mListener.onScanResult(result);

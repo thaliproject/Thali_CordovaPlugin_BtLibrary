@@ -85,6 +85,13 @@ class BleAdvertiser extends AdvertiseCallback {
     }
 
     /**
+     * @return True, if the advertiser is either starting or running. False otherwise.
+     */
+    public boolean isStarted() {
+        return (mState != State.NOT_STARTED);
+    }
+
+    /**
      * Tries to start advertising.
      * @return True, if starting. False in case of a failure.
      */
@@ -122,13 +129,6 @@ class BleAdvertiser extends AdvertiseCallback {
         }
 
         setState(State.NOT_STARTED);
-    }
-
-    /**
-     * @return True, if the BLE advertising is started. False otherwise.
-     */
-    public boolean isStarted() {
-        return (mState == State.RUNNING);
     }
 
     /**

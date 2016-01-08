@@ -92,7 +92,17 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         if (advertiserSettingsWereSet && mBleAdvertiser != null) {
+            boolean advertiserWasStarted = mBleAdvertiser.isStarted();
+
+            if (advertiserWasStarted) {
+                mBleAdvertiser.stop();
+            }
+
             mBleAdvertiser.setAdvertiseSettings(advertiseSettingsBuilder.build());
+
+            if (advertiserWasStarted) {
+                mBleAdvertiser.start();
+            }
         }
 
         boolean scannerSettingsWereSet = false;
@@ -106,7 +116,17 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         if (scannerSettingsWereSet && mBleScanner != null) {
+            boolean scannerWasStarted = mBleScanner.isStarted();
+
+            if (scannerWasStarted) {
+                mBleScanner.stop();
+            }
+
             mBleScanner.setScanSettings(scanSettingsBuilder.build());
+
+            if (scannerWasStarted) {
+                mBleScanner.start();
+            }
         }
 
         return (advertiserSettingsWereSet && scannerSettingsWereSet);
