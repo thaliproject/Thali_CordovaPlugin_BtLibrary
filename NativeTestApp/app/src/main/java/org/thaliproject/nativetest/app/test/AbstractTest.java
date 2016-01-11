@@ -78,17 +78,19 @@ public abstract class AbstractTest {
         return false;
     }
 
+
     /**
      * Cancels the test.
      */
     public void cancel() {
-    }
-
-    protected void stop() {
-        mIsRunning = false;
+        finalize();
     }
 
     protected void onTimeout() {
         cancel();
+    }
+
+    protected void finalize() {
+        mIsRunning = false;
     }
 }
