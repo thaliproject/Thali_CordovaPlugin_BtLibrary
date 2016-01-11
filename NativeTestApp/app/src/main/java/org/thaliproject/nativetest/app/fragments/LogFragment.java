@@ -1,7 +1,7 @@
 /* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app.fragments;
+package org.thaliproject.nativetest.app.fragments;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
@@ -15,8 +15,8 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
-import org.thaliproject.nativesample.app.model.LogItem;
-import org.thaliproject.nativesample.app.R;
+import org.thaliproject.nativetest.app.model.LogItem;
+import org.thaliproject.nativetest.app.R;
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.concurrent.CopyOnWriteArrayList;

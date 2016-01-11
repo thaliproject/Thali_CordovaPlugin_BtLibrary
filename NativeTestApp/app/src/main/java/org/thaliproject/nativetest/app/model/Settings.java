@@ -1,13 +1,14 @@
 /* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app.model;
+package org.thaliproject.nativetest.app.model;
 
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import org.thaliproject.nativesample.app.MainActivity;
+import org.thaliproject.nativetest.app.ConnectionEngine;
+import org.thaliproject.nativetest.app.MainActivity;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -176,7 +177,7 @@ public class Settings {
                 mDiscoveryManager.setDiscoveryMode(getDesiredDiscoveryMode(), true);
 
                 if (mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
-                    mDiscoveryManager.start(MainActivity.PEER_NAME);
+                    mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
                 }
             }
         }

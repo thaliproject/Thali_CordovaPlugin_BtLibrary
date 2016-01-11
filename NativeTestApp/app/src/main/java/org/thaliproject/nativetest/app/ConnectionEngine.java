@@ -1,17 +1,17 @@
 /* Copyright (c) 2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app;
+package org.thaliproject.nativetest.app;
 
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.util.Log;
-import org.thaliproject.nativesample.app.fragments.LogFragment;
-import org.thaliproject.nativesample.app.model.Connection;
-import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
-import org.thaliproject.nativesample.app.model.Settings;
+import org.thaliproject.nativetest.app.fragments.LogFragment;
+import org.thaliproject.nativetest.app.model.Connection;
+import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
+import org.thaliproject.nativetest.app.model.Settings;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;

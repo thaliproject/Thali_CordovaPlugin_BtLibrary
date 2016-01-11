@@ -17,6 +17,6 @@
             android:layout_weight="1"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:text="Log message DEVICE SHELL COMMAND: am start -D -n org.thaliproject.nativesample.app/org.thaliproject.nativesample.app.MainActivity -a android.intent.action.MAIN -c android.intent.category.LAUNCHER"
+            android:text="Log message DEVICE SHELL COMMAND: am start -D -n org.thaliproject.nativetest.app/org.thaliproject.nativetest.app.MainActivity -a android.intent.action.MAIN -c android.intent.category.LAUNCHER"
             android:textSize="12sp" />
 </LinearLayout>
