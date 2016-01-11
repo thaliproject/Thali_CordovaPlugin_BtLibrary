@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativesample.app.model;
@@ -15,6 +15,7 @@ import java.util.List;
 public class PeerAndConnectionModel {
     public interface Listener {
         void onDataChanged();
+        void onPeerRemoved(PeerProperties peerProperties);
     }
 
     private static final String TAG = PeerAndConnectionModel.class.getName();
@@ -122,7 +123,7 @@ public class PeerAndConnectionModel {
         boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeers);
 
         if (wasRemoved && mListener != null) {
-            mListener.onDataChanged();
+            mListener.onPeerRemoved(peerProperties);
         }
 
         return wasRemoved;

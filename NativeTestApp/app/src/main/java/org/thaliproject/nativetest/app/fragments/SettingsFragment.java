@@ -3,7 +3,6 @@
  */
 package org.thaliproject.nativesample.app.fragments;
 
-import android.bluetooth.le.AdvertiseSettings;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.text.Editable;
