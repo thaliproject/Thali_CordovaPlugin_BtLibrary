@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativesample.app.fragments;
@@ -27,10 +27,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class LogFragment extends Fragment {
     private static final String TAG = LogFragment.class.getName();
     private static final int MAX_NUMBER_OF_LOG_ITEMS = 50;
-    private Context mContext = null;
+    private static Context mContext = null;
+    private static CopyOnWriteArrayList<LogItem> mLog = new CopyOnWriteArrayList<LogItem>();
+    private static ListAdapter mListAdapter = null;
     private ListView mListView = null;
-    private ListAdapter mListAdapter = null;
-    private CopyOnWriteArrayList<LogItem> mLog = new CopyOnWriteArrayList<LogItem>();
     private ColorStateList mDefaultTextViewColors = null;
 
     public LogFragment() {
@@ -59,7 +59,7 @@ public class LogFragment extends Fragment {
      * Adds a new log item with the given message.
      * @param message The message for the log item.
      */
-    public void logMessage(String message) {
+    public static void logMessage(String message) {
         addLogItem(message, false);
     }
 
@@ -67,7 +67,7 @@ public class LogFragment extends Fragment {
      * Adds a new log item with the given error message.
      * @param errorMessage The error message for the log item.
      */
-    public void logError(String errorMessage) {
+    public static void logError(String errorMessage) {
         addLogItem(errorMessage, true);
     }
 
@@ -76,7 +76,7 @@ public class LogFragment extends Fragment {
      * @param message The message for the log item.
      * @param isError If true, will mark this message as an error.
      */
-    private synchronized void addLogItem(String message, boolean isError) {
+    private static synchronized void addLogItem(String message, boolean isError) {
         Timestamp timestamp = new Timestamp(new Date().getTime());
         LogItem logItem = new LogItem(timestamp, message, isError);
         mLog.add(0, logItem);
@@ -85,7 +85,7 @@ public class LogFragment extends Fragment {
             mLog.remove(mLog.size() - 1); // Remove the last item
         }
 
-        if (mContext != null) {
+        if (mContext != null && mListAdapter != null) {
             Handler handler = new Handler(mContext.getMainLooper());
 
             handler.post(new Runnable() {

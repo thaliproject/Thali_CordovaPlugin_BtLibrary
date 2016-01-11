@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativesample.app.fragments;
@@ -93,6 +93,13 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 }
             });
         }
+    }
+
+    /**
+     * @return The selected peer properties.
+     */
+    public PeerProperties getSelectedPeerProperties() {
+        return mSelectedPeerProperties;
     }
 
     @Override
@@ -193,6 +200,32 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         handler.post(new Runnable() {
             @Override
             public void run() {
+                mListAdapter.notifyDataSetChanged();
+            }
+        });
+    }
+
+    @Override
+    public void onPeerRemoved(final PeerProperties peerProperties) {
+        Log.i(TAG, "onPeerRemoved: " + peerProperties);
+        final boolean peerRemovedWasSelected;
+
+        if (mSelectedPeerProperties != null && mSelectedPeerProperties.equals(peerProperties)) {
+            mSelectedPeerProperties = null;
+            peerRemovedWasSelected = true;
+        } else {
+            peerRemovedWasSelected = false;
+        }
+
+        Handler handler = new Handler(mContext.getMainLooper());
+
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (peerRemovedWasSelected) {
+                    mListener.onPeerSelected(null);
+                }
+
                 mListAdapter.notifyDataSetChanged();
             }
         });
