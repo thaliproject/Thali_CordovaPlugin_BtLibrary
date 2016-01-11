@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:orientation="vertical"
+              android:layout_width="fill_parent"
+              android:layout_height="fill_parent">
+    <ScrollView android:layout_width="fill_parent"
+                android:layout_height="wrap_content">
+        <LinearLayout android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="vertical"
+                      android:gravity="top"
+                      android:padding="@dimen/default_padding">
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="wrap_content"
+                          android:paddingRight="@dimen/list_item_padding"
+                          android:orientation="vertical">
+                <TextView android:layout_width="wrap_content"
+                          android:layout_height="wrap_content"
+                          android:paddingTop="@dimen/padding_small"
+                          android:singleLine="true"
+                          android:text="Test to run"
+                          android:textSize="@dimen/text_size_medium" />
+                <Spinner android:id="@+id/testSelectionSpinner"
+                         android:layout_width="match_parent"
+                         android:layout_height="wrap_content"
+                         android:spinnerMode="dropdown" />
+            </LinearLayout>
+            <Button android:id="@+id/runTestButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="@dimen/default_padding"
+                    android:text="@string/run_test" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

@@ -1,11 +1,5 @@
 <resources>
-    <string name="app_name">Thali Native Sample</string>
-
-    <string name="title_section1">Section 1</string>
-    <string name="title_section2">Section 2</string>
-    <string name="title_section3">Section 3</string>
-
-    <string name="hello_world">Hello world!</string>
+    <string name="app_name">Thali Native Test</string>
 
     <string name="action_settings">Settings</string>
     <string name="action_connect">Connect</string>
@@ -31,4 +25,6 @@
         <item>SCAN_MODE_BALANCED</item>
         <item>SCAN_MODE_LOW_LATENCY</item>
     </string-array>
+
+    <string name="run_test">Run test</string>
 </resources>

@@ -8,7 +8,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="org.thaliproject.nativesample.org.thaliproject.nativetest.app.MainActivity"
+            android:name="org.thaliproject.nativetest.app.MainActivity"
             android:label="@string/app_name"
             android:configChanges="orientation|screenSize">
             <intent-filter>

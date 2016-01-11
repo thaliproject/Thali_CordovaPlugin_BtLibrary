@@ -5,10 +5,10 @@ package org.thaliproject.nativetest.app.model;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.nativetest.app.ConnectionEngine;
-import org.thaliproject.nativetest.app.MainActivity;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -19,6 +19,7 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 public class Settings {
     private static final String TAG = Settings.class.getName();
     private static Settings mInstance = null;
+    private static Context mContext = null;
     private final SharedPreferences mSharedPreferences;
     private final SharedPreferences.Editor mSharedPreferencesEditor;
 
@@ -33,6 +34,7 @@ public class Settings {
     private static final String KEY_BUFFER_SIZE = "buffer_size";
     private static final String KEY_AUTO_CONNECT = "auto_connect";
     private static final String KEY_AUTO_CONNECT_WHEN_INCOMING = "auto_connect_when_incoming";
+    private static final long START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS = 1000;
 
     private DiscoveryManager mDiscoveryManager = null;
     private long mConnectionTimeoutInMilliseconds = ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
@@ -54,7 +56,8 @@ public class Settings {
      */
     public static Settings getInstance(Context context) {
         if (mInstance == null && context != null) {
-            mInstance = new Settings(context);
+            mContext = context;
+            mInstance = new Settings(mContext);
         }
 
         return mInstance;
@@ -173,12 +176,20 @@ public class Settings {
 
             if (desiredMode == DiscoveryManager.DiscoveryMode.NOT_SET) {
                 mDiscoveryManager.stop();
-            } else {
-                mDiscoveryManager.setDiscoveryMode(getDesiredDiscoveryMode(), true);
+            } else  {
+                Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
+                mDiscoveryManager.setDiscoveryMode(desiredMode, true);
 
-                if (mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
-                    mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
-                }
+                Handler handler = new Handler(mContext.getMainLooper());
+
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
+                            mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
+                        }
+                    }
+                }, START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS);
             }
         }
     }

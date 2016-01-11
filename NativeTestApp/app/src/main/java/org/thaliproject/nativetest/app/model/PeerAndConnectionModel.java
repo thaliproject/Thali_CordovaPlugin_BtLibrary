@@ -53,7 +53,7 @@ public class PeerAndConnectionModel {
     /**
      * Notifies the listener that the data of this model has changed. This should update the UI.
      */
-    public void requestUpdateUi() {
+    public void notifyListenersOnDataChanged() {
         if (mListener != null) {
             mListener.onDataChanged();
         }
@@ -120,6 +120,7 @@ public class PeerAndConnectionModel {
      * @return True, if the peer was found and removed. False otherwise.
      */
     public boolean removePeer(final PeerProperties peerProperties) {
+        removePeerBeingConnectedTo(peerProperties);
         boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeers);
 
         if (wasRemoved && mListener != null) {
