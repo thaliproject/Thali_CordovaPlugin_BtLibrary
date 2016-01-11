@@ -88,7 +88,6 @@ public class DiscoveryManager
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
     private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
-    private DiscoveryMode mDiscoveryMode = DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE;
     private DiscoveryManagerSettings mSettings = null;
     private boolean mShouldBeRunning = false;
 
@@ -114,89 +113,6 @@ public class DiscoveryManager
 
         mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
-
-        if (!setDiscoveryMode(DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE)) {
-            // Try to fallback to Wi-Fi Direct
-            setDiscoveryMode(DiscoveryMode.WIFI);
-        }
-    }
-
-    /**
-     * @return The current discovery mode.
-     */
-    public DiscoveryMode getDiscoveryMode() {
-        return mDiscoveryMode;
-    }
-
-    /**
-     * Sets the discovery mode.
-     * @param discoveryMode The discovery mode to set.
-     * @param forceRestart If true and the discovery was running, will try to do a restart.
-     * @return True, if the mode was set. False otherwise (likely because not supported). Note that,
-     * if forceRestarts was true, false is also be returned in case the restart fails.
-     */
-    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean forceRestart) {
-        boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
-        boolean discoveryModeSet = false;
-
-        if (wasRunning && forceRestart) {
-            stop();
-        }
-
-        if (!wasRunning || forceRestart) {
-            boolean isBleSupported = isBleAdvertisingSupported();
-            boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
-
-            switch (discoveryMode) {
-                case BLE:
-                    if (isBleSupported) {
-                        mDiscoveryMode = discoveryMode;
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case WIFI:
-                    if (isWifiSupported) {
-                        mDiscoveryMode = discoveryMode;
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case BLE_AND_WIFI:
-                    if (isBleSupported && isWifiSupported) {
-                        mDiscoveryMode = discoveryMode;
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-            }
-
-            if (!discoveryModeSet) {
-                Log.w(TAG, "setDiscoveryMode: Failed to set discovery mode to " + discoveryMode
-                        + ", BLE supported: " + isBleSupported + ", Wi-Fi supported: " + isWifiSupported);
-                mDiscoveryMode = DiscoveryMode.NOT_SET;
-            } else {
-                Log.i(TAG, "setDiscoveryMode: Mode set to " + mDiscoveryMode);
-            }
-        }
-
-        if (discoveryModeSet && wasRunning && forceRestart) {
-            discoveryModeSet = start(mMyPeerId, mMyPeerName);
-        }
-
-        return discoveryModeSet;
-    }
-
-    /**
-     * Sets the discovery mode. Note that this method will fail, if the discovery is currently
-     * running.
-     * @param discoveryMode The discovery mode to set.
-     * @return True, if the mode was set. False otherwise (likely because not supported).
-     */
-    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode) {
-        return setDiscoveryMode(discoveryMode, false);
     }
 
     /**
@@ -231,6 +147,7 @@ public class DiscoveryManager
      */
     public synchronized boolean start(String myPeerId, String myPeerName) {
         Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         mShouldBeRunning = true;
         mMyPeerId = myPeerId;
         mMyPeerName = myPeerName;
@@ -238,18 +155,18 @@ public class DiscoveryManager
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
-        if (mDiscoveryMode != DiscoveryMode.NOT_SET) {
+        if (discoveryMode != DiscoveryMode.NOT_SET) {
             boolean bleDiscoveryStarted = false;
             boolean wifiDiscoveryStarted = false;
 
             if (mBluetoothManager.isBluetoothEnabled()
-                    && (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
+                    && (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
                 // Try to start BLE based discovery
                 bleDiscoveryStarted = startBlePeerDiscovery();
             }
 
             if (mWifiDirectManager.isWifiEnabled()
-                    && (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
+                    && (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
                 if (verifyIdentityString()) {
                     // Try to start Wi-Fi Direct based discovery
                     wifiDiscoveryStarted = startWifiPeerDiscovery();
@@ -262,9 +179,9 @@ public class DiscoveryManager
                 }
             }
 
-            if ((mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
-                    || (mDiscoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
-                    || (mDiscoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
+            if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
+                    || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
+                    || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
                 Log.i(TAG, "start: OK");
 
                 if (bleDiscoveryStarted && wifiDiscoveryStarted) {
@@ -335,6 +252,57 @@ public class DiscoveryManager
     }
 
     @Override
+    public boolean onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean forceRestart) {
+        boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
+        boolean discoveryModeSet = false;
+
+        if (wasRunning && forceRestart) {
+            stop();
+        }
+
+        if (!wasRunning || forceRestart) {
+            boolean isBleSupported = isBleAdvertisingSupported();
+            boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
+
+            switch (discoveryMode) {
+                case BLE:
+                    if (isBleSupported) {
+                        discoveryModeSet = true;
+                    }
+
+                    break;
+
+                case WIFI:
+                    if (isWifiSupported) {
+                        discoveryModeSet = true;
+                    }
+
+                    break;
+
+                case BLE_AND_WIFI:
+                    if (isBleSupported && isWifiSupported) {
+                        discoveryModeSet = true;
+                    }
+
+                    break;
+            }
+
+            if (!discoveryModeSet) {
+                Log.w(TAG, "onDiscoveryModeChanged: Failed to set discovery mode to " + discoveryMode
+                        + ", BLE supported: " + isBleSupported + ", Wi-Fi supported: " + isWifiSupported);
+            } else {
+                Log.i(TAG, "onDiscoveryModeChanged: Mode set to " + discoveryMode);
+            }
+        }
+
+        if (discoveryModeSet && wasRunning && forceRestart) {
+            discoveryModeSet = start(mMyPeerId, mMyPeerName);
+        }
+
+        return discoveryModeSet;
+    }
+
+    @Override
     public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
         if (mCheckExpiredPeersTimer != null) {
             // Recreate the timer
@@ -362,7 +330,9 @@ public class DiscoveryManager
      */
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
-        if (mDiscoveryMode == DiscoveryMode.BLE || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+
+        if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             Log.i(TAG, "onBluetoothAdapterScanModeChanged: Mode changed to " + mode);
 
             if (mode == BluetoothAdapter.SCAN_MODE_NONE) {
@@ -370,11 +340,11 @@ public class DiscoveryManager
                     Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing BLE based peer discovery...");
                     stopBlePeerDiscovery();
 
-                    if (mDiscoveryMode == DiscoveryMode.BLE ||
-                            (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI &&
+                    if (discoveryMode == DiscoveryMode.BLE ||
+                            (discoveryMode == DiscoveryMode.BLE_AND_WIFI &&
                                     !mWifiDirectManager.isWifiEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    } else if (discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                         setState(DiscoveryManagerState.RUNNING_WIFI);
                     }
                 }
@@ -393,7 +363,9 @@ public class DiscoveryManager
      */
     @Override
     public void onWifiStateChanged(int state) {
-        if (mDiscoveryMode == DiscoveryMode.WIFI || mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+
+        if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             Log.i(TAG, "onWifiStateChanged: State changed to " + state);
 
             if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
@@ -401,11 +373,11 @@ public class DiscoveryManager
                     Log.w(TAG, "onWifiStateChanged: Wi-Fi disabled, pausing Wi-Fi Direct based peer discovery...");
                     stopWifiPeerDiscovery();
 
-                    if (mDiscoveryMode == DiscoveryMode.WIFI
-                            || (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI
+                    if (discoveryMode == DiscoveryMode.WIFI
+                            || (discoveryMode == DiscoveryMode.BLE_AND_WIFI
                                 && !mBluetoothManager.isBluetoothEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (mDiscoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    } else if (discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                         setState(DiscoveryManagerState.RUNNING_BLE);
                     }
                 }

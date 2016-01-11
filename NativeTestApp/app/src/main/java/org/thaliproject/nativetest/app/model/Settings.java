@@ -72,13 +72,6 @@ public class Settings {
         mSharedPreferencesEditor = mSharedPreferences.edit();
     }
 
-    public void setDiscoveryManager(DiscoveryManager discoveryManager) {
-        if (discoveryManager != null) {
-            mDiscoveryManager = discoveryManager;
-            setDesiredDiscoveryMode();
-        }
-    }
-
     /**
      * Loads the settings.
      */
@@ -118,9 +111,14 @@ public class Settings {
         connectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
 
         DiscoveryManagerSettings discoveryManagerSettings = DiscoveryManagerSettings.getInstance();
+        discoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
         discoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
         discoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
         discoveryManagerSettings.setScanMode(mScanMode);
+    }
+
+    public void setDiscoveryManager(DiscoveryManager discoveryManager) {
+        mDiscoveryManager = discoveryManager;
     }
 
     /**
@@ -171,15 +169,17 @@ public class Settings {
     }
 
     public void setDesiredDiscoveryMode() {
-        if (mDiscoveryManager != null) {
-            DiscoveryManager.DiscoveryMode desiredMode = getDesiredDiscoveryMode();
+        DiscoveryManager.DiscoveryMode desiredMode = getDesiredDiscoveryMode();
 
-            if (desiredMode == DiscoveryManager.DiscoveryMode.NOT_SET) {
+        if (desiredMode == DiscoveryManager.DiscoveryMode.NOT_SET) {
+            if (mDiscoveryManager != null) {
                 mDiscoveryManager.stop();
-            } else  {
-                Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
-                mDiscoveryManager.setDiscoveryMode(desiredMode, true);
+            }
+        } else  {
+            Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
+            DiscoveryManagerSettings.getInstance().setDiscoveryMode(desiredMode, true);
 
+            if (mDiscoveryManager != null) {
                 Handler handler = new Handler(mContext.getMainLooper());
 
                 handler.postDelayed(new Runnable() {

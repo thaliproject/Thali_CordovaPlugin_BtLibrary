@@ -4,16 +4,20 @@
 package org.thaliproject.nativetest.app.test;
 
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
  * A test for requesting a peer to provide us our Bluetooth MAC address.
  */
-public class FindMyBluetoothAddressTest extends AbstractTest {
+public class FindMyBluetoothAddressTest
+        extends AbstractTest
+        implements DiscoveryManager.DiscoveryManagerListener {
     private static final String TAG = FindMyBluetoothAddressTest.class.getName();
 
     @Override
     public String getName() {
-        return "Find my Bluetooth address";
+        return "Find my Bluetooth MAC address";
     }
 
     @Override
@@ -21,10 +25,35 @@ public class FindMyBluetoothAddressTest extends AbstractTest {
         Log.i(TAG, "runTest");
         super.run();
 
+        return true;
+    }
+
+    @Override
+    public void finalize() {
+        super.finalize();
+
         if (mListener != null) {
             mListener.onTestFinished(getName(), 0f, "no results");
         }
+    }
 
-        return false;
+    @Override
+    public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
+
+    }
+
+    @Override
+    public void onPeerDiscovered(PeerProperties peerProperties) {
+
+    }
+
+    @Override
+    public void onPeerUpdated(PeerProperties peerProperties) {
+
+    }
+
+    @Override
+    public void onPeerLost(PeerProperties peerProperties) {
+
     }
 }

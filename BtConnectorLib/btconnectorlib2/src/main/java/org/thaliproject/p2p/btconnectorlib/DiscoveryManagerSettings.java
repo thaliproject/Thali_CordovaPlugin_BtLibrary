@@ -14,6 +14,7 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
  */
 public class DiscoveryManagerSettings {
     public interface Listener {
+        boolean onDiscoveryModeChanged(DiscoveryMode discoveryMode, boolean forceRestart);
         void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
         void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel);
         void onScanModeSettingChanged(int scanMode);
@@ -30,6 +31,7 @@ public class DiscoveryManagerSettings {
 
     private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
+    private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
@@ -59,6 +61,46 @@ public class DiscoveryManagerSettings {
      */
     public void setListener(DiscoveryManager discoveryManager) {
         mListener = discoveryManager;
+    }
+
+    /**
+     * @return The current discovery mode.
+     */
+    public DiscoveryMode getDiscoveryMode() {
+        return mDiscoveryMode;
+    }
+
+    /**
+     * Sets the discovery mode.
+     * @param discoveryMode The discovery mode to set.
+     * @param forceRestart If true and the discovery was running, will try to do a restart.
+     * @return True, if the mode was set. False otherwise (likely because not supported). Note that,
+     * if forceRestarts was true, false is also be returned in case the restart fails.
+     */
+    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean forceRestart) {
+        boolean wasSet = false;
+
+        if (mListener != null) {
+            wasSet = mListener.onDiscoveryModeChanged(discoveryMode, forceRestart);
+
+            if (wasSet) {
+                mDiscoveryMode = discoveryMode;
+            }
+        } else {
+            Log.e(TAG, "setDiscoveryMode: Cannot set discovery mode, if no listener is present");
+        }
+
+        return wasSet;
+    }
+
+    /**
+     * Sets the discovery mode. Note that this method will fail, if the discovery is currently
+     * running.
+     * @param discoveryMode The discovery mode to set.
+     * @return True, if the mode was set. False otherwise (likely because not supported).
+     */
+    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode) {
+        return setDiscoveryMode(discoveryMode, false);
     }
 
     /**
