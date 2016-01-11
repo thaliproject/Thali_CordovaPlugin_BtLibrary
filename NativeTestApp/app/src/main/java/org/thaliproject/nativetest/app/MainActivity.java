@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativetest.app;
@@ -19,14 +19,16 @@ import android.widget.Toast;
 import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.fragments.PeerListFragment;
 import org.thaliproject.nativetest.app.fragments.SettingsFragment;
+import org.thaliproject.nativetest.app.fragments.TestsFragment;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.slidingtabs.SlidingTabLayout;
+import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 public class MainActivity
         extends AppCompatActivity
-        implements PeerListFragment.Listener, TestEngine.Listener {
+        implements PeerListFragment.Listener, TestListener {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -34,6 +36,7 @@ public class MainActivity
     private static Context mContext = null;
 
     private ConnectionEngine mConnectionEngine = null;
+    private ConnectionEngine mTestEngine = null;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -54,6 +57,7 @@ public class MainActivity
     private PeerListFragment mPeerListFragment = null;
     private LogFragment mLogFragment = null;
     private SettingsFragment mSettingsFragment = null;
+    private TestsFragment mTestsFragment = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +69,8 @@ public class MainActivity
 
         if (mConnectionEngine == null) {
             mConnectionEngine = new ConnectionEngine(mContext);
+            mConnectionEngine.bindSettings();
+            mTestEngine = new TestEngine(mContext, this);
         }
 
         // Set up the action bar.
@@ -84,6 +90,9 @@ public class MainActivity
         mLogFragment = new LogFragment();
 
         mSettingsFragment = new SettingsFragment();
+
+        mTestsFragment = new TestsFragment();
+        mTestsFragment.setTestEngine((TestEngine) mTestEngine);
 
         mConnectionEngine.start();
     }
@@ -207,7 +216,8 @@ public class MainActivity
     }
 
     @Override
-    public void onTestFinished() {
+    public void onTestFinished(String testName, float successRate, String results) {
+        showToast("Test \"" + testName + "\" finished with success rate of " + Math.round(successRate * 100) + " %");
     }
 
     /**
@@ -217,6 +227,7 @@ public class MainActivity
         private static final int PEER_LIST_FRAGMENT = 0;
         private static final int LOG_FRAGMENT = 1;
         private static final int SETTINGS_FRAGMENT = 2;
+        private static final int TESTS_FRAGMENT = 3;
 
         public MyFragmentAdapter(FragmentManager fragmentManager) {
             super(fragmentManager);
@@ -228,6 +239,7 @@ public class MainActivity
                 case PEER_LIST_FRAGMENT: return mPeerListFragment;
                 case LOG_FRAGMENT: return mLogFragment;
                 case SETTINGS_FRAGMENT: return mSettingsFragment;
+                case TESTS_FRAGMENT: return mTestsFragment;
             }
 
             return null;
@@ -239,6 +251,7 @@ public class MainActivity
                 case PEER_LIST_FRAGMENT: return "Peers";
                 case LOG_FRAGMENT: return "Log";
                 case SETTINGS_FRAGMENT: return "Settings";
+                case TESTS_FRAGMENT: return "Tests";
             }
 
             return super.getPageTitle(position);
@@ -246,7 +259,7 @@ public class MainActivity
 
         @Override
         public int getCount() {
-            return 3;
+            return 4;
         }
     }
 }

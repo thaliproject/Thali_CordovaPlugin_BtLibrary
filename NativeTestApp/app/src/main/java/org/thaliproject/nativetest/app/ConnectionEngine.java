@@ -26,17 +26,18 @@ public class ConnectionEngine implements
         ConnectionManager.ConnectionManagerListener,
         DiscoveryManager.DiscoveryManagerListener,
         Connection.Listener {
-    private static final String TAG = ConnectionEngine.class.getName();
+    protected static final String TAG = ConnectionEngine.class.getName();
 
     // Service type and UUID has to be application/service specific.
     // The app will only connect to peers with the matching values.
-    private static final String SERVICE_TYPE = "ThaliNativeSampleApp._tcp";
-    private static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
-    private static final String SERVICE_NAME = "Thali Native Sample App";
     public static final String PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
-    private static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
-    private static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
+    protected static final String SERVICE_TYPE = "ThaliNativeSampleApp._tcp";
+    protected static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
+    protected static final String SERVICE_NAME = "Thali Native Sample App";
+    protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
+    protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
 
+    protected Context mContext = null;
     protected Settings mSettings = null;
     protected ConnectionManager mConnectionManager = null;
     protected DiscoveryManager mDiscoveryManager = null;
@@ -48,12 +49,19 @@ public class ConnectionEngine implements
      * Constructor.
      */
     public ConnectionEngine(Context context) {
+        mContext = context;
         mModel = PeerAndConnectionModel.getInstance();
-        mSettings = Settings.getInstance(context);
-        mSettings.load();
-        mConnectionManager = new ConnectionManager(context, this, SERVICE_UUID, SERVICE_NAME);
-        mDiscoveryManager = new DiscoveryManager(context, this, SERVICE_UUID, SERVICE_TYPE);
+        mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
+        mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
+    }
+
+    /**
+     * Loads the settings and binds the discovery manager to the settings instance.
+     */
+    public void bindSettings() {
+        mSettings = Settings.getInstance(mContext);
         mSettings.setDiscoveryManager(mDiscoveryManager);
+        mSettings.load();
     }
 
     /**
@@ -64,7 +72,9 @@ public class ConnectionEngine implements
         mShuttingDown = false;
         boolean wasStarted = false;
 
-        if (mConnectionManager.start(PEER_NAME) && mDiscoveryManager.start(PEER_NAME)) {
+        if (mConnectionManager.start(PEER_NAME)
+                && (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
+                    || mDiscoveryManager.start(PEER_NAME))) {
             if (mCheckConnectionsTimer != null) {
                 mCheckConnectionsTimer.cancel();
                 mCheckConnectionsTimer = null;
@@ -144,7 +154,7 @@ public class ConnectionEngine implements
             LogFragment.logMessage("Sending "
                     + String.format("%.2f", connection.getTotalDataAmountCurrentlySendingInMegaBytes())
                     + " MB to peer " + peerProperties.toString());
-            mModel.requestUpdateUi(); // To update the progress bar
+            mModel.notifyListenersOnDataChanged(); // To update the progress bar
             MainActivity.updateOptionsMenu();
         } else {
             Log.e(TAG, "startSendingData: No connection found");
@@ -218,8 +228,11 @@ public class ConnectionEngine implements
 
         if (peerProperties != null) {
             mModel.removePeerBeingConnectedTo(peerProperties);
+
             MainActivity.showToast("Failed to connect to " + peerProperties.getName() + ": Connection timeout");
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString() + ": Connection timeout");
+
+            autoConnectIfEnabled(peerProperties);
         } else {
             MainActivity.showToast("Failed to connect: Connection timeout");
             LogFragment.logError("Failed to connect: Connection timeout");
@@ -234,10 +247,14 @@ public class ConnectionEngine implements
 
         if (peerProperties != null) {
             mModel.removePeerBeingConnectedTo(peerProperties);
+
             MainActivity.showToast("Failed to connect to " + peerProperties.getName()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
+
+            autoConnectIfEnabled(peerProperties);
+
         } else {
             MainActivity.showToast("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
             LogFragment.logError("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
@@ -258,15 +275,7 @@ public class ConnectionEngine implements
 
         if (mModel.addOrUpdatePeer(peerProperties)) {
             LogFragment.logMessage("Peer " + peerProperties.toString() + " discovered");
-
-            if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
-                if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
-                        || !mModel.hasConnectionToPeer(peerProperties, true)) {
-                    // Do auto-connect
-                    Log.i(TAG, "onPeerDiscovered: Auto-connecting to peer " + peerProperties.toString());
-                    mConnectionManager.connect(peerProperties);
-                }
-            }
+            autoConnectIfEnabled(peerProperties);
         }
     }
 
@@ -333,6 +342,7 @@ public class ConnectionEngine implements
                         mCheckConnectionsTimer.cancel();
                     }
 
+                    autoConnectIfEnabled(peerProperties);
                     MainActivity.updateOptionsMenu();
                 }
             }.start();
@@ -344,8 +354,8 @@ public class ConnectionEngine implements
 
     @Override
     public void onSendDataProgress(float progressInPercentages, float transferSpeed, PeerProperties receivingPeer) {
-        Log.i(TAG, "onSendDataProgress: " + Math.round(progressInPercentages * 100) + " % " + transferSpeed + " MB/s");
-        mModel.requestUpdateUi(); // To update the progress bar
+        Log.d(TAG, "onSendDataProgress: " + Math.round(progressInPercentages * 100) + " % " + transferSpeed + " MB/s");
+        mModel.notifyListenersOnDataChanged(); // To update the progress bar
     }
 
     @Override
@@ -356,7 +366,7 @@ public class ConnectionEngine implements
         Log.i(TAG, "onDataSent: " + message + " to peer " + receivingPeer);
         LogFragment.logMessage(message + " to peer " + receivingPeer);
         MainActivity.showToast(message + " to peer " + receivingPeer.getName());
-        mModel.requestUpdateUi(); // To update the progress bar
+        mModel.notifyListenersOnDataChanged(); // To update the progress bar
         MainActivity.updateOptionsMenu();
     }
 
@@ -366,6 +376,21 @@ public class ConnectionEngine implements
     protected synchronized void sendPingToAllPeers() {
         for (Connection connection : mModel.getConnections()) {
             connection.ping();
+        }
+    }
+
+    /**
+     * Tries to connect to the peer with the given properties if the auto-connect is enabled.
+     * @param peerProperties The peer properties.
+     */
+    protected synchronized void autoConnectIfEnabled(PeerProperties peerProperties) {
+        if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
+            if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
+                    || !mModel.hasConnectionToPeer(peerProperties, true)) {
+                // Do auto-connect
+                Log.i(TAG, "autoConnectIfEnabled: Auto-connecting to peer " + peerProperties.toString());
+                mConnectionManager.connect(peerProperties);
+            }
         }
     }
 }
