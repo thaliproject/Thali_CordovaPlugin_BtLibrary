@@ -1,4 +1,4 @@
-package org.thaliproject.nativesample.app;
+package org.thaliproject.nativetest.app;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

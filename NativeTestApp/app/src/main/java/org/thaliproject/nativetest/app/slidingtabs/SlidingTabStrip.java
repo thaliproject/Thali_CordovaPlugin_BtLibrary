@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.thaliproject.nativesample.app.slidingtabs;
+package org.thaliproject.nativetest.app.slidingtabs;
 
 import android.R;
 import android.content.Context;

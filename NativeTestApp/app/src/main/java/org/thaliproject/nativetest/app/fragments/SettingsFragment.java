@@ -1,7 +1,7 @@
 /* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app.fragments;
+package org.thaliproject.nativetest.app.fragments;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
@@ -12,8 +12,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
-import org.thaliproject.nativesample.app.R;
-import org.thaliproject.nativesample.app.model.Settings;
+import org.thaliproject.nativetest.app.R;
+import org.thaliproject.nativetest.app.model.Settings;
 
 /**
  * A fragment for changing the application settings.

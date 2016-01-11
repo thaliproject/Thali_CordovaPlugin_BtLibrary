@@ -1,10 +1,10 @@
 /* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app.utils;
+package org.thaliproject.nativetest.app.utils;
 
-import org.thaliproject.nativesample.app.model.Connection;
-import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
+import org.thaliproject.nativetest.app.model.Connection;
+import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**

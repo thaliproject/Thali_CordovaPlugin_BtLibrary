@@ -20,7 +20,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 The Sliding Tabs UI components (all files in package
-`org.thaliproject.nativesample.app.slidingtabs` are part of the Android Open
+`org.thaliproject.nativetest.app.slidingtabs` are part of the Android Open
 Source Project and licensed under Apache License, version 2.0:
 
 Copyright (C) 2013 The Android Open Source Project

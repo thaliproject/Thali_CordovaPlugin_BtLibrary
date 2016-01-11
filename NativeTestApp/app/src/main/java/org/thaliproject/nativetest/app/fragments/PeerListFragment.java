@@ -1,7 +1,7 @@
 /* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
-package org.thaliproject.nativesample.app.fragments;
+package org.thaliproject.nativetest.app.fragments;
 
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -12,10 +12,10 @@ import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
-import org.thaliproject.nativesample.app.model.Connection;
-import org.thaliproject.nativesample.app.model.PeerAndConnectionModel;
-import org.thaliproject.nativesample.app.R;
-import org.thaliproject.nativesample.app.utils.MenuUtils;
+import org.thaliproject.nativetest.app.model.Connection;
+import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
+import org.thaliproject.nativetest.app.R;
+import org.thaliproject.nativetest.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
