@@ -114,21 +114,6 @@ public class PeerAndConnectionModel {
         return !alreadyInTheList;
     }
 
-    /**
-     * Tries to remove a peer with the given properties from the list of discovered peers.
-     * Notifies the listener, if removed.
-     * @return True, if the peer was found and removed. False otherwise.
-     */
-    public boolean removePeer(final PeerProperties peerProperties) {
-        removePeerBeingConnectedTo(peerProperties);
-        boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeers);
-
-        if (wasRemoved && mListener != null) {
-            mListener.onPeerRemoved(peerProperties);
-        }
-
-        return wasRemoved;
-    }
 
     /**
      * Updates the name of the peer in the list. Notifies the listener, if updated.
@@ -156,8 +141,36 @@ public class PeerAndConnectionModel {
         return wasUpdated;
     }
 
+    /**
+     * Tries to remove a peer with the given properties from the list of discovered peers.
+     * Notifies the listener, if removed.
+     * @return True, if the peer was found and removed. False otherwise.
+     */
+    public boolean removePeer(final PeerProperties peerProperties) {
+        removePeerBeingConnectedTo(peerProperties);
+        boolean wasRemoved = removePeerPropertiesFromList(peerProperties, mPeers);
+
+        if (wasRemoved && mListener != null) {
+            mListener.onPeerRemoved(peerProperties);
+        }
+
+        return wasRemoved;
+    }
+
     public synchronized boolean isConnectingToPeer(final PeerProperties peerProperties) {
         return doesListContainPeerProperties(peerProperties, mPeersBeingConnectedTo);
+    }
+
+    /**
+     * Clears all peers.
+     */
+    public void clearPeers() {
+        mPeersBeingConnectedTo.clear();
+        mPeers.clear();
+
+        if (mListener != null) {
+            mListener.onDataChanged();
+        }
     }
 
     /**

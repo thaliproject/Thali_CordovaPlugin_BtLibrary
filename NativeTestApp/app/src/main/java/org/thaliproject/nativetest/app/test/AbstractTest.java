@@ -5,6 +5,7 @@ package org.thaliproject.nativetest.app.test;
 
 import android.os.CountDownTimer;
 import android.util.Log;
+import org.thaliproject.nativetest.app.TestEngine;
 
 /**
  * An abstract base class for tests.
@@ -16,9 +17,20 @@ public abstract class AbstractTest {
 
     protected long mTestTimeoutInMilliseconds = DEFAULT_TEST_TIMEOUT_IN_MILLISECONDS;
     protected int mNumberOfDesiredPeers = DEFAULT_NUMBER_OF_DESIRED_PEERS;
+    protected TestEngine mTestEngine = null;
     protected TestListener mListener = null;
     protected CountDownTimer mTestTimeoutTimer = null;
     protected boolean mIsRunning = false;
+
+    /**
+     * Constructor.
+     * @param testEngine The test engine.
+     * @param listener The listener.
+     */
+    public AbstractTest(TestEngine testEngine, TestListener listener) {
+        mTestEngine = testEngine;
+        mListener = listener;
+    }
 
     public abstract String getName();
 
@@ -44,6 +56,10 @@ public abstract class AbstractTest {
 
     public void setNumberOfDesiredPeers(int numberOfDesiredPeers) {
         mNumberOfDesiredPeers = numberOfDesiredPeers;
+    }
+
+    public void setTestEngine(TestEngine testEngine) {
+        mTestEngine = testEngine;
     }
 
     public void setListener(TestListener listener) {

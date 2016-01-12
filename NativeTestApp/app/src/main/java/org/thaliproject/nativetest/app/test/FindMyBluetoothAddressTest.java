@@ -4,6 +4,7 @@
 package org.thaliproject.nativetest.app.test;
 
 import android.util.Log;
+import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
@@ -15,6 +16,10 @@ public class FindMyBluetoothAddressTest
         implements DiscoveryManager.DiscoveryManagerListener {
     private static final String TAG = FindMyBluetoothAddressTest.class.getName();
 
+    public FindMyBluetoothAddressTest(TestEngine testEngine, TestListener listener) {
+        super(testEngine, listener);
+    }
+
     @Override
     public String getName() {
         return "Find my Bluetooth MAC address";
@@ -22,7 +27,7 @@ public class FindMyBluetoothAddressTest
 
     @Override
     public boolean run() {
-        Log.i(TAG, "runTest");
+        Log.i(TAG, "run");
         super.run();
 
         return true;
