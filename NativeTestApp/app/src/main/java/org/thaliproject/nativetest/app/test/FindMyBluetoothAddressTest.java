@@ -19,6 +19,7 @@ public class FindMyBluetoothAddressTest
     private static final String TAG = FindMyBluetoothAddressTest.class.getName();
     private static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
     private DiscoveryManager mDiscoveryManager = null;
+    private String mStoredBluetoothMacAddress = null;
     private String mBluetoothMacAddress = null;
 
     public FindMyBluetoothAddressTest(TestEngine testEngine, TestListener listener) {
@@ -41,9 +42,13 @@ public class FindMyBluetoothAddressTest
             mDiscoveryManager.setEmulateMarshmallow(true);
         }
 
-        if (DiscoveryManagerSettings.getInstance().getBluetoothMacAddress() != null) {
-            // Clear the Bluetooth MAC address
-            DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(null);
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
+
+        if (mStoredBluetoothMacAddress != null) {
+            // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
+            // test fails
+            settings.setBluetoothMacAddress(null);
         }
 
         mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
@@ -59,6 +64,11 @@ public class FindMyBluetoothAddressTest
             if (mBluetoothMacAddress != null) {
                 mListener.onTestFinished(getName(), 1f, "Bluetooth MAC address resolved: " + mBluetoothMacAddress);
             } else {
+                if (mStoredBluetoothMacAddress != null) {
+                    // Restore the Bluetooth MAC address
+                    DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(mStoredBluetoothMacAddress);
+                }
+
                 mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
             }
         }
