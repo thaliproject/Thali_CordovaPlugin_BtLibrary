@@ -289,7 +289,7 @@ public class ConnectionEngine implements
 
     @Override
     public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-
+        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
     }
 
     @Override

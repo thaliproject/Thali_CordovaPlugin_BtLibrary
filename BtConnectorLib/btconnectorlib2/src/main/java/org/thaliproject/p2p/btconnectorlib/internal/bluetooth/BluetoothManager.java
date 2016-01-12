@@ -11,6 +11,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.util.Log;
 import java.util.ArrayList;
 
@@ -144,8 +145,20 @@ public class BluetoothManager {
         return mBluetoothAdapter;
     }
 
-    public String getBluetoothAddress() {
-        return mBluetoothAdapter == null ? null : mBluetoothAdapter.getAddress();
+    /**
+     * @return The Bluetooth MAC address or null, if no Bluetooth adapter instance or if the Android
+     * version is higher than Lollipop (5.x).
+     */
+    public String getBluetoothMacAddress() {
+        String bluetoothMacAddress = null;
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1 && mBluetoothAdapter != null) {
+            bluetoothMacAddress = mBluetoothAdapter.getAddress();
+        } else {
+            Log.i(TAG, "getBluetoothMacAddress: Cannot retrieve our own Bluetooth MAC address from the Bluetooth adapter when running on Marshmallow (6.x) or higher Android version");
+        }
+
+        return bluetoothMacAddress;
     }
 
     public String getBluetoothName() {
@@ -164,7 +177,7 @@ public class BluetoothManager {
     private synchronized boolean initialize() {
         if (!mInitialized) {
             if (mBluetoothAdapter != null) {
-                Log.i(TAG, "initialize: My bluetooth address is " + getBluetoothAddress());
+                Log.i(TAG, "initialize: My bluetooth address is " + getBluetoothMacAddress());
 
                 mBluetoothBroadcastReceiver = new BluetoothModeBroadCastReceiver();
                 IntentFilter filter = new IntentFilter();

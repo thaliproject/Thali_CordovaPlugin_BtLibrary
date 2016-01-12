@@ -95,6 +95,15 @@ public class TestEngine extends ConnectionEngine implements TestListener {
     }
 
     @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
+
+        if (mCurrentTest instanceof DiscoveryManager.DiscoveryManagerListener) {
+            ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onBluetoothMacAddressResolved(bluetoothMacAddress);
+        }
+    }
+
+    @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         Log.d(TAG, "onPeerDiscovered: " + peerProperties.toString());
 
