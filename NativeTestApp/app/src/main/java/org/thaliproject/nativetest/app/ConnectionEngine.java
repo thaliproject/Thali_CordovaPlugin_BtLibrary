@@ -110,13 +110,15 @@ public class ConnectionEngine implements
     public synchronized void stop() {
         mShuttingDown = true;
 
-        if (mConnectionManager != null) {
+        if (mCheckConnectionsTimer != null) {
             mCheckConnectionsTimer.cancel();
         }
 
-        mModel.closeAllConnections();
         mConnectionManager.stop();
         mDiscoveryManager.stop();
+
+        mModel.closeAllConnections();
+        mModel.clearPeers();
     }
 
     /**

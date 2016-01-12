@@ -8,7 +8,14 @@ package org.thaliproject.nativetest.app.test;
  */
 public interface TestListener {
     /**
+     * Called when a test is about to start.
+     * @param testName The name of the test.
+     */
+    void onTestStarting(String testName);
+
+    /**
      * Called when a test is runTest or aborted.
+     * @param testName The name of the test.
      * @param successRate The success rate (1.0 is 100 %).
      * @param results The test results.
      */

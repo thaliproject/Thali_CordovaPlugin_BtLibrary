@@ -216,8 +216,19 @@ public class MainActivity
     }
 
     @Override
+    public void onTestStarting(String testName) {
+        Log.i(TAG, "onTestStarting: " + testName);
+        mConnectionEngine.stop();
+        LogFragment.logMessage("Starting test \"" + testName + "\"");
+    }
+
+    @Override
     public void onTestFinished(String testName, float successRate, String results) {
-        showToast("Test \"" + testName + "\" finished with success rate of " + Math.round(successRate * 100) + " %");
+        int successRateInPercentages = Math.round(successRate * 100);
+        Log.i(TAG, "onTestFinished: Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " %");
+        LogFragment.logMessage("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " % - Results: " + results);
+        showToast("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " %");
+        mConnectionEngine.start();
     }
 
     /**
