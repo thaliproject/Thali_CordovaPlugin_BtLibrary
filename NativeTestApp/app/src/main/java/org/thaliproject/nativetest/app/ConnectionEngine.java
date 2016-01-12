@@ -14,6 +14,7 @@ import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.model.Settings;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import java.io.IOException;
@@ -138,6 +139,21 @@ public class ConnectionEngine implements
                 MainActivity.showToast(errorMessageStub + peerProperties.getName());
             }
         }
+    }
+
+    /**
+     * Starts the Bluetooth device discovery.
+     */
+    public void startBluetoothDeviceDiscovery() {
+        mDiscoveryManager.startBluetoothDeviceDiscovery();
+    }
+
+    /**
+     * Makes the device discoverable.
+     */
+    public void makeDeviceDiscoverable() {
+        mDiscoveryManager.makeDeviceDiscoverable(
+                DiscoveryManagerSettings.getInstance().DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
     }
 
     /**
@@ -269,6 +285,11 @@ public class ConnectionEngine implements
     public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
         LogFragment.logMessage("Discovery manager state changed: " + discoveryManagerState);
         MainActivity.showToast("Discovery manager state changed: " + discoveryManagerState);
+    }
+
+    @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+
     }
 
     @Override

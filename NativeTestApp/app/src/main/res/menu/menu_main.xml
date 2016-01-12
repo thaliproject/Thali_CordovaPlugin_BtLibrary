@@ -19,4 +19,12 @@
           android:title="@string/action_kill_all_connections"
           android:orderInCategory="101"
           app:showAsAction="never"/>
+    <item android:id="@+id/action_start_bluetooth_device_discovery"
+          android:title="@string/action_start_bluetooth_device_discovery"
+          android:orderInCategory="101"
+          app:showAsAction="never"/>
+    <item android:id="@+id/action_make_device_discoverable"
+          android:title="@string/action_make_device_discoverable"
+          android:orderInCategory="101"
+          app:showAsAction="never"/>
 </menu>

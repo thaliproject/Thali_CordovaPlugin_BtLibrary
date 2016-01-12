@@ -8,6 +8,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.os.CountDownTimer;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.UUID;
@@ -35,10 +36,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     private static final String TAG = BlePeerDiscoverer.class.getName();
+    private static final long ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS = 10000;
     private final BlePeerDiscoveryListener mListener;
+    private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mServiceUuid;
+    private final UUID mBluetoothDeviceDiscoveryUuid;
     private BleAdvertiser mBleAdvertiser = null;
     private BleScanner mBleScanner = null;
+    private BleAdvertiser mPeerAddressBleAdvertiser = null;
     private boolean mIsAdvertiserStarted = false;
     private boolean mIsScannerStarted = false;
     private boolean mIsStarted = false;
@@ -55,16 +60,18 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
             String myPeerName, UUID serviceUuid, String myBluetoothAddress) {
         mListener = listener;
+        mBluetoothAdapter = bluetoothAdapter;
         mServiceUuid = serviceUuid;
+        mBluetoothDeviceDiscoveryUuid = BlePeerDiscoveryUtils.rotateTheLastByte(mServiceUuid);
 
-        mBleAdvertiser = new BleAdvertiser(this, bluetoothAdapter);
+        mBleAdvertiser = new BleAdvertiser(this, mBluetoothAdapter);
 
         mBleAdvertiser.setAdvertiseData(
-                PeerAdvertisementFactory.createAdvertiseData(myPeerName, serviceUuid, myBluetoothAddress));
+                PeerAdvertisementFactory.createAdvertiseData(myPeerName, mServiceUuid, myBluetoothAddress));
 
-        mBleScanner = new BleScanner(this, bluetoothAdapter);
+        mBleScanner = new BleScanner(this, mBluetoothAdapter);
         //mBleScanner.addFilter(PeerAdvertisementFactory.createScanFilter(mServiceUuid));
-        mBleScanner.addFilter(PeerAdvertisementFactory.createScanFilter(null));
+        mBleScanner.addFilter(BlePeerDiscoveryUtils.createScanFilter(null));
     }
 
     /**
@@ -152,6 +159,45 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     public synchronized void stop() {
         mBleAdvertiser.stop();
         mBleScanner.stop();
+    }
+
+    /**
+     * Starts advertising the given Bluetooth MAC address via BLE for a certain period of time.
+     * @param bluetoothMacAddress A Bluetooth MAC address of a discovered device.
+     * @return True, if started. False otherwise.
+     */
+    public boolean startAdvertisingBluetoothAddressOfDiscoveredDevice(String bluetoothMacAddress) {
+        boolean wasStarted = false;
+
+        if (mPeerAddressBleAdvertiser == null) {
+            mPeerAddressBleAdvertiser = new BleAdvertiser(null, mBluetoothAdapter);
+            mPeerAddressBleAdvertiser.setAdvertiseData(
+                    PeerAdvertisementFactory.createAdvertiseData(
+                            PeerProperties.NO_PEER_NAME_STRING, mBluetoothDeviceDiscoveryUuid, bluetoothMacAddress));
+
+            new CountDownTimer(
+                    ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS,
+                    ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS) {
+                @Override
+                public void onTick(long millisUntilFinished) {
+                    // Not used
+                }
+
+                @Override
+                public void onFinish() {
+                    mPeerAddressBleAdvertiser.stop();
+                    mPeerAddressBleAdvertiser = null;
+                    Log.i(TAG, "Stopped advertising the Bluetooth MAC address of a discovered device");
+                }
+            }.start();
+
+            if (mPeerAddressBleAdvertiser.start()) {
+                Log.i(TAG, "startAdvertisingBluetoothAddressOfDiscoveredDevice: Started advertising Bluetooth MAC address: " + bluetoothMacAddress);
+                wasStarted = true;
+            }
+        }
+
+        return wasStarted;
     }
 
     @Override

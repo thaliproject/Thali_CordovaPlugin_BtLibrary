@@ -61,6 +61,11 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     }
 
     @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+        // Not used
+    }
+
+    @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         if (mModel.addOrUpdatePeer(peerProperties)) {
             mNumberOfPeersDiscovered++;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
@@ -159,30 +159,6 @@ class PeerAdvertisementFactory {
         }
 
         return peerProperties;
-    }
-
-    /**
-     * Creates a new scan filter using the given service UUID.
-     * @param serviceUuid The service UUID for the scan filter.
-     * @return A newly created scan filter or null in case of a failure.
-     */
-    public static ScanFilter createScanFilter(UUID serviceUuid) {
-        ScanFilter scanFilter = null;
-        ScanFilter.Builder builder = new ScanFilter.Builder();
-
-        try {
-            builder.setManufacturerData(MANUFACTURER_ID, null);
-
-            if (serviceUuid != null) {
-                builder.setServiceUuid(new ParcelUuid(serviceUuid));
-            }
-
-            scanFilter = builder.build();
-        } catch (IllegalArgumentException e) {
-            Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
-        }
-
-        return scanFilter;
     }
 
     /**
