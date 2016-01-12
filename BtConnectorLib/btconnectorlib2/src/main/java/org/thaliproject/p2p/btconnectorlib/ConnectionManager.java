@@ -155,7 +155,14 @@ public class ConnectionManager
      * @return True, if started successfully or was already running. False otherwise.
      */
     public boolean start(String myPeerName) {
-        return start(mBluetoothManager.getBluetoothAddress(), myPeerName);
+        String bluetoothMacAddress = getBluetoothMacAddress();
+        boolean wasStarted = false;
+
+        if (bluetoothMacAddress != null) {
+            wasStarted = start(getBluetoothMacAddress(), myPeerName);
+        }
+
+        return wasStarted;
     }
 
     /**

@@ -40,6 +40,7 @@ public class DiscoveryManager
     public enum DiscoveryManagerState {
         NOT_STARTED,
         WAITING_FOR_SERVICES_TO_BE_ENABLED, // When the chosen peer discovery method is disabled and waiting for it to be enabled to start
+        WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE, // When we don't know our own Bluetooth MAC address
         RUNNING_BLE,
         RUNNING_WIFI,
         RUNNING_BLE_AND_WIFI
@@ -145,7 +146,8 @@ public class DiscoveryManager
      * @return True, if running regardless of the mode. False otherwise.
      */
     public boolean isRunning() {
-        return (mState == DiscoveryManagerState.RUNNING_BLE
+        return (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE
+                || mState == DiscoveryManagerState.RUNNING_BLE
                 || mState == DiscoveryManagerState.RUNNING_WIFI
                 || mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
     }
@@ -198,7 +200,11 @@ public class DiscoveryManager
                 if (bleDiscoveryStarted && wifiDiscoveryStarted) {
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
-                    setState(DiscoveryManagerState.RUNNING_BLE);
+                    if (getBluetoothMacAddress() == null) {
+                        setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE);
+                    } else {
+                        setState(DiscoveryManagerState.RUNNING_BLE);
+                    }
                 } else if (wifiDiscoveryStarted) {
                     setState(DiscoveryManagerState.RUNNING_WIFI);
                 }
@@ -212,12 +218,12 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
-     * This method uses the Bluetooth address to set the value of the peer ID.
+     * This method uses the Bluetooth MAC address to set the value of the peer ID.
      * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
     public boolean start(String myPeerName) {
-        return start(mBluetoothManager.getBluetoothAddress(), myPeerName);
+        return start(getBluetoothMacAddress(), myPeerName);
     }
 
     /**
@@ -447,6 +453,31 @@ public class DiscoveryManager
     }
 
     /**
+     * Stores and forwards the resolved Bluetooth MAC address to the listener.
+     * @param bluetoothMacAddress Our Bluetooth MAC address.
+     */
+    @Override
+    public void onBluetoothMacAddressResolved(final String bluetoothMacAddress) {
+        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
+
+        if (bluetoothMacAddress != null) {
+            mSettings.setBluetoothMacAddress(bluetoothMacAddress);
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onBluetoothMacAddressResolved(bluetoothMacAddress);
+                }
+            });
+
+            if (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE) {
+                // We now have our Bluetooth MAC address, do start peer discovery
+                start(mMyPeerName);
+            }
+        }
+    }
+
+    /**
      * Updates the discovered peers, which match the ones on the given list.
      * @param p2pDeviceList A list containing the discovered P2P devices.
      */
@@ -511,7 +542,7 @@ public class DiscoveryManager
                 if (mBleServiceUuid != null) {
                     mBlePeerDiscoverer = new BlePeerDiscoverer(
                             this, mBluetoothManager.getBluetoothAdapter(),
-                            mMyPeerName, mBleServiceUuid, mBluetoothManager.getBluetoothAddress());
+                            mMyPeerName, mBleServiceUuid, getBluetoothMacAddress());
 
                     started = mBlePeerDiscoverer.start();
                 } else {
@@ -590,18 +621,16 @@ public class DiscoveryManager
      * Sets the state of this instance and notifies the listener.
      * @param state The new state.
      */
-    private synchronized void setState(DiscoveryManagerState state) {
+    private synchronized void setState(final DiscoveryManagerState state) {
         if (mState != state) {
             Log.d(TAG, "setState: " + state.toString());
             mState = state;
 
             if (mListener != null) {
-                final DiscoveryManagerState tempState = mState;
-
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mListener.onDiscoveryManagerStateChanged(tempState);
+                        mListener.onDiscoveryManagerStateChanged(state);
                     }
                 });
             }

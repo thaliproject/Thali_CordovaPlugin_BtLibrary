@@ -3,9 +3,11 @@
  */
 package org.thaliproject.nativetest.app.test;
 
+import android.os.Build;
 import android.util.Log;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
@@ -15,6 +17,9 @@ public class FindMyBluetoothAddressTest
         extends AbstractTest
         implements DiscoveryManager.DiscoveryManagerListener {
     private static final String TAG = FindMyBluetoothAddressTest.class.getName();
+    private static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
+    private DiscoveryManager mDiscoveryManager = null;
+    private String mBluetoothMacAddress = null;
 
     public FindMyBluetoothAddressTest(TestEngine testEngine, TestListener listener) {
         super(testEngine, listener);
@@ -30,40 +35,60 @@ public class FindMyBluetoothAddressTest
         Log.i(TAG, "run");
         super.run();
 
-        return true;
+        mDiscoveryManager = mTestEngine.getDiscoveryManager();
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            mDiscoveryManager.setEmulateMarshmallow(true);
+        }
+
+        if (DiscoveryManagerSettings.getInstance().getBluetoothMacAddress() != null) {
+            // Clear the Bluetooth MAC address
+            DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(null);
+        }
+
+        mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
+        return mDiscoveryManager.start(TestEngine.PEER_NAME);
     }
 
     @Override
     public void finalize() {
         super.finalize();
+        mDiscoveryManager.stop();
 
         if (mListener != null) {
-            mListener.onTestFinished(getName(), 0f, "no results");
+            if (mBluetoothMacAddress != null) {
+                mListener.onTestFinished(getName(), 1f, "Bluetooth MAC address resolved: " + mBluetoothMacAddress);
+            } else {
+                mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
+            }
         }
     }
 
     @Override
     public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
-
+        // Not used
     }
 
     @Override
     public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-
+        if (bluetoothMacAddress != null) {
+            mBluetoothMacAddress = bluetoothMacAddress;
+            finalize();
+        }
     }
 
     @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
-
+        // Not used
     }
 
     @Override
     public void onPeerUpdated(PeerProperties peerProperties) {
-
+        // Not used
     }
 
     @Override
     public void onPeerLost(PeerProperties peerProperties) {
-
+        // Not used
     }
 }

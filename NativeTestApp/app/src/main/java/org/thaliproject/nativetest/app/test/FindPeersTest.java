@@ -3,6 +3,7 @@
  */
 package org.thaliproject.nativetest.app.test;
 
+import android.os.Build;
 import android.util.Log;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
@@ -31,7 +32,6 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     public boolean run() {
         Log.i(TAG, "run");
         super.run();
-        boolean wasStarted = false;
 
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
         mModel = PeerAndConnectionModel.getInstance();
@@ -42,6 +42,7 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     public void finalize() {
         Log.i(TAG, "finalize");
         super.finalize();
+        mDiscoveryManager.stop();
 
         if (mListener != null) {
             float successRate = 0f;

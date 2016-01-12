@@ -86,6 +86,7 @@ public abstract class AbstractTest {
             @Override
             public void onFinish() {
                 Log.d(TAG, "Test timeout");
+                mTestTimeoutTimer = null;
                 onTimeout();
             }
         };
@@ -103,10 +104,17 @@ public abstract class AbstractTest {
     }
 
     protected void onTimeout() {
-        cancel();
+        if (mIsRunning) {
+            cancel();
+        }
     }
 
     protected void finalize() {
         mIsRunning = false;
+
+        if (mTestTimeoutTimer != null) {
+            mTestTimeoutTimer.cancel();
+            mTestTimeoutTimer = null;
+        }
     }
 }
