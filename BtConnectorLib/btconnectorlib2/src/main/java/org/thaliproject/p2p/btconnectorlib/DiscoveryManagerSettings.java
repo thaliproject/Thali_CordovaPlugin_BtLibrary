@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
@@ -26,11 +26,13 @@ public class DiscoveryManagerSettings {
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
     public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
+    public static int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = 60;
 
     private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
+    private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
@@ -61,6 +63,24 @@ public class DiscoveryManagerSettings {
      */
     public void setListener(DiscoveryManager discoveryManager) {
         mListener = discoveryManager;
+    }
+
+    /**
+     * @return The Bluetooth MAC address of this device or null, if not resolved.
+     */
+    public String getBluetoothMacAddress() {
+        return mBluetoothMacAddress;
+    }
+
+    /**
+     * Stores the unique Bluetooth MAC address of this device.
+     * @param bluetoothMacAddress The Bluetooth MAC address.
+     */
+    public void setBluetoothMacAddress(String bluetoothMacAddress) {
+        if (mBluetoothMacAddress == null || !mBluetoothMacAddress.equals(bluetoothMacAddress)) {
+            Log.i(TAG, "setBluetoothMacAddress: " + bluetoothMacAddress);
+            mBluetoothMacAddress = bluetoothMacAddress;
+        }
     }
 
     /**

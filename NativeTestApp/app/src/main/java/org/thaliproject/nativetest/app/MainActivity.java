@@ -24,6 +24,7 @@ import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.slidingtabs.SlidingTabLayout;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 public class MainActivity
@@ -193,6 +194,12 @@ public class MainActivity
             case R.id.action_kill_all_connections:
                 model.closeAllConnections();
                 wasConsumed = true;
+                break;
+            case R.id.action_start_bluetooth_device_discovery:
+                mConnectionEngine.startBluetoothDeviceDiscovery();
+                break;
+            case R.id.action_make_device_discoverable:
+                mConnectionEngine.makeDeviceDiscoverable();
                 break;
         }
 

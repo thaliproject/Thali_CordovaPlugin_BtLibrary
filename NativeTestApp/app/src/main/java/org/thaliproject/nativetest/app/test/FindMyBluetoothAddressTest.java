@@ -48,6 +48,11 @@ public class FindMyBluetoothAddressTest
     }
 
     @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+
+    }
+
+    @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
 
     }

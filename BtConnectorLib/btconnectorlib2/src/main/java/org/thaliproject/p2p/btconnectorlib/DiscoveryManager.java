@@ -1,16 +1,19 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
@@ -31,6 +34,7 @@ public class DiscoveryManager
             WifiDirectManager.WifiStateListener,
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
             BlePeerDiscoverer.BlePeerDiscoveryListener,
+            BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener,
             DiscoveryManagerSettings.Listener {
 
     public enum DiscoveryManagerState {
@@ -54,6 +58,12 @@ public class DiscoveryManager
          * @param state The new state.
          */
         void onDiscoveryManagerStateChanged(DiscoveryManagerState state);
+
+        /**
+         * Called when the Bluetooth MAC address of this device is resolved.
+         * @param bluetoothMacAddress The Bluetooth MAC address.
+         */
+        void onBluetoothMacAddressResolved(String bluetoothMacAddress);
 
         /**
          * Called when a new peer is discovered.
@@ -86,6 +96,7 @@ public class DiscoveryManager
     private WifiDirectManager mWifiDirectManager = null;
     private BlePeerDiscoverer mBlePeerDiscoverer = null;
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
+    private BluetoothDeviceDiscoverer mBluetoothDeviceDiscoverer = null;
     private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryManagerSettings mSettings = null;
@@ -233,6 +244,33 @@ public class DiscoveryManager
         mDiscoveredPeers.clear();
 
         setState(DiscoveryManagerState.NOT_STARTED);
+    }
+
+    /**
+     * Makes the device (Bluetooth) discoverable for the given duration.
+     * @param durationInSeconds The duration in seconds. 0 means the device is always discoverable.
+     *                          Any value below 0 or above 3600 is automatically set to 120 secs.
+     */
+    public void makeDeviceDiscoverable(int durationInSeconds) {
+        Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+        discoverableIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, durationInSeconds);
+        mContext.startActivity(discoverableIntent);
+    }
+
+    public boolean startBluetoothDeviceDiscovery() {
+        if (mBluetoothDeviceDiscoverer == null) {
+            mBluetoothDeviceDiscoverer = new BluetoothDeviceDiscoverer(mContext, mBluetoothManager.getBluetoothAdapter(), this);
+        }
+
+        return (mBluetoothDeviceDiscoverer.isRunning() || mBluetoothDeviceDiscoverer.start());
+    }
+
+    public void stopBluetoothDeviceDiscovery() {
+        if (mBluetoothDeviceDiscoverer != null) {
+            mBluetoothDeviceDiscoverer.stop();
+            mBluetoothDeviceDiscoverer = null;
+        }
     }
 
     /**
@@ -443,6 +481,22 @@ public class DiscoveryManager
     public void onPeerDiscovered(PeerProperties peerProperties) {
         Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
         modifyListOfDiscoveredPeers(peerProperties, true); // Will notify the listener
+    }
+
+    /**
+     * Starts advertising the Bluetooth MAC address of the discovered device.
+     * @param bluetoothDevice The Bluetooth device.
+     */
+    @Override
+    public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
+        String bluetoothMacAddress = bluetoothDevice.getAddress();
+        Log.i(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
+
+        if (mBlePeerDiscoverer != null) {
+            if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(bluetoothMacAddress)) {
+                Log.e(TAG, "onBluetoothDeviceDiscovered: Failed to start advertising the Bluetooth MAC address of the discovered device");
+            }
+        }
     }
 
     /**
