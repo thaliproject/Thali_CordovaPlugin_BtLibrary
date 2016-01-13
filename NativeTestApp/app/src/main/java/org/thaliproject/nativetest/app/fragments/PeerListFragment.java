@@ -137,7 +137,10 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
     @Override
     public void onDestroy() {
-        mModel.setListener(null);
+        if (mModel != null) {
+            mModel.setListener(null);
+        }
+
         super.onDestroy();
     }
 
