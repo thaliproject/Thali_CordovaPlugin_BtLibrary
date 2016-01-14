@@ -52,7 +52,7 @@ public class BluetoothDeviceDiscoverer {
      * @return True, if the device discovery is active. False otherwise.
      */
     public boolean isRunning() {
-        return (mBroadcastReceiver != null);
+        return (mBroadcastReceiver != null && mBluetoothAdapter.isDiscovering());
     }
 
     /**
@@ -72,7 +72,7 @@ public class BluetoothDeviceDiscoverer {
             }
 
             if (mBroadcastReceiver != null) {
-                if (mBluetoothAdapter.startDiscovery()) {
+                if (mBluetoothAdapter.isDiscovering() || mBluetoothAdapter.startDiscovery()) {
                     Log.i(TAG, "start: OK");
                 } else {
                     Log.e(TAG, "start: Failed to start discovery, stopping...");
@@ -88,10 +88,15 @@ public class BluetoothDeviceDiscoverer {
      * Stops the device discovery.
      */
     public synchronized void stop() {
-        if (mBroadcastReceiver != null) {
-            Log.i(TAG, "stop");
-            mBluetoothAdapter.cancelDiscovery();
+        Log.i(TAG, "stop");
 
+        if (mBluetoothAdapter.isDiscovering()) {
+            if (!mBluetoothAdapter.cancelDiscovery()) {
+                Log.e(TAG, "stop: Failed to cancel discovery");
+            }
+        }
+
+        if (mBroadcastReceiver != null) {
             try {
                 mContext.unregisterReceiver(mBroadcastReceiver);
             } catch (IllegalArgumentException e) {

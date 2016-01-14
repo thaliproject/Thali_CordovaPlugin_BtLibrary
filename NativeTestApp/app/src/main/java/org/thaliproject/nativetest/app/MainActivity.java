@@ -131,14 +131,22 @@ public class MainActivity
     }
 
     @Override
+    public void onRestart() {
+        Log.i(TAG, "onRestart");
+        super.onRestart();
+        mConnectionEngine.start();
+    }
+
+    @Override
     public void onStop() {
+        Log.i(TAG, "onStop");
         mConnectionEngine.stop();
         super.onStop();
     }
 
     @Override
     public void onDestroy() {
-        mConnectionEngine.stop();
+        Log.i(TAG, "onDestroy");
         super.onDestroy();
     }
 
