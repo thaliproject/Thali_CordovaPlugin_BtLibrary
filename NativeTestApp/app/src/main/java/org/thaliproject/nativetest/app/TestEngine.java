@@ -3,6 +3,7 @@
  */
 package org.thaliproject.nativetest.app;
 
+import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 import org.thaliproject.nativetest.app.test.AbstractTest;
@@ -19,8 +20,8 @@ public class TestEngine extends ConnectionEngine implements TestListener {
     private TestListener mListener = null;
     private AbstractTest mCurrentTest = null;
 
-    public TestEngine(Context context, TestListener listener) {
-        super(context);
+    public TestEngine(Context context, Activity activity, TestListener listener) {
+        super(context, activity);
         mListener = listener;
     }
 
