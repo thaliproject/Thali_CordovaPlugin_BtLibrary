@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.CountDownTimer;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import org.thaliproject.nativetest.app.fragments.LogFragment;
@@ -27,6 +28,7 @@ import java.util.UUID;
  * This class is responsible for managing both peer discovery and connections.
  */
 public class ConnectionEngine implements
+        ActivityCompat.OnRequestPermissionsResultCallback,
         ConnectionManager.ConnectionManagerListener,
         DiscoveryManager.DiscoveryManagerListener,
         Connection.Listener {
@@ -40,6 +42,7 @@ public class ConnectionEngine implements
     protected static final String SERVICE_NAME = "Thali Native Sample App";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
+    private static final int PERMISSION_REQUEST_ACCESS_COARSE_LOCATION = 1;
 
     protected Context mContext = null;
     protected Activity mActivity = null;
@@ -183,6 +186,20 @@ public class ConnectionEngine implements
             Log.e(TAG, "startSendingData: No connection found");
         }
     }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        Log.i(TAG, "onRequestPermissionsResult: " + requestCode + " " + permissions + " " + grantResults);
+
+        if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (mDiscoveryManager.getState() ==
+                        DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE) {
+                    mDiscoveryManager.start(PEER_NAME);
+                }
+            }
+        }
+    }
     
     @Override
     public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState connectionManagerState) {
@@ -293,6 +310,10 @@ public class ConnectionEngine implements
         if (mActivity != null) {
             permissionCheck = ContextCompat.checkSelfPermission(mActivity, permission);
             Log.i(TAG, "onPermissionCheckRequired: " + permission + ": " + permissionCheck);
+
+            if (permissionCheck == PackageManager.PERMISSION_DENIED) {
+                requestPermission(permission);
+            }
         } else {
             Log.e(TAG, "onPermissionCheckRequired: The activity is null");
         }
@@ -433,6 +454,27 @@ public class ConnectionEngine implements
                 Log.i(TAG, "autoConnectIfEnabled: Auto-connecting to peer " + peerProperties.toString());
                 mConnectionManager.connect(peerProperties);
             }
+        }
+    }
+
+    /**
+     * Prompts the user to grant the given permission.
+     * @param permission The permission, which needs to be granted.
+     */
+    private void requestPermission(String permission) {
+        Log.i(TAG, "requestPermission: " + permission);
+
+        // Should we show an explanation?
+        if (ActivityCompat.shouldShowRequestPermissionRationale(mActivity, permission)) {
+            // Show an explanation to the user *asynchronously* -- don't block
+            // this thread waiting for the user's response! After the user
+            // sees the explanation, try again to request the permission.
+            Log.e(TAG, "requestPermission: Should show request permission rationale");
+            // TODO
+        } else {
+            // No explanation needed, we can request the permission.
+            ActivityCompat.requestPermissions(
+                    mActivity, new String[] { permission }, PERMISSION_REQUEST_ACCESS_COARSE_LOCATION);
         }
     }
 }
