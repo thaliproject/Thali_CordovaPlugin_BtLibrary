@@ -69,7 +69,14 @@ public class FindMyBluetoothAddressTest
                     DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(mStoredBluetoothMacAddress);
                 }
 
-                mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
+                String missingPermission = mDiscoveryManager.getMissingPermission();
+
+                if (missingPermission != null) {
+                    mListener.onTestFinished(getName(), 0f,
+                            "Cannot resolve the Bluetooth MAC address due to denied permission: " + missingPermission);
+                } else {
+                    mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
+                }
             }
         }
     }

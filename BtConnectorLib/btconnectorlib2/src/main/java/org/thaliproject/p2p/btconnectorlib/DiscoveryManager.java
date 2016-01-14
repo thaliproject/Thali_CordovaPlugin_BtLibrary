@@ -115,6 +115,7 @@ public class DiscoveryManager
     private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryManagerSettings mSettings = null;
+    private String mMissingPermission = null;
     private boolean mShouldBeRunning = false;
 
     /**
@@ -153,6 +154,14 @@ public class DiscoveryManager
      */
     public DiscoveryManagerState getState() {
         return mState;
+    }
+
+    /**
+     * Used to check, if some required permission has not been granted by the user.
+     * @return The name of the missing permission or null, if none.
+     */
+    public String getMissingPermission() {
+        return mMissingPermission;
     }
 
     /**
@@ -556,6 +565,7 @@ public class DiscoveryManager
             permissionsGranted = mListener.onPermissionCheckRequired(Manifest.permission.ACCESS_COARSE_LOCATION);
         } else {
             permissionsGranted = true;
+            mMissingPermission = null;
         }
 
         if (permissionsGranted) {
@@ -576,7 +586,8 @@ public class DiscoveryManager
                 }
             }
         } else {
-            Log.e(TAG, "startBlePeerDiscovery: Permission denied");
+            mMissingPermission = Manifest.permission.ACCESS_COARSE_LOCATION;
+            Log.e(TAG, "startBlePeerDiscovery: Permission \"" + mMissingPermission + "\" denied");
         }
 
         if (started) {
