@@ -37,6 +37,8 @@ public class Settings {
     private static final long START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS = 1000;
 
     private DiscoveryManager mDiscoveryManager = null;
+    private DiscoveryManagerSettings mDiscoveryManagerSettings = null;
+    private ConnectionManagerSettings mConnectionManagerSettings = null;
     private long mConnectionTimeoutInMilliseconds = ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     private int mPortNumber = ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private boolean mEnableWifiDiscovery = true;
@@ -70,6 +72,8 @@ public class Settings {
     private Settings(Context context) {
         mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
         mSharedPreferencesEditor = mSharedPreferences.edit();
+        mDiscoveryManagerSettings = DiscoveryManagerSettings.getInstance(context);
+        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(context);
     }
 
     /**
@@ -106,15 +110,13 @@ public class Settings {
                 + mAutoConnect + ", "
                 + mAutoConnectEvenWhenIncomingConnectionEstablished);
 
-        ConnectionManagerSettings connectionManagerSettings = ConnectionManagerSettings.getInstance();
-        connectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
-        connectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
+        mConnectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
+        mConnectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
 
-        DiscoveryManagerSettings discoveryManagerSettings = DiscoveryManagerSettings.getInstance();
-        discoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
-        discoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
-        discoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
-        discoveryManagerSettings.setScanMode(mScanMode);
+        mDiscoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
+        mDiscoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
+        mDiscoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
+        mDiscoveryManagerSettings.setScanMode(mScanMode);
     }
 
     public void setDiscoveryManager(DiscoveryManager discoveryManager) {
@@ -136,7 +138,7 @@ public class Settings {
         mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
         mSharedPreferencesEditor.putLong(KEY_CONNECTION_TIMEOUT, mConnectionTimeoutInMilliseconds);
         mSharedPreferencesEditor.apply();
-        ConnectionManagerSettings.getInstance().setConnectionTimeout(mConnectionTimeoutInMilliseconds);
+        mConnectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
     }
 
     public int getPortNumber() {
@@ -148,7 +150,7 @@ public class Settings {
         mPortNumber = portNumber;
         mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mPortNumber);
         mSharedPreferencesEditor.apply();
-        ConnectionManagerSettings.getInstance().setInsecureRfcommSocketPortNumber(mPortNumber);
+        mConnectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
     }
 
     /**
@@ -177,7 +179,7 @@ public class Settings {
             }
         } else  {
             Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
-            DiscoveryManagerSettings.getInstance().setDiscoveryMode(desiredMode, true);
+            mDiscoveryManagerSettings.setDiscoveryMode(desiredMode, true);
 
             if (mDiscoveryManager != null) {
                 Handler handler = new Handler(mContext.getMainLooper());
@@ -226,7 +228,7 @@ public class Settings {
         mAdvertiseMode = advertiseMode;
         mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
         mSharedPreferencesEditor.apply();
-        DiscoveryManagerSettings.getInstance().setAdvertiseMode(mAdvertiseMode);
+        mDiscoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
     }
 
     public int getAdvertiseTxPowerLevel() {
@@ -237,7 +239,7 @@ public class Settings {
         mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
         mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
         mSharedPreferencesEditor.apply();
-        DiscoveryManagerSettings.getInstance().setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
+        mDiscoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
     }
 
     public int getScanMode() {
@@ -248,7 +250,7 @@ public class Settings {
         mScanMode = scanMode;
         mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
         mSharedPreferencesEditor.apply();
-        DiscoveryManagerSettings.getInstance().setScanMode(mScanMode);
+        mDiscoveryManagerSettings.setScanMode(mScanMode);
     }
 
     /**

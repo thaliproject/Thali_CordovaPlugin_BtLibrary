@@ -161,7 +161,7 @@ public class ConnectionEngine implements
      */
     public void makeDeviceDiscoverable() {
         mDiscoveryManager.makeDeviceDiscoverable(
-                DiscoveryManagerSettings.getInstance().DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
+                DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
     }
 
     /**

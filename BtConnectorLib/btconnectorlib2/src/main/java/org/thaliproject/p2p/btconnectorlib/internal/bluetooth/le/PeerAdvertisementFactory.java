@@ -5,8 +5,6 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
 import android.annotation.TargetApi;
 import android.bluetooth.le.AdvertiseData;
-import android.bluetooth.le.ScanFilter;
-import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.ByteArrayInputStream;
@@ -99,15 +97,15 @@ class PeerAdvertisementFactory {
     }
 
     /**
-     * Parses peer properties from the given manufacturer data byte array.
+     * Parses the Bluetooth MAC address from the given manufacturer data byte array, if the UUID in
+     * the manufacturer data matches the given one.
      * @param manufacturerData The manufacturer data.
      * @param serviceUuid The service UUID. Will return peer properties, if and only if this UUID
      *                    matches the one provided in manufacturer data. If this is null, no
      *                    comparison is made and all UUIDs are accepted.
-     * @return The peer properties or null in case of a failure or UUID mismatch.
+     * @return The Bluetooth MAC address as string or null in case of a failure.
      */
-    public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData, UUID serviceUuid) {
-        PeerProperties peerProperties = null;
+    public static String parseBluetoothMacAddressFromManufacturerData(byte[] manufacturerData, UUID serviceUuid) {
         byte[] adLengthAndType = null;
         byte[] serviceUuidAsByteArray = null;
         int[] bluetoothAddressAsInt8Array = null;
@@ -132,11 +130,13 @@ class PeerAdvertisementFactory {
 
                 bytesExtracted = true;
             } catch (IOException e) {
-                Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
+                Log.e(TAG, "parseBluetoothMacAddressFromManufacturerData: Failed to parse data: " + e.getMessage(), e);
             } catch (Exception e) {
-                Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse peer properties: " + e.getMessage(), e);
+                Log.e(TAG, "parseBluetoothMacAddressFromManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
         }
+
+        String bluetoothMacAddress = null;
 
         if (bytesExtracted) {
             ByteBuffer byteBuffer = ByteBuffer.wrap(serviceUuidAsByteArray);
@@ -146,16 +146,32 @@ class PeerAdvertisementFactory {
 
             if (serviceUuid != null && serviceUuid.compareTo(uuid) == 0) {
                 // The UUID is a match, do continue
-                String bluetoothAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
-
-                if (bluetoothAddress != null) {
-                    peerProperties = new PeerProperties(bluetoothAddress, PeerProperties.NO_PEER_NAME_STRING, bluetoothAddress);
-                } else {
-                    Log.e(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth address");
-                }
+                bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
             } else {
-                Log.d(TAG, "manufacturerDataToPeerProperties: UUID mismatch");
+                Log.d(TAG, "parseBluetoothMacAddressFromManufacturerData: UUID mismatch: Was expecting \""
+                        + serviceUuid + "\", got \"" + uuid + "\"");
             }
+        }
+
+        return bluetoothMacAddress;
+    }
+
+    /**
+     * Parses peer properties from the given manufacturer data byte array.
+     * @param manufacturerData The manufacturer data.
+     * @param serviceUuid The service UUID. Will return peer properties, if and only if this UUID
+     *                    matches the one provided in manufacturer data. If this is null, no
+     *                    comparison is made and all UUIDs are accepted.
+     * @return The peer properties or null in case of a failure or UUID mismatch.
+     */
+    public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData, UUID serviceUuid) {
+        PeerProperties peerProperties = null;
+        String bluetoothMacAddress = parseBluetoothMacAddressFromManufacturerData(manufacturerData, serviceUuid);
+
+        if (bluetoothMacAddress != null) {
+            peerProperties = new PeerProperties(bluetoothMacAddress);
+        } else {
+            Log.d(TAG, "manufacturerDataToPeerProperties: Failed to parse the Bluetooth MAC address");
         }
 
         return peerProperties;

@@ -88,7 +88,8 @@ public class ConnectionManager
         mMyUuid = myUuid;
         mMyName = myName;
 
-        mSettings = ConnectionManagerSettings.getInstance();
+        mSettings = ConnectionManagerSettings.getInstance(mContext);
+        mSettings.load();
         mSettings.setListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());

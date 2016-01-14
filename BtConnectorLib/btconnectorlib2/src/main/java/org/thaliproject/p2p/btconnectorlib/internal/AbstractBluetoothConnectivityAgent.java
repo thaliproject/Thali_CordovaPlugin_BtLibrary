@@ -47,12 +47,17 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      */
     public String getBluetoothMacAddress() {
         String bluetoothMacAddress = mEmulateMarshmallow ? null : mBluetoothManager.getBluetoothMacAddress();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
-        if (bluetoothMacAddress == null) {
-            bluetoothMacAddress = DiscoveryManagerSettings.getInstance().getBluetoothMacAddress();
+        if (settings != null) {
+            if (bluetoothMacAddress == null) {
+                bluetoothMacAddress = settings.getBluetoothMacAddress();
+            } else {
+                // Store the address just to be on the safe side
+                settings.setBluetoothMacAddress(bluetoothMacAddress);
+            }
         } else {
-            // Store the address just to be on the safe side
-            DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(bluetoothMacAddress);
+            Log.e(TAG, "getBluetoothMacAddress: Failed to get the discovery manager settings instance");
         }
 
         return bluetoothMacAddress;
