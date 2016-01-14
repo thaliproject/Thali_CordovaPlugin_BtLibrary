@@ -54,11 +54,17 @@ class BleAdvertiser extends AdvertiseCallback {
         mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
 
         AdvertiseSettings.Builder builder = new AdvertiseSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
-            builder.setAdvertiseMode(settings.getAdvertiseMode());
-            builder.setTxPowerLevel(settings.getAdvertiseTxPowerLevel());
+            if (settings != null) {
+                builder.setAdvertiseMode(settings.getAdvertiseMode());
+                builder.setTxPowerLevel(settings.getAdvertiseTxPowerLevel());
+            } else {
+                Log.e(TAG, "Failed to get the discovery manager settings instance - using default settings");
+                builder.setAdvertiseMode(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
+                builder.setTxPowerLevel(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
+            }
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleAdvertiser: Failed to apply settings: " + e.getMessage(), e);
         }
@@ -66,9 +72,23 @@ class BleAdvertiser extends AdvertiseCallback {
         setAdvertiseSettings(builder.build());
     }
 
+    /**
+     * Sets the advertise data. Restarts the instance, if it was started/running.
+     * @param advertiseData The advertise data to set.
+     */
     public void setAdvertiseData(AdvertiseData advertiseData) {
         Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
+        boolean wasStarted = isStarted();
+
+        if (wasStarted) {
+            stop();
+        }
+
         mAdvertiseData = advertiseData;
+
+        if (wasStarted) {
+            start();
+        }
     }
 
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
@@ -122,6 +142,7 @@ class BleAdvertiser extends AdvertiseCallback {
     public synchronized void stop() {
         if (mBluetoothLeAdvertiser != null) {
             try {
+                Log.i(TAG, "stop");
                 mBluetoothLeAdvertiser.stopAdvertising(this);
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);

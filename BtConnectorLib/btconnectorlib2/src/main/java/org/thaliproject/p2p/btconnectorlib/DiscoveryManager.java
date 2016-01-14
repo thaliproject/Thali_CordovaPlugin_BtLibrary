@@ -135,7 +135,8 @@ public class DiscoveryManager
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
 
-        mSettings = DiscoveryManagerSettings.getInstance();
+        mSettings = DiscoveryManagerSettings.getInstance(mContext);
+        mSettings.load();
         mSettings.setListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());
@@ -260,8 +261,10 @@ public class DiscoveryManager
 
         mShouldBeRunning = false;
 
+        stopBluetoothDeviceDiscovery();
         stopBlePeerDiscovery();
         stopWifiPeerDiscovery();
+
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
 
@@ -495,9 +498,20 @@ public class DiscoveryManager
 
             if (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE) {
                 // We now have our Bluetooth MAC address, do start peer discovery
+                stopBlePeerDiscovery();
                 start(mMyPeerName);
             }
         }
+    }
+
+    /**
+     * Starts discovering Bluetooth devices to find out their Bluetooth MAC addresses so that we can
+     * provide them to the devices unaware of their own addresses.
+     */
+    @Override
+    public void onProvideBluetoothMacAddressRequest() {
+        Log.d(TAG, "onProvideBluetoothMacAddressRequest");
+        startBluetoothDeviceDiscovery();
     }
 
     /**
@@ -545,6 +559,7 @@ public class DiscoveryManager
     public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
         String bluetoothMacAddress = bluetoothDevice.getAddress();
         Log.i(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
+        startBluetoothDeviceDiscovery();
 
         if (mBlePeerDiscoverer != null) {
             if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(bluetoothMacAddress)) {

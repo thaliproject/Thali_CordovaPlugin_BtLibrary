@@ -64,10 +64,15 @@ class BleScanner extends ScanCallback {
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         ScanSettings.Builder builder = new ScanSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
-            builder.setScanMode(settings.getScanMode());
+            if (settings != null) {
+                builder.setScanMode(settings.getScanMode());
+            } else {
+                Log.e(TAG, "Failed to get the discovery manager settings instance - using default settings");
+                builder.setScanMode(DiscoveryManagerSettings.DEFAULT_SCAN_MODE);
+            }
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleScanner: Failed to apply scan mode setting: " + e.getMessage(), e);
         }
@@ -109,6 +114,7 @@ class BleScanner extends ScanCallback {
     public synchronized void stop() {
         if (mBluetoothLeScanner != null) {
             try {
+                Log.i(TAG, "stop");
                 mBluetoothLeScanner.stopScan(this);
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);

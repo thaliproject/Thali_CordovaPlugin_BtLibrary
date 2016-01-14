@@ -99,7 +99,7 @@ public class BluetoothConnector
         mMyIdentityString = myIdentityString;
         mHandler = new Handler(context.getMainLooper());
 
-        ConnectionManagerSettings settings = ConnectionManagerSettings.getInstance();
+        ConnectionManagerSettings settings = ConnectionManagerSettings.getInstance(context);
         mConnectionTimeoutInMilliseconds = settings.getConnectionTimeout();
         mInsecureRfcommSocketPort = settings.getInsecureRfcommSocketPortNumber();
         mMaxNumberOfOutgoingConnectionAttemptRetries = settings.getMaxNumberOfConnectionAttemptRetries();

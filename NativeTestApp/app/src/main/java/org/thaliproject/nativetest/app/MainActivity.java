@@ -131,6 +131,12 @@ public class MainActivity
     }
 
     @Override
+    public void onStop() {
+        mConnectionEngine.stop();
+        super.onStop();
+    }
+
+    @Override
     public void onDestroy() {
         mConnectionEngine.stop();
         super.onDestroy();

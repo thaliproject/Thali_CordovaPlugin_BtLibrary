@@ -1,15 +1,18 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.content.Context;
+import android.preference.PreferenceManager;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 
 /**
  * Connection manager settings.
  */
-public class ConnectionManagerSettings {
+public class ConnectionManagerSettings extends AbstractSettings {
     public interface Listener {
         void onConnectionManagerSettingsChanged();
     }
@@ -29,10 +32,12 @@ public class ConnectionManagerSettings {
     private int mMaxNumberOfConnectionAttemptRetries = 0;
 
     /**
+     * @param context The application context for the shared preferences.
      * @return The singleton instance of this class.
      */
-    public static ConnectionManagerSettings getInstance() {
+    public static ConnectionManagerSettings getInstance(Context context) {
         if (mInstance == null) {
+            mContext = context;
             mInstance = new ConnectionManagerSettings();
         }
 
@@ -43,6 +48,8 @@ public class ConnectionManagerSettings {
      * Private constructor.
      */
     private ConnectionManagerSettings() {
+        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mSharedPreferencesEditor = mSharedPreferences.edit();
     }
 
     /**
@@ -127,5 +134,9 @@ public class ConnectionManagerSettings {
         if (mListener != null) {
             mListener.onConnectionManagerSettingsChanged();
         }
+    }
+
+    @Override
+    public void load() {
     }
 }

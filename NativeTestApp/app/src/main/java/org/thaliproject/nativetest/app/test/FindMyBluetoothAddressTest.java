@@ -42,7 +42,7 @@ public class FindMyBluetoothAddressTest
             mDiscoveryManager.setEmulateMarshmallow(true);
         }
 
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
         mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
 
         if (mStoredBluetoothMacAddress != null) {
@@ -66,7 +66,7 @@ public class FindMyBluetoothAddressTest
             } else {
                 if (mStoredBluetoothMacAddress != null) {
                     // Restore the Bluetooth MAC address
-                    DiscoveryManagerSettings.getInstance().setBluetoothMacAddress(mStoredBluetoothMacAddress);
+                    DiscoveryManagerSettings.getInstance(null).setBluetoothMacAddress(mStoredBluetoothMacAddress);
                 }
 
                 String missingPermission = mDiscoveryManager.getMissingPermission();
