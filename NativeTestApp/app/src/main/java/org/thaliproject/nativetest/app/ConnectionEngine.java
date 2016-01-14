@@ -3,10 +3,13 @@
  */
 package org.thaliproject.nativetest.app;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.CountDownTimer;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.model.Connection;
@@ -39,6 +42,7 @@ public class ConnectionEngine implements
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
 
     protected Context mContext = null;
+    protected Activity mActivity = null;
     protected Settings mSettings = null;
     protected ConnectionManager mConnectionManager = null;
     protected DiscoveryManager mDiscoveryManager = null;
@@ -49,8 +53,9 @@ public class ConnectionEngine implements
     /**
      * Constructor.
      */
-    public ConnectionEngine(Context context) {
+    public ConnectionEngine(Context context, Activity activity) {
         mContext = context;
+        mActivity = activity;
         mModel = PeerAndConnectionModel.getInstance();
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
         mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
@@ -279,6 +284,20 @@ public class ConnectionEngine implements
         }
 
         MainActivity.updateOptionsMenu();
+    }
+
+    @Override
+    public boolean onPermissionCheckRequired(String permission) {
+        int permissionCheck = PackageManager.PERMISSION_DENIED;
+
+        if (mActivity != null) {
+            permissionCheck = ContextCompat.checkSelfPermission(mActivity, permission);
+            Log.i(TAG, "onPermissionCheckRequired: " + permission + ": " + permissionCheck);
+        } else {
+            Log.e(TAG, "onPermissionCheckRequired: The activity is null");
+        }
+
+        return (permissionCheck == PackageManager.PERMISSION_GRANTED);
     }
 
     @Override

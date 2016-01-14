@@ -69,9 +69,9 @@ public class MainActivity
         mContext = getApplicationContext();
 
         if (mConnectionEngine == null) {
-            mConnectionEngine = new ConnectionEngine(mContext);
+            mConnectionEngine = new ConnectionEngine(mContext, this);
             mConnectionEngine.bindSettings();
-            mTestEngine = new TestEngine(mContext, this);
+            mTestEngine = new TestEngine(mContext, this, this);
         }
 
         // Set up the action bar.

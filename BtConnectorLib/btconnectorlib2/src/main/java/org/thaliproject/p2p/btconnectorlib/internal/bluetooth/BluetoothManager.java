@@ -11,8 +11,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.util.ArrayList;
 
 /**
@@ -152,7 +152,7 @@ public class BluetoothManager {
     public String getBluetoothMacAddress() {
         String bluetoothMacAddress = null;
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1 && mBluetoothAdapter != null) {
+        if (!CommonUtils.isMarshmallowOrHigher() && mBluetoothAdapter != null) {
             bluetoothMacAddress = mBluetoothAdapter.getAddress();
         } else {
             Log.i(TAG, "getBluetoothMacAddress: Cannot retrieve our own Bluetooth MAC address from the Bluetooth adapter when running on Marshmallow (6.x) or higher Android version");

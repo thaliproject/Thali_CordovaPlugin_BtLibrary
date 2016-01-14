@@ -3,6 +3,7 @@
  */
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
@@ -13,6 +14,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
@@ -54,6 +56,18 @@ public class DiscoveryManager
     }
 
     public interface DiscoveryManagerListener {
+        /**
+         * Called when a permission check for a certain functionality is needed. The activity
+         * utilizing this class then needs to perform the check and return true, if allowed.
+         *
+         * Note: The permission check is only needed if ran on Marshmallow (Android version 6.x)
+         * or higher.
+         *
+         * @param permission The permission to check.
+         * @return True, if permission is granted. False, if not.
+         */
+        boolean onPermissionCheckRequired(String permission);
+
         /**
          * Called when the state of this instance is changed.
          * @param state The new state.
@@ -536,22 +550,33 @@ public class DiscoveryManager
      */
     private synchronized boolean startBlePeerDiscovery() {
         boolean started = false;
+        boolean permissionsGranted = false;
 
-        if (mBluetoothManager.bind(this)) {
-            if (mBlePeerDiscoverer == null) {
-                if (mBleServiceUuid != null) {
-                    mBlePeerDiscoverer = new BlePeerDiscoverer(
-                            this, mBluetoothManager.getBluetoothAdapter(),
-                            mMyPeerName, mBleServiceUuid, getBluetoothMacAddress());
+        if (CommonUtils.isMarshmallowOrHigher()) {
+            permissionsGranted = mListener.onPermissionCheckRequired(Manifest.permission.ACCESS_COARSE_LOCATION);
+        } else {
+            permissionsGranted = true;
+        }
 
-                    started = mBlePeerDiscoverer.start();
+        if (permissionsGranted) {
+            if (mBluetoothManager.bind(this)) {
+                if (mBlePeerDiscoverer == null) {
+                    if (mBleServiceUuid != null) {
+                        mBlePeerDiscoverer = new BlePeerDiscoverer(
+                                this, mBluetoothManager.getBluetoothAdapter(),
+                                mMyPeerName, mBleServiceUuid, getBluetoothMacAddress());
+
+                        started = mBlePeerDiscoverer.start();
+                    } else {
+                        Log.e(TAG, "startBlePeerDiscovery: No BLE service UUID");
+                    }
                 } else {
-                    Log.e(TAG, "startBlePeerDiscovery: No BLE service UUID");
+                    Log.d(TAG, "startBlePeerDiscovery: Already running");
+                    started = true;
                 }
-            } else {
-                Log.d(TAG, "startBlePeerDiscovery: Already running");
-                started = true;
             }
+        } else {
+            Log.e(TAG, "startBlePeerDiscovery: Permission denied");
         }
 
         if (started) {

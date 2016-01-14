@@ -75,6 +75,12 @@ public class FindMyBluetoothAddressTest
     }
 
     @Override
+    public boolean onPermissionCheckRequired(String permission) {
+        // Not used
+        return false;
+    }
+
+    @Override
     public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
         // Not used
     }
