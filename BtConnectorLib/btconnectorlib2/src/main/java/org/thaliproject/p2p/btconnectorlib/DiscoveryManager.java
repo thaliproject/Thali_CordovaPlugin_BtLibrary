@@ -261,9 +261,9 @@ public class DiscoveryManager
 
         mShouldBeRunning = false;
 
-        stopBluetoothDeviceDiscovery();
         stopBlePeerDiscovery();
         stopWifiPeerDiscovery();
+        stopBluetoothDeviceDiscovery();
 
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
