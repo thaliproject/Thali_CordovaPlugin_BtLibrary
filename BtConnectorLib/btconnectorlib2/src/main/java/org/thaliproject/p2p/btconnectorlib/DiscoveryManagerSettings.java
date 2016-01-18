@@ -17,9 +17,31 @@ import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
  */
 public class DiscoveryManagerSettings extends AbstractSettings {
     public interface Listener {
+        /**
+         * Called when the desired discovery mode is changed.
+         * @param discoveryMode The new discovery mode.
+         * @param forceRestart If true, should restart.
+         * @return True, if the mode was set successfully. False otherwise.
+         */
         boolean onDiscoveryModeChanged(DiscoveryMode discoveryMode, boolean forceRestart);
+
+        /**
+         * Called when the peer expiration time is changed.
+         * @param peerExpirationInMilliseconds The new peer expiration time in milliseconds.
+         */
         void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
+
+        /**
+         * Called when the advertise settings are changed.
+         * @param advertiseMode The new advertise mode.
+         * @param advertiseTxPowerLevel The new advertise TX power level.
+         */
         void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel);
+
+        /**
+         * Called when the scan mode is changed.
+         * @param scanMode The new scan mode.
+         */
         void onScanModeSettingChanged(int scanMode);
     }
 
@@ -28,8 +50,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
-    public static int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
-    public static int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = 60;
+    public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
+    public static final long DEFAULT_BLUETOOTH_DEVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS = 15000;
+    public static final long DEFAULT_ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS = 15000;
+    public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = 60;
 
     // Keys for shared preferences
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";

@@ -101,6 +101,11 @@ public class FindMyBluetoothAddressTest
     }
 
     @Override
+    public void onProvideBluetoothMacAddressRequest(String requestId) {
+        // TODO
+    }
+
+    @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         // Not used
     }
