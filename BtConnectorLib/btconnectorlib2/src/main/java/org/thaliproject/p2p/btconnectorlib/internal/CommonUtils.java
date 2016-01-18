@@ -23,6 +23,14 @@ public class CommonUtils {
     private static final String JSON_ID_PEER_BLUETOOTH_ADDRESS = "ra";
 
     /**
+     * @return True, if we are running on Lollipop (Android version 5.x, API level 21) or higher.
+     * False otehrwise.
+     */
+    public static boolean isLollipopOrHigher() {
+        return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP);
+    }
+
+    /**
      * @return True, if we are running on Marshmallow (Android version 6.x) or higher. False otehrwise.
      */
     public static boolean isMarshmallowOrHigher() {

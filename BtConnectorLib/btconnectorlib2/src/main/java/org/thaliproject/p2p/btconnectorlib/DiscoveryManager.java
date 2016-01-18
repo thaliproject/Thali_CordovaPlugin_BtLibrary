@@ -153,8 +153,8 @@ public class DiscoveryManager
     /**
      * @return True, if Bluetooth LE advertising is supported. False otherwise.
      */
-    public boolean isBleAdvertisingSupported() {
-        return mBluetoothManager.isBleSupported();
+    public boolean isBleMultipleAdvertisementSupported() {
+        return mBluetoothManager.isBleMultipleAdvertisementSupported();
     }
 
     /**
@@ -406,12 +406,12 @@ public class DiscoveryManager
         }
 
         if (!wasRunning || forceRestart) {
-            boolean isBleSupported = isBleAdvertisingSupported();
+            boolean isBleMultipleAdvertisementSupported = isBleMultipleAdvertisementSupported();
             boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
 
             switch (discoveryMode) {
                 case BLE:
-                    if (isBleSupported) {
+                    if (isBleMultipleAdvertisementSupported) {
                         discoveryModeSet = true;
                     }
 
@@ -425,7 +425,7 @@ public class DiscoveryManager
                     break;
 
                 case BLE_AND_WIFI:
-                    if (isBleSupported && isWifiSupported) {
+                    if (isBleMultipleAdvertisementSupported && isWifiSupported) {
                         discoveryModeSet = true;
                     }
 
@@ -434,7 +434,8 @@ public class DiscoveryManager
 
             if (!discoveryModeSet) {
                 Log.w(TAG, "onDiscoveryModeChanged: Failed to set discovery mode to " + discoveryMode
-                        + ", BLE supported: " + isBleSupported + ", Wi-Fi supported: " + isWifiSupported);
+                        + ", BLE advertisement supported: " + isBleMultipleAdvertisementSupported
+                        + ", Wi-Fi supported: " + isWifiSupported);
             } else {
                 Log.i(TAG, "onDiscoveryModeChanged: Mode set to " + discoveryMode);
             }
@@ -707,14 +708,18 @@ public class DiscoveryManager
 
             stopBluetoothDeviceDiscovery();
 
-            Log.i(TAG, "onBluetoothDeviceDiscovered: The Bluetooth MAC address of the device who made the request is \""
-                    + bluetoothMacAddress + "\", starting broadcasting the address via BLE...");
+            if (isBleMultipleAdvertisementSupported()) {
+                Log.i(TAG, "onBluetoothDeviceDiscovered: The Bluetooth MAC address of the device who made the request is \""
+                        + bluetoothMacAddress + "\", starting broadcasting the address via BLE...");
 
-            if (startBlePeerDiscovery() && mCurrentProvideBluetoothMacAddressRequestId != null) {
-                if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(
-                        mCurrentProvideBluetoothMacAddressRequestId, bluetoothMacAddress)) {
-                    Log.e(TAG, "onBluetoothDeviceDiscovered: Failed to start advertising the Bluetooth MAC address of the discovered device");
+                if (startBlePeerDiscovery() && mCurrentProvideBluetoothMacAddressRequestId != null) {
+                    if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(
+                            mCurrentProvideBluetoothMacAddressRequestId, bluetoothMacAddress)) {
+                        Log.e(TAG, "onBluetoothDeviceDiscovered: Failed to start advertising the Bluetooth MAC address of the discovered device");
+                    }
                 }
+            } else {
+                Log.e(TAG, "onBluetoothDeviceDiscovered: Cannot start broadcasting the discovered address, since the Bluetooth LE advertisements are not supported on this device");
             }
         }
     }
