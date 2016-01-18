@@ -62,8 +62,6 @@ class PeerAdvertisementFactory {
             // Insert the Bluetooth address after the UUID (six bytes)
             int[] bluetoothAddressAsInt8Array = BlePeerDiscoveryUtils.bluetoothAddressToInt8Array(bluetoothAddress);
 
-            Log.i(TAG, BlePeerDiscoveryUtils.int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array));
-
             if (bluetoothAddressAsInt8Array != null
                     && bluetoothAddressAsInt8Array.length == BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
                 for (int bluetoothAddressByte : bluetoothAddressAsInt8Array) {
