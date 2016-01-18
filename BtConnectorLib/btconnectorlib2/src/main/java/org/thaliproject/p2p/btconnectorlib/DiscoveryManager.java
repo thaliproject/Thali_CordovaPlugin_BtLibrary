@@ -19,13 +19,9 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDis
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
-import java.sql.Timestamp;
+import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Iterator;
 import java.util.UUID;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * The main interface for managing peer discovery.
@@ -37,12 +33,14 @@ public class DiscoveryManager
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
             BlePeerDiscoverer.BlePeerDiscoveryListener,
             BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener,
+            PeerModel.Listener,
             DiscoveryManagerSettings.Listener {
 
     public enum DiscoveryManagerState {
         NOT_STARTED,
         WAITING_FOR_SERVICES_TO_BE_ENABLED, // When the chosen peer discovery method is disabled and waiting for it to be enabled to start
-        WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE, // When we don't know our own Bluetooth MAC address
+        WAITING_FOR_BLUETOOTH_MAC_ADDRESS, // When we don't know our own Bluetooth MAC address
+        PROVIDING_BLUETOOTH_MAC_ADDRESS, // When helping a peer by providing it its Bluetooth MAC address
         RUNNING_BLE,
         RUNNING_WIFI,
         RUNNING_BLE_AND_WIFI
@@ -81,6 +79,12 @@ public class DiscoveryManager
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
 
         /**
+         * Called when we discovery a device, which needs to find out its own Bluetooth MAC address.
+         * @param requestId The request ID associated with the device.
+         */
+        void onProvideBluetoothMacAddressRequest(String requestId);
+
+        /**
          * Called when a new peer is discovered.
          * @param peerProperties The properties of the new peer.
          */
@@ -107,14 +111,15 @@ public class DiscoveryManager
     private final UUID mBleServiceUuid;
     private final String mServiceType;
     private final Handler mHandler;
-    private final HashMap<Timestamp, PeerProperties> mDiscoveredPeers = new HashMap<>();
     private WifiDirectManager mWifiDirectManager = null;
     private BlePeerDiscoverer mBlePeerDiscoverer = null;
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
     private BluetoothDeviceDiscoverer mBluetoothDeviceDiscoverer = null;
-    private CountDownTimer mCheckExpiredPeersTimer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryManagerSettings mSettings = null;
+    private PeerModel mPeerModel = null;
+    private CountDownTimer mStopProvideBluetoothMacAddressModeTimer = null;
+    private String mCurrentProvideBluetoothMacAddressRequestId = null;
     private String mMissingPermission = null;
     private boolean mShouldBeRunning = false;
 
@@ -138,6 +143,8 @@ public class DiscoveryManager
         mSettings = DiscoveryManagerSettings.getInstance(mContext);
         mSettings.load();
         mSettings.setListener(this);
+
+        mPeerModel = new PeerModel(this, mSettings);
 
         mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
@@ -170,7 +177,8 @@ public class DiscoveryManager
      * @return True, if running regardless of the mode. False otherwise.
      */
     public boolean isRunning() {
-        return (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE
+        return (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS
+                || mState == DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS
                 || mState == DiscoveryManagerState.RUNNING_BLE
                 || mState == DiscoveryManagerState.RUNNING_WIFI
                 || mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
@@ -199,6 +207,7 @@ public class DiscoveryManager
             if (mBluetoothManager.isBluetoothEnabled()
                     && (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
                 // Try to start BLE based discovery
+                stopBluetoothDeviceDiscovery();
                 bleDiscoveryStarted = startBlePeerDiscovery();
             }
 
@@ -225,7 +234,7 @@ public class DiscoveryManager
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
                     if (getBluetoothMacAddress() == null) {
-                        setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE);
+                        setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
                     } else {
                         setState(DiscoveryManagerState.RUNNING_BLE);
                     }
@@ -261,21 +270,96 @@ public class DiscoveryManager
 
         mShouldBeRunning = false;
 
-        stopBlePeerDiscovery();
-        stopWifiPeerDiscovery();
+        if (mStopProvideBluetoothMacAddressModeTimer != null) {
+            mStopProvideBluetoothMacAddressModeTimer.cancel();
+            mStopProvideBluetoothMacAddressModeTimer = null;
+        }
+
+        stopBlePeerDiscovery(false);
+        stopWifiPeerDiscovery(false);
         stopBluetoothDeviceDiscovery();
 
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
 
-        if (mCheckExpiredPeersTimer != null) {
-            mCheckExpiredPeersTimer.cancel();
-            mCheckExpiredPeersTimer = null;
-        }
-
-        mDiscoveredPeers.clear();
+        mPeerModel.clear();
 
         setState(DiscoveryManagerState.NOT_STARTED);
+    }
+
+    /**
+     * Starts the "Provide Bluetooth MAC address" mode for certain period of time.
+     * @param requestId The request ID to identify the device in need of assistance. This ID should
+     *                  have been provided by the said device via onProvideBluetoothMacAddressRequest
+     *                  callback.
+     * @return True, if the "Provide Bluetooth MAC address" mode was started successfully. False otherwise.
+     */
+    public synchronized boolean startProvideBluetoothMacAddressMode(String requestId) {
+        Log.d(TAG, "startProvideBluetoothMacAddressMode: " + requestId);
+        mCurrentProvideBluetoothMacAddressRequestId = requestId;
+        boolean wasStarted = false;
+
+        if (mCurrentProvideBluetoothMacAddressRequestId != null
+                && mCurrentProvideBluetoothMacAddressRequestId.length() > 0) {
+            if (startBluetoothDeviceDiscovery()) {
+                setState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
+
+                if (mStopProvideBluetoothMacAddressModeTimer != null) {
+                    mStopProvideBluetoothMacAddressModeTimer.cancel();
+                    mStopProvideBluetoothMacAddressModeTimer = null;
+                }
+
+                mStopProvideBluetoothMacAddressModeTimer = new CountDownTimer(
+                        DiscoveryManagerSettings.DEFAULT_BLUETOOTH_DEVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS,
+                        DiscoveryManagerSettings.DEFAULT_BLUETOOTH_DEVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS) {
+                    @Override
+                    public void onTick(long l) {
+                        // Not used
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        this.cancel();
+                        mStopProvideBluetoothMacAddressModeTimer = null;
+                        stopProvideBluetoothMacAddressMode();
+                    }
+                };
+
+                mStopProvideBluetoothMacAddressModeTimer.start();
+
+                wasStarted = true;
+            } else {
+                Log.e(TAG, "startProvideBluetoothMacAddressMode: Failed to start Bluetooth device discovery");
+                mCurrentProvideBluetoothMacAddressRequestId = null;
+
+                if (mShouldBeRunning) {
+                    start(mMyPeerName);
+                }
+            }
+        }
+
+        return wasStarted;
+    }
+
+    /**
+     * Stops the "Provide Bluetooth MAC address" mode. Switches back to the normal mode, if was
+     * running when switched to "Provide Bluetooth MAC address" mode.
+     */
+    public synchronized void stopProvideBluetoothMacAddressMode() {
+        if (mStopProvideBluetoothMacAddressModeTimer != null) {
+            mStopProvideBluetoothMacAddressModeTimer.cancel();
+            mStopProvideBluetoothMacAddressModeTimer = null;
+        }
+
+        mCurrentProvideBluetoothMacAddressRequestId = null;
+
+        if (stopBluetoothDeviceDiscovery()) {
+            if (mShouldBeRunning) {
+                start(mMyPeerName);
+            } else {
+                setState(DiscoveryManagerState.NOT_STARTED);
+            }
+        }
     }
 
     /**
@@ -288,21 +372,6 @@ public class DiscoveryManager
         discoverableIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, durationInSeconds);
         mContext.startActivity(discoverableIntent);
-    }
-
-    public boolean startBluetoothDeviceDiscovery() {
-        if (mBluetoothDeviceDiscoverer == null) {
-            mBluetoothDeviceDiscoverer = new BluetoothDeviceDiscoverer(mContext, mBluetoothManager.getBluetoothAdapter(), this);
-        }
-
-        return (mBluetoothDeviceDiscoverer.isRunning() || mBluetoothDeviceDiscoverer.start());
-    }
-
-    public void stopBluetoothDeviceDiscovery() {
-        if (mBluetoothDeviceDiscoverer != null) {
-            mBluetoothDeviceDiscoverer.stop();
-            mBluetoothDeviceDiscoverer = null;
-        }
     }
 
     /**
@@ -318,9 +387,15 @@ public class DiscoveryManager
      */
     public void addOrUpdateDiscoveredPeer(PeerProperties peerProperties) {
         Log.i(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
-        modifyListOfDiscoveredPeers(peerProperties, true);
+        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true);
     }
 
+    /**
+     * From DiscoveryManagerSettings.Listener
+     * @param discoveryMode The new discovery mode.
+     * @param forceRestart If true, should restart.
+     * @return True, if the mode was set successfully. False otherwise.
+     */
     @Override
     public boolean onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean forceRestart) {
         boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
@@ -372,14 +447,20 @@ public class DiscoveryManager
         return discoveryModeSet;
     }
 
+    /**
+     * From DiscoveryManagerSettings.Listener
+     * @param peerExpirationInMilliseconds The new peer expiration time in milliseconds.
+     */
     @Override
     public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
-        if (mCheckExpiredPeersTimer != null) {
-            // Recreate the timer
-            createCheckPeerExpirationTimer();
-        }
+        mPeerModel.updatePeerExpirationTime(peerExpirationInMilliseconds);
     }
 
+    /**
+     * From DiscoveryManagerSettings.Listener
+     * @param advertiseMode The new advertise mode.
+     * @param advertiseTxPowerLevel The new advertise TX power level.
+     */
     @Override
     public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
         if (mBlePeerDiscoverer != null) {
@@ -387,6 +468,10 @@ public class DiscoveryManager
         }
     }
 
+    /**
+     * From DiscoveryManagerSettings.Listener
+     * @param scanMode The new scan mode.
+     */
     @Override
     public void onScanModeSettingChanged(int scanMode) {
         if (mBlePeerDiscoverer != null) {
@@ -395,6 +480,8 @@ public class DiscoveryManager
     }
 
     /**
+     * From BluetoothManager.BluetoothManagerListener
+     *
      * Stops/restarts the BLE based peer discovery depending on the given mode.
      * @param mode The new mode.
      */
@@ -408,13 +495,13 @@ public class DiscoveryManager
             if (mode == BluetoothAdapter.SCAN_MODE_NONE) {
                 if (mState != DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                     Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing BLE based peer discovery...");
-                    stopBlePeerDiscovery();
+                    stopBlePeerDiscovery(false);
 
                     if (discoveryMode == DiscoveryMode.BLE ||
                             (discoveryMode == DiscoveryMode.BLE_AND_WIFI &&
                                     !mWifiDirectManager.isWifiEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                         setState(DiscoveryManagerState.RUNNING_WIFI);
                     }
                 }
@@ -428,6 +515,8 @@ public class DiscoveryManager
     }
 
     /**
+     * From WifiDirectManager.WifiStateListener
+     *
      * Stops/restarts the Wi-Fi Direct based peer discovery depending on the given state.
      * @param state The new state.
      */
@@ -441,13 +530,13 @@ public class DiscoveryManager
             if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
                 if (mState != DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                     Log.w(TAG, "onWifiStateChanged: Wi-Fi disabled, pausing Wi-Fi Direct based peer discovery...");
-                    stopWifiPeerDiscovery();
+                    stopWifiPeerDiscovery(false);
 
                     if (discoveryMode == DiscoveryMode.WIFI
                             || (discoveryMode == DiscoveryMode.BLE_AND_WIFI
                                 && !mBluetoothManager.isBluetoothEnabled())) {
                         setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                    } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                         setState(DiscoveryManagerState.RUNNING_BLE);
                     }
                 }
@@ -461,6 +550,8 @@ public class DiscoveryManager
     }
 
     /**
+     * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
+     *
      * Does nothing but logs the event.
      * @param isStarted If true, the discovery was started. If false, it was stopped.
      */
@@ -470,6 +561,8 @@ public class DiscoveryManager
     }
 
     /**
+     * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
      * Does nothing but logs the event.
      * @param isStarted If true, the discovery was started. If false, it was stopped.
      */
@@ -479,6 +572,49 @@ public class DiscoveryManager
     }
 
     /**
+     * From both WifiPeerDiscoverer.WifiPeerDiscoveryListener and BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
+     * Adds or updates the discovered peer.
+     * @param peerProperties The properties of the discovered peer.
+     */
+    @Override
+    public void onPeerDiscovered(PeerProperties peerProperties) {
+        //Log.d(TAG, "onPeerDiscovered: " + peerProperties.toString());
+        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true); // Will notify us, if added/updated
+    }
+
+    /**
+     * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
+     *
+     * Updates the discovered peers, which match the ones on the given list.
+     * @param p2pDeviceList A list containing the discovered P2P devices.
+     */
+    @Override
+    public void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
+        if (p2pDeviceList != null && p2pDeviceList.size() > 0) {
+            final Object[] p2pDeviceArray = p2pDeviceList.toArray();
+            WifiP2pDevice wifiP2pDevice = null;
+
+            for (int i = 0; i < p2pDeviceArray.length; ++i) {
+                wifiP2pDevice = (WifiP2pDevice)p2pDeviceArray[i];
+
+                if (wifiP2pDevice != null) {
+                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (i + 1) + ": "
+                            + wifiP2pDevice.deviceName + " " + wifiP2pDevice.deviceAddress);
+
+                    PeerProperties peerProperties = mPeerModel.findDiscoveredPeer(wifiP2pDevice.deviceAddress);
+
+                    if (peerProperties != null) {
+                        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
      * Stores and forwards the resolved Bluetooth MAC address to the listener.
      * @param bluetoothMacAddress Our Bluetooth MAC address.
      */
@@ -496,75 +632,144 @@ public class DiscoveryManager
                 }
             });
 
-            if (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE) {
+            if (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS) {
                 // We now have our Bluetooth MAC address, do start peer discovery
-                stopBlePeerDiscovery();
+                stopBlePeerDiscovery(false);
                 start(mMyPeerName);
             }
         }
     }
 
     /**
+     * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
+     * Forwards the event to the listener.
+     *
      * Starts discovering Bluetooth devices to find out their Bluetooth MAC addresses so that we can
      * provide them to the devices unaware of their own addresses.
      */
     @Override
-    public void onProvideBluetoothMacAddressRequest() {
-        Log.d(TAG, "onProvideBluetoothMacAddressRequest");
-        startBluetoothDeviceDiscovery();
+    public void onProvideBluetoothMacAddressRequest(final String requestId) {
+        if (mCurrentProvideBluetoothMacAddressRequestId == null) {
+            Log.d(TAG, "onProvideBluetoothMacAddressRequest: " + requestId);
+
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onProvideBluetoothMacAddressRequest(requestId);
+                }
+            });
+
+            startProvideBluetoothMacAddressMode(requestId);
+        } else if (!mCurrentProvideBluetoothMacAddressRequestId.equals(requestId)) {
+            Log.d(TAG, "onProvideBluetoothMacAddressRequest: Received request ID \""
+                    + requestId + "\", but already servicing \""
+                    + mCurrentProvideBluetoothMacAddressRequestId + "\"");
+        }
     }
 
     /**
-     * Updates the discovered peers, which match the ones on the given list.
-     * @param p2pDeviceList A list containing the discovered P2P devices.
+     * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     * @param requestId The request ID associated with the device in need of assistance.
      */
     @Override
-    public void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
-        if (p2pDeviceList != null && p2pDeviceList.size() > 0) {
-            final Object[] p2pDeviceArray = p2pDeviceList.toArray();
-            WifiP2pDevice wifiP2pDevice = null;
+    public void onDoneBroadcastingBluetoothMacAddress(String requestId) {
+        Log.d(TAG, "onDoneBroadcastingBluetoothMacAddress: " + requestId);
+        mCurrentProvideBluetoothMacAddressRequestId = null;
 
-            for (int i = 0; i < p2pDeviceArray.length; ++i) {
-                wifiP2pDevice = (WifiP2pDevice)p2pDeviceArray[i];
+        if (mShouldBeRunning) {
+            start(mMyPeerName);
+        } else {
+            setState(DiscoveryManagerState.NOT_STARTED);
+        }
+    }
 
-                if (wifiP2pDevice != null) {
-                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (i + 1) + ": "
-                            + wifiP2pDevice.deviceName + " " + wifiP2pDevice.deviceAddress);
+    /**
+     * From BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener
+     *
+     * If the current request ID is a match, starts advertising the Bluetooth MAC address of the
+     * discovered device.
+     * @param bluetoothDevice The Bluetooth device.
+     */
+    @Override
+    public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
+        String bluetoothMacAddress = bluetoothDevice.getAddress();
+        Log.d(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
 
-                    PeerProperties peerProperties = findDiscoveredPeer(wifiP2pDevice.deviceAddress);
+        boolean isDeviceWhoMadeTheRequest = true; // TODO: Change to false
+        // TODO: Check request ID
 
-                    if (peerProperties != null) {
-                        modifyListOfDiscoveredPeers(peerProperties, true);
-                    }
+        if (isDeviceWhoMadeTheRequest) {
+            if (mStopProvideBluetoothMacAddressModeTimer != null) {
+                mStopProvideBluetoothMacAddressModeTimer.cancel();
+                mStopProvideBluetoothMacAddressModeTimer = null;
+            }
+
+            stopBluetoothDeviceDiscovery();
+
+            Log.i(TAG, "onBluetoothDeviceDiscovered: The Bluetooth MAC address of the device who made the request is \""
+                    + bluetoothMacAddress + "\", starting broadcasting the address via BLE...");
+
+            if (startBlePeerDiscovery() && mCurrentProvideBluetoothMacAddressRequestId != null) {
+                if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(
+                        mCurrentProvideBluetoothMacAddressRequestId, bluetoothMacAddress)) {
+                    Log.e(TAG, "onBluetoothDeviceDiscovered: Failed to start advertising the Bluetooth MAC address of the discovered device");
                 }
             }
         }
     }
 
     /**
-     * Adds or updates the discovered peer.
-     * @param peerProperties The properties of the discovered peer.
+     * From PeerModel.Listener
+     *
+     * Forwards the event to the listener.
+     * @param peerProperties The properties of the added peer.
      */
     @Override
-    public void onPeerDiscovered(PeerProperties peerProperties) {
-        Log.i(TAG, "onPeerDiscovered: " + peerProperties.toString());
-        modifyListOfDiscoveredPeers(peerProperties, true); // Will notify the listener
+    public void onPeerAdded(final PeerProperties peerProperties) {
+        if (mListener != null) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onPeerDiscovered(peerProperties);
+                }
+            });
+        }
     }
 
     /**
-     * Starts advertising the Bluetooth MAC address of the discovered device.
-     * @param bluetoothDevice The Bluetooth device.
+     * From PeerModel.Listener
+     *
+     * Forwards the event to the listener.
+     * @param peerProperties The properties of the updated peer.
      */
     @Override
-    public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
-        String bluetoothMacAddress = bluetoothDevice.getAddress();
-        Log.i(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
-        startBluetoothDeviceDiscovery();
+    public void onPeerUpdated(final PeerProperties peerProperties) {
+        if (mListener != null) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onPeerUpdated(peerProperties);
+                }
+            });
+        }
+    }
 
-        if (mBlePeerDiscoverer != null) {
-            if (!mBlePeerDiscoverer.startAdvertisingBluetoothAddressOfDiscoveredDevice(bluetoothMacAddress)) {
-                Log.e(TAG, "onBluetoothDeviceDiscovered: Failed to start advertising the Bluetooth MAC address of the discovered device");
-            }
+    /**
+     * From PeerModel.Listener
+     *
+     * Forwards the event to the listener.
+     * @param peerProperties The properties of the expired and removed peer.
+     */
+    @Override
+    public void onPeerExpiredAndRemoved(final PeerProperties peerProperties) {
+        if (mListener != null) {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onPeerLost(peerProperties);
+                }
+            });
         }
     }
 
@@ -614,12 +819,21 @@ public class DiscoveryManager
 
     /**
      * Stops the BLE based peer discovery.
+     * @param updateState If true, will update the state.
      */
-    private synchronized void stopBlePeerDiscovery() {
+    private synchronized void stopBlePeerDiscovery(boolean updateState) {
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.stop();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscovery: Stopped");
+
+            if (updateState) {
+                if (mState == DiscoveryManagerState.RUNNING_BLE) {
+                    setState(DiscoveryManagerState.NOT_STARTED);
+                } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
+                    setState(DiscoveryManagerState.RUNNING_WIFI);
+                }
+            }
         }
     }
 
@@ -659,13 +873,71 @@ public class DiscoveryManager
 
     /**
      * Stops the Wi-Fi Direct based peer discovery.
+     * @param updateState If true, will update the state.
      */
-    private synchronized void stopWifiPeerDiscovery() {
+    private synchronized void stopWifiPeerDiscovery(boolean updateState) {
         if (mWifiPeerDiscoverer != null) {
             mWifiPeerDiscoverer.stop();
             mWifiPeerDiscoverer = null;
             Log.i(TAG, "stopWifiPeerDiscovery: Stopped");
+
+            if (updateState) {
+                if (mState == DiscoveryManagerState.RUNNING_WIFI) {
+                    setState(DiscoveryManagerState.NOT_STARTED);
+                } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
+                    setState(DiscoveryManagerState.RUNNING_BLE);
+                }
+            }
         }
+    }
+
+    /**
+     * Starts Bluetooth device discovery.
+     *
+     * Note that Bluetooth LE scanner cannot be running, when doing Bluetooth device discovery.
+     * Otherwise, the state of the Bluetooth stack on the device may become invalid. Observed
+     * consequences on Lollipop (Android version 5.x) include BLE scanning not turning on
+     * ("app cannot be registered" error state) and finally the application utilizing this library
+     * won't start at all (you get only a blank screen). To prevent this, calling this method will
+     * always stop BLE discovery.
+     *
+     * @return True, if started successfully. False otherwise.
+     */
+    private synchronized boolean startBluetoothDeviceDiscovery() {
+        Log.d(TAG, "startBluetoothDeviceDiscovery");
+        stopBlePeerDiscovery(false);
+
+        if (mBluetoothDeviceDiscoverer == null) {
+            mBluetoothDeviceDiscoverer =
+                    new BluetoothDeviceDiscoverer(mContext, mBluetoothManager.getBluetoothAdapter(), this);
+        }
+
+        boolean isStarted = false;
+
+        if (mBlePeerDiscoverer == null) {
+            isStarted = (mBluetoothDeviceDiscoverer.isRunning() || mBluetoothDeviceDiscoverer.start());
+        } else {
+            Log.e(TAG, "startBluetoothDeviceDiscovery: Bluetooth LE peer discoverer cannot be running, when doing Bluetooth device discovery");
+        }
+
+        return isStarted;
+    }
+
+    /**
+     * Stops the Bluetooth device discovery.
+     * @return True, if stopped. False otherwise.
+     */
+    private synchronized boolean stopBluetoothDeviceDiscovery() {
+        boolean wasStopped = false;
+
+        if (mBluetoothDeviceDiscoverer != null) {
+            mBluetoothDeviceDiscoverer.stop();
+            mBluetoothDeviceDiscoverer = null;
+            Log.d(TAG, "stopBluetoothDeviceDiscovery: Stopped");
+            wasStopped = true;
+        }
+
+        return wasStopped;
     }
 
     /**
@@ -685,193 +957,6 @@ public class DiscoveryManager
                     }
                 });
             }
-        }
-    }
-
-    /**
-     * Tries to find a discovered peer with the given device address.
-     * @param deviceAddress The device address of a peer to find.
-     * @return A peer properties instance if found, null if not.
-     */
-    private synchronized PeerProperties findDiscoveredPeer(final String deviceAddress) {
-        Iterator iterator = mDiscoveredPeers.entrySet().iterator();
-        PeerProperties peerProperties = null;
-
-        while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry) iterator.next();
-            PeerProperties existingPeerProperties = (PeerProperties) entry.getValue();
-
-            if (existingPeerProperties != null
-                    && existingPeerProperties.getDeviceAddress() != null
-                    && existingPeerProperties.getDeviceAddress().equalsIgnoreCase(deviceAddress)) {
-                peerProperties = existingPeerProperties;
-                break;
-            }
-        }
-
-        return peerProperties;
-    }
-
-    /**
-     * Tries to modify the list of discovered peers.
-     * @param peerProperties The properties of the peer to modify (add/update or remove).
-     * @parma addOrUpdate If true, will add/update. If false, will remove.
-     * @return True, if success. False otherwise.
-     */
-    private synchronized boolean modifyListOfDiscoveredPeers(PeerProperties peerProperties, boolean addOrUpdate) {
-        Log.v(TAG, "modifyListOfDiscoveredPeers: " + peerProperties.toString() + ", add/update: " + addOrUpdate);
-        Iterator iterator = mDiscoveredPeers.entrySet().iterator();
-        PeerProperties oldPeerProperties = null;
-
-        // Always remove first
-        while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry) iterator.next();
-
-            if (entry != null) {
-                PeerProperties existingPeerProperties = (PeerProperties) entry.getValue();
-
-                if (existingPeerProperties.equals(peerProperties)) {
-                    oldPeerProperties = existingPeerProperties;
-                    iterator.remove();
-                    break;
-                }
-            }
-        }
-
-        boolean success = false;
-
-        if (addOrUpdate) {
-            if (oldPeerProperties != null) {
-                // This one was already in the list (same ID)
-                // Make sure we don't lose any data when updating
-                PeerProperties.checkNewPeerForMissingInformation(oldPeerProperties, peerProperties);
-
-                if (peerProperties.hasMoreInformation(oldPeerProperties)) {
-                    // The new discovery result has more information than the old one
-                    if (mListener != null) {
-                        final PeerProperties updatedPeerProperties = peerProperties;
-
-                        mHandler.post(new Runnable() {
-                            @Override
-                            public void run() {
-                                mListener.onPeerUpdated(updatedPeerProperties);
-                            }
-                        });
-                    }
-                }
-
-                Log.d(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
-                        + peerProperties.toString());
-            } else {
-                // The given peer was not in the list before, hence it is a new one
-                Log.d(TAG, "modifyListOfDiscoveredPeers: Adding a new peer: " + peerProperties.toString());
-
-                if (mListener != null) {
-                    final PeerProperties tempPeerProperties = peerProperties;
-
-                    mHandler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            mListener.onPeerDiscovered(tempPeerProperties);
-                        }
-                    });
-                }
-            }
-
-            mDiscoveredPeers.put(new Timestamp(new Date().getTime()), peerProperties);
-
-            if (mCheckExpiredPeersTimer == null) {
-                createCheckPeerExpirationTimer();
-                mCheckExpiredPeersTimer.start();
-            }
-
-            success = true;
-        } else if (oldPeerProperties != null) {
-            Log.d(TAG, "modifyListOfDiscoveredPeers: Removed peer " + peerProperties.toString());
-            success = true;
-        }
-
-        return success;
-    }
-
-    /**
-     * Checks the list of peers for expired ones, removes them if found and notifies the listener.
-     */
-    private synchronized void checkListForExpiredPeers() {
-        final Timestamp timestampNow = new Timestamp(new Date().getTime());
-        Iterator iterator = mDiscoveredPeers.entrySet().iterator();
-        CopyOnWriteArrayList<PeerProperties> expiredPeers = new CopyOnWriteArrayList<>();
-
-        // Find and copy expired peers to a separate list
-        while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry)iterator.next();
-            Timestamp entryTimestamp = (Timestamp)entry.getKey();
-            PeerProperties entryPeerProperties = (PeerProperties)entry.getValue();
-
-            //Log.v(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " is now "
-            //        + ((timestampNow.getTime() - entryTimestamp.getTime()) / 1000) + " seconds old");
-
-            if (timestampNow.getTime() - entryTimestamp.getTime() > mSettings.getPeerExpiration()) {
-                Log.d(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " expired");
-                expiredPeers.add(entryPeerProperties);
-            }
-        }
-
-        if (expiredPeers.size() > 0) {
-            // First remove all the expired peers from the list and only then notify the listener
-            for (PeerProperties expiredPeer : expiredPeers) {
-                modifyListOfDiscoveredPeers(expiredPeer, false);
-            }
-
-            for (PeerProperties expiredPeer : expiredPeers) {
-                final PeerProperties finalExpiredPeer = expiredPeer;
-
-                mHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        mListener.onPeerLost(finalExpiredPeer);
-                    }
-                });
-            }
-
-            expiredPeers.clear();
-        }
-    }
-
-    /**
-     * Creates the timer for checking peers expired (not seen for a while).
-     */
-    private synchronized void createCheckPeerExpirationTimer() {
-        if (mCheckExpiredPeersTimer != null) {
-            mCheckExpiredPeersTimer.cancel();
-            mCheckExpiredPeersTimer = null;
-        }
-
-        long peerExpirationInMilliseconds = mSettings.getPeerExpiration();
-
-        if (peerExpirationInMilliseconds > 0) {
-            long timerTimeout = peerExpirationInMilliseconds / 2;
-
-            mCheckExpiredPeersTimer = new CountDownTimer(timerTimeout, timerTimeout) {
-                @Override
-                public void onTick(long l) {
-                    // Not used
-                }
-
-                @Override
-                public void onFinish() {
-                    checkListForExpiredPeers();
-
-                    if (mDiscoveredPeers.size() == 0) {
-                        // No more peers, dispose this timer
-                        this.cancel();
-                        mCheckExpiredPeersTimer = null;
-                    } else {
-                        // Restart the timer
-                        this.start();
-                    }
-                }
-            };
         }
     }
 }

@@ -153,7 +153,7 @@ public class ConnectionEngine implements
      * Starts the Bluetooth device discovery.
      */
     public void startBluetoothDeviceDiscovery() {
-        mDiscoveryManager.startBluetoothDeviceDiscovery();
+        mDiscoveryManager.startProvideBluetoothMacAddressMode("todo");
     }
 
     /**
@@ -194,7 +194,7 @@ public class ConnectionEngine implements
         if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 if (mDiscoveryManager.getState() ==
-                        DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS_VIA_BLE) {
+                        DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS) {
                     mDiscoveryManager.start(PEER_NAME);
                 }
             }
@@ -330,6 +330,11 @@ public class ConnectionEngine implements
     @Override
     public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
         Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
+    }
+
+    @Override
+    public void onProvideBluetoothMacAddressRequest(String requestId) {
+        // TODO
     }
 
     @Override

@@ -60,6 +60,8 @@ public class BluetoothDeviceDiscoverer {
      * @return True, if started successfully. False otherwise.
      */
     public synchronized boolean start() {
+        boolean wasStarted = false;
+
         if (mBroadcastReceiver == null) {
             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
             mBroadcastReceiver = new BluetoothDeviceDiscovererBroadcastReceiver();
@@ -74,6 +76,7 @@ public class BluetoothDeviceDiscoverer {
             if (mBroadcastReceiver != null) {
                 if (mBluetoothAdapter.isDiscovering() || mBluetoothAdapter.startDiscovery()) {
                     Log.i(TAG, "start: OK");
+                    wasStarted = true;
                 } else {
                     Log.e(TAG, "start: Failed to start discovery, stopping...");
                     stop();
@@ -81,7 +84,7 @@ public class BluetoothDeviceDiscoverer {
             }
         }
 
-        return isRunning();
+        return wasStarted;
     }
 
     /**

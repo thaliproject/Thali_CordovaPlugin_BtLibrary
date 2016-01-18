@@ -119,7 +119,15 @@ public class BluetoothManager {
 
     @TargetApi(21)
     public boolean isBleAdvertisingSupported() {
-        return mBluetoothAdapter.isMultipleAdvertisementSupported();
+        boolean isSupported = false;
+
+        try {
+            isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+        } catch (Exception e) {
+            Log.e(TAG, "isBleAdvertisingSupported: " + e.getMessage(), e);
+        }
+
+        return isSupported;
     }
 
     public boolean isBluetoothEnabled() {
