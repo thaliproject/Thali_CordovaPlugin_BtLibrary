@@ -7,7 +7,6 @@ import android.annotation.TargetApi;
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -24,7 +23,7 @@ import java.util.UUID;
 class BlePeerDiscoveryUtils {
     public static class ParsedAdvertisement {
         UUID uuid = null;
-        String provideBluetoothMacAddressRequestId = null;
+        String provideBluetoothMacAddressId = null;
         String bluetoothMacAddress = null;
     }
 
@@ -134,7 +133,7 @@ class BlePeerDiscoveryUtils {
                     if (serviceUuid.toString().startsWith(beginningOfParsedUuid)) {
                         // The beginning of the UUID is a match
                         // Parse the request ID
-                        parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                        parsedAdvertisement.provideBluetoothMacAddressId =
                                 PeerAdvertisementFactory.parseRequestIdFromUuid(parsedAdvertisement.uuid);
                     } else {
                         Log.d(TAG, "parseManufacturerData: UUID mismatch: Was expecting \""
@@ -211,34 +210,66 @@ class BlePeerDiscoveryUtils {
     }
 
     /**
-     * Rotates the last byte of the given UUID and returns the modified UUID.
+     * Rotates the byte, with the given index, of the given UUID and returns the modified UUID.
      * @param originalUuid The original UUID.
-     * @return The UUID with the last byte rotated or null in case of a failure.
+     * @param byteIndex The index of the byte (not the index of the char) to rotate. A UUID contains
+     *                  16 bytes, so the last index is 15. Thus, greater value than 15 will result
+     *                  in an error.
+     * @return The UUID with the byte rotated or null in case of a failure.
      */
-    public static UUID rotateTheLastByte(UUID originalUuid) {
+    public static UUID rotateByte(UUID originalUuid, int byteIndex) {
         String originalUuidAsString = originalUuid.toString();
-        int lastByteAsInt = Integer.MAX_VALUE;
-        int startIndexOfLastByte = originalUuidAsString.length() - 2;
+        int byteAsInt = Integer.MAX_VALUE;
+        int startIndexOfByte = byteIndex * 2; // Since byte as hex string is 2 characters
+
+        // We have to take into account the dashes (UUID in form of a string) and add them to the
+        // index, if necessary:
+        //
+        // UUID as string:  "de305d54-75b4-431b-adb2-eb6b9e546014"
+        // byte index:       0 1 2 3  4 5  6 7  8 9  ...
+        //
+        if (byteIndex > 9) {
+            startIndexOfByte += 4;
+        } else if (byteIndex > 7) {
+            startIndexOfByte += 3;
+        } else if (byteIndex > 5) {
+            startIndexOfByte += 2;
+        } else if (byteIndex > 3) {
+            startIndexOfByte += 1;
+        }
 
         try {
-            lastByteAsInt = Integer.parseInt(originalUuidAsString.substring(
-                    startIndexOfLastByte, startIndexOfLastByte + 2), 16);
+            byteAsInt = Integer.parseInt(originalUuidAsString.substring(
+                    startIndexOfByte, startIndexOfByte + 2), 16);
         } catch (NumberFormatException e) {
-            Log.e(TAG, "rotateTheLastByte: Failed extract the last byte as integer: " + e.getMessage(), e);
+            Log.e(TAG, "rotateByte: Failed extract the byte as integer: " + e.getMessage(), e);
+        } catch (IndexOutOfBoundsException e) {
+            Log.e(TAG, "rotateByte: Failed extract the byte as integer: " + e.getMessage(), e);
         }
 
         UUID newUuid = null;
 
-        if (lastByteAsInt != Integer.MAX_VALUE) {
-            lastByteAsInt++;
-            String lastByteAsString = Integer.toHexString(lastByteAsInt);
+        if (byteAsInt != Integer.MAX_VALUE) {
+            byteAsInt++;
+            String newUuidAsString = null;
+            String byteAsString = Integer.toHexString(byteAsInt);
 
-            String newUuidAsString =
-                    originalUuidAsString.substring(0, originalUuidAsString.length() - 2)
-                            + lastByteAsString;
+            if (byteIndex == 0) {
+                newUuidAsString = byteAsString + originalUuidAsString.substring(2, originalUuidAsString.length());
+            } else if (byteIndex == 15) {
+                // Last byte
+                newUuidAsString =
+                        originalUuidAsString.substring(0, originalUuidAsString.length() - 2)
+                                + byteAsString;
+            } else {
+                newUuidAsString =
+                        originalUuidAsString.substring(0, startIndexOfByte)
+                        + byteAsString
+                        + originalUuidAsString.substring(startIndexOfByte + 2, originalUuidAsString.length());
+            }
 
             newUuid = UUID.fromString(newUuidAsString);
-            Log.d(TAG, "rotateTheLastByte: " + originalUuidAsString + " -> " + newUuid.toString());
+            Log.d(TAG, "rotateByte: " + originalUuidAsString + " -> " + newUuid.toString());
         }
 
         return newUuid;

@@ -46,6 +46,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     // Default settings
+    public static boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
@@ -56,6 +57,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = 60;
 
     // Keys for shared preferences
+    private static final String KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = "automate_bluetooth_mac_address_resolution";
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";
     private static final String KEY_DISCOVERY_MODE = "discovery_mode";
     private static final String KEY_PEER_EXPIRATION = "peer_expiration";
@@ -72,6 +74,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     private static DiscoveryManagerSettings mInstance = null;
     private Listener mListener = null;
+    private boolean mAutomateBluetoothMacAddressResolution = DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION;
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
@@ -107,6 +110,27 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setListener(DiscoveryManager discoveryManager) {
         mListener = discoveryManager;
+    }
+
+    /**
+     * @return True, if the Bluetooth MAC address resolution should be automated.
+     */
+    public boolean getAutomateBluetoothMacAddressResolution() {
+        return mAutomateBluetoothMacAddressResolution;
+    }
+
+    /**
+     * Enables/disables Bluetooth MAC address automation.
+     * @param automate If true, Bluetooth MAC address resolution should be automated.
+     */
+    public void setAutomateBluetoothMacAddressResolution(boolean automate) {
+        if (mAutomateBluetoothMacAddressResolution != automate) {
+            Log.i(TAG, "setAutomateBluetoothMacAddressResolution: " + automate);
+            mAutomateBluetoothMacAddressResolution = automate;
+            mSharedPreferencesEditor.putBoolean(
+                    KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, mAutomateBluetoothMacAddressResolution);
+            mSharedPreferencesEditor.apply();
+        }
     }
 
     /**
@@ -266,6 +290,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     @Override
     public void load() {
+        mAutomateBluetoothMacAddressResolution = mSharedPreferences.getBoolean(
+                KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
         mBluetoothMacAddress = mSharedPreferences.getString(KEY_BLUETOOTH_MAC_ADDRESS, null);
         int discoveryModeAsInt = mSharedPreferences.getInt(KEY_DISCOVERY_MODE, discoveryModeToInt(DEFAULT_DISCOVERY_MODE));
         mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
@@ -275,14 +301,14 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                 KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
         mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DEFAULT_SCAN_MODE);
 
-
-        Log.i(TAG, "load: "
-                + mBluetoothMacAddress + ", "
-                + mDiscoveryMode + ", "
-                + mPeerExpirationInMilliseconds + ", "
-                + mAdvertiseMode + ", "
-                + mAdvertiseTxPowerLevel + ", "
-                + mScanMode);
+        Log.v(TAG, "load: "
+                + "\n\tAutomate Bluetooth MAC address resolution: " + mAutomateBluetoothMacAddressResolution + ", "
+                + "\n\tBluetooth MAC address: " + mBluetoothMacAddress + ", "
+                + "\n\tDiscovery mode: " + mDiscoveryMode + ", "
+                + "\n\tPeer expiration time in milliseconds: " + mPeerExpirationInMilliseconds + ", "
+                + "\n\tAdvertise mode: " + mAdvertiseMode + ", "
+                + "\n\tAdvertise TX power level: " + mAdvertiseTxPowerLevel + ", "
+                + "\n\tScan mode: " + mScanMode);
     }
 
     /**
