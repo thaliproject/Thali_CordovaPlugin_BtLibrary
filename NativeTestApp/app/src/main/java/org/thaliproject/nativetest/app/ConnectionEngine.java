@@ -42,6 +42,7 @@ public class ConnectionEngine implements
     protected static final String SERVICE_NAME = "Thali Native Sample App";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
+    protected static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
     private static final int PERMISSION_REQUEST_ACCESS_COARSE_LOCATION = 1;
 
     protected Context mContext = null;
@@ -328,13 +329,20 @@ public class ConnectionEngine implements
     }
 
     @Override
-    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
+    public void onProvideBluetoothMacAddressRequest(String requestId) {
+        // TODO
     }
 
     @Override
-    public void onProvideBluetoothMacAddressRequest(String requestId) {
-        // TODO
+    public void onPeerReadyToProvideBluetoothMacAddress() {
+        if (!DiscoveryManagerSettings.getInstance(null).getAutomateBluetoothMacAddressResolution()) {
+            mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
+        }
+    }
+
+    @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
     }
 
     @Override
