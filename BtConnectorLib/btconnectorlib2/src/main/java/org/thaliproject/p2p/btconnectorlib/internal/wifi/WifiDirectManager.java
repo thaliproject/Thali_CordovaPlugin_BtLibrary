@@ -79,8 +79,9 @@ public class WifiDirectManager {
     }
 
     /**
-     *
-     * @param listener The listener.
+     * Removes the given listener from the list of listeners. If, after this, the list of listeners
+     * is empty, there is no reason to keep this instance "running" and we can de-initialize.
+     * @param listener The listener to remove.
      */
     public void release(WifiStateListener listener) {
         if (!mListeners.remove(listener)) {
@@ -108,6 +109,9 @@ public class WifiDirectManager {
         return (mP2pManager != null);
     }
 
+    /**
+     * @return True, Wi-Fi is enabled.
+     */
     public boolean isWifiEnabled() {
         return mWifiManager != null && mWifiManager.isWifiEnabled();
     }
