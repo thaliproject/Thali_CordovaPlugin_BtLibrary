@@ -3,7 +3,6 @@
  */
 package org.thaliproject.nativetest.app.test;
 
-import android.os.Build;
 import android.util.Log;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
@@ -68,13 +67,18 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     }
 
     @Override
-    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-        // Not used
+    public void onProvideBluetoothMacAddressRequest(String requestId) {
+        // TODO
     }
 
     @Override
-    public void onProvideBluetoothMacAddressRequest(String requestId) {
+    public void onPeerReadyToProvideBluetoothMacAddress() {
         // TODO
+    }
+
+    @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+        // Not used
     }
 
     @Override

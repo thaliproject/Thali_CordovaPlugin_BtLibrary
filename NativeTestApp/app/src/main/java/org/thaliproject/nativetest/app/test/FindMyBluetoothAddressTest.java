@@ -51,7 +51,6 @@ public class FindMyBluetoothAddressTest
             settings.setBluetoothMacAddress(null);
         }
 
-        mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
         return mDiscoveryManager.start(TestEngine.PEER_NAME);
     }
 
@@ -93,16 +92,23 @@ public class FindMyBluetoothAddressTest
     }
 
     @Override
+    public void onProvideBluetoothMacAddressRequest(String requestId) {
+        // TODO
+    }
+
+    @Override
+    public void onPeerReadyToProvideBluetoothMacAddress() {
+        if (!DiscoveryManagerSettings.getInstance(null).getAutomateBluetoothMacAddressResolution()) {
+            mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
+        }
+    }
+
+    @Override
     public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
         if (bluetoothMacAddress != null) {
             mBluetoothMacAddress = bluetoothMacAddress;
             finalize();
         }
-    }
-
-    @Override
-    public void onProvideBluetoothMacAddressRequest(String requestId) {
-        // TODO
     }
 
     @Override

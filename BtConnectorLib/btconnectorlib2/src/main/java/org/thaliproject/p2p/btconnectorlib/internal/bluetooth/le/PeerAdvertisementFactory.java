@@ -145,8 +145,8 @@ class PeerAdvertisementFactory {
             provideBluetoothMacAddressUuid = UUID.fromString(provideBluetoothMacAddressRequestUuidAsString);
         }
 
-        Log.d(TAG, "createProvideBluetoothMacAddressUuid: " + serviceUuid.toString()
-                + " -> " + provideBluetoothMacAddressUuid.toString());
+        //Log.d(TAG, "createProvideBluetoothMacAddressUuid: " + serviceUuid.toString()
+        //        + " -> " + provideBluetoothMacAddressUuid.toString());
 
         return provideBluetoothMacAddressUuid;
     }
@@ -172,8 +172,8 @@ class PeerAdvertisementFactory {
                     createProvideBluetoothMacAddressUuid(serviceUuid, stringBuilder.toString());
         }
 
-        Log.d(TAG, "createProvideBluetoothMacAddressRequestUuid: " + serviceUuidAsString
-                + " -> " + provideBluetoothMacAddressRequestUuid.toString());
+        //Log.d(TAG, "createProvideBluetoothMacAddressRequestUuid: " + serviceUuidAsString
+        //        + " -> " + provideBluetoothMacAddressRequestUuid.toString());
 
         return provideBluetoothMacAddressRequestUuid;
     }

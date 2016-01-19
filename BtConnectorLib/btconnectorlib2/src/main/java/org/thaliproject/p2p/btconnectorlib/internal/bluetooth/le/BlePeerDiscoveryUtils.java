@@ -127,8 +127,8 @@ class BlePeerDiscoveryUtils {
                     // The UUID is a match
                     // No need to do anything
                 } else {
-                    // Get the beginning of the parsed UUID, leave out the last six bytes (12 chars)
-                    String beginningOfParsedUuid = parsedAdvertisement.uuid.toString().substring(0, 23);
+                    // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
+                    String beginningOfParsedUuid = parsedAdvertisement.uuid.toString().substring(0, 22);
 
                     if (serviceUuid.toString().startsWith(beginningOfParsedUuid)) {
                         // The beginning of the UUID is a match
@@ -269,7 +269,7 @@ class BlePeerDiscoveryUtils {
             }
 
             newUuid = UUID.fromString(newUuidAsString);
-            Log.d(TAG, "rotateByte: " + originalUuidAsString + " -> " + newUuid.toString());
+            //Log.d(TAG, "rotateByte: " + originalUuidAsString + " -> " + newUuid.toString());
         }
 
         return newUuid;
