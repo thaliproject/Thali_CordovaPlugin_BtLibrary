@@ -82,8 +82,9 @@ public class BluetoothManager {
     }
 
     /**
-     *
-     * @param listener The listener.
+     * Removes the given listener from the list of listeners. If, after this, the list of listeners
+     * is empty, there is no reason to keep this instance "running" and we can de-initialize.
+     * @param listener The listener to remove.
      */
     public void release(BluetoothManagerListener listener) {
         if (!mListeners.remove(listener)) {
@@ -113,21 +114,32 @@ public class BluetoothManager {
         return isSupported;
     }
 
+    /**
+     * @return True, if the Bluetooth LE is supported.
+     */
     public boolean isBleSupported() {
         return mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE);
     }
 
+    /**
+     * @return True, if the multi advertisement is supported by the chipset.
+     */
     @TargetApi(21)
     public boolean isBleMultipleAdvertisementSupported() {
         boolean isSupported = false;
 
         if (CommonUtils.isLollipopOrHigher()) {
             isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+        } else {
+            Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");
         }
 
         return isSupported;
     }
 
+    /**
+     * @return True, if Bluetooth is enabled.
+     */
     public boolean isBluetoothEnabled() {
         return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
     }
