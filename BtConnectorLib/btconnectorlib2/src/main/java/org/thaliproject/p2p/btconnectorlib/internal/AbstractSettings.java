@@ -15,4 +15,6 @@ public abstract class AbstractSettings {
     protected SharedPreferences.Editor mSharedPreferencesEditor;
 
     public abstract void load();
+
+    public abstract void resetToDefaults();
 }

@@ -252,10 +252,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      *                            Use PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN to notify the
      *                            peer of our willingness to help (so that it will make itself
      *                            discoverable).
+     * @param durationInMilliseconds The duration of the advertising in milliseconds.
      * @return True, if started. False otherwise.
      */
     public synchronized boolean startPeerAddressHelperAdvertiser(
-            final String requestId, String bluetoothMacAddress) {
+            final String requestId, String bluetoothMacAddress, long durationInMilliseconds) {
         boolean wasStarted = false;
 
         if (mPeerAddressHelperBleAdvertiser == null) {
@@ -280,9 +281,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 mPeerAddressHelperAdvertisementTimeoutTimer = null;
             }
 
-            mPeerAddressHelperAdvertisementTimeoutTimer = new CountDownTimer(
-                    DiscoveryManagerSettings.DEFAULT_ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS,
-                    DiscoveryManagerSettings.DEFAULT_ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS) {
+            mPeerAddressHelperAdvertisementTimeoutTimer =
+                    new CountDownTimer(durationInMilliseconds, durationInMilliseconds) {
                 @Override
                 public void onTick(long millisUntilFinished) {
                     // Not used
@@ -303,6 +303,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 mPeerAddressHelperAdvertisementTimeoutTimer.start();
                 wasStarted = true;
             } else {
+                mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
                 mPeerAddressHelperAdvertisementTimeoutTimer = null;
             }
         }

@@ -142,8 +142,8 @@ class BleAdvertiser extends AdvertiseCallback {
     public synchronized void stop() {
         if (mBluetoothLeAdvertiser != null) {
             try {
-                Log.i(TAG, "stop");
                 mBluetoothLeAdvertiser.stopAdvertising(this);
+                Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
             }

@@ -114,8 +114,8 @@ class BleScanner extends ScanCallback {
     public synchronized void stop() {
         if (mBluetoothLeScanner != null) {
             try {
-                Log.i(TAG, "stop");
                 mBluetoothLeScanner.stopScan(this);
+                Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
             }
