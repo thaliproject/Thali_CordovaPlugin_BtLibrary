@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.CountDownTimer;
 import android.util.Log;
 
 /**
@@ -33,6 +34,7 @@ public class BluetoothDeviceDiscoverer {
     private final BluetoothAdapter mBluetoothAdapter;
     private final BluetoothDeviceDiscovererListener mListener;
     private BluetoothDeviceDiscovererBroadcastReceiver mBroadcastReceiver = null;
+    private CountDownTimer mStopBluetoothDeviceDiscoveryTimer = null;
 
     /**
      * Constructor.
@@ -57,10 +59,17 @@ public class BluetoothDeviceDiscoverer {
 
     /**
      * Starts the device discovery.
+     * @param durationInMilliseconds The duration for the Bluetooth device discovery in milliseconds.
+     *                               Use 0 for indefinite duration.
      * @return True, if started successfully. False otherwise.
      */
-    public synchronized boolean start() {
+    public synchronized boolean start(long durationInMilliseconds) {
         boolean wasStarted = false;
+
+        if (mStopBluetoothDeviceDiscoveryTimer != null) {
+            mStopBluetoothDeviceDiscoveryTimer.cancel();
+            mStopBluetoothDeviceDiscoveryTimer = null;
+        }
 
         if (mBroadcastReceiver == null) {
             IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
@@ -77,6 +86,26 @@ public class BluetoothDeviceDiscoverer {
                 if (mBluetoothAdapter.isDiscovering() || mBluetoothAdapter.startDiscovery()) {
                     Log.i(TAG, "start: OK");
                     wasStarted = true;
+
+                    if (durationInMilliseconds > 0) {
+                        mStopBluetoothDeviceDiscoveryTimer =
+                                new CountDownTimer(durationInMilliseconds, durationInMilliseconds) {
+                            @Override
+                            public void onTick(long l) {
+                                // Not used
+                            }
+
+                            @Override
+                            public void onFinish() {
+                                Log.d(TAG, "Bluetooth device discovery timeout");
+                                this.cancel();
+                                mStopBluetoothDeviceDiscoveryTimer = null;
+                                stop();
+                            }
+                        };
+
+                        mStopBluetoothDeviceDiscoveryTimer.start();
+                    }
                 } else {
                     Log.e(TAG, "start: Failed to start discovery, stopping...");
                     stop();
@@ -92,6 +121,11 @@ public class BluetoothDeviceDiscoverer {
      */
     public synchronized void stop() {
         Log.i(TAG, "stop");
+
+        if (mStopBluetoothDeviceDiscoveryTimer != null) {
+            mStopBluetoothDeviceDiscoveryTimer.cancel();
+            mStopBluetoothDeviceDiscoveryTimer = null;
+        }
 
         if (mBluetoothAdapter.isDiscovering()) {
             if (!mBluetoothAdapter.cancelDiscovery()) {

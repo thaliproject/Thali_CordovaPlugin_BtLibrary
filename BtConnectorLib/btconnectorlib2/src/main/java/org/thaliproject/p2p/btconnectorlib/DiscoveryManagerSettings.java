@@ -47,17 +47,17 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     // Default settings
     public static boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
+    public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 60000;
+    public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_LOW;
     public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
-    public static final long DEFAULT_BLUETOOTH_DEVICE_DISCOVERY_TIMEOUT_IN_MILLISECONDS = 15000;
-    public static final long DEFAULT_ADVERTISE_PEER_ADDRESS_TIMEOUT_IN_MILLISECONDS = 15000;
-    public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = 60;
 
     // Keys for shared preferences
     private static final String KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = "automate_bluetooth_mac_address_resolution";
+    private static final String KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = "provide_bluetooth_mac_address_timeout";
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";
     private static final String KEY_DISCOVERY_MODE = "discovery_mode";
     private static final String KEY_PEER_EXPIRATION = "peer_expiration";
@@ -81,6 +81,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
     private int mScanMode = DEFAULT_SCAN_MODE;
+    private long mProvideBluetoothMacAddressTimeoutInMilliseconds = DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS;
 
 
     /**
@@ -129,6 +130,26 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mAutomateBluetoothMacAddressResolution = automate;
             mSharedPreferencesEditor.putBoolean(
                     KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, mAutomateBluetoothMacAddressResolution);
+            mSharedPreferencesEditor.apply();
+        }
+    }
+
+    /**
+     * @return The maximum duration of "Provide Bluetooth MAC address" in milliseconds.
+     */
+    public long getProvideBluetoothMacAddressTimeout() {
+        return mProvideBluetoothMacAddressTimeoutInMilliseconds;
+    }
+
+    /**
+     * Sets the maximum duration of "Provide Bluetooth MAC address" in milliseconds.
+     * @param provideBluetoothMacAddressTimeoutInMilliseconds The maximum duration of "Provide Bluetooth MAC address" in milliseconds.
+     */
+    public void setProvideBluetoothMacAddressTimeout(long provideBluetoothMacAddressTimeoutInMilliseconds) {
+        if (mProvideBluetoothMacAddressTimeoutInMilliseconds != provideBluetoothMacAddressTimeoutInMilliseconds) {
+            mProvideBluetoothMacAddressTimeoutInMilliseconds = provideBluetoothMacAddressTimeoutInMilliseconds;
+            mSharedPreferencesEditor.putLong(
+                    KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS, mProvideBluetoothMacAddressTimeoutInMilliseconds);
             mSharedPreferencesEditor.apply();
         }
     }
@@ -292,6 +313,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public void load() {
         mAutomateBluetoothMacAddressResolution = mSharedPreferences.getBoolean(
                 KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
+        mProvideBluetoothMacAddressTimeoutInMilliseconds = mSharedPreferences.getLong(
+                KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS, DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
         mBluetoothMacAddress = mSharedPreferences.getString(KEY_BLUETOOTH_MAC_ADDRESS, null);
         int discoveryModeAsInt = mSharedPreferences.getInt(KEY_DISCOVERY_MODE, discoveryModeToInt(DEFAULT_DISCOVERY_MODE));
         mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
@@ -303,12 +326,25 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
         Log.v(TAG, "load: "
                 + "\n\tAutomate Bluetooth MAC address resolution: " + mAutomateBluetoothMacAddressResolution + ", "
+                + "\n\tProvide Bluetooth MAC address timeout in milliseconds: " + mProvideBluetoothMacAddressTimeoutInMilliseconds + ", "
                 + "\n\tBluetooth MAC address: " + mBluetoothMacAddress + ", "
                 + "\n\tDiscovery mode: " + mDiscoveryMode + ", "
                 + "\n\tPeer expiration time in milliseconds: " + mPeerExpirationInMilliseconds + ", "
                 + "\n\tAdvertise mode: " + mAdvertiseMode + ", "
                 + "\n\tAdvertise TX power level: " + mAdvertiseTxPowerLevel + ", "
                 + "\n\tScan mode: " + mScanMode);
+    }
+
+    @Override
+    public void resetToDefaults() {
+        setAutomateBluetoothMacAddressResolution(DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
+        setProvideBluetoothMacAddressTimeout(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
+        setBluetoothMacAddress(null);
+        setDiscoveryMode(DEFAULT_DISCOVERY_MODE, true);
+        setPeerExpiration(DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+        setAdvertiseMode(DEFAULT_ADVERTISE_MODE);
+        setAdvertiseTxPowerLevel(DEFAULT_ADVERTISE_TX_POWER_LEVEL);
+        setScanMode(DEFAULT_SCAN_MODE);
     }
 
     /**

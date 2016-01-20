@@ -138,5 +138,11 @@ public class ConnectionManagerSettings extends AbstractSettings {
 
     @Override
     public void load() {
+        // TODO
+    }
+
+    @Override
+    public void resetToDefaults() {
+        // TODO
     }
 }
