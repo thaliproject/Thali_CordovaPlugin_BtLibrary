@@ -7,6 +7,7 @@ import android.annotation.TargetApi;
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
@@ -273,6 +274,28 @@ class BlePeerDiscoveryUtils {
         }
 
         return newUuid;
+    }
+
+    /**
+     * Checks if the two UUIDs match, if we leave out the request ID part from the end
+     * (6 bytes, 12 characters).
+     * @param uuid1 UUID 1.
+     * @param uuid2 UUID 2.
+     * @return True, if the UUIDs match. False otherwise.
+     */
+    public static boolean uuidsWithoutRequestIdMatch(UUID uuid1, UUID uuid2) {
+        boolean isMatch = false;
+
+        if (uuid1 != null && uuid2 != null) {
+            String uuid1AsString = uuid1.toString();
+            String uuid2AsString = uuid2.toString();
+            int requestIdLength = BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT * 2;
+
+            isMatch = uuid1AsString.substring(0, uuid1AsString.length() - requestIdLength).equals(
+                    uuid2AsString.substring(0, uuid2AsString.length() - requestIdLength));
+        }
+
+        return isMatch;
     }
 
     /**
