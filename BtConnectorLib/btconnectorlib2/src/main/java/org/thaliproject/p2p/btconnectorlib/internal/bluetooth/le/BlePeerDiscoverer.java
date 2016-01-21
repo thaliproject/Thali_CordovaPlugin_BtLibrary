@@ -10,7 +10,6 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.os.CountDownTimer;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.util.UUID;
 
@@ -44,17 +43,22 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         void onPeerReadyToProvideBluetoothMacAddress(String requestId);
 
         /**
+         * Called when we are done broadcasting our willingness to help the peer provide its
+         * Bluetooth MAC address or done broadcasting the discovered Bluetooth MAC address.
+         *
+         * Note: The operation is never considered to be completed, since this method is called
+         * when the advertising timeouts.
+         *
+         * @param requestId The request ID associated with the device in need of assistance.
+         * @param wasCompleted True, if the operation was completed.
+         */
+        void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted);
+
+        /**
          * Called when we receive our own Bluetooth MAC address.
          * @param bluetoothMacAddress Our Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
-
-        /**
-         * Called when we are done broadcasting our willingness to help the peer provide its
-         * Bluetooth MAC address or done broadcasting the discovered Bluetooth MAC address.
-         * @param requestId The request ID associated with the device in need of assistance.
-         */
-        void onPeerBluetoothMacAddressHelperAdvertiserDone(String requestId);
 
         /**
          * Called when a peer was discovered.
@@ -69,8 +73,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private final BluetoothAdapter mBluetoothAdapter;
     private final String mMyPeerName;
     private final UUID mServiceUuid;
+    private final UUID mProvideBluetoothMacAddressRequestUuid;
     private String mMyBluetoothMacAddress = null;
-    private UUID mProvideBluetoothMacAddressRequestUuid = null;
     private String mOurRequestId = null;
     private BleAdvertiser mBleAdvertiser = null;
     private BleScanner mBleScanner = null;
@@ -79,6 +83,13 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private boolean mIsAdvertiserStarted = false;
     private boolean mIsScannerStarted = false;
     private boolean mIsStarted = false;
+
+    /**
+     * See PeerAdvertisementFactory.generateNewProvideBluetoothMacAddressRequestUuid
+     */
+    public static UUID generateNewProvideBluetoothMacAddressRequestUuid(UUID serviceUuid) {
+        return PeerAdvertisementFactory.generateNewProvideBluetoothMacAddressRequestUuid(serviceUuid);
+    }
 
     /**
      * Constructor.
@@ -90,35 +101,42 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     public BlePeerDiscoverer(
             BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
-            String myPeerName, UUID serviceUuid, String myBluetoothMacAddress) {
+            String myPeerName, UUID serviceUuid, UUID provideBluetoothMacAddressRequestUuid,
+            String myBluetoothMacAddress) {
         mListener = listener;
         mBluetoothAdapter = bluetoothAdapter;
         mMyPeerName = myPeerName;
         mServiceUuid = serviceUuid;
+        mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
         mMyBluetoothMacAddress = myBluetoothMacAddress;
+
+        mBleAdvertiser = new BleAdvertiser(this, mBluetoothAdapter);
 
         if (mMyBluetoothMacAddress == null) {
             // Request UUID and ID are only needed in case we don't know our own Bluetooth MAC
             // address and need to request it from a peer
-            mProvideBluetoothMacAddressRequestUuid =
-                    PeerAdvertisementFactory.createProvideBluetoothMacAddressRequestUuid(mServiceUuid);
             mOurRequestId = PeerAdvertisementFactory.parseRequestIdFromUuid(mProvideBluetoothMacAddressRequestUuid);
             Log.i(TAG, "BlePeerDiscoverer: Provide Bluetooth MAC address request ID is " + mOurRequestId);
-        }
 
-        mBleAdvertiser = new BleAdvertiser(this, mBluetoothAdapter);
-
-        if (myBluetoothMacAddress != null) {
             mBleAdvertiser.setAdvertiseData(
-                    PeerAdvertisementFactory.createAdvertiseData(myPeerName, mServiceUuid, mMyBluetoothMacAddress));
+                    PeerAdvertisementFactory.createAdvertiseData(
+                            myPeerName, mProvideBluetoothMacAddressRequestUuid,
+                            PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
         } else {
             mBleAdvertiser.setAdvertiseData(
                     PeerAdvertisementFactory.createAdvertiseData(
-                            myPeerName, mProvideBluetoothMacAddressRequestUuid, PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
+                            myPeerName, mServiceUuid, mMyBluetoothMacAddress));
         }
 
         mBleScanner = new BleScanner(this, mBluetoothAdapter);
         mBleScanner.addFilter(BlePeerDiscoveryUtils.createScanFilter(null));
+    }
+
+    /**
+     * @return Our current "provide Bluetooth MAC address" request ID generated by this instance.
+     */
+    public String getProvideBluetoothMacAddressRequestId() {
+        return mOurRequestId;
     }
 
     /**
@@ -128,7 +146,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     public void setBluetoothMacAddress(String myBluetoothMacAddress) {
         if (myBluetoothMacAddress != null) {
             mMyBluetoothMacAddress = myBluetoothMacAddress;
-            mProvideBluetoothMacAddressRequestUuid = null;
             mOurRequestId = null;
 
             if (mBleAdvertiser == null) {
@@ -294,7 +311,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     mPeerAddressHelperBleAdvertiser = null;
                     mPeerAddressHelperAdvertisementTimeoutTimer = null;
                     Log.i(TAG, "Stopped advertising the Bluetooth MAC address of a discovered device");
-                    mListener.onPeerBluetoothMacAddressHelperAdvertiserDone(requestId);
+                    mListener.onProvideBluetoothMacAddressResult(requestId, false);
                 }
             };
 
@@ -395,11 +412,20 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                              || parsedAdvertisement.bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
 
                     if (bluetoothMacAddressIsNullOrUnknown) {
+                        if (mOurRequestId != null) {
+                            Log.d(TAG, "checkScanResult: Our request ID: " + mOurRequestId);
+                        }
+
+                        UUID rotatedProvideBluetoothMacAddressRequestUuid =
+                                BlePeerDiscoveryUtils.rotateByte(
+                                        mProvideBluetoothMacAddressRequestUuid,
+                                        UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD);
+
+                        Log.d(TAG, "checkScanResult: Comparing \"" + parsedAdvertisement.uuid
+                                + "\" with \"" + rotatedProvideBluetoothMacAddressRequestUuid + "\"");
+
                         if (mOurRequestId != null
-                                && parsedAdvertisement.uuid.equals(
-                                    BlePeerDiscoveryUtils.rotateByte(
-                                            mProvideBluetoothMacAddressRequestUuid,
-                                            UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD))) {
+                                && parsedAdvertisement.uuid.equals(rotatedProvideBluetoothMacAddressRequestUuid)) {
                             isPeerReadyToProvideBluetoothMacAddress = true;
                         } else {
                             isProvideBluetoothMacAddressRequest = true;
