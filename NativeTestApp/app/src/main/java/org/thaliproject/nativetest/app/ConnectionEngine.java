@@ -80,11 +80,13 @@ public class ConnectionEngine implements
      */
     public synchronized boolean start() {
         mShuttingDown = false;
-        boolean wasStarted = false;
 
-        if (mConnectionManager.start(PEER_NAME)
-                && (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
-                    || mDiscoveryManager.start(PEER_NAME))) {
+        boolean wasConnectionManagerStarted = mConnectionManager.start(PEER_NAME);
+        boolean wasDiscoveryManagerStarted =
+                (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
+                 || mDiscoveryManager.start(PEER_NAME));
+
+        if (wasConnectionManagerStarted) {
             if (mCheckConnectionsTimer != null) {
                 mCheckConnectionsTimer.cancel();
                 mCheckConnectionsTimer = null;
@@ -104,14 +106,17 @@ public class ConnectionEngine implements
                     mCheckConnectionsTimer.start();
                 }
             };
-
-            wasStarted = true;
         } else {
-            Log.e(TAG, "start: Failed to start");
-            LogFragment.logError("Failed to start either the connection or the discovery manager");
+            Log.e(TAG, "start: Failed to start the connection manager");
+            LogFragment.logError("Failed to start the connection manager");
         }
 
-        return wasStarted;
+        if (!wasDiscoveryManagerStarted) {
+            Log.e(TAG, "start: Failed to start the discovery manager");
+            LogFragment.logError("Failed to start the discovery manager");
+        }
+
+        return (wasConnectionManagerStarted || wasDiscoveryManagerStarted);
     }
 
     /**

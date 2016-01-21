@@ -157,7 +157,7 @@ class PeerAdvertisementFactory {
      * @param serviceUuid The service UUID to be used as a basis for the new UUID.
      * @return A newly created unique UUID.
      */
-    public static UUID createProvideBluetoothMacAddressRequestUuid(UUID serviceUuid) {
+    public static UUID generateNewProvideBluetoothMacAddressRequestUuid(UUID serviceUuid) {
         String serviceUuidAsString = serviceUuid.toString();
         UUID provideBluetoothMacAddressRequestUuid = serviceUuid;
 
@@ -172,7 +172,7 @@ class PeerAdvertisementFactory {
                     createProvideBluetoothMacAddressUuid(serviceUuid, stringBuilder.toString());
         }
 
-        //Log.d(TAG, "createProvideBluetoothMacAddressRequestUuid: " + serviceUuidAsString
+        //Log.d(TAG, "generateNewProvideBluetoothMacAddressRequestUuid: " + serviceUuidAsString
         //        + " -> " + provideBluetoothMacAddressRequestUuid.toString());
 
         return provideBluetoothMacAddressRequestUuid;
