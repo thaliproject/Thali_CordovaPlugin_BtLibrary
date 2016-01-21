@@ -188,6 +188,8 @@ class PeerAdvertisementFactory {
      */
     public static String parseRequestIdFromUuid(UUID provideBluetoothMacAddressRequestUuid) {
         String uuidAsString = provideBluetoothMacAddressRequestUuid.toString();
-        return uuidAsString.substring(uuidAsString.length() - 12, uuidAsString.length());
+        return uuidAsString.substring(
+                uuidAsString.length() - BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT * 2,
+                uuidAsString.length());
     }
 }

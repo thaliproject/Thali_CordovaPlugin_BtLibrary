@@ -425,7 +425,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         if (mOurRequestId != null
                                 && parsedAdvertisement.uuid.equals(rotatedProvideBluetoothMacAddressRequestUuid)) {
                             isPeerReadyToProvideBluetoothMacAddress = true;
-                        } else {
+                        } else if (BlePeerDiscoveryUtils.uuidsWithoutRequestIdMatch(parsedAdvertisement.uuid, mServiceUuid)) {
+                            // Not rotated
                             isProvideBluetoothMacAddressRequest = true;
                         }
                     } else if (mOurRequestId != null
