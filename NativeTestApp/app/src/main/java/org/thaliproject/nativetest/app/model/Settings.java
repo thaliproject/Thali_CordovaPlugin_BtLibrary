@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativetest.app.model;
@@ -23,13 +23,13 @@ public class Settings {
     private final SharedPreferences mSharedPreferences;
     private final SharedPreferences.Editor mSharedPreferencesEditor;
 
-    private static final String KEY_CONNECTION_TIMEOUT = "connection_timeout";
-    private static final String KEY_PORT_NUMBER = "port_number";
+    /*private static final String KEY_CONNECTION_TIMEOUT = "connection_timeout";
+    private static final String KEY_PORT_NUMBER = "port_number";*/
     private static final String KEY_ENABLE_WIFI_DISCOVERY = "enable_wifi_discovery";
     private static final String KEY_ENABLE_BLE_DISCOVERY = "enable_ble_discovery";
-    private static final String KEY_ADVERTISE_MODE = "advertise_mode";
+    /*private static final String KEY_ADVERTISE_MODE = "advertise_mode";
     private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
-    private static final String KEY_SCAN_MODE = "scan_mode";
+    private static final String KEY_SCAN_MODE = "scan_mode";*/
     private static final String KEY_DATA_AMOUNT = "data_amount";
     private static final String KEY_BUFFER_SIZE = "buffer_size";
     private static final String KEY_AUTO_CONNECT = "auto_connect";
@@ -39,13 +39,13 @@ public class Settings {
     private DiscoveryManager mDiscoveryManager = null;
     private DiscoveryManagerSettings mDiscoveryManagerSettings = null;
     private ConnectionManagerSettings mConnectionManagerSettings = null;
-    private long mConnectionTimeoutInMilliseconds = ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
-    private int mPortNumber = ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
+    /*private long mConnectionTimeoutInMilliseconds = ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
+    private int mPortNumber = ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;*/
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
-    private int mAdvertiseMode = DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE;
+    /*private int mAdvertiseMode = DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL;
-    private int mScanMode = DiscoveryManagerSettings.DEFAULT_SCAN_MODE;
+    private int mScanMode = DiscoveryManagerSettings.DEFAULT_SCAN_MODE;*/
     private long mDataAmountInBytes = Connection.DEFAULT_DATA_AMOUNT_IN_BYTES;
     private int mBufferSizeInBytes = Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES;
     private boolean mAutoConnect = false;
@@ -80,16 +80,20 @@ public class Settings {
      * Loads the settings.
      */
     public void load() {
-        mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
+        /*mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
                 KEY_CONNECTION_TIMEOUT, ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
         mPortNumber = mSharedPreferences.getInt(
-                KEY_PORT_NUMBER, ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+                KEY_PORT_NUMBER, ConnectionManagerSettings.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);*/
         mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
         mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
-        mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
+        /*mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
         mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
                 KEY_ADVERTISE_TX_POWER_LEVEL, DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
-        mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DiscoveryManagerSettings.DEFAULT_SCAN_MODE);
+        mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DiscoveryManagerSettings.DEFAULT_SCAN_MODE);*/
+
+        mDiscoveryManagerSettings.load();
+        mConnectionManagerSettings.load();
+
         mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
         mBufferSizeInBytes = mSharedPreferences.getInt(
                 KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
@@ -98,25 +102,14 @@ public class Settings {
                 KEY_AUTO_CONNECT_WHEN_INCOMING, false);
 
         Log.i(TAG, "load: "
-                + mConnectionTimeoutInMilliseconds + ", "
-                + mPortNumber + ", "
-                + mEnableWifiDiscovery + ", "
-                + mEnableBleDiscovery + ", "
-                + mAdvertiseMode + ", "
-                + mAdvertiseTxPowerLevel + ", "
-                + mScanMode + ", "
-                + mDataAmountInBytes + ", "
-                + mBufferSizeInBytes + ", "
-                + mAutoConnect + ", "
-                + mAutoConnectEvenWhenIncomingConnectionEstablished);
-
-        mConnectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
-        mConnectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
+                + "\n\tEnable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
+                + "\n\tEnable BLE peer discovery: " + mEnableBleDiscovery
+                + "\n\tData amount in bytes: " + mDataAmountInBytes
+                + "\n\tBuffer size in bytes: " + mBufferSizeInBytes
+                + "\n\tAuto connect enabled: " + mAutoConnect
+                + "\n\tAuto connect even when incoming connection established: " + mAutoConnectEvenWhenIncomingConnectionEstablished);
 
         mDiscoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
-        mDiscoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
-        mDiscoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
-        mDiscoveryManagerSettings.setScanMode(mScanMode);
     }
 
     public void setDiscoveryManager(DiscoveryManager discoveryManager) {
@@ -127,30 +120,22 @@ public class Settings {
      * @return The connection timeout in milliseconds.
      */
     public long getConnectionTimeout() {
-        return mConnectionTimeoutInMilliseconds;
+        return mConnectionManagerSettings.getConnectionTimeout();
     }
 
     /**
      * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
      */
     public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
-        Log.i(TAG, "setConnectionTimeout: " + connectionTimeoutInMilliseconds);
-        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
-        mSharedPreferencesEditor.putLong(KEY_CONNECTION_TIMEOUT, mConnectionTimeoutInMilliseconds);
-        mSharedPreferencesEditor.apply();
-        mConnectionManagerSettings.setConnectionTimeout(mConnectionTimeoutInMilliseconds);
+        mConnectionManagerSettings.setConnectionTimeout(connectionTimeoutInMilliseconds);
     }
 
     public int getPortNumber() {
-        return mPortNumber;
+        return mConnectionManagerSettings.getInsecureRfcommSocketPortNumber();
     }
 
     public void setPortNumber(int portNumber) {
-        Log.i(TAG, "setPortNumber: " + portNumber);
-        mPortNumber = portNumber;
-        mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mPortNumber);
-        mSharedPreferencesEditor.apply();
-        mConnectionManagerSettings.setInsecureRfcommSocketPortNumber(mPortNumber);
+        mConnectionManagerSettings.setInsecureRfcommSocketPortNumber(portNumber);
     }
 
     /**
@@ -221,36 +206,27 @@ public class Settings {
     }
 
     public int getAdvertiseMode() {
-        return mAdvertiseMode;
+        return mDiscoveryManagerSettings.getAdvertiseMode();
     }
 
     public void setAdvertiseMode(int advertiseMode) {
-        mAdvertiseMode = advertiseMode;
-        mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
-        mSharedPreferencesEditor.apply();
-        mDiscoveryManagerSettings.setAdvertiseMode(mAdvertiseMode);
+        mDiscoveryManagerSettings.setAdvertiseMode(advertiseMode);
     }
 
     public int getAdvertiseTxPowerLevel() {
-        return mAdvertiseTxPowerLevel;
+        return mDiscoveryManagerSettings.getAdvertiseTxPowerLevel();
     }
 
     public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
-        mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
-        mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
-        mSharedPreferencesEditor.apply();
-        mDiscoveryManagerSettings.setAdvertiseTxPowerLevel(mAdvertiseTxPowerLevel);
+        mDiscoveryManagerSettings.setAdvertiseTxPowerLevel(advertiseTxPowerLevel);
     }
 
     public int getScanMode() {
-        return mScanMode;
+        return mDiscoveryManagerSettings.getScanMode();
     }
 
     public void setScanMode(int scanMode) {
-        mScanMode = scanMode;
-        mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
-        mSharedPreferencesEditor.apply();
-        mDiscoveryManagerSettings.setScanMode(mScanMode);
+        mDiscoveryManagerSettings.setScanMode(scanMode);
     }
 
     /**

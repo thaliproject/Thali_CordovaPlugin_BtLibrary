@@ -158,22 +158,25 @@ class PeerAdvertisementFactory {
      * @return A newly created unique UUID.
      */
     public static UUID generateNewProvideBluetoothMacAddressRequestUuid(UUID serviceUuid) {
-        String serviceUuidAsString = serviceUuid.toString();
-        UUID provideBluetoothMacAddressRequestUuid = serviceUuid;
+        UUID provideBluetoothMacAddressRequestUuid = null;
 
-        while (serviceUuid.compareTo(provideBluetoothMacAddressRequestUuid) == 0) {
-            StringBuilder stringBuilder = new StringBuilder();
+        if (serviceUuid != null) {
+            provideBluetoothMacAddressRequestUuid = serviceUuid;
 
-            for (int i = 0; i < 6; ++i) {
-                stringBuilder.append(BlePeerDiscoveryUtils.generatedRandomByteAsHexString());
+            while (serviceUuid.compareTo(provideBluetoothMacAddressRequestUuid) == 0) {
+                StringBuilder stringBuilder = new StringBuilder();
+
+                for (int i = 0; i < BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
+                    stringBuilder.append(BlePeerDiscoveryUtils.generatedRandomByteAsHexString());
+                }
+
+                provideBluetoothMacAddressRequestUuid =
+                        createProvideBluetoothMacAddressUuid(serviceUuid, stringBuilder.toString());
             }
 
-            provideBluetoothMacAddressRequestUuid =
-                    createProvideBluetoothMacAddressUuid(serviceUuid, stringBuilder.toString());
+            //Log.d(TAG, "generateNewProvideBluetoothMacAddressRequestUuid: " + serviceUuid.toString()
+            //        + " -> " + provideBluetoothMacAddressRequestUuid.toString());
         }
-
-        //Log.d(TAG, "generateNewProvideBluetoothMacAddressRequestUuid: " + serviceUuidAsString
-        //        + " -> " + provideBluetoothMacAddressRequestUuid.toString());
 
         return provideBluetoothMacAddressRequestUuid;
     }

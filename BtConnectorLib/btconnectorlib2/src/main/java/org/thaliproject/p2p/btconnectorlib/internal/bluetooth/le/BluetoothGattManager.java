@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
@@ -22,18 +22,20 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Manages Bluetooth GATT services.
+ * Used currently only for providing/resolving Bluetooth MAC address.
  */
 public class BluetoothGattManager {
     public interface BluetoothGattManagerListener {
         /**
-         *
+         * Called when the process of providing a peer its Bluetooth MAC address is complete.
          * @param requestId The request ID associated with the device in need of assistance.
          * @param wasCompleted True, if the operation was completed.
          */
         void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted);
 
         /**
-         *
+         * Called when the characteristic where we expected to receive our Bluetooth MAC address is
+         * written.
          * @param bluetoothMacAddress Our Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
@@ -94,10 +96,7 @@ public class BluetoothGattManager {
                 (mRequestIdForBluetoothGattService == null
                         || !mRequestIdForBluetoothGattService.equals(requestId))) {
             Log.d(TAG, "startBluetoothMacAddressRequestServer: Trying to add a service with request ID " + requestId);
-
-            if (getIsBluetoothMacAddressRequestServerStarted()) {
-                stopBluetoothMacAddressRequestServer();
-            }
+            stopBluetoothMacAddressRequestServer();
 
             mRequestIdForBluetoothGattService = requestId;
             mProvideBluetoothMacAddressServerUuid =
@@ -107,25 +106,30 @@ public class BluetoothGattManager {
             final BluetoothManager bluetoothManager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
 
             if (bluetoothManager != null) {
-                mBluetoothGattServer = bluetoothManager.openGattServer(mContext, new MyBluetoothGattServerCallback());
+                new Handler(mContext.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        mBluetoothGattServer = bluetoothManager.openGattServer(mContext, new MyBluetoothGattServerCallback());
 
-                if (mBluetoothGattServer != null) {
-                    Log.d(TAG, "startBluetoothMacAddressRequestServer: Open Bluetooth GATT server OK");
+                        if (mBluetoothGattServer != null) {
+                            Log.d(TAG, "startBluetoothMacAddressRequestServer: Open Bluetooth GATT server OK");
 
-                    BluetoothGattService bluetoothGattService =
-                            createBluetoothGattService(mRequestIdForBluetoothGattService);
+                            BluetoothGattService bluetoothGattService =
+                                    createBluetoothGattService(mRequestIdForBluetoothGattService);
 
-                    if (mBluetoothGattServer.addService(bluetoothGattService)) {
-                        Log.i(TAG, "startBluetoothMacAddressRequestServer: Add service, with request ID \""
-                                + mRequestIdForBluetoothGattService + "\", operation initiated successfully");
-                    } else {
-                        Log.e(TAG, "startBluetoothMacAddressRequestServer: Failed to add the Bluetooth GATT service");
-                        stopBluetoothMacAddressRequestServer();
+                            if (mBluetoothGattServer.addService(bluetoothGattService)) {
+                                Log.d(TAG, "startBluetoothMacAddressRequestServer: Add service, with request ID \""
+                                        + mRequestIdForBluetoothGattService + "\", operation initiated successfully");
+                            } else {
+                                Log.e(TAG, "startBluetoothMacAddressRequestServer: Failed to add the Bluetooth GATT service");
+                                stopBluetoothMacAddressRequestServer();
+                            }
+                        } else {
+                            Log.e(TAG, "startBluetoothMacAddressRequestServer: Failed to open the Bluetooth GATT server");
+                            stopBluetoothMacAddressRequestServer();
+                        }
                     }
-                } else {
-                    Log.e(TAG, "startBluetoothMacAddressRequestServer: Failed to open the Bluetooth GATT server");
-                    stopBluetoothMacAddressRequestServer();
-                }
+                });
             } else {
                 Log.e(TAG, "startBluetoothMacAddressRequestServer: Failed to obtain the Bluetooth manager (android.bluetooth.BluetoothManager) instance");
             }
@@ -133,7 +137,7 @@ public class BluetoothGattManager {
     }
 
     /**
-     *
+     * Stops the Bluetooth GATT server with Bluetooth MAC address request service.
      */
     public void stopBluetoothMacAddressRequestServer() {
         if (mBluetoothGattServer != null) {
@@ -278,22 +282,15 @@ public class BluetoothGattManager {
         BluetoothGattRequest matchingBluetoothGattRequest = null;
 
         if (bluetoothGatt != null && bluetoothGatt.getDevice() != null) {
-            for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-                if (bluetoothGattRequest.bluetoothGatt != null
-                        && bluetoothGattRequest.bluetoothGatt.getDevice() != null
-                        && bluetoothGattRequest.bluetoothGatt.getDevice().getAddress().equals(
-                        bluetoothGatt.getDevice().getAddress())) {
-                    matchingBluetoothGattRequest = bluetoothGattRequest;
-                    break;
-                }
-            }
+            matchingBluetoothGattRequest = getBluetoothGattRequest(bluetoothGatt.getDevice());
         }
 
         return matchingBluetoothGattRequest;
     }
 
     /**
-     * Removes the given request from the queue and closes its BluetoothGatt instance if one exists.
+     * Removes the given request from the queue (or actually moves it to the end of the queue) and
+     * closes its BluetoothGatt instance if one exists.
      * @param bluetoothGattRequestToRemove The request to remove.
      * @param executeNext If true, will execute a next request in line.
      * @return True, if removed successfully. False, if not found.
@@ -415,7 +412,6 @@ public class BluetoothGattManager {
                 }
             } else {
                 Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Not connected");
-                //removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
             }
         }
 
@@ -485,7 +481,7 @@ public class BluetoothGattManager {
                     }
                 } else {
                     Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to obtain the desired Bluetooth GATT service");
-                    //removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                    removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
                 }
             } else {
                 Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to discover services, got status: " + status);
@@ -524,9 +520,10 @@ public class BluetoothGattManager {
                 } else {
                     mListener.onProvideBluetoothMacAddressResult(requestId, false);
                 }
-            }
 
-            removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                // We are done
+                removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+            }
         }
     }
 
@@ -548,7 +545,7 @@ public class BluetoothGattManager {
 
         @Override
         public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
-            Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Status: " + status + ", new state: " + newState);
+            //Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Status: " + status + ", new state: " + newState);
             super.onConnectionStateChange(device, status, newState);
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
