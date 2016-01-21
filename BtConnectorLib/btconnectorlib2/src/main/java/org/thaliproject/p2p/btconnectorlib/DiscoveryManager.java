@@ -15,6 +15,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BluetoothGattManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
@@ -256,7 +257,7 @@ public class DiscoveryManager
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
                     if (getBluetoothMacAddress() == null) {
-                        // Start the Bluetooth GATT server for getting our Bluetooth MAC address.
+                        // Start the Bluetooth GATT server for getting our Bluetooth MAC address
                         if (mBluetoothGattManager == null) {
                             mBluetoothGattManager = new BluetoothGattManager(this, mContext, mBleServiceUuid);
                         }
@@ -690,6 +691,7 @@ public class DiscoveryManager
      *
      * @param requestId The request ID.
      */
+    @Override
     public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
         stopBlePeerDiscoverer(false);
 
@@ -727,7 +729,7 @@ public class DiscoveryManager
     public void onBluetoothMacAddressResolved(final String bluetoothMacAddress) {
         Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
 
-        if (bluetoothMacAddress != null) {
+        if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
             if (mBluetoothGattManager != null) {
                 mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
             }

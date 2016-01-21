@@ -6,6 +6,7 @@ import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
 /**
  * An abstract base class for classes utilizing Bluetooth connectivity and need to validate the
@@ -58,6 +59,10 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
             }
         } else {
             Log.e(TAG, "getBluetoothMacAddress: Failed to get the discovery manager settings instance");
+        }
+
+        if (!BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+            bluetoothMacAddress = null;
         }
 
         return bluetoothMacAddress;

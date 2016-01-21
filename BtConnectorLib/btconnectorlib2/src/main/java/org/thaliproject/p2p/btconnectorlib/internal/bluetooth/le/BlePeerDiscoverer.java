@@ -412,17 +412,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                              || parsedAdvertisement.bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
 
                     if (bluetoothMacAddressIsNullOrUnknown) {
-                        if (mOurRequestId != null) {
-                            Log.d(TAG, "checkScanResult: Our request ID: " + mOurRequestId);
-                        }
+                        //Log.d(TAG, "checkScanResult: Our request ID: " + mOurRequestId);
 
                         UUID rotatedProvideBluetoothMacAddressRequestUuid =
                                 BlePeerDiscoveryUtils.rotateByte(
                                         mProvideBluetoothMacAddressRequestUuid,
                                         UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD);
 
-                        Log.d(TAG, "checkScanResult: Comparing \"" + parsedAdvertisement.uuid
-                                + "\" with \"" + rotatedProvideBluetoothMacAddressRequestUuid + "\"");
+                        //Log.d(TAG, "checkScanResult: Comparing \"" + parsedAdvertisement.uuid
+                        //        + "\" with \"" + rotatedProvideBluetoothMacAddressRequestUuid + "\"");
 
                         if (mOurRequestId != null
                                 && parsedAdvertisement.uuid.equals(rotatedProvideBluetoothMacAddressRequestUuid)) {

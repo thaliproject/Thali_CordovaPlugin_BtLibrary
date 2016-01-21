@@ -18,7 +18,7 @@ public class FindMyBluetoothAddressTest
         implements DiscoveryManager.DiscoveryManagerListener {
     private static final String TAG = FindMyBluetoothAddressTest.class.getName();
     private static long DEFAULT_TEST_TIMEOUT = 80000;
-    private static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
+    private static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 35;
     private DiscoveryManager mDiscoveryManager = null;
     private String mStoredBluetoothMacAddress = null;
     private String mBluetoothMacAddress = null;
@@ -50,7 +50,7 @@ public class FindMyBluetoothAddressTest
         if (mStoredBluetoothMacAddress != null) {
             // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
             // test fails
-            settings.setBluetoothMacAddress(null);
+            settings.clearBluetoothMacAddress();
         }
 
         return mDiscoveryManager.start(TestEngine.PEER_NAME);
@@ -67,7 +67,7 @@ public class FindMyBluetoothAddressTest
             } else {
                 if (mStoredBluetoothMacAddress != null) {
                     // Restore the Bluetooth MAC address
-                    //DiscoveryManagerSettings.getInstance(null).setBluetoothMacAddress(mStoredBluetoothMacAddress);
+                    DiscoveryManagerSettings.getInstance(null).setBluetoothMacAddress(mStoredBluetoothMacAddress);
                 }
 
                 String missingPermission = mDiscoveryManager.getMissingPermission();

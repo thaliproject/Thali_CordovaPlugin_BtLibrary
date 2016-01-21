@@ -6,10 +6,10 @@ package org.thaliproject.p2p.btconnectorlib;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.ScanSettings;
 import android.content.Context;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
 /**
  * Discovery manager settings.
@@ -47,7 +47,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     // Default settings
     public static boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
-    public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 60000;
+    public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 30000;
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
@@ -90,8 +90,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public static DiscoveryManagerSettings getInstance(Context context) {
         if (mInstance == null) {
-            mContext = context;
-            mInstance = new DiscoveryManagerSettings();
+            mInstance = new DiscoveryManagerSettings(context);
         }
 
         return mInstance;
@@ -100,9 +99,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Private constructor.
      */
-    private DiscoveryManagerSettings() {
-        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
-        mSharedPreferencesEditor = mSharedPreferences.edit();
+    private DiscoveryManagerSettings(Context context) {
+        super(context); // Will create Shared preferences (and editor) instance
     }
 
     /**
@@ -166,12 +164,24 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * @param bluetoothMacAddress The Bluetooth MAC address.
      */
     public void setBluetoothMacAddress(String bluetoothMacAddress) {
-        if (mBluetoothMacAddress == null || !mBluetoothMacAddress.equals(bluetoothMacAddress)) {
+        if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)
+            && (mBluetoothMacAddress == null || !mBluetoothMacAddress.equals(bluetoothMacAddress))) {
             Log.i(TAG, "setBluetoothMacAddress: " + bluetoothMacAddress);
             mBluetoothMacAddress = bluetoothMacAddress;
             mSharedPreferencesEditor.putString(KEY_BLUETOOTH_MAC_ADDRESS, mBluetoothMacAddress);
             mSharedPreferencesEditor.apply();
         }
+    }
+
+    /**
+     * Clears the stored Bluetooth MAC address.
+     * Can be used for testing purposes.
+     */
+    public void clearBluetoothMacAddress() {
+        Log.i(TAG, "clearBluetoothMacAddress");
+        mBluetoothMacAddress = null;
+        mSharedPreferencesEditor.putString(KEY_BLUETOOTH_MAC_ADDRESS, mBluetoothMacAddress);
+        mSharedPreferencesEditor.apply();
     }
 
     /**
@@ -336,7 +346,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     @Override
-    public void resetToDefaults() {
+    public void resetDefaults() {
         setAutomateBluetoothMacAddressResolution(DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
         setProvideBluetoothMacAddressTimeout(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
         setBluetoothMacAddress(null);
