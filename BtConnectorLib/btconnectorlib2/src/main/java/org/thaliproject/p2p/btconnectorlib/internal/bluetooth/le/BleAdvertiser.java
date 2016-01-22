@@ -81,7 +81,7 @@ class BleAdvertiser extends AdvertiseCallback {
         boolean wasStarted = isStarted();
 
         if (wasStarted) {
-            stop();
+            stop(false);
         }
 
         mAdvertiseData = advertiseData;
@@ -121,16 +121,18 @@ class BleAdvertiser extends AdvertiseCallback {
                 if (mAdvertiseData != null) {
                     try {
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
-                        setState(State.STARTING);
+                        setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
                     }
                 } else {
                     Log.e(TAG, "start: No advertisement data set");
                 }
+            } else {
+                Log.e(TAG, "start: No BLE advertiser instance");
             }
         } else {
-            Log.e(TAG, "start: No BLE advertiser instance");
+            Log.d(TAG, "start: Already running");
         }
 
         return (mState != State.NOT_STARTED);
@@ -138,8 +140,9 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Stops advertising.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    public synchronized void stop() {
+    public synchronized void stop(boolean notifyStateChanged) {
         if (mBluetoothLeAdvertiser != null) {
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(this);
@@ -149,7 +152,7 @@ class BleAdvertiser extends AdvertiseCallback {
             }
         }
 
-        setState(State.NOT_STARTED);
+        setState(State.NOT_STARTED, notifyStateChanged);
     }
 
     /**
@@ -182,41 +185,37 @@ class BleAdvertiser extends AdvertiseCallback {
         }
 
         Log.e(TAG, "onStartFailure: " + reason + ", error code is " + errorCode);
+        setState(State.NOT_STARTED, true);
 
         if (mListener != null) {
             mListener.onAdvertiserFailedToStart(errorCode);
         }
-
-        setState(State.NOT_STARTED);
     }
 
     @Override
     public void onStartSuccess(AdvertiseSettings settingsInEffect) {
         Log.i(TAG, "onStartSuccess");
-        setState(State.RUNNING);
+        setState(State.RUNNING, true);
     }
 
     /**
      * Sets the state and notifies listener if required.
      * @param state The new state.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    private synchronized void setState(State state) {
+    private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
             mState = state;
 
-            switch (mState) {
-                case NOT_STARTED:
-                    if (mListener != null) {
+            if (notifyStateChanged && mListener != null) {
+                switch (mState) {
+                    case NOT_STARTED:
                         mListener.onIsAdvertiserStartedChanged(false);
-                    }
-
-                    break;
-                case RUNNING:
-                    if (mListener != null) {
+                        break;
+                    case RUNNING:
                         mListener.onIsAdvertiserStartedChanged(true);
-                    }
-
-                    break;
+                        break;
+                }
             }
         }
     }

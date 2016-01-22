@@ -23,6 +23,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 import java.util.Collection;
 import java.util.Date;
+import java.util.EnumSet;
 import java.util.UUID;
 
 /**
@@ -227,24 +228,30 @@ public class DiscoveryManager
             boolean bleDiscoveryStarted = false;
             boolean wifiDiscoveryStarted = false;
 
-            if (mBluetoothManager.isBluetoothEnabled()
-                    && (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
-                // Try to start BLE based discovery
-                stopBluetoothDeviceDiscovery();
-                bleDiscoveryStarted = startBlePeerDiscoverer();
+            if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                if (mBluetoothManager.isBluetoothEnabled()) {
+                    // Try to start BLE based discovery
+                    stopBluetoothDeviceDiscovery();
+                    bleDiscoveryStarted = startBlePeerDiscoverer();
+                } else {
+                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
+                }
             }
 
-            if (mWifiDirectManager.isWifiEnabled()
-                    && (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI)) {
-                if (verifyIdentityString()) {
-                    // Try to start Wi-Fi Direct based discovery
-                    wifiDiscoveryStarted = startWifiPeerDiscovery();
-                } else {
-                    if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
-                        Log.e(TAG, "start: Identity string is null or empty");
+            if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+                if (mWifiDirectManager.isWifiEnabled()) {
+                    if (verifyIdentityString()) {
+                        // Try to start Wi-Fi Direct based discovery
+                        wifiDiscoveryStarted = startWifiPeerDiscovery();
                     } else {
-                        Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
+                        if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
+                            Log.e(TAG, "start: Identity string is null or empty");
+                        } else {
+                            Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
+                        }
                     }
+                } else {
+                    Log.e(TAG, "start: Cannot start Wi-Fi Direct based peer discovery, because Wi-Fi is not enabled on the device");
                 }
             }
 
@@ -304,14 +311,7 @@ public class DiscoveryManager
 
         mShouldBeRunning = false;
 
-        if (mBluetoothGattManager != null) {
-            mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-            mBluetoothGattManager.clearBluetoothGattRequestQueue();
-        }
-
-        stopBluetoothDeviceDiscovery();
-        stopBlePeerDiscoverer(false);
-        stopWifiPeerDiscovery(false);
+        stopForRestart();
 
         mWifiDirectManager.release(this);
         mBluetoothManager.release(this);
@@ -436,8 +436,8 @@ public class DiscoveryManager
         boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
         boolean discoveryModeSet = false;
 
-        if (wasRunning && forceRestart) {
-            stop();
+        if (wasRunning || forceRestart) {
+            stopForRestart();
         }
 
         if (!wasRunning || forceRestart) {
@@ -476,7 +476,7 @@ public class DiscoveryManager
             }
         }
 
-        if (discoveryModeSet && wasRunning && forceRestart) {
+        if (discoveryModeSet && (wasRunning || forceRestart)) {
             discoveryModeSet = start(mMyPeerId, mMyPeerName);
         }
 
@@ -600,11 +600,11 @@ public class DiscoveryManager
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
      *
      * Does nothing but logs the event.
-     * @param isStarted If true, the discovery was started. If false, it was stopped.
+     * @param state The new state.
      */
     @Override
-    public void onIsBlePeerDiscoveryStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsBlePeerDiscoveryStartedChanged: " + isStarted);
+    public void onIsBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscoverer.BlePeerDiscovererStateSet> state) {
+        Log.i(TAG, "onIsBlePeerDiscovererStateChanged: " + state);
     }
 
     /**
@@ -693,7 +693,9 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
-        stopBlePeerDiscoverer(false);
+        /*if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.stopScanner();
+        }*/
 
         if (mSettings.getAutomateBluetoothMacAddressResolution()) {
             makeDeviceDiscoverable(DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
@@ -710,7 +712,7 @@ public class DiscoveryManager
     /**
      * From both BlePeerDiscoverer.BlePeerDiscoveryListener and BluetoothGattManager.BluetoothGattManagerListener
      * @param requestId The request ID associated with the device in need of assistance.
-     * @param @param wasCompleted True, if the operation was completed.
+     * @param wasCompleted True, if the operation was completed.
      */
     @Override
     public void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted) {
@@ -743,9 +745,8 @@ public class DiscoveryManager
                 }
             });
 
-            if (mState == DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS) {
+            if (mShouldBeRunning) {
                 // We now have our Bluetooth MAC address, do start peer discovery
-                stopBlePeerDiscoverer(false);
                 start(mMyPeerName);
             }
         }
@@ -822,6 +823,24 @@ public class DiscoveryManager
                     mListener.onPeerLost(peerProperties);
                 }
             });
+        }
+    }
+
+    /**
+     * Stops the discovery for pending restart. Does not notify the listener.
+     */
+    private synchronized void stopForRestart() {
+        if (mState != DiscoveryManagerState.NOT_STARTED) {
+            Log.d(TAG, "stopForRestart");
+
+            if (mBluetoothGattManager != null) {
+                mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
+                mBluetoothGattManager.clearBluetoothGattRequestQueue();
+            }
+
+            stopBluetoothDeviceDiscovery();
+            stopBlePeerDiscoverer(false);
+            stopWifiPeerDiscovery(false);
         }
     }
 
@@ -954,7 +973,10 @@ public class DiscoveryManager
      */
     private synchronized boolean startBluetoothDeviceDiscovery() {
         Log.d(TAG, "startBluetoothDeviceDiscovery");
-        stopBlePeerDiscoverer(false);
+
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.stopScanner();
+        }
 
         if (mBluetoothDeviceDiscoverer == null) {
             mBluetoothDeviceDiscoverer =
@@ -963,11 +985,11 @@ public class DiscoveryManager
 
         boolean isStarted = false;
 
-        if (mBlePeerDiscoverer == null) {
+        if (!mBlePeerDiscoverer.getState().contains(BlePeerDiscoverer.BlePeerDiscovererStateSet.SCANNING)) {
             isStarted = (mBluetoothDeviceDiscoverer.isRunning()
                     || mBluetoothDeviceDiscoverer.start(mSettings.getProvideBluetoothMacAddressTimeout()));
         } else {
-            Log.e(TAG, "startBluetoothDeviceDiscovery: Bluetooth LE peer discoverer cannot be running, when doing Bluetooth device discovery");
+            Log.e(TAG, "startBluetoothDeviceDiscovery: Bluetooth LE peer discoverer cannot be running, when doing Bluetooth LE scanning");
         }
 
         return isStarted;
@@ -984,6 +1006,12 @@ public class DiscoveryManager
             mBluetoothDeviceDiscoverer.stop();
             mBluetoothDeviceDiscoverer = null;
             Log.d(TAG, "stopBluetoothDeviceDiscovery: Stopped");
+
+            if (mShouldBeRunning) {
+                // Scanning was stopped when Bluetooth device discovery was started. Try to restart.
+                mBlePeerDiscoverer.start();
+            }
+
             wasStopped = true;
         }
 

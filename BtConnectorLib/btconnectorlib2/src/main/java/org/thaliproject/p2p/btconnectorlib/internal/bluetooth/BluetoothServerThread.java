@@ -46,7 +46,10 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     private static final String TAG = BluetoothServerThread.class.getName();
     private final CopyOnWriteArrayList<BluetoothSocketIoThread> mSocketIoThreads = new CopyOnWriteArrayList<BluetoothSocketIoThread>();
     private final Listener mListener;
-    private final BluetoothServerSocket mServerSocket;
+    private final BluetoothAdapter mBluetoothAdapter;
+    private final UUID mBluetoothUuid;
+    private final String mBluetoothName;
+    private BluetoothServerSocket mServerSocket = null;
     private final String mMyIdentityString;
     private boolean mStopThread = false;
 
@@ -70,8 +73,10 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
         }
 
         mListener = listener;
+        mBluetoothAdapter = bluetoothAdapter;
+        mBluetoothUuid = myBluetoothUuid;
+        mBluetoothName = myBluetoothName;
         mMyIdentityString = myIdentityString;
-        mServerSocket = bluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(myBluetoothName, myBluetoothUuid);
     }
 
     /**
@@ -83,42 +88,50 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void run() {
         while (!mStopThread) {
-            Log.i(TAG, "Waiting for incoming connections...");
-            BluetoothSocket socket = null;
-
             try {
-                socket = mServerSocket.accept(); // Blocking call
-                Log.i(TAG, "Incoming connection accepted");
+                mServerSocket = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(mBluetoothName, mBluetoothUuid);
             } catch (IOException e) {
-                if (!mStopThread) {
-                    Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
-                    mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
-                    mStopThread = true;
-                }
-
-                socket = null;
+                Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
             }
 
-            if (socket != null) {
-                BluetoothSocketIoThread handshakeThread = null;
+            if (mServerSocket != null) {
+                Log.i(TAG, "Waiting for incoming connections...");
+                BluetoothSocket socket = null;
 
                 try {
-                    handshakeThread = new BluetoothSocketIoThread(socket, this);
+                    socket = mServerSocket.accept(); // Blocking call
+                    Log.i(TAG, "Incoming connection accepted");
                 } catch (IOException e) {
-                    Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
+                    if (!mStopThread) {
+                        Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
+                        mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
+                        mStopThread = true;
+                    }
+
+                    socket = null;
                 }
 
-                if (handshakeThread != null) {
-                    handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
-                    handshakeThread.setExitThreadAfterRead(true);
-                    mSocketIoThreads.add(handshakeThread);
-                    handshakeThread.start();
-                    Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
+                if (socket != null) {
+                    BluetoothSocketIoThread handshakeThread = null;
+
+                    try {
+                        handshakeThread = new BluetoothSocketIoThread(socket, this);
+                    } catch (IOException e) {
+                        Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
+                    }
+
+                    if (handshakeThread != null) {
+                        handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                        handshakeThread.setExitThreadAfterRead(true);
+                        mSocketIoThreads.add(handshakeThread);
+                        handshakeThread.start();
+                        Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
+                    }
+                } else if (!mStopThread) {
+                    Log.e(TAG, "Socket is null");
+                    mListener.onIncomingConnectionFailed("Socket is null");
+                    mStopThread = true;
                 }
-            } else if (!mStopThread) {
-                Log.e(TAG, "Socket is null");
-                mListener.onIncomingConnectionFailed("Socket is null");
-                mStopThread = true;
             }
         }
 
