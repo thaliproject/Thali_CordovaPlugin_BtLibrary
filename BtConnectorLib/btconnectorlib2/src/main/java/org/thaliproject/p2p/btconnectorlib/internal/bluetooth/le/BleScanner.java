@@ -12,7 +12,6 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -96,7 +95,7 @@ class BleScanner extends ScanCallback {
             if (mBluetoothLeScanner != null) {
                 try {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
-                    setState(State.STARTING);
+                    setState(State.STARTING, true);
                 } catch (Exception e) {
                     Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
                 }
@@ -110,8 +109,9 @@ class BleScanner extends ScanCallback {
 
     /**
      * Stops the scanning.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    public synchronized void stop() {
+    public synchronized void stop(boolean notifyStateChanged) {
         if (mBluetoothLeScanner != null) {
             try {
                 mBluetoothLeScanner.stopScan(this);
@@ -121,7 +121,7 @@ class BleScanner extends ScanCallback {
             }
         }
 
-        setState(State.NOT_STARTED);
+        setState(State.NOT_STARTED, notifyStateChanged);
     }
 
     /**
@@ -131,7 +131,7 @@ class BleScanner extends ScanCallback {
         boolean wasStarted = (mState != State.NOT_STARTED);
 
         if (wasStarted) {
-            stop();
+            stop(false);
         }
 
         mScanFilters.clear();
@@ -150,7 +150,7 @@ class BleScanner extends ScanCallback {
             boolean wasStarted = (mState != State.NOT_STARTED);
 
             if (wasStarted) {
-                stop();
+                stop(false);
             }
 
             mScanFilters.add(scanFilter);
@@ -202,12 +202,11 @@ class BleScanner extends ScanCallback {
         }
 
         Log.e(TAG, "onScanFailed: " + reason + ", error code is " + errorCode);
+        setState(State.NOT_STARTED, true);
 
         if (mListener != null) {
             mListener.onScannerFailed(errorCode);
         }
-
-        setState(State.NOT_STARTED);
     }
 
     @Override
@@ -224,24 +223,21 @@ class BleScanner extends ScanCallback {
     /**
      * Sets the state and notifies listener if required.
      * @param state The new state.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    private synchronized void setState(State state) {
+    private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
             mState = state;
 
-            switch (mState) {
-                case NOT_STARTED:
-                    if (mListener != null) {
+            if (notifyStateChanged && mListener != null) {
+                switch (mState) {
+                    case NOT_STARTED:
                         mListener.onIsScannerStartedChanged(false);
-                    }
-
-                    break;
-                case RUNNING:
-                    if (mListener != null) {
+                        break;
+                    case RUNNING:
                         mListener.onIsScannerStartedChanged(true);
-                    }
-
-                    break;
+                        break;
+                }
             }
         }
     }

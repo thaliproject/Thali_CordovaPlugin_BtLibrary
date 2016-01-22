@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -24,6 +26,16 @@ public class BluetoothUtils {
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
     private static final int MAX_ALTERNATIVE_CHANNEL = 30;
     private static int mAlternativeChannel = 0;
+
+    /**
+     * Checks if the given Bluetooth MAC address is unknown (as in not set/missing).
+     * @param bluetoothMacAddress The Bluetooth MAC address to check.
+     * @return True, if the Bluetooth MAC address is unknown.
+     */
+    public static boolean isBluetoothMacAddressUnknown(String bluetoothMacAddress) {
+        return (bluetoothMacAddress == null
+                || bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
+    }
 
     /**
      * Checks whether the given Bluetooth MAC address has the proper form or not.

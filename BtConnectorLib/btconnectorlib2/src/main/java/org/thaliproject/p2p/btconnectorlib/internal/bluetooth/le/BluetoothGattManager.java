@@ -3,20 +3,14 @@
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
-import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattServer;
-import android.bluetooth.BluetoothGattServerCallback;
-import android.bluetooth.BluetoothGattService;
-import android.bluetooth.BluetoothManager;
-import android.bluetooth.BluetoothProfile;
+import android.bluetooth.*;
 import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -113,6 +107,25 @@ public class BluetoothGattManager {
 
                         if (mBluetoothGattServer != null) {
                             Log.d(TAG, "startBluetoothMacAddressRequestServer: Open Bluetooth GATT server OK");
+
+                            List<BluetoothGattService> bluetoothGattServices = mBluetoothGattServer.getServices();
+
+                            if (bluetoothGattServices.size() > 0) {
+                                for (BluetoothGattService bluetoothGattService : bluetoothGattServices) {
+                                    Log.d(TAG, "startBluetoothMacAddressRequestServer: The server has service with UUID \""
+                                            + bluetoothGattService.getUuid() + "\"");
+
+                                    for (BluetoothGattCharacteristic bluetoothGattCharacteristic : bluetoothGattService.getCharacteristics()) {
+                                        Log.d(TAG, "startBluetoothMacAddressRequestServer: - Characteristic with UUID \""
+                                                + bluetoothGattCharacteristic.getUuid()
+                                                + "\": Value: " + bluetoothGattCharacteristic.getValue()
+                                                + ", permissions: " + bluetoothGattCharacteristic.getPermissions()
+                                                + ", write type: " + bluetoothGattCharacteristic.getWriteType());
+                                    }
+                                }
+                            } else {
+                                Log.d(TAG, "startBluetoothMacAddressRequestServer: No existing services");
+                            }
 
                             BluetoothGattService bluetoothGattService =
                                     createBluetoothGattService(mRequestIdForBluetoothGattService);
@@ -601,6 +614,36 @@ public class BluetoothGattManager {
                     mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value);
                 }
             }
+        }
+
+        @Override
+        public void onDescriptorReadRequest(BluetoothDevice device, int requestId, int offset, BluetoothGattDescriptor descriptor) {
+            Log.d(TAG, "BluetoothGattServerCallback.onDescriptorReadRequest: Request ID: " + requestId + ", offset: " + offset);
+            super.onDescriptorReadRequest(device, requestId, offset, descriptor);
+        }
+
+        @Override
+        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId, BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded, int offset, byte[] value) {
+            Log.d(TAG, "BluetoothGattServerCallback.onDescriptorWriteRequest: Request ID: " + requestId + ", prepared write: " + preparedWrite + ", response needed: " + responseNeeded + ", offset: " + offset + ", value: " + value);
+            super.onDescriptorWriteRequest(device, requestId, descriptor, preparedWrite, responseNeeded, offset, value);
+        }
+
+        @Override
+        public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
+            Log.d(TAG, "BluetoothGattServerCallback.onExecuteWrite: Request ID: " + requestId + ", execute: " + execute);
+            super.onExecuteWrite(device, requestId, execute);
+        }
+
+        @Override
+        public void onMtuChanged(BluetoothDevice device, int mtu) {
+            Log.d(TAG, "BluetoothGattServerCallback.onMtuChanged: MTU: " + mtu);
+            super.onMtuChanged(device, mtu);
+        }
+
+        @Override
+        public void onNotificationSent(BluetoothDevice device, int status) {
+            Log.d(TAG, "BluetoothGattServerCallback.onNotificationSent: Status: " + status);
+            super.onNotificationSent(device, status);
         }
     }
 }

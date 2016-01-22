@@ -8,7 +8,6 @@ import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
-
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -22,9 +21,12 @@ import java.util.UUID;
  */
 @TargetApi(21)
 class BlePeerDiscoveryUtils {
+    /**
+     * Container class for properties parsed from an advertisement.
+     */
     public static class ParsedAdvertisement {
         UUID uuid = null;
-        String provideBluetoothMacAddressId = null;
+        String provideBluetoothMacAddressRequestId = null;
         String bluetoothMacAddress = null;
     }
 
@@ -134,7 +136,7 @@ class BlePeerDiscoveryUtils {
                     if (serviceUuid.toString().startsWith(beginningOfParsedUuid)) {
                         // The beginning of the UUID is a match
                         // Parse the request ID
-                        parsedAdvertisement.provideBluetoothMacAddressId =
+                        parsedAdvertisement.provideBluetoothMacAddressRequestId =
                                 PeerAdvertisementFactory.parseRequestIdFromUuid(parsedAdvertisement.uuid);
                     } else {
                         Log.d(TAG, "parseManufacturerData: UUID mismatch: Was expecting \""
