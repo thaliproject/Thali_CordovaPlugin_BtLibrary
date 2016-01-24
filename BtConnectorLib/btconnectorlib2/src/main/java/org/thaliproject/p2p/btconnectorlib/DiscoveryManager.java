@@ -10,6 +10,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
+import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
@@ -138,6 +139,7 @@ public class DiscoveryManager
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryManagerSettings mSettings = null;
     private PeerModel mPeerModel = null;
+    private CountDownTimer mReceiveBluetoothMacAddressTimeoutTimer = null;
     private String mCurrentProvideBluetoothMacAddressRequestId = null;
     private String mMissingPermission = null;
     private long mLastTimeDeviceWasMadeDiscoverable = 0;
@@ -263,18 +265,7 @@ public class DiscoveryManager
                 if (bleDiscoveryStarted && wifiDiscoveryStarted) {
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
-                    if (getBluetoothMacAddress() == null) {
-                        // Start the Bluetooth GATT server for getting our Bluetooth MAC address
-                        if (mBluetoothGattManager == null) {
-                            mBluetoothGattManager = new BluetoothGattManager(this, mContext, mBleServiceUuid);
-                        }
-
-                        if (mBlePeerDiscoverer != null
-                            && !mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
-                            mBluetoothGattManager.startBluetoothMacAddressRequestServer(
-                                    mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
-                        }
-
+                    if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
                         setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
                     } else {
                         setState(DiscoveryManagerState.RUNNING_BLE);
@@ -387,6 +378,88 @@ public class DiscoveryManager
             start(mMyPeerName);
         } else {
             setState(DiscoveryManagerState.NOT_STARTED);
+        }
+    }
+
+    /**
+     * Starts "Receive Bluetooth MAC address" mode. This should be called when
+     * we get notified that there is a peer ready to provide us our Bluetooth
+     * MAC address.
+     * @param requestId Our "Provide Bluetooth MAC address" request ID.
+     */
+    public synchronized void startReceiveBluetoothMacAddressMode(String requestId) {
+        if (!mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
+            Log.i(TAG, "startReceiveBluetoothMacAddressMode: Starting...");
+
+            if (mReceiveBluetoothMacAddressTimeoutTimer != null) {
+                mReceiveBluetoothMacAddressTimeoutTimer.cancel();
+                mReceiveBluetoothMacAddressTimeoutTimer = null;
+            }
+
+            if (mBlePeerDiscoverer != null) {
+                mBlePeerDiscoverer.stopScanner();
+            }
+
+            if (mSettings.getAutomateBluetoothMacAddressResolution()) {
+                long durationInSeconds = mSettings.getProvideBluetoothMacAddressTimeout();
+
+                if (durationInSeconds == 0) {
+                    durationInSeconds = DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS;
+                } else {
+                    durationInSeconds /= 1000;
+                }
+
+                makeDeviceDiscoverable((int)durationInSeconds);
+            }
+
+            if (mBluetoothGattManager == null) {
+                mBluetoothGattManager = new BluetoothGattManager(this, mContext, mBleServiceUuid);
+            }
+
+            mBluetoothGattManager.startBluetoothMacAddressRequestServer(requestId);
+            long timeoutInMilliseconds = mSettings.getProvideBluetoothMacAddressTimeout();
+
+            mReceiveBluetoothMacAddressTimeoutTimer =
+                    new CountDownTimer(timeoutInMilliseconds, timeoutInMilliseconds) {
+                @Override
+                public void onTick(long l) {
+                    // Not used
+                }
+
+                @Override
+                public void onFinish() {
+                    Log.d(TAG, "Receive Bluetooth MAC address timeout");
+                    this.cancel();
+                    mReceiveBluetoothMacAddressTimeoutTimer = null;
+                    stopReceiveBluetoothMacAddressMode();
+                }
+            };
+
+            mReceiveBluetoothMacAddressTimeoutTimer.start();
+        } else {
+            Log.d(TAG, "startReceiveBluetoothMacAddressMode: Already started");
+        }
+    }
+
+    /**
+     * Stops "Receive Bluetooth MAC address" mode.
+     */
+    public synchronized void stopReceiveBluetoothMacAddressMode() {
+        if (mReceiveBluetoothMacAddressTimeoutTimer != null) {
+            mReceiveBluetoothMacAddressTimeoutTimer.cancel();
+            mReceiveBluetoothMacAddressTimeoutTimer = null;
+        }
+
+        if (mBluetoothGattManager != null) {
+            if (mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
+                Log.i(TAG, "stopReceiveBluetoothMacAddressMode: Stopping...");
+            }
+
+            mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
+
+            if (mShouldBeRunning) {
+                start(mMyPeerId, mMyPeerName);
+            }
         }
     }
 
@@ -687,18 +760,15 @@ public class DiscoveryManager
      * Forwards the event to the listener, if the Bluetooth MAC address resolution process is not
      * set to be automated.
      *
-     * Otherwise, requests the device to make itself discoverable (requires user's attention).
+     * Otherwise, starts "Receive Bluetooth MAC address" mode, which also requests the device to
+     * make itself discoverable (requires user's attention).
      *
      * @param requestId The request ID.
      */
     @Override
     public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
-        /*if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.stopScanner();
-        }*/
-
-        if (mSettings.getAutomateBluetoothMacAddressResolution()) {
-            makeDeviceDiscoverable(DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
+        if (mSettings.getAutomateBluetoothMacAddressResolution() && mBlePeerDiscoverer != null) {
+            startReceiveBluetoothMacAddressMode(mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
         } else {
             mHandler.post(new Runnable() {
                 @Override
@@ -732,10 +802,6 @@ public class DiscoveryManager
         Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
 
         if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
-            if (mBluetoothGattManager != null) {
-                mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-            }
-
             mSettings.setBluetoothMacAddress(bluetoothMacAddress);
 
             mHandler.post(new Runnable() {
@@ -745,10 +811,7 @@ public class DiscoveryManager
                 }
             });
 
-            if (mShouldBeRunning) {
-                // We now have our Bluetooth MAC address, do start peer discovery
-                start(mMyPeerName);
-            }
+            stopReceiveBluetoothMacAddressMode(); // Starts normal peer discovery too
         }
     }
 
@@ -834,10 +897,10 @@ public class DiscoveryManager
             Log.d(TAG, "stopForRestart");
 
             if (mBluetoothGattManager != null) {
-                mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
                 mBluetoothGattManager.clearBluetoothGattRequestQueue();
             }
 
+            stopReceiveBluetoothMacAddressMode();
             stopBluetoothDeviceDiscovery();
             stopBlePeerDiscoverer(false);
             stopWifiPeerDiscovery(false);
