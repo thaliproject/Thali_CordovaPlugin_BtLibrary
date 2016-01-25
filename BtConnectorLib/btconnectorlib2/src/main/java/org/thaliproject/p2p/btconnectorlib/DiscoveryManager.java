@@ -355,6 +355,12 @@ public class DiscoveryManager
         if (!wasStarted) {
             // Failed to start, restore previous state
             stopProvideBluetoothMacAddressMode();
+
+            if (mShouldBeRunning) {
+                start(mMyPeerName);
+            } else {
+                setState(DiscoveryManagerState.NOT_STARTED);
+            }
         }
 
         return wasStarted;
@@ -374,12 +380,6 @@ public class DiscoveryManager
 
         stopBluetoothDeviceDiscovery();
         stopBlePeerDiscoverer(false);
-
-        if (mShouldBeRunning) {
-            start(mMyPeerName);
-        } else {
-            setState(DiscoveryManagerState.NOT_STARTED);
-        }
     }
 
     /**
@@ -793,6 +793,17 @@ public class DiscoveryManager
         Log.d(TAG, "onProvideBluetoothMacAddressResult: Operation with request ID \""
                 + requestId + (wasCompleted ? "\" was completed" : "\" was not completed"));
         stopProvideBluetoothMacAddressMode();
+
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (mShouldBeRunning) {
+                    start(mMyPeerName);
+                } else {
+                    setState(DiscoveryManagerState.NOT_STARTED);
+                }
+            }
+        });
     }
 
     /**
@@ -817,6 +828,8 @@ public class DiscoveryManager
 
                     if (mShouldBeRunning) {
                         start(mMyPeerName);
+                    }  else {
+                        setState(DiscoveryManagerState.NOT_STARTED);
                     }
                 }
             });
@@ -908,8 +921,8 @@ public class DiscoveryManager
                 mBluetoothGattManager.clearBluetoothGattRequestQueue();
             }
 
+            stopProvideBluetoothMacAddressMode(); // Stops the Bluetooth device discovery if it was running
             stopReceiveBluetoothMacAddressMode();
-            stopBluetoothDeviceDiscovery();
             stopBlePeerDiscoverer(false);
             stopWifiPeerDiscovery(false);
         }

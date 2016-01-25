@@ -441,7 +441,8 @@ public class BluetoothGattManager {
                     removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
                 }
             } else {
-                Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Not connected");
+                Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Not connected, trying to reconnect...");
+                bluetoothGatt.connect(); // Try to reconnect
             }
         }
 
