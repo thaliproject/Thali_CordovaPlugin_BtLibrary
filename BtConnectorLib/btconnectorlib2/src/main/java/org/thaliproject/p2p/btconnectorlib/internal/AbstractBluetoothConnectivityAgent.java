@@ -53,6 +53,10 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         if (settings != null) {
             if (bluetoothMacAddress == null) {
                 bluetoothMacAddress = settings.getBluetoothMacAddress();
+
+                if (BluetoothUtils.isBluetoothMacAddressUnknown(bluetoothMacAddress)) {
+                    Log.v(TAG, "getBluetoothMacAddress: Got the Bluetooth MAC address from the settings: " + bluetoothMacAddress);
+                }
             } else {
                 // Store the address just to be on the safe side
                 settings.setBluetoothMacAddress(bluetoothMacAddress);

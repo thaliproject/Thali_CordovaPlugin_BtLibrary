@@ -47,7 +47,7 @@ public class BluetoothGattManager {
     }
 
     private static final String TAG = BluetoothGattManager.class.getName();
-    private static final long REQUEST_TIMEOUT_IN_MILLISECONDS = 10000;
+    private static final long REQUEST_TIMEOUT_IN_MILLISECONDS = 12000;
     private final BluetoothGattManagerListener mListener;
     private final Context mContext;
     private final UUID mServiceUuid;
@@ -190,6 +190,11 @@ public class BluetoothGattManager {
      * Clears all existing BluetoothGatt instances and closes them.
      */
     public synchronized void clearBluetoothGattRequestQueue() {
+        if (mCancelRequestTimer != null) {
+            mCancelRequestTimer.cancel();
+            mCancelRequestTimer = null;
+        }
+
         if (mBluetoothGattRequestQueue.size() > 0) {
             Log.i(TAG, "clearBluetoothGattRequestQueue: Clearing " + mBluetoothGattRequestQueue.size() + " instances");
 

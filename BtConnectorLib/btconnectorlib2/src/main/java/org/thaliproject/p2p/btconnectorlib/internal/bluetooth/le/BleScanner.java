@@ -102,6 +102,8 @@ class BleScanner extends ScanCallback {
             } else {
                 Log.e(TAG, "start: No BLE scanner instance");
             }
+        } else {
+            Log.d(TAG, "start: Already running");
         }
 
         return (mState != State.NOT_STARTED);
