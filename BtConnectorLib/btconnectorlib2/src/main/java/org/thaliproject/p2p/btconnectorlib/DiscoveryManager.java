@@ -418,6 +418,7 @@ public class DiscoveryManager
 
             mBluetoothGattManager.startBluetoothMacAddressRequestServer(requestId);
             long timeoutInMilliseconds = mSettings.getProvideBluetoothMacAddressTimeout();
+            final DiscoveryManager discoveryManagerInstance = this;
 
             mReceiveBluetoothMacAddressTimeoutTimer =
                     new CountDownTimer(timeoutInMilliseconds, timeoutInMilliseconds) {
@@ -432,6 +433,10 @@ public class DiscoveryManager
                     this.cancel();
                     mReceiveBluetoothMacAddressTimeoutTimer = null;
                     stopReceiveBluetoothMacAddressMode();
+
+                    if (mShouldBeRunning) {
+                        discoveryManagerInstance.start(mMyPeerName);
+                    }
                 }
             };
 
@@ -456,10 +461,6 @@ public class DiscoveryManager
             }
 
             mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-
-            if (mShouldBeRunning) {
-                start(mMyPeerId, mMyPeerName);
-            }
         }
     }
 
@@ -615,7 +616,9 @@ public class DiscoveryManager
                     }
                 }
             } else {
-                if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()) {
+                if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()
+                        && (mBluetoothGattManager == null
+                            || !mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted())) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
                     start(mMyPeerId, mMyPeerName);
                 }
@@ -804,6 +807,11 @@ public class DiscoveryManager
         if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
             mSettings.setBluetoothMacAddress(bluetoothMacAddress);
 
+            if (mBlePeerDiscoverer != null
+                    && BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())) {
+                mBlePeerDiscoverer.setBluetoothMacAddress(bluetoothMacAddress);
+            }
+
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -811,7 +819,11 @@ public class DiscoveryManager
                 }
             });
 
-            stopReceiveBluetoothMacAddressMode(); // Starts normal peer discovery too
+            stopReceiveBluetoothMacAddressMode();
+
+            if (mShouldBeRunning) {
+                start(mMyPeerName);
+            }
         }
     }
 
@@ -924,16 +936,12 @@ public class DiscoveryManager
 
         if (permissionsGranted) {
             if (mBluetoothManager.bind(this)) {
-                if (mBlePeerDiscoverer == null) {
-                    if (mBleServiceUuid != null) {
-                        constructBlePeerDiscovererInstance();
-                        started = mBlePeerDiscoverer.start();
-                    } else {
-                        Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");
-                    }
+                constructBlePeerDiscovererInstance();
+
+                if (mBleServiceUuid != null) {
+                    started = mBlePeerDiscoverer.start();
                 } else {
-                    Log.d(TAG, "startBlePeerDiscoverer: Already running");
-                    started = true;
+                    Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");
                 }
             }
         } else {
@@ -1069,12 +1077,6 @@ public class DiscoveryManager
             mBluetoothDeviceDiscoverer.stop();
             mBluetoothDeviceDiscoverer = null;
             Log.d(TAG, "stopBluetoothDeviceDiscovery: Stopped");
-
-            if (mShouldBeRunning) {
-                // Scanning was stopped when Bluetooth device discovery was started. Try to restart.
-                mBlePeerDiscoverer.start();
-            }
-
             wasStopped = true;
         }
 

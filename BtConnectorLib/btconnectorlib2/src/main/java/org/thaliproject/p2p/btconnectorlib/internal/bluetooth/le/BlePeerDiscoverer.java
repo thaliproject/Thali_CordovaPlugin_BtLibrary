@@ -163,11 +163,20 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     /**
+     * @return The Bluetooth MAC address given/set to this instance. Note that this does not in
+     * anyway try to resolve the address, but only returns what is given.
+     */
+    public String getBluetoothMacAddress() {
+        return mMyBluetoothMacAddress;
+    }
+
+    /**
      * Sets the Bluetooth MAC address for the advertiser.
      * @param myBluetoothMacAddress Our Bluetooth MAC address.
      */
     public void setBluetoothMacAddress(String myBluetoothMacAddress) {
         if (BluetoothUtils.isValidBluetoothMacAddress(mMyBluetoothMacAddress)) {
+            Log.d(TAG, "setBluetoothMacAddress: " + myBluetoothMacAddress);
             mMyBluetoothMacAddress = myBluetoothMacAddress;
             mOurRequestId = null;
 
@@ -494,7 +503,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             deducedStateSet.add(BlePeerDiscovererStateSet.NOT_STARTED);
         }
 
-        if (mStateSet != deducedStateSet) {
+        if (!mStateSet.equals(deducedStateSet)) {
             Log.d(TAG, "updateState(): State changed from " + mStateSet + " to " + deducedStateSet);
             mStateSet = deducedStateSet;
             mListener.onIsBlePeerDiscovererStateChanged(mStateSet);

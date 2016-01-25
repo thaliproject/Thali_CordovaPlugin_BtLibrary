@@ -47,7 +47,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     // Default settings
     public static boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
-    public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 30000;
+    public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 40000;
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
