@@ -123,6 +123,9 @@ public class BluetoothGattManager {
                                                 + ", write type: " + bluetoothGattCharacteristic.getWriteType());
                                     }
                                 }
+
+                                // Clear existing services
+                                mBluetoothGattServer.clearServices();
                             } else {
                                 Log.d(TAG, "startBluetoothMacAddressRequestServer: No existing services");
                             }
