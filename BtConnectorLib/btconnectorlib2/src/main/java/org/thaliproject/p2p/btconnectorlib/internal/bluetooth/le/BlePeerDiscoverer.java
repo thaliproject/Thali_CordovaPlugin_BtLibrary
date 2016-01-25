@@ -437,6 +437,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     BlePeerDiscoveryUtils.parseManufacturerData(manufacturerData, mServiceUuid);
 
             AdvertisementType advertisementType = resolveAdvertisementType(parsedAdvertisement);
+            //Log.v(TAG, "checkScanResult: Resolved advertisement type: " + advertisementType);
 
             switch (advertisementType) {
                 case ADVERTISEMENT_UNKNOWN:
