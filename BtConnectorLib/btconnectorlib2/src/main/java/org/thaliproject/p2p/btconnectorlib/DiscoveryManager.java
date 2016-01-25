@@ -388,6 +388,10 @@ public class DiscoveryManager
      * @param requestId Our "Provide Bluetooth MAC address" request ID.
      */
     public synchronized void startReceiveBluetoothMacAddressMode(String requestId) {
+        if (mBluetoothGattManager == null) {
+            mBluetoothGattManager = new BluetoothGattManager(this, mContext, mBleServiceUuid);
+        }
+
         if (!mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
             Log.i(TAG, "startReceiveBluetoothMacAddressMode: Starting...");
 
@@ -410,10 +414,6 @@ public class DiscoveryManager
                 }
 
                 makeDeviceDiscoverable((int)durationInSeconds);
-            }
-
-            if (mBluetoothGattManager == null) {
-                mBluetoothGattManager = new BluetoothGattManager(this, mContext, mBleServiceUuid);
             }
 
             mBluetoothGattManager.startBluetoothMacAddressRequestServer(requestId);
