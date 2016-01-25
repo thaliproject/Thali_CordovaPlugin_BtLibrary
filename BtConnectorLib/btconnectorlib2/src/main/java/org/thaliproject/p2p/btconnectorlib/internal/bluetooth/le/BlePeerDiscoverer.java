@@ -266,6 +266,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             mBleAdvertiser.setAdvertiseData(
                     PeerAdvertisementFactory.createAdvertiseData(
                             mMyPeerName, mServiceUuid, mMyBluetoothMacAddress));
+            mOurRequestId = null;
         }
 
         return (mBleScanner.start() && mBleAdvertiser.start());
