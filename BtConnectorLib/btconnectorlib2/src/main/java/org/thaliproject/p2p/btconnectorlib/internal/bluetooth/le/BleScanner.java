@@ -229,6 +229,7 @@ class BleScanner extends ScanCallback {
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
+            Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
             if (notifyStateChanged && mListener != null) {

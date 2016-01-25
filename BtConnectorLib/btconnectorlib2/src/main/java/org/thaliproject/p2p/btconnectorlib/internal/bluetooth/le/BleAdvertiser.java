@@ -91,6 +91,10 @@ class BleAdvertiser extends AdvertiseCallback {
         }
     }
 
+    /**
+     * Sets the advertise settings. Note that the advertiser is not restarted automatically.
+     * @param advertiseSettings The advertise settings to set.
+     */
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null) {
             mAdvertiseSettings = advertiseSettings;
@@ -205,6 +209,7 @@ class BleAdvertiser extends AdvertiseCallback {
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
+            Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
             if (notifyStateChanged && mListener != null) {

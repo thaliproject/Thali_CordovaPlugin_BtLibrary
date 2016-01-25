@@ -266,6 +266,7 @@ public class DiscoveryManager
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
                     if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
+                        Log.i(TAG, "start: Our Bluetooth MAC address is not known");
                         setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
                     } else {
                         setState(DiscoveryManagerState.RUNNING_BLE);
@@ -329,7 +330,7 @@ public class DiscoveryManager
             if (mCurrentProvideBluetoothMacAddressRequestId != null
                     && mCurrentProvideBluetoothMacAddressRequestId.length() > 0) {
                 if (startBluetoothDeviceDiscovery()) {
-                    constructBlePeerDiscovererInstance();
+                    constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                     if (mBlePeerDiscoverer.startPeerAddressHelperAdvertiser(
                             mCurrentProvideBluetoothMacAddressRequestId,
@@ -811,14 +812,14 @@ public class DiscoveryManager
                 @Override
                 public void run() {
                     mListener.onBluetoothMacAddressResolved(bluetoothMacAddress);
+
+                    stopReceiveBluetoothMacAddressMode();
+
+                    if (mShouldBeRunning) {
+                        start(mMyPeerName);
+                    }
                 }
             });
-
-            stopReceiveBluetoothMacAddressMode();
-
-            if (mShouldBeRunning) {
-                start(mMyPeerName);
-            }
         }
     }
 
@@ -931,12 +932,7 @@ public class DiscoveryManager
 
         if (permissionsGranted) {
             if (mBluetoothManager.bind(this)) {
-                constructBlePeerDiscovererInstance();
-
-                if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
-                        && BluetoothUtils.isValidBluetoothMacAddress(getBluetoothMacAddress())) {
-                    mBlePeerDiscoverer.setBluetoothMacAddress(getBluetoothMacAddress());
-                }
+                constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
                     started = mBlePeerDiscoverer.start();
@@ -1000,7 +996,7 @@ public class DiscoveryManager
             }
 
             if (mWifiPeerDiscoverer != null) {
-                started = true;
+                started = mWifiPeerDiscoverer.start();
                 Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
             }
         } else {
@@ -1106,13 +1102,19 @@ public class DiscoveryManager
     /**
      * Constructs the BlePeerDiscoverer instance, if one does not already exist.
      */
-    private void constructBlePeerDiscovererInstance() {
+    private void constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
         if (mBlePeerDiscoverer == null) {
-            Log.v(TAG, "constructBlePeerDiscovererInstance");
+            Log.v(TAG, "constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
             mBlePeerDiscoverer = new BlePeerDiscoverer(
                     this, mBluetoothManager.getBluetoothAdapter(),
                     mMyPeerName, mBleServiceUuid, mProvideBluetoothMacAddressRequestUuid,
                     getBluetoothMacAddress());
+        }
+
+        if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
+                && BluetoothUtils.isValidBluetoothMacAddress(getBluetoothMacAddress())) {
+            Log.v(TAG, "constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Updating Bluetooth MAC address...");
+            mBlePeerDiscoverer.setBluetoothMacAddress(getBluetoothMacAddress());
         }
     }
 }

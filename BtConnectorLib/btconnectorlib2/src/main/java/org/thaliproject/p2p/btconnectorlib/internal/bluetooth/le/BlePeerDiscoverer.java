@@ -171,19 +171,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     /**
-     * Sets the Bluetooth MAC address for the advertiser.
+     * Sets the Bluetooth MAC address. Note that the advertiser is not restarted automatically.
      * @param myBluetoothMacAddress Our Bluetooth MAC address.
      */
     public void setBluetoothMacAddress(String myBluetoothMacAddress) {
-        if (BluetoothUtils.isValidBluetoothMacAddress(mMyBluetoothMacAddress)) {
+        if (BluetoothUtils.isValidBluetoothMacAddress(myBluetoothMacAddress)) {
             Log.d(TAG, "setBluetoothMacAddress: " + myBluetoothMacAddress);
             mMyBluetoothMacAddress = myBluetoothMacAddress;
             mOurRequestId = null;
-
-            // BleAdvertiser.setAdvertiseData will restart the advertiser, if it was running
-            mBleAdvertiser.setAdvertiseData(
-                    PeerAdvertisementFactory.createAdvertiseData(
-                            mMyPeerName, mServiceUuid, mMyBluetoothMacAddress));
         } else {
             Log.e(TAG, "setBluetoothMacAddress: The given Bluetooth MAC address is invalid: " + myBluetoothMacAddress);
         }
