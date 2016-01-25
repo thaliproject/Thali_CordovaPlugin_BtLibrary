@@ -807,11 +807,6 @@ public class DiscoveryManager
         if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
             mSettings.setBluetoothMacAddress(bluetoothMacAddress);
 
-            if (mBlePeerDiscoverer != null
-                    && BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())) {
-                mBlePeerDiscoverer.setBluetoothMacAddress(bluetoothMacAddress);
-            }
-
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
@@ -937,6 +932,11 @@ public class DiscoveryManager
         if (permissionsGranted) {
             if (mBluetoothManager.bind(this)) {
                 constructBlePeerDiscovererInstance();
+
+                if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
+                        && BluetoothUtils.isValidBluetoothMacAddress(getBluetoothMacAddress())) {
+                    mBlePeerDiscoverer.setBluetoothMacAddress(getBluetoothMacAddress());
+                }
 
                 if (mBleServiceUuid != null) {
                     started = mBlePeerDiscoverer.start();
