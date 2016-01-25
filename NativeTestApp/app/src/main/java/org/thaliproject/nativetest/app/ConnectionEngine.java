@@ -349,6 +349,7 @@ public class ConnectionEngine implements
     public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
         Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
         LogFragment.logMessage("Bluetooth MAC address resolved: " + bluetoothMacAddress);
+        start();
     }
 
     @Override

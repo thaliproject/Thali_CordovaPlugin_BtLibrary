@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
@@ -173,7 +173,7 @@ public class BluetoothManager {
         if (!CommonUtils.isMarshmallowOrHigher() && mBluetoothAdapter != null) {
             bluetoothMacAddress = mBluetoothAdapter.getAddress();
         } else {
-            Log.i(TAG, "getBluetoothMacAddress: Cannot retrieve our own Bluetooth MAC address from the Bluetooth adapter when running on Marshmallow (6.x) or higher Android version");
+            //Log.v(TAG, "getBluetoothMacAddress: Cannot retrieve our own Bluetooth MAC address from the Bluetooth adapter when running on Marshmallow (6.x) or higher Android version");
         }
 
         return bluetoothMacAddress;

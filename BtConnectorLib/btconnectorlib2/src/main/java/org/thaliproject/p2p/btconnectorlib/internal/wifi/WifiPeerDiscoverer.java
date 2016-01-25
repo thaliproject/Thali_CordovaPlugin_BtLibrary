@@ -77,8 +77,9 @@ public class WifiPeerDiscoverer implements
     /**
      * Starts both advertising a Wi-Fi service and listening to other Wi-Fi services.
      * If already started, this method does nothing.
+     * @return True, if successfully started or was already running. False otherwise.
      */
-    public synchronized void start() {
+    public synchronized boolean start() {
         if (!mIsStarted) {
             if (mP2pManager != null && mP2pChannel != null) {
                 Log.i(TAG, "start: " + mIdentityString);
@@ -104,6 +105,8 @@ public class WifiPeerDiscoverer implements
         } else {
             Log.w(TAG, "start: Already running, call stopListening() first to restart");
         }
+
+        return mIsStarted;
     }
 
     /**

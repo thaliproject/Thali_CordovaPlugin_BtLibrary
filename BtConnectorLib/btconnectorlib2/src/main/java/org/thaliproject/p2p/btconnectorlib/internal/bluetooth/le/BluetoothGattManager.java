@@ -199,7 +199,16 @@ public class BluetoothGattManager {
             Log.i(TAG, "clearBluetoothGattRequestQueue: Clearing " + mBluetoothGattRequestQueue.size() + " instances");
 
             for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-                if (bluetoothGattRequest.bluetoothGatt != null) {
+                BluetoothGatt bluetoothGatt = bluetoothGattRequest.bluetoothGatt;
+
+                if (bluetoothGatt != null) {
+                    if (bluetoothGatt.getDevice() != null) {
+                        Log.d(TAG, "clearBluetoothGattRequestQueue: Closing Bluetooth GATT to device with address "
+                                + bluetoothGatt.getDevice().getAddress());
+                    } else {
+                        Log.d(TAG, "clearBluetoothGattRequestQueue: Closing " + bluetoothGatt);
+                    }
+
                     bluetoothGattRequest.bluetoothGatt.close();
                 }
             }
