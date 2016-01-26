@@ -415,8 +415,7 @@ public class DiscoveryManager
             }
 
             if (mBlePeerDiscoverer != null) {
-                // Stop BLE scanning and advertising in order to increase the bandwidth for GATT
-                //mBlePeerDiscoverer.stop();
+                // Stop BLE scanning in order to increase the bandwidth for GATT
                 mBlePeerDiscoverer.stopScanner();
             }
 
