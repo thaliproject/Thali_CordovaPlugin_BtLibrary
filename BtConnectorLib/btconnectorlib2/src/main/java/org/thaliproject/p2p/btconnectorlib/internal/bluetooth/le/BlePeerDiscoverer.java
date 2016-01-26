@@ -285,7 +285,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Stops the BLE scanner. Call BlePeerDiscoverer.start to restart.
      */
-    public void stopScanner() {
+    public synchronized void stopScanner() {
         Log.d(TAG, "stopScanner");
         mBleScanner.stop(true);
     }
@@ -293,7 +293,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Stops the BLE advertiser. Call BlePeerDiscoverer.start to restart.
      */
-    public void stopAdvertiser() {
+    public synchronized void stopAdvertiser() {
         Log.d(TAG, "stopAdvertiser");
         mBleAdvertiser.stop(true);
     }

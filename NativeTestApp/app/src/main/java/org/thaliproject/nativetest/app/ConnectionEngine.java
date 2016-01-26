@@ -159,15 +159,14 @@ public class ConnectionEngine implements
      * Starts the Bluetooth device discovery.
      */
     public void startBluetoothDeviceDiscovery() {
-        mDiscoveryManager.startProvideBluetoothMacAddressMode("todo");
+        mDiscoveryManager.startBluetoothDeviceDiscovery();
     }
 
     /**
      * Makes the device discoverable.
      */
     public void makeDeviceDiscoverable() {
-        mDiscoveryManager.makeDeviceDiscoverable(
-                DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS);
+        mDiscoveryManager.makeDeviceDiscoverable(DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS);
     }
 
     /**

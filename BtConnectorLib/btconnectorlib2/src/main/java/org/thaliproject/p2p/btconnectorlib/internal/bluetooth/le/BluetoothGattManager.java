@@ -3,13 +3,21 @@
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
-import android.bluetooth.*;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -20,6 +28,12 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 public class BluetoothGattManager {
     public interface BluetoothGattManagerListener {
+        /**
+         * Called when the Bluetooth GATT client operation count in the queue has changed.
+         * @param operationCountInQueue The new operation count.
+         */
+        void onBluetoothGattClientOperationCountInQueueChanged(int operationCountInQueue);
+
         /**
          * Called when the process of providing a peer its Bluetooth MAC address is complete.
          * @param requestId The request ID associated with the device in need of assistance.
@@ -35,29 +49,36 @@ public class BluetoothGattManager {
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
     }
 
-    private class BluetoothGattRequest {
+    /**
+     * Represents a single Bluetooth GATT client operation.
+     */
+    protected class BluetoothGattClientOperation {
         protected BluetoothGatt bluetoothGatt = null;
         protected BluetoothDevice bluetoothDevice = null;
         protected UUID requestUuid = null;
+        protected boolean connected = false;
 
-        public BluetoothGattRequest(BluetoothDevice bluetoothDevice, String requestId) {
+        public BluetoothGattClientOperation(BluetoothDevice bluetoothDevice, String requestId) {
             this.bluetoothDevice = bluetoothDevice;
-            requestUuid = PeerAdvertisementFactory.createProvideBluetoothMacAddressUuid(mServiceUuid, requestId);
+
+            if (requestId != null) {
+                requestUuid = PeerAdvertisementFactory.createProvideBluetoothMacAddressUuid(mServiceUuid, requestId);
+            }
         }
     }
 
     private static final String TAG = BluetoothGattManager.class.getName();
-    private static final long REQUEST_TIMEOUT_IN_MILLISECONDS = 12000;
+    private static final long REQUEST_TIMEOUT_IN_MILLISECONDS = 15000;
     private final BluetoothGattManagerListener mListener;
     private final Context mContext;
     private final UUID mServiceUuid;
     private UUID mProvideBluetoothMacAddressServerUuid = null;
     private BluetoothGattServer mBluetoothGattServer = null;
     private String mRequestIdForBluetoothGattService = null; // For server
-    private CopyOnWriteArrayList<BluetoothGattRequest> mBluetoothGattRequestQueue = new CopyOnWriteArrayList<>();
+    private CopyOnWriteArrayList<BluetoothGattClientOperation> mBluetoothGattClientOperationQueue = new CopyOnWriteArrayList<>();
     private BluetoothGatt mCurrentBluetoothGatt = null;
     private CountDownTimer mCancelRequestTimer = null;
-    private boolean mBluetoothGattRequestExecutionInProgress = false;
+    private boolean mBluetoothGattClientOperationExecutionInProgress = false;
     private boolean mBluetoothMacAddressRequestServerStarted = false;
 
     /**
@@ -173,69 +194,97 @@ public class BluetoothGattManager {
      * @param requestId The "provide Bluetooth MAC address" request ID.
      */
     public void provideBluetoothMacAddressToDevice(final BluetoothDevice bluetoothDevice, final String requestId) {
-        if (bluetoothDevice != null && requestId != null) {
-            BluetoothGattRequest request = getBluetoothGattRequest(bluetoothDevice);
+        if (bluetoothDevice != null) {
+            String bluetoothMacAddress = getBluetoothMacAddress(bluetoothDevice, true);
+            BluetoothGattClientOperation operation = getBluetoothGattClientOperation(bluetoothDevice);
 
-            if (request != null && PeerAdvertisementFactory.parseRequestIdFromUuid(request.requestUuid).equals(requestId)) {
-                Log.e(TAG, "provideBluetoothMacAddressToDevice: An existing request already pending");
+            if (requestId != null) {
+                if (operation != null && PeerAdvertisementFactory.parseRequestIdFromUuid(operation.requestUuid).equals(requestId)) {
+                    Log.d(TAG, "provideBluetoothMacAddressToDevice: An existing operation with the same device address (\""
+                            + bluetoothMacAddress + "\") and request ID (" + requestId
+                            + ") already in the queue, removing the old previous and creating a new one...");
+                    removeBluetoothGattClientOperationFromQueue(operation, true, false);
+                } else {
+                    Log.d(TAG, "provideBluetoothMacAddressToDevice: Adding a new operation (device address: \""
+                            + bluetoothMacAddress + "\", request ID: " + requestId + ")");
+                }
+
+                operation = new BluetoothGattClientOperation(bluetoothDevice, requestId);
+                mBluetoothGattClientOperationQueue.add(operation);
+                mListener.onBluetoothGattClientOperationCountInQueueChanged(mBluetoothGattClientOperationQueue.size());
+                executeBluetoothGattClientOperation();
             } else {
-                request = new BluetoothGattRequest(bluetoothDevice, requestId);
-                mBluetoothGattRequestQueue.add(request);
-                executeRequest();
+                // No request ID
+                if (operation == null) {
+                    // Used for testing; no request ID will do a service discovery
+                    Log.d(TAG, "provideBluetoothMacAddressToDevice: No request ID, will only discover services...");
+                    operation = new BluetoothGattClientOperation(bluetoothDevice, requestId);
+                    mBluetoothGattClientOperationQueue.add(operation);
+                    mListener.onBluetoothGattClientOperationCountInQueueChanged(mBluetoothGattClientOperationQueue.size());
+                    executeBluetoothGattClientOperation();
+                } else {
+                    Log.d(TAG, "provideBluetoothMacAddressToDevice: An existing operation with the same device address (\""
+                            + bluetoothMacAddress + "\") already in the queue");
+                }
             }
+        } else {
+            Log.e(TAG, "provideBluetoothMacAddressToDevice: The given BluetoothDevice instance is null");
         }
     }
 
     /**
      * Clears all existing BluetoothGatt instances and closes them.
      */
-    public synchronized void clearBluetoothGattRequestQueue() {
+    public synchronized void clearBluetoothGattClientOperationQueue() {
         if (mCancelRequestTimer != null) {
             mCancelRequestTimer.cancel();
             mCancelRequestTimer = null;
         }
 
-        if (mBluetoothGattRequestQueue.size() > 0) {
-            Log.i(TAG, "clearBluetoothGattRequestQueue: Clearing " + mBluetoothGattRequestQueue.size() + " instances");
+        if (mBluetoothGattClientOperationQueue.size() > 0) {
+            Log.i(TAG, "clearBluetoothGattClientOperationQueue: Clearing " + mBluetoothGattClientOperationQueue.size() + " instance(s)");
 
-            for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-                BluetoothGatt bluetoothGatt = bluetoothGattRequest.bluetoothGatt;
+            for (BluetoothGattClientOperation bluetoothGattClientOperation : mBluetoothGattClientOperationQueue) {
+                BluetoothGatt bluetoothGatt = bluetoothGattClientOperation.bluetoothGatt;
 
                 if (bluetoothGatt != null) {
                     if (bluetoothGatt.getDevice() != null) {
-                        Log.d(TAG, "clearBluetoothGattRequestQueue: Closing Bluetooth GATT to device with address "
+                        Log.d(TAG, "clearBluetoothGattClientOperationQueue: Closing Bluetooth GATT to device with address "
                                 + bluetoothGatt.getDevice().getAddress());
                     } else {
-                        Log.d(TAG, "clearBluetoothGattRequestQueue: Closing " + bluetoothGatt);
+                        Log.d(TAG, "clearBluetoothGattClientOperationQueue: Closing " + bluetoothGatt);
                     }
 
-                    bluetoothGattRequest.bluetoothGatt.close();
+                    bluetoothGattClientOperation.bluetoothGatt.close();
                 }
+
+                bluetoothGattClientOperation.connected = false;
             }
 
-            mBluetoothGattRequestQueue.clear();
+            mBluetoothGattClientOperationQueue.clear();
+            mListener.onBluetoothGattClientOperationCountInQueueChanged(0);
         }
 
-        mBluetoothGattRequestExecutionInProgress = false;
+        mBluetoothGattClientOperationExecutionInProgress = false;
     }
 
     /**
-     * Executes the request, which has been in the queue the longest.
+     * Executes the action, which has been in the queue the longest.
      */
-    private void executeRequest() {
-        if (mBluetoothGattRequestQueue.size() > 0) {
-            if (!mBluetoothGattRequestExecutionInProgress) {
-                mBluetoothGattRequestExecutionInProgress = true;
+    private void executeBluetoothGattClientOperation() {
+        if (mBluetoothGattClientOperationQueue.size() > 0) {
+            if (!mBluetoothGattClientOperationExecutionInProgress) {
+                mBluetoothGattClientOperationExecutionInProgress = true;
 
                 if (mCancelRequestTimer != null) {
                     mCancelRequestTimer.cancel();
                     mCancelRequestTimer = null;
                 }
 
-                final BluetoothGattRequest bluetoothGattRequest = mBluetoothGattRequestQueue.get(0);
+                final BluetoothGattClientOperation bluetoothGattClientOperation = mBluetoothGattClientOperationQueue.get(0);
 
-                if (bluetoothGattRequest != null && bluetoothGattRequest.bluetoothDevice != null) {
-                    final BluetoothDevice bluetoothDevice = bluetoothGattRequest.bluetoothDevice;
+                if (bluetoothGattClientOperation != null && bluetoothGattClientOperation.bluetoothDevice != null) {
+                    final BluetoothDevice bluetoothDevice = bluetoothGattClientOperation.bluetoothDevice;
 
                     new Handler(mContext.getMainLooper()).post(new Runnable() {
                         @Override
@@ -245,9 +294,9 @@ public class BluetoothGattManager {
                                             mContext, false, new MyBluetoothGattCallback());
 
                             if (mCurrentBluetoothGatt != null) {
-                                Log.i(TAG, "executeRequest: Connection to Bluetooth GATT (device address \""
+                                Log.i(TAG, "executeBluetoothGattClientOperation: Connection to Bluetooth GATT (device address \""
                                         + bluetoothDevice.getAddress() + "\") initiated");
-                                bluetoothGattRequest.bluetoothGatt = mCurrentBluetoothGatt;
+                                bluetoothGattClientOperation.bluetoothGatt = mCurrentBluetoothGatt;
 
                                 mCancelRequestTimer = new CountDownTimer(
                                         REQUEST_TIMEOUT_IN_MILLISECONDS, REQUEST_TIMEOUT_IN_MILLISECONDS) {
@@ -258,99 +307,111 @@ public class BluetoothGattManager {
 
                                     @Override
                                     public void onFinish() {
-                                        Log.d(TAG, "Request timeout (device address: \"" + bluetoothGattRequest.bluetoothDevice.getAddress() + "\")");
                                         this.cancel();
                                         mCancelRequestTimer = null;
-                                        removeBluetoothGattRequestFromQueue(bluetoothGattRequest, true);
+
+                                        if (getBluetoothGattClientOperation(bluetoothDevice) != null) {
+                                            Log.d(TAG, "Request timeout (device address: \"" + bluetoothGattClientOperation.bluetoothDevice.getAddress() + "\")");
+                                            removeBluetoothGattClientOperationFromQueue(bluetoothGattClientOperation, true, true);
+                                        }
                                     }
                                 };
 
                                 mCancelRequestTimer.start();
                             } else {
-                                Log.d(TAG, "executeRequest: Failed to connect to Bluetooth GATT (device address \""
+                                Log.d(TAG, "executeBluetoothGattClientOperation: Failed to connect to Bluetooth GATT (device address \""
                                         + bluetoothDevice.getAddress() + "\")");
-                                removeBluetoothGattRequestFromQueue(bluetoothGattRequest, true);
+                                removeBluetoothGattClientOperationFromQueue(bluetoothGattClientOperation, true, true);
                             }
                         }
                     });
                 }
             } else {
-                Log.d(TAG, "executeRequest: Waiting for the previous request to complete");
+                Log.d(TAG, "executeBluetoothGattClientOperation: Waiting for the previous operation to complete");
             }
         } else {
-            Log.d(TAG, "executeRequest: The queue is empty");
+            Log.d(TAG, "executeBluetoothGattClientOperation: The queue is empty");
         }
     }
 
     /**
-     * Finds the request associated with the given Bluetooth device instance
+     * Finds the operation associated with the given Bluetooth device instance
      * @param bluetoothDevice The Bluetooth device instance associated with the request to find.
-     * @return A BluetoothGattRequest instance or null if not found.
+     * @return A BluetoothGattClientOperation instance or null if not found.
      */
-    private synchronized BluetoothGattRequest getBluetoothGattRequest(final BluetoothDevice bluetoothDevice) {
-        BluetoothGattRequest matchingBluetoothGattRequest = null;
+    private synchronized BluetoothGattClientOperation getBluetoothGattClientOperation(final BluetoothDevice bluetoothDevice) {
+        BluetoothGattClientOperation matchingBluetoothGattClientOperation = null;
 
-        if (bluetoothDevice != null) {
-            for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-                if (bluetoothGattRequest.bluetoothDevice != null
-                        && bluetoothGattRequest.bluetoothDevice.getAddress().equals(bluetoothDevice.getAddress())) {
-                    matchingBluetoothGattRequest = bluetoothGattRequest;
+        if (bluetoothDevice != null && mBluetoothGattClientOperationQueue.size() > 0) {
+            for (BluetoothGattClientOperation bluetoothGattClientOperation : mBluetoothGattClientOperationQueue) {
+                if (bluetoothGattClientOperation.bluetoothDevice != null
+                        && bluetoothGattClientOperation.bluetoothDevice.getAddress().equals(bluetoothDevice.getAddress())) {
+                    matchingBluetoothGattClientOperation = bluetoothGattClientOperation;
                     break;
                 }
             }
         }
 
-        return matchingBluetoothGattRequest;
+        return matchingBluetoothGattClientOperation;
     }
 
     /**
-     * Finds the request associated with the given BluetoothGatt instance.
+     * Finds the operation associated with the given BluetoothGatt instance.
      * @param bluetoothGatt The BluetoothGatt instance associated with the request to find.
-     * @return A BluetoothGattRequest instance or null if not found.
+     * @return A BluetoothGattClientOperation instance or null if not found.
      */
-    private synchronized BluetoothGattRequest getBluetoothGattRequest(BluetoothGatt bluetoothGatt) {
-        BluetoothGattRequest matchingBluetoothGattRequest = null;
+    private synchronized BluetoothGattClientOperation getBluetoothGattClientOperation(BluetoothGatt bluetoothGatt) {
+        BluetoothGattClientOperation matchingBluetoothGattClientOperation = null;
 
         if (bluetoothGatt != null && bluetoothGatt.getDevice() != null) {
-            matchingBluetoothGattRequest = getBluetoothGattRequest(bluetoothGatt.getDevice());
+            matchingBluetoothGattClientOperation = getBluetoothGattClientOperation(bluetoothGatt.getDevice());
         }
 
-        return matchingBluetoothGattRequest;
+        return matchingBluetoothGattClientOperation;
     }
 
     /**
-     * Removes the given request from the queue (or actually moves it to the end of the queue) and
-     * closes its BluetoothGatt instance if one exists.
-     * @param bluetoothGattRequestToRemove The request to remove.
-     * @param executeNext If true, will execute a next request in line.
+     * Removes/moves the given operation from the queue and closes its BluetoothGatt instance if one exists.
+     * @param bluetoothGattClientOperationToRemove The operation to remove.
+     * @param executeNext If true, will execute a next operation in line.
+     * @param moveToBackOfQueue If true, will not remove the operation but move it to the back of the queue.
      * @return True, if removed successfully. False, if not found.
      */
-    private synchronized boolean removeBluetoothGattRequestFromQueue(
-            final BluetoothGattRequest bluetoothGattRequestToRemove, boolean executeNext) {
+    private synchronized boolean removeBluetoothGattClientOperationFromQueue(
+            final BluetoothGattClientOperation bluetoothGattClientOperationToRemove, boolean executeNext, boolean moveToBackOfQueue) {
         boolean wasRemoved = false;
 
-        if (bluetoothGattRequestToRemove != null) {
-            if (bluetoothGattRequestToRemove.bluetoothGatt != null) {
-                bluetoothGattRequestToRemove.bluetoothGatt.disconnect();
-                bluetoothGattRequestToRemove.bluetoothGatt.close();
-                bluetoothGattRequestToRemove.bluetoothGatt = null;
+        if (bluetoothGattClientOperationToRemove != null) {
+            if (bluetoothGattClientOperationToRemove.bluetoothGatt != null) {
+                if (bluetoothGattClientOperationToRemove.connected) {
+                    bluetoothGattClientOperationToRemove.bluetoothGatt.disconnect();
+                    bluetoothGattClientOperationToRemove.connected = false;
+                } else {
+                    bluetoothGattClientOperationToRemove.bluetoothGatt.close();
+                }
+
+                bluetoothGattClientOperationToRemove.bluetoothGatt = null;
             }
         }
 
-        for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-            if (bluetoothGattRequest.bluetoothDevice.getAddress().equals(
-                    bluetoothGattRequestToRemove.bluetoothDevice.getAddress())) {
-                mBluetoothGattRequestQueue.remove(bluetoothGattRequest);
+        for (BluetoothGattClientOperation bluetoothGattClientOperation : mBluetoothGattClientOperationQueue) {
+            if (bluetoothGattClientOperation.bluetoothDevice.getAddress().equals(
+                    bluetoothGattClientOperationToRemove.bluetoothDevice.getAddress())) {
+                mBluetoothGattClientOperationQueue.remove(bluetoothGattClientOperation);
 
-                mBluetoothGattRequestQueue.add(bluetoothGattRequest); // Move to the end of the queue
-
-                if (bluetoothGattRequest.bluetoothDevice != null
-                        && bluetoothGattRequest.bluetoothDevice.getAddress() != null) {
-                    Log.d(TAG, "removeBluetoothGattRequestFromQueue: Request associated with device address \""
-                            + bluetoothGattRequest.bluetoothDevice.getAddress() + "\" removed from the queue");
+                if (moveToBackOfQueue) {
+                    mBluetoothGattClientOperationQueue.add(bluetoothGattClientOperation);
                 } else {
-                    Log.d(TAG, "removeBluetoothGattRequestFromQueue: Request with request UUID \""
-                            + bluetoothGattRequest.requestUuid + "\" removed from the queue");
+                    mListener.onBluetoothGattClientOperationCountInQueueChanged(mBluetoothGattClientOperationQueue.size());
+                }
+
+                if (bluetoothGattClientOperation.bluetoothDevice != null
+                        && bluetoothGattClientOperation.bluetoothDevice.getAddress() != null) {
+                    Log.d(TAG, "removeBluetoothGattClientOperationFromQueue: Operation associated with device address \""
+                            + bluetoothGattClientOperation.bluetoothDevice.getAddress() + "\" removed from the queue");
+                } else {
+                    Log.d(TAG, "removeBluetoothGattClientOperationFromQueue: Operation with request UUID \""
+                            + bluetoothGattClientOperation.requestUuid + "\" removed from the queue");
                 }
 
                 wasRemoved = true;
@@ -359,33 +420,36 @@ public class BluetoothGattManager {
         }
 
         if (!wasRemoved) {
-            Log.e(TAG, "removeBluetoothGattRequestFromQueue: Failed to remove the given BluetoothGatt instance from the queue");
+            Log.e(TAG, "removeBluetoothGattClientOperationFromQueue: Failed to remove the given BluetoothGatt instance from the queue");
         }
 
         if (executeNext) {
-            mBluetoothGattRequestExecutionInProgress = false;
-            executeRequest();
+            mBluetoothGattClientOperationExecutionInProgress = false;
+            executeBluetoothGattClientOperation();
         }
 
         return wasRemoved;
     }
 
     /**
-     * Removes and closes the given BluetoothGattRequest instance from the queue.
+     * Removes and closes the given BluetoothGattClientOperation instance from the queue.
      * @param bluetoothGattToRemove The Bluetooth GATT to remove.
-     * @param executeNext If true, will execute a next request in line.
+     * @param executeNext If true, will execute a next operation in line.
+     * @param moveToBackOfQueue If true, will not remove the operation but move it to the back of the queue.
      */
-    private synchronized void removeBluetoothGattRequestFromQueue(
-            BluetoothGatt bluetoothGattToRemove, boolean executeNext) {
+    private synchronized void removeBluetoothGattClientOperationFromQueue(
+            BluetoothGatt bluetoothGattToRemove, boolean executeNext, boolean moveToBackOfQueue) {
         if (bluetoothGattToRemove != null && bluetoothGattToRemove.getDevice() != null) {
             String bluetoothMacAddress = bluetoothGattToRemove.getDevice().getAddress();
 
             if (bluetoothMacAddress != null) {
-                for (BluetoothGattRequest bluetoothGattRequest : mBluetoothGattRequestQueue) {
-                    if (bluetoothGattRequest.bluetoothGatt != null
-                            && bluetoothGattRequest.bluetoothGatt.getDevice() != null
-                            && bluetoothMacAddress.equals(bluetoothGattRequest.bluetoothGatt.getDevice().getAddress())) {
-                        removeBluetoothGattRequestFromQueue(bluetoothGattRequest, executeNext);
+                for (BluetoothGattClientOperation bluetoothGattClientOperation : mBluetoothGattClientOperationQueue) {
+                    String bluetoothMacAddressFromBluetoothGatt =
+                            getBluetoothMacAddress(bluetoothGattClientOperation.bluetoothGatt, false);
+
+                    if (bluetoothMacAddressFromBluetoothGatt != null
+                            && bluetoothMacAddress.equals(bluetoothMacAddressFromBluetoothGatt)) {
+                        removeBluetoothGattClientOperationFromQueue(bluetoothGattClientOperation, executeNext, moveToBackOfQueue);
                         break;
                     }
                 }
@@ -426,40 +490,145 @@ public class BluetoothGattManager {
         return bluetoothGattService;
     }
 
+    /**
+     * Extracts the Bluetooth MAC address from the given BluetoothDevice instance.
+     * @param bluetoothDevice A BluetoothDevice instance.
+     * @param returnNonEmptyString If true, will return string "<unknown>" in case failed to extract
+     *                             a non-null address.
+     * @return The extracted address or "<unknown>" if either the BluetoothGatt instance or its
+     * BluetoothDevice instance is null.
+     */
+    private String getBluetoothMacAddress(BluetoothDevice bluetoothDevice, boolean returnNonEmptyString) {
+        String bluetoothMacAddress = null;
+
+        if (bluetoothDevice != null) {
+            bluetoothMacAddress = bluetoothDevice.getAddress();
+        }
+
+        if (returnNonEmptyString && bluetoothMacAddress == null) {
+            bluetoothMacAddress = "<unknown>";
+        }
+
+        return bluetoothMacAddress;
+    }
+
+    /**
+     * See getBluetoothMacAddress(BluetoothDevice, boolean)
+     */
+    private String getBluetoothMacAddress(BluetoothGatt bluetoothGatt, boolean returnNonEmptyString) {
+        String bluetoothMacAddress = null;
+
+        if (bluetoothGatt != null) {
+            bluetoothMacAddress = getBluetoothMacAddress(bluetoothGatt.getDevice(), returnNonEmptyString);
+        }
+
+        if (returnNonEmptyString && bluetoothMacAddress == null) {
+            bluetoothMacAddress = "<unknown>";
+        }
+
+        return bluetoothMacAddress;
+    }
+
+    /**
+     * Logs the given services and their characteristics.
+     * @param bluetoothGattServices A list of Bluetooth GATT services.
+     */
+    private void logDiscoveredServices(List<BluetoothGattService> bluetoothGattServices) {
+        if (bluetoothGattServices != null) {
+            if (bluetoothGattServices.size() > 0) {
+                for (BluetoothGattService bluetoothGattService : bluetoothGattServices) {
+                    List<BluetoothGattCharacteristic> bluetoothGattCharacteristics =
+                            bluetoothGattService.getCharacteristics();
+
+                    Log.d(TAG, "logDiscoveredServices: Bluetooth GATT service: "
+                            + "Instance ID: " + bluetoothGattService.getInstanceId()
+                            + ", type: " + bluetoothGattService.getType()
+                            + ", UUID: " + bluetoothGattService.getUuid()
+                            + ", characteristic count: " + bluetoothGattCharacteristics.size());
+
+                    for (BluetoothGattCharacteristic bluetoothGattCharacteristic : bluetoothGattCharacteristics) {
+                        Log.d(TAG, "    - Bluetooth GATT characteristic: "
+                                + "UUID: " + bluetoothGattCharacteristic.getUuid()
+                                + ", permissions: " + bluetoothGattCharacteristic.getPermissions()
+                                + ", write type: " + bluetoothGattCharacteristic.getWriteType());
+                    }
+                }
+            } else {
+                Log.d(TAG, "logDiscoveredServices: The given list contains no services");
+            }
+        } else {
+            Log.e(TAG, "logDiscoveredServices: The given list is null");
+        }
+    }
+
+    /**
+     * Implements callbacks for Bluetooth GATT client.
+     */
     private class MyBluetoothGattCallback extends BluetoothGattCallback {
         @Override
         public void onConnectionStateChange(final BluetoothGatt bluetoothGatt, int status, int newState) {
             Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Status: " + status + ", new state: " + newState);
-            super.onConnectionStateChange(bluetoothGatt, status, newState);
+            BluetoothGattClientOperation bluetoothGattClientOperation = getBluetoothGattClientOperation(bluetoothGatt);
+            String bluetoothMacAddress = getBluetoothMacAddress(bluetoothGatt, true);
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Connected");
+                Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Connected (device address: \""
+                        + bluetoothMacAddress + "\")");
+
+                if (bluetoothGattClientOperation != null) {
+                    bluetoothGattClientOperation.connected = true;
+                }
+
                 if (bluetoothGatt.discoverServices()) {
-                    Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Bluetooth GATT service discovery started successfully");
+                    Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Bluetooth GATT service discovery started successfully (device address: \""
+                            + bluetoothMacAddress + "\")");
                 } else {
-                    Log.e(TAG, "BluetoothGattCallback.onConnectionStateChange: Failed to start the Bluetooth GATT service discovery");
-                    removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                    Log.e(TAG, "BluetoothGattCallback.onConnectionStateChange: Failed to start the Bluetooth GATT service discovery (device address: \""
+                            + bluetoothMacAddress + "\")");
+
+                    removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, true);
                 }
             } else {
-                Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Not connected, trying to reconnect...");
-                bluetoothGatt.connect(); // Try to reconnect
+                // Not connected
+                if (bluetoothGattClientOperation != null) {
+                    if (bluetoothGattClientOperation.connected) {
+                        Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Was connected (device address: \""
+                                + bluetoothMacAddress + "\"), but got disconnected");
+                    } else {
+                        Log.e(TAG, "BluetoothGattCallback.onConnectionStateChange: Got disconnected, although wasn't even connected in the first place (device address: \""
+                                + bluetoothMacAddress + "\"), but got disconnected");
+                    }
+
+                    bluetoothGattClientOperation.connected = false;
+                    // One might think reconnection attempt here would work, but, alas, it does not
+                } else {
+                    Log.d(TAG, "BluetoothGattCallback.onConnectionStateChange: Disconnected (device address: \""
+                            + bluetoothMacAddress + "\"), closing BluetoothGatt instance...");
+                    bluetoothGatt.close();
+                }
             }
+
+            //super.onConnectionStateChange(bluetoothGatt, status, newState);
         }
 
         @Override
         public void onServicesDiscovered(final BluetoothGatt bluetoothGatt, int status) {
             //Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Status: " + status);
-            super.onServicesDiscovered(bluetoothGatt, status);
+            String bluetoothMacAddress = getBluetoothMacAddress(bluetoothGatt, true);
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
+                Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Service discovery successful (device address: \""
+                    + bluetoothMacAddress + "\")");
+
+                List<BluetoothGattService> bluetoothGattServices = bluetoothGatt.getServices();
+                logDiscoveredServices(bluetoothGattServices);
+
+                BluetoothGattClientOperation bluetoothGattClientOperation = getBluetoothGattClientOperation(bluetoothGatt);
                 BluetoothGattService desiredBluetoothGattService = null;
                 BluetoothGattCharacteristic desiredBluetoothGattCharacteristic = null;
 
-                for (BluetoothGattService bluetoothGattService : bluetoothGatt.getServices()) {
-                    Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Found service with UUID "
-                            + bluetoothGattService.getUuid());
-
-                    // For some reason, the UUID of the service is different than expected
+                for (BluetoothGattService bluetoothGattService : bluetoothGattServices) {
+                    // For some reason, the UUID of the service may be different than expected
                     /*if (bluetoothGattService.getUuid().equals(mServiceUuid)) {
                         desiredBluetoothGattService = bluetoothGattService;
                         desiredBluetoothGattCharacteristic = desiredBluetoothGattCharacteristic;
@@ -467,16 +636,9 @@ public class BluetoothGattManager {
                     }*/
 
                     for (BluetoothGattCharacteristic bluetoothGattCharacteristic : bluetoothGattService.getCharacteristics()) {
-                        Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: - The service has a characteristic with UUID "
-                                + bluetoothGattCharacteristic.getUuid()
-                                + ": Permissions: " + bluetoothGattCharacteristic.getPermissions()
-                                + ", write type: " + bluetoothGattCharacteristic.getWriteType());
-
-                        BluetoothGattRequest bluetoothGattRequest = getBluetoothGattRequest(bluetoothGatt);
-
-                        if (bluetoothGattRequest != null &&
+                        if (bluetoothGattClientOperation != null &&
                                 bluetoothGattCharacteristic.getUuid().equals(
-                                        bluetoothGattRequest.requestUuid)) {
+                                        bluetoothGattClientOperation.requestUuid)) {
                             desiredBluetoothGattService = bluetoothGattService;
                             desiredBluetoothGattCharacteristic = bluetoothGattCharacteristic;
                             break;
@@ -489,41 +651,46 @@ public class BluetoothGattManager {
                     //        desiredBluetoothGattService.getCharacteristic(mProvideBluetoothMacAddressClientUuid);
 
                     if (desiredBluetoothGattCharacteristic != null) {
-                        Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Got Bluetooth GATT characteristic");
-
-                        /*if (bluetoothGatt.readCharacteristic(desiredBluetoothGattCharacteristic)) {
-                            Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Initiated read characteristic operation successfully");
-                        } else {
-                            Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to initiate the reading of the Bluetooth GATT characteristic");
-                            //removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
-                        }*/
+                        Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Found the desired Bluetooth GATT characteristic (device address: \""
+                                + bluetoothMacAddress + "\")");
 
                         desiredBluetoothGattCharacteristic.setValue(bluetoothGatt.getDevice().getAddress().getBytes());
 
                         if (bluetoothGatt.writeCharacteristic(desiredBluetoothGattCharacteristic)) {
-                            Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Initiated write characteristic operation successfully");
+                            Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Initiated write characteristic operation successfully (device address: \""
+                                    + bluetoothMacAddress + "\")");
                         } else {
-                            Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to initiate the writing of the Bluetooth GATT characteristic");
-                            removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                            Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to initiate the writing of the Bluetooth GATT characteristic (device address: \""
+                                    + bluetoothMacAddress + "\")");
+
+                            removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, true);
                         }
                     } else {
-                        Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to obtain the desired Bluetooth GATT characteristic");
-                        removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                        Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to obtain the desired Bluetooth GATT characteristic (device address: \""
+                                + bluetoothMacAddress + "\")");
+
+                        removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, false);
                     }
                 } else {
-                    Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to obtain the desired Bluetooth GATT service");
-                    removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                    if (bluetoothGattClientOperation != null && bluetoothGattClientOperation.requestUuid != null) {
+                        Log.d(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to obtain the desired Bluetooth GATT service (device address: \""
+                                + bluetoothMacAddress + "\")");
+                    }
+
+                    removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, false);
                 }
             } else {
-                Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Failed to discover services, got status: " + status);
-                removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                Log.e(TAG, "BluetoothGattCallback.onServicesDiscovered: Service discovery failed (device address: \""
+                        + bluetoothMacAddress + "\"), got status: " + status);
+
+                removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, true);
+                //super.onServicesDiscovered(bluetoothGatt, status);
             }
         }
 
         @Override
         public void onCharacteristicRead(BluetoothGatt bluetoothGatt, BluetoothGattCharacteristic characteristic, int status) {
             Log.d(TAG, "BluetoothGattCallback.onCharacteristicRead: Status: " + status);
-            super.onCharacteristicRead(bluetoothGatt, characteristic, status);
 
             if (characteristic != null && status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "BluetoothGattCallback.onCharacteristicRead: Value: " + characteristic.getValue());
@@ -531,20 +698,19 @@ public class BluetoothGattManager {
                 Log.e(TAG, "BluetoothGattCallback.onCharacteristicRead: Status not successful or the Bluetooth GATT characteristic is null");
             }
 
-            //removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+            //removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true);
+            super.onCharacteristicRead(bluetoothGatt, characteristic, status);
         }
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt bluetoothGatt, BluetoothGattCharacteristic bluetoothGattCharacteristic, int status) {
             Log.d(TAG, "BluetoothGattCallback.onCharacteristicWrite: Status: " + status);
-            super.onCharacteristicWrite(bluetoothGatt, bluetoothGattCharacteristic, status);
+            BluetoothGattClientOperation bluetoothGattClientOperation = getBluetoothGattClientOperation(bluetoothGatt);
 
-            BluetoothGattRequest bluetoothGattRequest = getBluetoothGattRequest(bluetoothGatt);
-
-            if (bluetoothGattRequest != null &&
+            if (bluetoothGattClientOperation != null &&
                     bluetoothGattCharacteristic.getUuid().equals(
-                            bluetoothGattRequest.requestUuid)) {
-                String requestId = PeerAdvertisementFactory.parseRequestIdFromUuid(bluetoothGattRequest.requestUuid);
+                            bluetoothGattClientOperation.requestUuid)) {
+                String requestId = PeerAdvertisementFactory.parseRequestIdFromUuid(bluetoothGattClientOperation.requestUuid);
 
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     mListener.onProvideBluetoothMacAddressResult(requestId, true);
@@ -553,16 +719,20 @@ public class BluetoothGattManager {
                 }
 
                 // We are done
-                removeBluetoothGattRequestFromQueue(bluetoothGatt, true);
+                removeBluetoothGattClientOperationFromQueue(bluetoothGatt, true, true);
             }
+
+            //super.onCharacteristicWrite(bluetoothGatt, bluetoothGattCharacteristic, status);
         }
     }
 
+    /**
+     * Implements callbacks for Bluetooth GATT server.
+     */
     private class MyBluetoothGattServerCallback extends BluetoothGattServerCallback {
         @Override
         public void onServiceAdded(int status, BluetoothGattService service) {
             //Log.d(TAG, "BluetoothGattServerCallback.onServiceAdded: Status: " + status);
-            super.onServiceAdded(status, service);
 
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "BluetoothGattServerCallback.onServiceAdded: Service with UUID \""
@@ -572,20 +742,26 @@ public class BluetoothGattManager {
                 Log.e(TAG, "BluetoothGattServerCallback.onServiceAdded: Failed to add service with UUID \""
                         + service.getUuid() + "\", got status: " + status);
             }
+
+            //super.onServiceAdded(status, service);
         }
 
         @Override
         public void onConnectionStateChange(BluetoothDevice device, int status, int newState) {
             //Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Status: " + status + ", new state: " + newState);
-            super.onConnectionStateChange(device, status, newState);
+            String bluetoothMacAddress = getBluetoothMacAddress(device, true);
 
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Connected");
+                Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Connected (device address: \""
+                        + bluetoothMacAddress + "\")");
                 //Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Device with address \""
                 //        + device.getAddress()+ "\" connected");
             } else {
-                Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Not connected");
+                Log.d(TAG, "BluetoothGattServerCallback.onConnectionStateChange: Disconnected (device address: \""
+                        + bluetoothMacAddress + "\")");
             }
+
+            //super.onConnectionStateChange(device, status, newState);
         }
 
         @Override
@@ -596,10 +772,11 @@ public class BluetoothGattManager {
                     + ", request ID: " + requestId
                     + ", offset: " + offset
                     + ", characteristic UUID: " + characteristic.getUuid());
-            super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
 
             if (mBluetoothGattServer != null && characteristic.getUuid().equals(mProvideBluetoothMacAddressServerUuid)) {
                 mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN.getBytes());
+            } else {
+                super.onCharacteristicReadRequest(device, requestId, offset, characteristic);
             }
         }
 
@@ -615,7 +792,6 @@ public class BluetoothGattManager {
                     + ", responseNeeded: " + responseNeeded
                     + ", offset: " + offset
                     + ", value: " + new String(value));
-            super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
 
             if (characteristic.getUuid().equals(mProvideBluetoothMacAddressServerUuid)) {
                 String bluetoothMacAddress = null;
@@ -631,6 +807,8 @@ public class BluetoothGattManager {
                 if (mBluetoothGattServer != null) {
                     mBluetoothGattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, value);
                 }
+            } else {
+                super.onCharacteristicWriteRequest(device, requestId, characteristic, preparedWrite, responseNeeded, offset, value);
             }
         }
 
