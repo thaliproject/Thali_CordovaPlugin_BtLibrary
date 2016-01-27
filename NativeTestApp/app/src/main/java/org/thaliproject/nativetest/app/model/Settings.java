@@ -154,7 +154,8 @@ public class Settings {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if (mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
+                        if (getDesiredDiscoveryMode() != DiscoveryManager.DiscoveryMode.NOT_SET
+                            && mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
                             mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
                         }
                     }

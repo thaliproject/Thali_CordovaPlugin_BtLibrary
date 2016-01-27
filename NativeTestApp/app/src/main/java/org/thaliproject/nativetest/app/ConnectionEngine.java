@@ -37,9 +37,9 @@ public class ConnectionEngine implements
     // Service type and UUID has to be application/service specific.
     // The app will only connect to peers with the matching values.
     public static final String PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
-    protected static final String SERVICE_TYPE = "ThaliNativeSampleApp._tcp";
+    protected static final String SERVICE_TYPE = "ThaliTestSampleApp._tcp";
     protected static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
-    protected static final String SERVICE_NAME = "Thali Native Sample App";
+    protected static final String SERVICE_NAME = "Thali Test Sample App";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
     protected static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
