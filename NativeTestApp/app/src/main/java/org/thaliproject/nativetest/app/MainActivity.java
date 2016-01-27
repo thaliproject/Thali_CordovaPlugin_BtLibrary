@@ -37,7 +37,7 @@ public class MainActivity
     private static Context mContext = null;
 
     private ConnectionEngine mConnectionEngine = null;
-    private ConnectionEngine mTestEngine = null;
+    private TestEngine mTestEngine = null;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -72,6 +72,7 @@ public class MainActivity
             mConnectionEngine = new ConnectionEngine(mContext, this);
             mConnectionEngine.bindSettings();
             mTestEngine = new TestEngine(mContext, this, this);
+            mTestEngine.setDiscoveryManager(mConnectionEngine.getDiscoveryManager());
         }
 
         // Set up the action bar.
@@ -85,15 +86,12 @@ public class MainActivity
         mSlidingTabLayout = (SlidingTabLayout)findViewById(R.id.sliding_tabs);
         mSlidingTabLayout.setViewPager(mViewPager);
 
-        mPeerListFragment = new PeerListFragment();
-        mPeerListFragment.setListener(this);
-
         mLogFragment = new LogFragment();
 
         mSettingsFragment = new SettingsFragment();
 
-        mTestsFragment = new TestsFragment();
-        mTestsFragment.setTestEngine((TestEngine) mTestEngine);
+        //mTestsFragment = new TestsFragment();
+        //mTestsFragment.setTestEngine((TestEngine) mTestEngine);
 
         mConnectionEngine.start();
     }
@@ -159,23 +157,26 @@ public class MainActivity
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        MenuUtils.PeerMenuItemsAvailability availability =
-                MenuUtils.resolvePeerMenuItemsAvailability(
-                        mPeerListFragment.getSelectedPeerProperties(), PeerAndConnectionModel.getInstance());
+        if (mPeerListFragment != null) {
+            MenuUtils.PeerMenuItemsAvailability availability =
+                    MenuUtils.resolvePeerMenuItemsAvailability(
+                            mPeerListFragment.getSelectedPeerProperties(), PeerAndConnectionModel.getInstance());
 
-        MenuItem connectMenuItem = menu.getItem(0);
-        MenuItem sendDataMenuItem = menu.getItem(1);
-        MenuItem disconnectMenuItem = menu.getItem(2);
-        MenuItem killAllConnectionsMenuItem = menu.getItem(3);
+            MenuItem connectMenuItem = menu.getItem(0);
+            MenuItem sendDataMenuItem = menu.getItem(1);
+            MenuItem disconnectMenuItem = menu.getItem(2);
+            MenuItem killAllConnectionsMenuItem = menu.getItem(3);
 
-        connectMenuItem.setVisible(availability.connectMenuItemAvailable);
-        connectMenuItem.setEnabled(availability.connectMenuItemAvailable);
-        sendDataMenuItem.setVisible(availability.sendDataMenuItemAvailable);
-        sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
-        disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
-        killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);
+            connectMenuItem.setVisible(availability.connectMenuItemAvailable);
+            connectMenuItem.setEnabled(availability.connectMenuItemAvailable);
+            sendDataMenuItem.setVisible(availability.sendDataMenuItemAvailable);
+            sendDataMenuItem.setEnabled(availability.sendDataMenuItemAvailable);
+            disconnectMenuItem.setEnabled(availability.disconnectMenuItemAvailable);
+            killAllConnectionsMenuItem.setEnabled(availability.killAllConnectionsMenuItemAvailable);
+            return true;
+        }
 
-        return true;
+        return false;
     }
 
     @Override
@@ -185,7 +186,12 @@ public class MainActivity
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         boolean wasConsumed = false;
-        PeerProperties peerProperties = mPeerListFragment.getSelectedPeerProperties();
+        PeerProperties peerProperties = null;
+
+        if (mPeerListFragment != null) {
+            mPeerListFragment.getSelectedPeerProperties();
+        }
+
         PeerAndConnectionModel model = PeerAndConnectionModel.getInstance();
 
         switch (id) {
@@ -276,7 +282,10 @@ public class MainActivity
                     return mPeerListFragment;
                 case LOG_FRAGMENT: return mLogFragment;
                 case SETTINGS_FRAGMENT: return mSettingsFragment;
-                case TESTS_FRAGMENT: return mTestsFragment;
+                case TESTS_FRAGMENT:
+                    mTestsFragment = new TestsFragment();
+                    mTestsFragment.setTestEngine((TestEngine) mTestEngine);
+                    return mTestsFragment;
             }
 
             return null;

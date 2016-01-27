@@ -137,7 +137,7 @@ public class PeerModel {
             if (oldPeerProperties != null) {
                 // This one was already in the list (same ID)
                 // Make sure we don't lose any data when updating
-                Log.d(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
+                Log.v(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
                         + peerProperties.toString());
 
                 PeerProperties.checkNewPeerForMissingInformation(oldPeerProperties, peerProperties);

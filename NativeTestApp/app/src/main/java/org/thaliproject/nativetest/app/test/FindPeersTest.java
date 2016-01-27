@@ -4,6 +4,7 @@
 package org.thaliproject.nativetest.app.test;
 
 import android.util.Log;
+import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
@@ -17,6 +18,7 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     private DiscoveryManager mDiscoveryManager = null;
     private PeerAndConnectionModel mModel = null;
     private int mNumberOfPeersDiscovered = 0;
+    private boolean mDiscoveryManagerWasRunningBeforeTest = false;
 
     public FindPeersTest(TestEngine testEngine, TestListener listener) {
         super(testEngine, listener);
@@ -33,8 +35,15 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
         super.run();
 
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
-        mModel = PeerAndConnectionModel.getInstance();
-        return mDiscoveryManager.start(TestEngine.PEER_NAME);
+
+        if (mDiscoveryManager != null) {
+            mDiscoveryManagerWasRunningBeforeTest = mDiscoveryManager.isRunning();
+            mDiscoveryManager.stop();
+            mModel = PeerAndConnectionModel.getInstance();
+            mIsRunning = mDiscoveryManager.start(TestEngine.PEER_NAME);
+        }
+
+        return mIsRunning;
     }
 
     @Override
@@ -52,6 +61,11 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
 
             String results = mNumberOfPeersDiscovered + " peer(s) discovered";
             mListener.onTestFinished(getName(), successRate, results);
+        }
+
+        if (mDiscoveryManagerWasRunningBeforeTest) {
+            // Restart
+            mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
         }
     }
 

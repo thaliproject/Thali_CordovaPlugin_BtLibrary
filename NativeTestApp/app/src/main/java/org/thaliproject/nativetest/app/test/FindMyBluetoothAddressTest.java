@@ -3,8 +3,9 @@
  */
 package org.thaliproject.nativetest.app.test;
 
-import android.os.Build;
+//import android.os.Build;
 import android.util.Log;
+import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -22,6 +23,7 @@ public class FindMyBluetoothAddressTest
     private DiscoveryManager mDiscoveryManager = null;
     private String mStoredBluetoothMacAddress = null;
     private String mBluetoothMacAddress = null;
+    private boolean mDiscoveryManagerWasRunningBeforeTest = false;
 
     public FindMyBluetoothAddressTest(TestEngine testEngine, TestListener listener) {
         super(testEngine, listener);
@@ -40,26 +42,35 @@ public class FindMyBluetoothAddressTest
 
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
 
-        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
-            mDiscoveryManager.setEmulateMarshmallow(true);
+        if (mDiscoveryManager != null) {
+            mDiscoveryManagerWasRunningBeforeTest = mDiscoveryManager.isRunning();
+            mDiscoveryManager.stop();
+
+            //if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                mDiscoveryManager.setEmulateMarshmallow(true);
+            //}
+
+            DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
+            mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
+
+            if (mStoredBluetoothMacAddress != null) {
+                // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
+                // test fails
+                settings.clearBluetoothMacAddress();
+            }
+
+            mDiscoveryManager.clearIdentityString();
+            mIsRunning = mDiscoveryManager.start(TestEngine.PEER_NAME);
         }
 
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
-        mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
-
-        if (mStoredBluetoothMacAddress != null) {
-            // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
-            // test fails
-            settings.clearBluetoothMacAddress();
-        }
-
-        return mDiscoveryManager.start(TestEngine.PEER_NAME);
+        return mIsRunning;
     }
 
     @Override
     public void finalize() {
         super.finalize();
         mDiscoveryManager.stop();
+        mDiscoveryManager.setEmulateMarshmallow(false);
 
         if (mListener != null) {
             if (mBluetoothMacAddress != null) {
@@ -79,6 +90,11 @@ public class FindMyBluetoothAddressTest
                     mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
                 }
             }
+        }
+
+        if (mDiscoveryManagerWasRunningBeforeTest) {
+            // Restart
+            mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
         }
     }
 

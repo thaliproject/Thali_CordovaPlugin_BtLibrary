@@ -107,8 +107,16 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * Sets the listener. Note: Only the discovery manager can act as a listener.
      * @param discoveryManager The discovery manager instance.
      */
-    public void setListener(DiscoveryManager discoveryManager) {
-        mListener = discoveryManager;
+    /* Package */ void setListener(DiscoveryManager discoveryManager) {
+        if (mListener == null || discoveryManager == null) {
+            Log.v(TAG, "setListener: " + discoveryManager);
+            mListener = discoveryManager;
+        } else if (mListener != null && mListener != discoveryManager) {
+            throw new RuntimeException("Discovery manager settings listener should be set only once."
+                    + " This may indicate that another DiscoveryManager was created by the same"
+                    + " application, which is not a good practice. If you must, set the listener to"
+                    + " null first before setting a new listener.");
+        }
     }
 
     /**
@@ -145,6 +153,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setProvideBluetoothMacAddressTimeout(long provideBluetoothMacAddressTimeoutInMilliseconds) {
         if (mProvideBluetoothMacAddressTimeoutInMilliseconds != provideBluetoothMacAddressTimeoutInMilliseconds) {
+            Log.i(TAG, "setProvideBluetoothMacAddressTimeout: "
+                    + mProvideBluetoothMacAddressTimeoutInMilliseconds
+                    + " -> " + provideBluetoothMacAddressTimeoutInMilliseconds);
+
             mProvideBluetoothMacAddressTimeoutInMilliseconds = provideBluetoothMacAddressTimeoutInMilliseconds;
             mSharedPreferencesEditor.putLong(
                     KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS, mProvideBluetoothMacAddressTimeoutInMilliseconds);
@@ -178,7 +190,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * Can be used for testing purposes.
      */
     public void clearBluetoothMacAddress() {
-        Log.i(TAG, "clearBluetoothMacAddress");
+        Log.i(TAG, "clearBluetoothMacAddress: The Bluetooth MAC address was \"" + mBluetoothMacAddress + "\"");
         mBluetoothMacAddress = null;
         mSharedPreferencesEditor.putString(KEY_BLUETOOTH_MAC_ADDRESS, mBluetoothMacAddress);
         mSharedPreferencesEditor.apply();
@@ -201,16 +213,28 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean forceRestart) {
         boolean wasSet = false;
 
-        if (mListener != null) {
-            wasSet = mListener.onDiscoveryModeChanged(discoveryMode, forceRestart);
+        if (mDiscoveryMode != discoveryMode) {
+            Log.i(TAG, "setDiscoveryMode: " + mDiscoveryMode + " -> " + discoveryMode);
+            DiscoveryMode previousDiscoveryMode = mDiscoveryMode;
+
+            if (mListener != null) {
+                previousDiscoveryMode = mDiscoveryMode;
+                mDiscoveryMode = discoveryMode;
+                wasSet = mListener.onDiscoveryModeChanged(discoveryMode, forceRestart);
+            } else {
+                Log.w(TAG, "setDiscoveryMode: Setting the discovery mode, but cannot verify if the new mode is supported");
+                mDiscoveryMode = discoveryMode;
+                wasSet = true;
+            }
 
             if (wasSet) {
-                mDiscoveryMode = discoveryMode;
                 mSharedPreferencesEditor.putInt(KEY_DISCOVERY_MODE, discoveryModeToInt(mDiscoveryMode));
                 mSharedPreferencesEditor.apply();
+            } else {
+                Log.d(TAG, "setDiscoveryMode: Failed to set the discovery mode to "
+                        + discoveryMode + ", restoring the previous mode (" + previousDiscoveryMode + ")");
+                mDiscoveryMode = previousDiscoveryMode;
             }
-        } else {
-            Log.e(TAG, "setDiscoveryMode: Cannot set discovery mode, if no listener is present");
         }
 
         return wasSet;
@@ -238,12 +262,15 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * @param peerExpirationInMilliseconds The peer expiration time in milliseconds.
      */
     public void setPeerExpiration(long peerExpirationInMilliseconds) {
-        mPeerExpirationInMilliseconds = peerExpirationInMilliseconds;
-        mSharedPreferencesEditor.putLong(KEY_PEER_EXPIRATION, mPeerExpirationInMilliseconds);
-        mSharedPreferencesEditor.apply();
+        if (mPeerExpirationInMilliseconds != peerExpirationInMilliseconds) {
+            Log.i(TAG, "setPeerExpiration: " + mPeerExpirationInMilliseconds + " -> " + peerExpirationInMilliseconds);
+            mPeerExpirationInMilliseconds = peerExpirationInMilliseconds;
+            mSharedPreferencesEditor.putLong(KEY_PEER_EXPIRATION, mPeerExpirationInMilliseconds);
+            mSharedPreferencesEditor.apply();
 
-        if (mListener != null) {
-            mListener.onPeerExpirationSettingChanged(mPeerExpirationInMilliseconds);
+            if (mListener != null) {
+                mListener.onPeerExpirationSettingChanged(mPeerExpirationInMilliseconds);
+            }
         }
     }
 
@@ -260,7 +287,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setAdvertiseMode(int advertiseMode) {
         if (mAdvertiseMode != advertiseMode) {
-            Log.d(TAG, "setAdvertiseMode: " + advertiseMode);
+            Log.i(TAG, "setAdvertiseMode: " + mAdvertiseMode + " -> " + advertiseMode);
             mAdvertiseMode = advertiseMode;
             mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
             mSharedPreferencesEditor.apply();
@@ -284,7 +311,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
         if (mAdvertiseTxPowerLevel != advertiseTxPowerLevel) {
-            Log.d(TAG, "setAdvertiseTxPowerLevel: " + advertiseTxPowerLevel);
+            Log.i(TAG, "setAdvertiseTxPowerLevel: " + mAdvertiseTxPowerLevel + " -> " + advertiseTxPowerLevel);
             mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
             mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
             mSharedPreferencesEditor.apply();
@@ -308,7 +335,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setScanMode(int scanMode) {
         if (mScanMode != scanMode) {
-            Log.d(TAG, "setScanMode: " + scanMode);
+            Log.i(TAG, "setScanMode: " + mScanMode + " -> " + scanMode);
             mScanMode = scanMode;
             mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
             mSharedPreferencesEditor.apply();
@@ -347,6 +374,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     @Override
     public void resetDefaults() {
+        Log.i(TAG, "resetDefaults");
         setAutomateBluetoothMacAddressResolution(DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
         setProvideBluetoothMacAddressTimeout(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
         setBluetoothMacAddress(null);

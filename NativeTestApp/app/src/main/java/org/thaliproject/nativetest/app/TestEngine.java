@@ -13,16 +13,29 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 /**
- * A connection engine to runTest tests.
+ * A connection engine to run tests.
  */
 public class TestEngine extends ConnectionEngine implements TestListener {
     private static final String TAG = TestEngine.class.getName();
     private TestListener mListener = null;
     private AbstractTest mCurrentTest = null;
 
+    /**
+     * Constructor.
+     * @param context The application context.
+     * @param activity The activity.
+     * @param listener The test listener.
+     */
     public TestEngine(Context context, Activity activity, TestListener listener) {
         super(context, activity);
         mListener = listener;
+    }
+
+    /**
+     * @param discoveryManager The discovery manager instance.
+     */
+    public void setDiscoveryManager(DiscoveryManager discoveryManager) {
+        mDiscoveryManager = discoveryManager;
     }
 
     /**
@@ -40,6 +53,12 @@ public class TestEngine extends ConnectionEngine implements TestListener {
                 mCurrentTest = testToRun;
                 mCurrentTest.setListener(this);
                 wasStarted = mCurrentTest.run();
+
+                if (!wasStarted) {
+                    Log.e(TAG, "runTest: Failed to run test \"" + mCurrentTest.getName() + "\", cancelling...");
+                    mCurrentTest.cancel();
+                    mCurrentTest = null;
+                }
             } else {
                 Log.e(TAG, "runTest: The given test is null");
             }
@@ -60,12 +79,11 @@ public class TestEngine extends ConnectionEngine implements TestListener {
         }
     }
 
+    /**
+     * @return The connection manager instance.
+     */
     public ConnectionManager getConnectionManager() {
         return mConnectionManager;
-    }
-
-    public DiscoveryManager getDiscoveryManager() {
-        return mDiscoveryManager;
     }
 
     @Override
