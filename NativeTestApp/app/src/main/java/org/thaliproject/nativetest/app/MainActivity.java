@@ -77,7 +77,7 @@ public class MainActivity
         // Set up the action bar.
         final ActionBar actionBar = getSupportActionBar();
 
-        mMyFragmentAdapter = new MyFragmentAdapter(getSupportFragmentManager());
+        mMyFragmentAdapter = new MyFragmentAdapter(getSupportFragmentManager(), this);
 
         mViewPager = (ViewPager)findViewById(R.id.pager);
         mViewPager.setAdapter(mMyFragmentAdapter);
@@ -260,15 +260,20 @@ public class MainActivity
         private static final int LOG_FRAGMENT = 1;
         private static final int SETTINGS_FRAGMENT = 2;
         private static final int TESTS_FRAGMENT = 3;
+        private final MainActivity mMainActivity;
 
-        public MyFragmentAdapter(FragmentManager fragmentManager) {
+        public MyFragmentAdapter(FragmentManager fragmentManager, MainActivity mainActivity) {
             super(fragmentManager);
+            mMainActivity = mainActivity;
         }
 
         @Override
         public Fragment getItem(int index) {
             switch (index){
-                case PEER_LIST_FRAGMENT: return mPeerListFragment;
+                case PEER_LIST_FRAGMENT:
+                    mPeerListFragment = new PeerListFragment();
+                    mPeerListFragment.setListener(mMainActivity);
+                    return mPeerListFragment;
                 case LOG_FRAGMENT: return mLogFragment;
                 case SETTINGS_FRAGMENT: return mSettingsFragment;
                 case TESTS_FRAGMENT: return mTestsFragment;
