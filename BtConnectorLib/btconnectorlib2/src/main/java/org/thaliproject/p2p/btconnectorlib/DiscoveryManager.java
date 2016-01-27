@@ -256,8 +256,6 @@ public class DiscoveryManager
             if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
                     || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
                     || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
-                Log.i(TAG, "start: OK");
-
                 if (bleDiscoveryStarted && wifiDiscoveryStarted) {
                     setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
@@ -276,6 +274,8 @@ public class DiscoveryManager
                 } else if (wifiDiscoveryStarted) {
                     setState(DiscoveryManagerState.RUNNING_WIFI);
                 }
+
+                Log.i(TAG, "start: OK");
             }
         } else {
             Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
@@ -990,6 +990,7 @@ public class DiscoveryManager
 
         protected final UUID mProvideBluetoothMacAddressRequestUuid;
         private final DiscoveryManager mDiscoveryManager;
+        private final DiscoveryManagerSettings mSettings;
         private final BluetoothGattManager mBluetoothGattManager;
 
         private CountDownTimer mReceiveBluetoothMacAddressTimeoutTimer = null;
@@ -1007,8 +1008,9 @@ public class DiscoveryManager
         public BluetoothMacAddressResolutionHelper(
                 Context context, DiscoveryManager discoveryManager, UUID bleServiceUuid, UUID provideBluetoothMacAddressRequestUuid) {
             mDiscoveryManager = discoveryManager;
-            mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
             mBluetoothGattManager = new BluetoothGattManager(this, context, bleServiceUuid);
+            mSettings = DiscoveryManagerSettings.getInstance(context);
+            mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
         }
 
         /**
@@ -1079,7 +1081,7 @@ public class DiscoveryManager
                             if (mDiscoveryManager.mBlePeerDiscoverer.startPeerAddressHelperAdvertiser(
                                     mCurrentProvideBluetoothMacAddressRequestId,
                                     PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN,
-                                    mDiscoveryManager.mSettings.getProvideBluetoothMacAddressTimeout())) {
+                                    mSettings.getProvideBluetoothMacAddressTimeout())) {
                                 mDiscoveryManager.setState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
                                 wasStarted = true;
                             } else {
@@ -1154,14 +1156,14 @@ public class DiscoveryManager
                 }
 
                 if (mDiscoveryManager.mBlePeerDiscoverer != null) {
-                    // Stop BLE scanning in order to increase the bandwidth for GATT
+                    Log.v(TAG, "startReceiveBluetoothMacAddressMode: Stopping BLE scanning in order to increase the bandwidth for GATT");
                     mDiscoveryManager.mBlePeerDiscoverer.stopScanner();
                 }
 
                 startBluetoothMacAddressGattServer(requestId); // Starts if not yet started, otherwise does nothing
 
-                if (mDiscoveryManager.mSettings.getAutomateBluetoothMacAddressResolution()) {
-                    long durationInSeconds = mDiscoveryManager.mSettings.getProvideBluetoothMacAddressTimeout();
+                if (mSettings.getAutomateBluetoothMacAddressResolution()) {
+                    long durationInSeconds = mSettings.getProvideBluetoothMacAddressTimeout();
 
                     if (durationInSeconds == 0) {
                         durationInSeconds = DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS;
@@ -1172,7 +1174,7 @@ public class DiscoveryManager
                     mDiscoveryManager.makeDeviceDiscoverable((int)durationInSeconds);
                 }
 
-                long timeoutInMilliseconds = mDiscoveryManager.mSettings.getProvideBluetoothMacAddressTimeout();
+                long timeoutInMilliseconds = mSettings.getProvideBluetoothMacAddressTimeout();
 
                 mReceiveBluetoothMacAddressTimeoutTimer =
                         new CountDownTimer(timeoutInMilliseconds, timeoutInMilliseconds) {
@@ -1220,8 +1222,9 @@ public class DiscoveryManager
          * @param requestId
          */
         public void startBluetoothMacAddressGattServer(String requestId) {
+            Log.v(TAG, "startBluetoothMacAddressGattServer: Request ID: " + requestId);
+
             if (!mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
-                Log.d(TAG, "startBluetoothMacAddressGattServer: Starting with request ID " + requestId);
                 mBluetoothGattManager.startBluetoothMacAddressRequestServer(requestId);
             } else {
                 Log.d(TAG, "startBluetoothMacAddressGattServer: Already started");

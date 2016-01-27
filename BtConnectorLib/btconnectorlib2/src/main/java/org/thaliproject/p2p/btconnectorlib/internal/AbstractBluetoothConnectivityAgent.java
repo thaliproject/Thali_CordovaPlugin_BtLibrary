@@ -69,6 +69,14 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     }
 
     /**
+     * Clears the identity string. This method is considered to be used for testing purposes.
+     */
+    public void clearIdentityString() {
+        Log.i(TAG, "clearIdentityString");
+        mMyIdentityString = null;
+    }
+
+    /**
      * Verifies the validity of our identity string. If the not yet created, will try to create it.
      * If the identity string already exists, it won't be recreated.
      * @return True, if the identity string is OK (i.e. not empty). False otherwise.
@@ -76,15 +84,21 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected boolean verifyIdentityString() {
         String bluetoothMacAddress = getBluetoothMacAddress();
 
-        if ((mMyIdentityString == null || mMyIdentityString.length() == 0)
-                && bluetoothMacAddress != null && mMyPeerId != null && mMyPeerName != null
-                && mBluetoothManager.isBluetoothEnabled()) {
-            try {
-                mMyIdentityString = CommonUtils.createIdentityString(
-                        mMyPeerId, mMyPeerName, getBluetoothMacAddress());
-                Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
-            } catch (JSONException e) {
-                Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
+        if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
+            if (isNonEmptyString(mMyPeerId) && isNonEmptyString(mMyPeerName)
+                    && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+                try {
+                    mMyIdentityString = CommonUtils.createIdentityString(
+                            mMyPeerId, mMyPeerName, bluetoothMacAddress);
+                    Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
+                } catch (JSONException e) {
+                    Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
+                }
+            } else {
+                Log.d(TAG, "verifyIdentityString: One or more of the following values are invalid: "
+                        + "Peer ID: \"" + mMyPeerId
+                        + "\", peer name: \"" + mMyPeerName
+                        + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
             }
         }
 
@@ -93,4 +107,12 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     @Override
     abstract public void onBluetoothAdapterScanModeChanged(int mode);
+
+    /**
+     * @param stringToCheck The string to check.
+     * @return True, if the given string is not null and not empty.
+     */
+    private boolean isNonEmptyString(String stringToCheck) {
+        return (stringToCheck != null && stringToCheck.length() > 0);
+    }
 }

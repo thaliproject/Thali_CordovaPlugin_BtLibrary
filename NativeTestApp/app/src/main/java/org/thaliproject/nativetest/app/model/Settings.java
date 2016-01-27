@@ -29,7 +29,7 @@ public class Settings {
     private static final String KEY_BUFFER_SIZE = "buffer_size";
     private static final String KEY_AUTO_CONNECT = "auto_connect";
     private static final String KEY_AUTO_CONNECT_WHEN_INCOMING = "auto_connect_when_incoming";
-    private static final long START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS = 1000;
+    private static final long START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS = 3000;
 
     private DiscoveryManager mDiscoveryManager = null;
     private DiscoveryManagerSettings mDiscoveryManagerSettings = null;
@@ -72,9 +72,6 @@ public class Settings {
     public void load() {
         mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
         mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
-
-        mDiscoveryManagerSettings.load();
-        mConnectionManagerSettings.load();
 
         mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
         mBufferSizeInBytes = mSharedPreferences.getInt(
@@ -139,13 +136,13 @@ public class Settings {
 
     public void setDesiredDiscoveryMode() {
         DiscoveryManager.DiscoveryMode desiredMode = getDesiredDiscoveryMode();
+        Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
 
         if (desiredMode == DiscoveryManager.DiscoveryMode.NOT_SET) {
             if (mDiscoveryManager != null) {
                 mDiscoveryManager.stop();
             }
         } else  {
-            Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
             mDiscoveryManagerSettings.setDiscoveryMode(desiredMode, true);
 
             if (mDiscoveryManager != null) {
@@ -156,6 +153,7 @@ public class Settings {
                     public void run() {
                         if (getDesiredDiscoveryMode() != DiscoveryManager.DiscoveryMode.NOT_SET
                             && mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
+                            Log.d(TAG, "Starting the discovery manager...");
                             mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
                         }
                     }

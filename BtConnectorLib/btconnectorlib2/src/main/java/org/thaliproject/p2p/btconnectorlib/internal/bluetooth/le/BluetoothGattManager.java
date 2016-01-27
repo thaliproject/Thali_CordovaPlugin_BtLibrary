@@ -596,7 +596,7 @@ public class BluetoothGattManager {
                                 + bluetoothMacAddress + "\"), but got disconnected");
                     } else {
                         Log.e(TAG, "BluetoothGattCallback.onConnectionStateChange: Got disconnected, although wasn't even connected in the first place (device address: \""
-                                + bluetoothMacAddress + "\"), but got disconnected");
+                                + bluetoothMacAddress + "\")");
                     }
 
                     bluetoothGattClientOperation.connected = false;

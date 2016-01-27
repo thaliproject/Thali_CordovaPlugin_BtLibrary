@@ -214,7 +214,7 @@ class BleScanner extends ScanCallback {
     @Override
     public void onScanResult(int callbackType, ScanResult result) {
         if (result != null) {
-            Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
+            //Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
 
             if (mListener != null) {
                 mListener.onScanResult(result);
