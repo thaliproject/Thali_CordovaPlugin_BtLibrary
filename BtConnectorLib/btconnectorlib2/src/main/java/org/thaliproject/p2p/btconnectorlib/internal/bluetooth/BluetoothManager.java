@@ -164,8 +164,7 @@ public class BluetoothManager {
     }
 
     /**
-     * @return The Bluetooth MAC address or null, if no Bluetooth adapter instance or if the Android
-     * version is higher than Lollipop (5.x).
+     * @return The Bluetooth MAC address.
      */
     public String getBluetoothMacAddress() {
         String bluetoothMacAddress = null;
@@ -173,7 +172,8 @@ public class BluetoothManager {
         if (!CommonUtils.isMarshmallowOrHigher() && mBluetoothAdapter != null) {
             bluetoothMacAddress = mBluetoothAdapter.getAddress();
         } else {
-            //Log.v(TAG, "getBluetoothMacAddress: Cannot retrieve our own Bluetooth MAC address from the Bluetooth adapter when running on Marshmallow (6.x) or higher Android version");
+            bluetoothMacAddress = android.provider.Settings.Secure.getString(
+                    mContext.getContentResolver(), "bluetooth_address");
         }
 
         return bluetoothMacAddress;
