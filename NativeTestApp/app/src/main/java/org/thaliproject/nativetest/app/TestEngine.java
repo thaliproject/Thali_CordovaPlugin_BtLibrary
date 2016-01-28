@@ -7,16 +7,21 @@ import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
 import org.thaliproject.nativetest.app.test.AbstractTest;
+import org.thaliproject.nativetest.app.test.FindMyBluetoothAddressTest;
+import org.thaliproject.nativetest.app.test.FindPeersTest;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A connection engine to run tests.
  */
 public class TestEngine extends ConnectionEngine implements TestListener {
     private static final String TAG = TestEngine.class.getName();
+    private static List<AbstractTest> mTests = new ArrayList<AbstractTest>();
     private TestListener mListener = null;
     private AbstractTest mCurrentTest = null;
 
@@ -29,13 +34,23 @@ public class TestEngine extends ConnectionEngine implements TestListener {
     public TestEngine(Context context, Activity activity, TestListener listener) {
         super(context, activity);
         mListener = listener;
+
+        mTests.add(new FindMyBluetoothAddressTest(this, this));
+        mTests.add(new FindPeersTest(this, this));
     }
 
     /**
-     * @param discoveryManager The discovery manager instance.
+     * @return The tests.
      */
-    public void setDiscoveryManager(DiscoveryManager discoveryManager) {
-        mDiscoveryManager = discoveryManager;
+    public static List<AbstractTest> getTests() {
+        return mTests;
+    }
+
+    /**
+     * @return The discovery manager instance.
+     */
+    public DiscoveryManager getDiscoveryManager() {
+        return mDiscoveryManager;
     }
 
     /**

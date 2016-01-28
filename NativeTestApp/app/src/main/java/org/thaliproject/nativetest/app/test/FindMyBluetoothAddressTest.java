@@ -23,7 +23,6 @@ public class FindMyBluetoothAddressTest
     private DiscoveryManager mDiscoveryManager = null;
     private String mStoredBluetoothMacAddress = null;
     private String mBluetoothMacAddress = null;
-    private boolean mDiscoveryManagerWasRunningBeforeTest = false;
 
     public FindMyBluetoothAddressTest(TestEngine testEngine, TestListener listener) {
         super(testEngine, listener);
@@ -41,29 +40,23 @@ public class FindMyBluetoothAddressTest
         super.run();
 
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
+        mDiscoveryManager.stop();
 
-        if (mDiscoveryManager != null) {
-            mDiscoveryManagerWasRunningBeforeTest = mDiscoveryManager.isRunning();
-            mDiscoveryManager.stop();
+        //if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+        mDiscoveryManager.setEmulateMarshmallow(true);
+        //}
 
-            //if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
-                mDiscoveryManager.setEmulateMarshmallow(true);
-            //}
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
+        mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
 
-            DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
-            mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
-
-            if (mStoredBluetoothMacAddress != null) {
-                // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
-                // test fails
-                settings.clearBluetoothMacAddress();
-            }
-
-            mDiscoveryManager.clearIdentityString();
-            mIsRunning = mDiscoveryManager.start(TestEngine.PEER_NAME);
+        if (mStoredBluetoothMacAddress != null) {
+            // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
+            // test fails
+            settings.clearBluetoothMacAddress();
         }
 
-        return mIsRunning;
+        mDiscoveryManager.clearIdentityString();
+        return mDiscoveryManager.start(TestEngine.PEER_NAME);
     }
 
     @Override
@@ -90,11 +83,6 @@ public class FindMyBluetoothAddressTest
                     mListener.onTestFinished(getName(), 0f, "Failed to receive the Bluetooth MAC address");
                 }
             }
-        }
-
-        if (mDiscoveryManagerWasRunningBeforeTest) {
-            // Restart
-            mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
         }
     }
 

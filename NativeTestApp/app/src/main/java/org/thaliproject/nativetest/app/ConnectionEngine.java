@@ -62,10 +62,7 @@ public class ConnectionEngine implements
         mActivity = activity;
         mModel = PeerAndConnectionModel.getInstance();
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
-
-        if (!(this instanceof TestEngine)) {
-            mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
-        }
+        mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
     }
 
     /**
@@ -75,13 +72,6 @@ public class ConnectionEngine implements
         mSettings = Settings.getInstance(mContext);
         mSettings.setDiscoveryManager(mDiscoveryManager);
         mSettings.load();
-    }
-
-    /**
-     * @return The discovery manager instance.
-     */
-    public DiscoveryManager getDiscoveryManager() {
-        return mDiscoveryManager;
     }
 
     /**

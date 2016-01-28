@@ -18,7 +18,6 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     private DiscoveryManager mDiscoveryManager = null;
     private PeerAndConnectionModel mModel = null;
     private int mNumberOfPeersDiscovered = 0;
-    private boolean mDiscoveryManagerWasRunningBeforeTest = false;
 
     public FindPeersTest(TestEngine testEngine, TestListener listener) {
         super(testEngine, listener);
@@ -33,17 +32,10 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     public boolean run() {
         Log.i(TAG, "run");
         super.run();
-
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
-
-        if (mDiscoveryManager != null) {
-            mDiscoveryManagerWasRunningBeforeTest = mDiscoveryManager.isRunning();
-            mDiscoveryManager.stop();
-            mModel = PeerAndConnectionModel.getInstance();
-            mIsRunning = mDiscoveryManager.start(TestEngine.PEER_NAME);
-        }
-
-        return mIsRunning;
+        mDiscoveryManager.stop();
+        mModel = PeerAndConnectionModel.getInstance();
+        return mDiscoveryManager.start(TestEngine.PEER_NAME);
     }
 
     @Override
@@ -61,11 +53,6 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
 
             String results = mNumberOfPeersDiscovered + " peer(s) discovered";
             mListener.onTestFinished(getName(), successRate, results);
-        }
-
-        if (mDiscoveryManagerWasRunningBeforeTest) {
-            // Restart
-            mDiscoveryManager.start(ConnectionEngine.PEER_NAME);
         }
     }
 
