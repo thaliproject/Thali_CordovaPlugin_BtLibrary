@@ -11,6 +11,8 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
+import java.util.ArrayList;
+
 /**
  * Discovery manager settings.
  * Manages all discovery manager settings except for the discovery mode.
@@ -73,7 +75,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
-    private Listener mListener = null;
+    private final ArrayList<Listener> mListeners = new ArrayList<>();
     private boolean mAutomateBluetoothMacAddressResolution = DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION;
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
@@ -104,18 +106,39 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     /**
-     * Sets the listener. Note: Only the discovery manager can act as a listener.
+     * Adds a listener. In the ideal situation there is only one discovery manager and thus, one
+     * listener. However, for testing we might need to use multiple.
+     *
+     * Note: Only the discovery manager can act as a listener.
+     *
      * @param discoveryManager The discovery manager instance.
      */
-    /* Package */ void setListener(DiscoveryManager discoveryManager) {
-        if (mListener == null || discoveryManager == null) {
-            Log.v(TAG, "setListener: " + discoveryManager);
-            mListener = discoveryManager;
-        } else if (mListener != null && mListener != discoveryManager) {
-            throw new RuntimeException("Discovery manager settings listener should be set only once."
-                    + " This may indicate that another DiscoveryManager was created by the same"
-                    + " application, which is not a good practice. If you must, set the listener to"
-                    + " null first before setting a new listener.");
+    /* Package */ void addListener(DiscoveryManager discoveryManager) {
+        if (discoveryManager != null) {
+            Listener listener = (Listener) discoveryManager;
+
+            if (!mListeners.contains(listener)) {
+                mListeners.add(listener);
+                Log.v(TAG, "addListener: Listener " + listener + " added. We now have " + mListeners.size() + " listener(s)");
+            } else {
+                Log.e(TAG, "addListener: Listener " + listener + " already in the list");
+            }
+        }
+    }
+
+    /**
+     * Removes the given listener from the list.
+     * @param discoveryManager The listener to remove.
+     */
+    /* Package */ void removeListener(DiscoveryManager discoveryManager) {
+        if (discoveryManager != null && mListeners.size() > 0) {
+            Listener listener = (Listener) discoveryManager;
+
+            if (mListeners.remove(listener)) {
+                Log.v(TAG, "removeListener: Listener " + listener + " removed from the list");
+            } else {
+                Log.e(TAG, "removeListener: Listener " + listener + " not in the list");
+            }
         }
     }
 
@@ -217,10 +240,16 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             Log.i(TAG, "setDiscoveryMode: " + mDiscoveryMode + " -> " + discoveryMode);
             DiscoveryMode previousDiscoveryMode = mDiscoveryMode;
 
-            if (mListener != null) {
+            if (mListeners.size() > 0) {
                 previousDiscoveryMode = mDiscoveryMode;
                 mDiscoveryMode = discoveryMode;
-                wasSet = mListener.onDiscoveryModeChanged(discoveryMode, forceRestart);
+                wasSet = true;
+
+                for (Listener listener : mListeners) {
+                    if (!listener.onDiscoveryModeChanged(discoveryMode, forceRestart)) {
+                        wasSet = false;
+                    }
+                }
             } else {
                 Log.w(TAG, "setDiscoveryMode: Setting the discovery mode, but cannot verify if the new mode is supported");
                 mDiscoveryMode = discoveryMode;
@@ -268,8 +297,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putLong(KEY_PEER_EXPIRATION, mPeerExpirationInMilliseconds);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onPeerExpirationSettingChanged(mPeerExpirationInMilliseconds);
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onPeerExpirationSettingChanged(mPeerExpirationInMilliseconds);
+                }
             }
         }
     }
@@ -292,8 +323,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+                }
             }
         }
     }
@@ -316,8 +349,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+                }
             }
         }
     }
@@ -340,8 +375,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onScanModeSettingChanged(mScanMode);
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onScanModeSettingChanged(mScanMode);
+                }
             }
         }
     }

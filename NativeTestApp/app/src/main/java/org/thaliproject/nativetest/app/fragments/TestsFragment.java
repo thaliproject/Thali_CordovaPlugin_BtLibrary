@@ -17,9 +17,6 @@ import android.widget.Spinner;
 import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.test.AbstractTest;
-import org.thaliproject.nativetest.app.test.FindMyBluetoothAddressTest;
-import org.thaliproject.nativetest.app.test.FindPeersTest;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,7 +26,6 @@ public class TestsFragment extends Fragment {
     private static final String TAG = TestsFragment.class.getName();
     private Context mContext = null;
     private TestEngine mTestEngine = null;
-    private List<AbstractTest> mTests = new ArrayList<AbstractTest>();
     private Spinner mTestSelectorSpinner = null;
     private Button mRunTestButton = null;
     private int mSelectedTestIndex = 0;
@@ -40,21 +36,9 @@ public class TestsFragment extends Fragment {
     public void setTestEngine(TestEngine testEngine) {
         mTestEngine = testEngine;
 
-        if (mTestEngine != null && mTestSelectorSpinner != null && mTests.size() == 0) {
-            createTestsAndPopulateTestSelector();
-        }
-
-        if (mTestEngine != null && mRunTestButton != null) {
-            mRunTestButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    if (mTestEngine != null) {
-                        if (mTestEngine.runTest(mTests.get(mSelectedTestIndex))) {
-                            //mRunTestButton.setEnabled(false);
-                        }
-                    }
-                }
-            });
+        if (mTestEngine != null) {
+            populateTestSelector();
+            bindRunButton();
         }
     }
 
@@ -68,23 +52,12 @@ public class TestsFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_tests, container, false);
         mContext = view.getContext();
-        mTestSelectorSpinner = (Spinner) view.findViewById(R.id.testSelectionSpinner);
 
-        if (mTestEngine != null && mTests.size() == 0) {
-            createTestsAndPopulateTestSelector();
-        }
+        mTestSelectorSpinner = (Spinner) view.findViewById(R.id.testSelectionSpinner);
+        populateTestSelector();
 
         mRunTestButton = (Button) view.findViewById(R.id.runTestButton);
-        mRunTestButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (mTestEngine != null) {
-                    if (mTestEngine.runTest(mTests.get(mSelectedTestIndex))) {
-                        //mRunTestButton.setEnabled(false);
-                    }
-                }
-            }
-        });
+        bindRunButton();
 
         return view;
     }
@@ -95,19 +68,15 @@ public class TestsFragment extends Fragment {
     }
 
     /**
-     * Constructs the tests and populates the test selector UI element.
-     * @return True, if the tests were created successfully. False otherwise.
+     * Populates the test selector UI element.
      */
-    private boolean createTestsAndPopulateTestSelector() {
-        if (mTestEngine != null) {
-            Log.d(TAG, "createTestsAndPopulateTestSelector");
-            mTests.add(new FindMyBluetoothAddressTest(mTestEngine, mTestEngine));
-            mTests.add(new FindPeersTest(mTestEngine, mTestEngine));
+    private void populateTestSelector() {
+        if (mTestSelectorSpinner != null && mTestSelectorSpinner.getAdapter() == null) {
+            List<AbstractTest> tests = TestEngine.getTests();
+            String[] testNames = new String[tests.size()];
 
-            String[] testNames = new String[mTests.size()];
-
-            for (int i = 0; i < mTests.size(); ++i) {
-                testNames[i] = mTests.get(i).getName();
+            for (int i = 0; i < tests.size(); ++i) {
+                testNames[i] = tests.get(i).getName();
             }
 
             ArrayAdapter<String> adapter = new ArrayAdapter<String>(
@@ -126,10 +95,21 @@ public class TestsFragment extends Fragment {
                 public void onNothingSelected(AdapterView<?> adapterView) {
                 }
             });
-
-            return true;
         }
+    }
 
-        return false;
+    private void bindRunButton() {
+        if (mTestEngine != null && mRunTestButton != null) {
+            mRunTestButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (mTestEngine != null) {
+                        if (mTestEngine.runTest(TestEngine.getTests().get(mSelectedTestIndex))) {
+                            //mRunTestButton.setEnabled(false);
+                        }
+                    }
+                }
+            });
+        }
     }
 }

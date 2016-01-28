@@ -164,7 +164,7 @@ public class DiscoveryManager
 
         mSettings = DiscoveryManagerSettings.getInstance(mContext);
         mSettings.load();
-        mSettings.setListener(this);
+        mSettings.addListener(this);
 
         mPeerModel = new PeerModel(this, mSettings);
 

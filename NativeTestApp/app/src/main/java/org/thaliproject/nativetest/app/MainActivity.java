@@ -72,7 +72,6 @@ public class MainActivity
             mConnectionEngine = new ConnectionEngine(mContext, this);
             mConnectionEngine.bindSettings();
             mTestEngine = new TestEngine(mContext, this, this);
-            mTestEngine.setDiscoveryManager(mConnectionEngine.getDiscoveryManager());
         }
 
         // Set up the action bar.
