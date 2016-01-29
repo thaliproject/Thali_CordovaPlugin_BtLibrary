@@ -109,21 +109,21 @@ public class ConnectionManagerSettings extends AbstractSettings {
     public boolean setInsecureRfcommSocketPortNumber(int insecureRfcommSocketPort) {
         boolean wasSet = false;
 
-        if (mInsecureRfcommSocketPortNumber != insecureRfcommSocketPort
-                && insecureRfcommSocketPort >= -1
-                && insecureRfcommSocketPort <= MAX_INSECURE_RFCOMM_SOCKET_PORT) {
-            Log.i(TAG, "setInsecureRfcommSocketPortNumber: Will use port " + insecureRfcommSocketPort + " when trying to connect");
-            mInsecureRfcommSocketPortNumber = insecureRfcommSocketPort;
-            mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mInsecureRfcommSocketPortNumber);
-            mSharedPreferencesEditor.apply();
+        if (mInsecureRfcommSocketPortNumber != insecureRfcommSocketPort) {
+            if (insecureRfcommSocketPort >= -1 && insecureRfcommSocketPort <= MAX_INSECURE_RFCOMM_SOCKET_PORT) {
+                Log.i(TAG, "setInsecureRfcommSocketPortNumber: Will use port " + insecureRfcommSocketPort + " when trying to connect");
+                mInsecureRfcommSocketPortNumber = insecureRfcommSocketPort;
+                mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mInsecureRfcommSocketPortNumber);
+                mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onConnectionManagerSettingsChanged();
+                if (mListener != null) {
+                    mListener.onConnectionManagerSettingsChanged();
+                }
+
+                wasSet = true;
+            } else {
+                Log.e(TAG, "setInsecureRfcommSocketPortNumber: Cannot set port, invalid port number: " + insecureRfcommSocketPort);
             }
-
-            wasSet = true;
-        } else {
-            Log.e(TAG, "setInsecureRfcommSocketPortNumber: Cannot set port, invalid port number: " + insecureRfcommSocketPort);
         }
 
         return wasSet;
