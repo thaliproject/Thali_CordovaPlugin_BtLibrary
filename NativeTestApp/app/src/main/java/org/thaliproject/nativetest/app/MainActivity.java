@@ -4,7 +4,9 @@
 package org.thaliproject.nativetest.app;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.os.Handler;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.app.ActionBar;
 import android.support.v4.app.Fragment;
@@ -24,12 +26,13 @@ import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.slidingtabs.SlidingTabLayout;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 public class MainActivity
         extends AppCompatActivity
-        implements PeerListFragment.Listener, TestListener {
+        implements ActivityCompat.OnRequestPermissionsResultCallback, PeerListFragment.Listener, TestListener {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -225,6 +228,10 @@ public class MainActivity
         return wasConsumed || super.onOptionsItemSelected(item);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        mConnectionEngine.onRequestPermissionsResult(requestCode, permissions, grantResults);
+    }
 
     @Override
     public void onPeerSelected(PeerProperties peerProperties) {

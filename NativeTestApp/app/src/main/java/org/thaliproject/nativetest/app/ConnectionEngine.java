@@ -4,8 +4,10 @@
 package org.thaliproject.nativetest.app;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.CountDownTimer;
@@ -28,7 +30,6 @@ import java.util.UUID;
  * This class is responsible for managing both peer discovery and connections.
  */
 public class ConnectionEngine implements
-        ActivityCompat.OnRequestPermissionsResultCallback,
         ConnectionManager.ConnectionManagerListener,
         DiscoveryManager.DiscoveryManagerListener,
         Connection.Listener {
@@ -52,6 +53,7 @@ public class ConnectionEngine implements
     protected DiscoveryManager mDiscoveryManager = null;
     protected PeerAndConnectionModel mModel = null;
     protected CountDownTimer mCheckConnectionsTimer = null;
+    private AlertDialog mAlertDialog = null;
     private boolean mShuttingDown = false;
 
     /**
@@ -192,17 +194,29 @@ public class ConnectionEngine implements
         }
     }
 
-    @Override
+    /**
+     * Called when the user grants/denies a permission request.
+     * @param requestCode The request code associated with the permission request.
+     * @param permissions The permissions in question.
+     * @param grantResults The grant results (granted/denied).
+     */
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        Log.i(TAG, "onRequestPermissionsResult: " + requestCode + " " + permissions + " " + grantResults);
+        Log.d(TAG, "onRequestPermissionsResult: Request code: " + requestCode);
+
+        for (int i = 0; (i < permissions.length && i < grantResults.length); ++i) {
+            Log.d(TAG, "onRequestPermissionsResult: Permission: " + permissions[i] + ", grant result: " + grantResults[i]);
+        }
 
         if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (mDiscoveryManager.getState() ==
-                        DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS) {
-                    mDiscoveryManager.start(PEER_NAME);
-                }
+                Log.d(TAG, "onRequestPermissionsResult: Permission granted");
+                mDiscoveryManager.start(PEER_NAME);
+            } else {
+                Log.e(TAG, "onRequestPermissionsResult: Permission denied");
             }
+
+            mAlertDialog.dismiss();
+            mAlertDialog = null;
         }
     }
     
@@ -480,16 +494,33 @@ public class ConnectionEngine implements
      * Prompts the user to grant the given permission.
      * @param permission The permission, which needs to be granted.
      */
-    private void requestPermission(String permission) {
+    private void requestPermission(final String permission) {
         Log.i(TAG, "requestPermission: " + permission);
 
         // Should we show an explanation?
         if (ActivityCompat.shouldShowRequestPermissionRationale(mActivity, permission)) {
-            // Show an explanation to the user *asynchronously* -- don't block
-            // this thread waiting for the user's response! After the user
-            // sees the explanation, try again to request the permission.
-            Log.e(TAG, "requestPermission: Should show request permission rationale");
-            // TODO
+            // The app has requested this permission previously and the user denied the request.
+            if (mAlertDialog == null) {
+                AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(mActivity);
+                alertDialogBuilder.setMessage("Location permission is required to scan for nearby peers using Bluetooth LE.");
+                alertDialogBuilder.setCancelable(true);
+
+                alertDialogBuilder.setPositiveButton(
+                        "OK",
+                        new DialogInterface.OnClickListener() {
+                            public void onClick(DialogInterface dialog, int id) {
+                                dialog.cancel();
+                                ActivityCompat.requestPermissions(
+                                        mActivity, new String[]{permission}, PERMISSION_REQUEST_ACCESS_COARSE_LOCATION);
+                            }
+                        });
+
+                mAlertDialog = alertDialogBuilder.create();
+            }
+
+            if (!mAlertDialog.isShowing()) {
+                mAlertDialog.show();
+            }
         } else {
             // No explanation needed, we can request the permission.
             ActivityCompat.requestPermissions(
