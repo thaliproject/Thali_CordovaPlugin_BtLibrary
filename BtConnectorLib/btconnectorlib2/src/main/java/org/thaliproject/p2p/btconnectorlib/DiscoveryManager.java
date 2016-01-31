@@ -82,6 +82,9 @@ public class DiscoveryManager
          * Note: If the Bluetooth MAC address resolution process is set to be automated, this
          * callback will not be called.
          *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param requestId The request ID associated with the device.
          */
         void onProvideBluetoothMacAddressRequest(String requestId);
@@ -93,11 +96,18 @@ public class DiscoveryManager
          *
          * Note: If the Bluetooth MAC address resolution process is set to be automated, this
          * callback will not be called.
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
          */
         void onPeerReadyToProvideBluetoothMacAddress();
 
         /**
          * Called when the Bluetooth MAC address of this device is resolved.
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param bluetoothMacAddress The Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
@@ -529,8 +539,8 @@ public class DiscoveryManager
      * @param state The new state.
      */
     @Override
-    public void onIsBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscoverer.BlePeerDiscovererStateSet> state) {
-        Log.i(TAG, "onIsBlePeerDiscovererStateChanged: " + state);
+    public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscoverer.BlePeerDiscovererStateSet> state) {
+        Log.i(TAG, "onBlePeerDiscovererStateChanged: " + state);
     }
 
     /**

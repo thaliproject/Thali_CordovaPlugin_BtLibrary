@@ -21,7 +21,7 @@ import java.util.ArrayList;
  */
 public class BluetoothManager {
     /**
-     * A listener interface for Bluetooth scan ode changes.
+     * A listener interface for Bluetooth scan mode changes.
      */
     public interface BluetoothManagerListener {
         /**
@@ -36,7 +36,7 @@ public class BluetoothManager {
     private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
     private final ArrayList<BluetoothManagerListener> mListeners = new ArrayList<>();
-    private BluetoothModeBroadCastReceiver mBluetoothBroadcastReceiver = null;
+    private BluetoothModeBroadcastReceiver mBluetoothBroadcastReceiver = null;
     private boolean mInitialized = false;
 
     /**
@@ -62,8 +62,8 @@ public class BluetoothManager {
     }
 
     /**
-     * Binds the given listener to this instance. If already bound, this method does nothing excepts
-     * verifies the Bluetooth support.
+     * Binds the given listener to this instance. If already bound, this method does nothing except
+     * verifies Bluetooth support.
      *
      * Note that the listener acts as a sort of a reference counter. You must call release() after
      * you're done using the instance.
@@ -100,18 +100,11 @@ public class BluetoothManager {
     }
 
     /**
-     * Checks whether the device has a Bluetooth support or not.
+     * Checks whether the device has Bluetooth support or not.
      * @return True, if the device supports Bluetooth. False otherwise.
      */
     public boolean isBluetoothSupported() {
-        boolean isSupported = initialize();
-
-        if (mListeners.size() == 0) {
-            // No reason to keep the broadcast receiver around since there is no-one to listen to it
-            deinitialize();
-        }
-
-        return isSupported;
+        return (mBluetoothAdapter != null);
     }
 
     /**
@@ -128,7 +121,7 @@ public class BluetoothManager {
     public boolean isBleMultipleAdvertisementSupported() {
         boolean isSupported = false;
 
-        if (CommonUtils.isLollipopOrHigher()) {
+        if (CommonUtils.isLollipopOrHigher() && mBluetoothAdapter != null) {
             isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
         } else {
             Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");
@@ -141,7 +134,7 @@ public class BluetoothManager {
      * @return True, if Bluetooth is enabled.
      */
     public boolean isBluetoothEnabled() {
-        return mBluetoothAdapter != null && mBluetoothAdapter.isEnabled();
+        return (mBluetoothAdapter != null && mBluetoothAdapter.isEnabled());
     }
 
     /**
@@ -180,11 +173,11 @@ public class BluetoothManager {
     }
 
     public String getBluetoothName() {
-        return mBluetoothAdapter == null ? null : mBluetoothAdapter.getName();
+        return (mBluetoothAdapter == null ? null : mBluetoothAdapter.getName());
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
-        return mBluetoothAdapter == null ? null : mBluetoothAdapter.getRemoteDevice(address);
+        return (mBluetoothAdapter == null ? null : mBluetoothAdapter.getRemoteDevice(address));
     }
 
     /**
@@ -197,7 +190,7 @@ public class BluetoothManager {
             if (mBluetoothAdapter != null) {
                 Log.i(TAG, "initialize: My bluetooth address is " + getBluetoothMacAddress());
 
-                mBluetoothBroadcastReceiver = new BluetoothModeBroadCastReceiver();
+                mBluetoothBroadcastReceiver = new BluetoothModeBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
 
@@ -235,7 +228,7 @@ public class BluetoothManager {
     /**
      * Broadcast receiver for Bluetooth adapter scan mode changes.
      */
-    private class BluetoothModeBroadCastReceiver extends BroadcastReceiver {
+    private class BluetoothModeBroadcastReceiver extends BroadcastReceiver {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();

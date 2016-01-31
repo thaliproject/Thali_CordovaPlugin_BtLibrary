@@ -77,7 +77,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     }
 
     /**
-     * Verifies the validity of our identity string. If the not yet created, will try to create it.
+     * Verifies the validity of our identity string. If not yet created, will try to create it.
      * If the identity string already exists, it won't be recreated.
      * @return True, if the identity string is OK (i.e. not empty). False otherwise.
      */

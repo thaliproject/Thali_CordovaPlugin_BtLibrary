@@ -180,8 +180,15 @@ class BleScanner extends ScanCallback {
     }
 
     @Override
-    public void onBatchScanResults(List<ScanResult> results) {
-        // Not used
+    public void onBatchScanResults(List<ScanResult> scanResults) {
+        if (mListener != null) {
+            for (ScanResult scanResult : scanResults) {
+                if (scanResult != null) {
+                    //Log.v(TAG, "onBatchScanResults: Scan result: " + scanResult.toString());
+                    mListener.onScanResult(scanResult);
+                }
+            }
+        }
     }
 
     @Override
@@ -212,12 +219,12 @@ class BleScanner extends ScanCallback {
     }
 
     @Override
-    public void onScanResult(int callbackType, ScanResult result) {
-        if (result != null) {
-            //Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
+    public void onScanResult(int callbackType, ScanResult scanResult) {
+        if (scanResult != null) {
+            //Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
 
             if (mListener != null) {
-                mListener.onScanResult(result);
+                mListener.onScanResult(scanResult);
             }
         }
     }

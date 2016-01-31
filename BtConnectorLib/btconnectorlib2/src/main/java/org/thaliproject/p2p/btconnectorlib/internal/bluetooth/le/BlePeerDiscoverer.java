@@ -28,10 +28,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * Called when the state of this class has changed.
          * @param state The new state.
          */
-        void onIsBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state);
+        void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state);
 
         /**
          * Called when we receive a request from a peer to provide it its Bluetooth MAC address.
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param requestId The request ID associated with the device in need of assistance.
          */
         void onProvideBluetoothMacAddressRequest(String requestId);
@@ -40,6 +44,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * Called when we see that a peer is willing to provide us our own Bluetooth MAC address
          * via Bluetooth device discovery. After receiving this event, we should make our device
          * discoverable via Bluetooth.
+         *
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param requestId The request ID.
          */
         void onPeerReadyToProvideBluetoothMacAddress(String requestId);
@@ -51,6 +60,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * Note: The operation is never considered to be completed, since this method is called
          * when the advertising timeouts.
          *
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param requestId The request ID associated with the device in need of assistance.
          * @param wasCompleted True, if the operation was completed.
          */
@@ -58,6 +71,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         /**
          * Called when we receive our own Bluetooth MAC address.
+         *
+         * Note: This callback is not being used and thus not tested constantly so there is no
+         * guarantee it'll work flawlessly.
+         *
          * @param bluetoothMacAddress Our Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
@@ -503,7 +520,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         if (!mStateSet.equals(deducedStateSet)) {
             Log.d(TAG, "updateState(): State changed from " + mStateSet + " to " + deducedStateSet);
             mStateSet = deducedStateSet;
-            mListener.onIsBlePeerDiscovererStateChanged(mStateSet);
+            mListener.onBlePeerDiscovererStateChanged(mStateSet);
         }
     }
 
