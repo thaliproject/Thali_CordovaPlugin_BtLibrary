@@ -88,7 +88,8 @@ public class ConnectionManager
         mMyUuid = myUuid;
         mMyName = myName;
 
-        mSettings = ConnectionManagerSettings.getInstance();
+        mSettings = ConnectionManagerSettings.getInstance(mContext);
+        mSettings.load();
         mSettings.setListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());
@@ -155,7 +156,14 @@ public class ConnectionManager
      * @return True, if started successfully or was already running. False otherwise.
      */
     public boolean start(String myPeerName) {
-        return start(mBluetoothManager.getBluetoothAddress(), myPeerName);
+        String bluetoothMacAddress = getBluetoothMacAddress();
+        boolean wasStarted = false;
+
+        if (bluetoothMacAddress != null) {
+            wasStarted = start(getBluetoothMacAddress(), myPeerName);
+        }
+
+        return wasStarted;
     }
 
     /**

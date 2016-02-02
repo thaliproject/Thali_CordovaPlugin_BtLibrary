@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -14,12 +15,63 @@ import java.util.UUID;
 /**
  * General Bluetooth utils.
  */
-class BluetoothUtils {
+public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
+    public static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
+    public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
+    private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
+    private static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH = 17;
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
     private static final int MAX_ALTERNATIVE_CHANNEL = 30;
     private static int mAlternativeChannel = 0;
+
+    /**
+     * Checks if the given Bluetooth MAC address is unknown (as in not set/missing).
+     * @param bluetoothMacAddress The Bluetooth MAC address to check.
+     * @return True, if the Bluetooth MAC address is unknown.
+     */
+    public static boolean isBluetoothMacAddressUnknown(String bluetoothMacAddress) {
+        return (bluetoothMacAddress == null
+                || bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
+    }
+
+    /**
+     * Checks whether the given Bluetooth MAC address has the proper form or not.
+     *
+     * A valid Bluetooth MAC address has form of: 01:23:45:67:89:AB
+     * Note that the possible alphabets in the string have to be upper case.
+     *
+     * @param bluetoothMacAddress The Bluetooth MAC address to validate.
+     * @return True, if the address is valid. False otherwise.
+     */
+    public static boolean isValidBluetoothMacAddress(String bluetoothMacAddress) {
+        boolean isValid = false;
+
+        if (bluetoothMacAddress != null && bluetoothMacAddress.length() == BLUETOOTH_MAC_ADDRESS_STRING_LENGTH) {
+            String[] bytesAsHexStringArray = bluetoothMacAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
+
+            if (bytesAsHexStringArray.length == BLUETOOTH_ADDRESS_BYTE_COUNT) {
+                boolean allBytesAreValid = true;
+
+                for (String byteAsHexString : bytesAsHexStringArray) {
+                    if (byteAsHexString.length() != 2
+                            || !byteAsHexString.matches(UPPER_CASE_HEX_REGEXP_CONDITION)) {
+                        allBytesAreValid = false;
+                        break;
+                    }
+                }
+
+                isValid = allBytesAreValid;
+            }
+        }
+
+        if (!isValid && bluetoothMacAddress != null) {
+            Log.e(TAG, "isValidBluetoothMacAddress: Not a valid Bluetooth MAC address: " + bluetoothMacAddress);
+        }
+
+        return isValid;
+    }
 
     /**
      * @return The alternative RFCOMM channel/L2CAP psm used previously.

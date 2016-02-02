@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
@@ -54,11 +54,17 @@ class BleAdvertiser extends AdvertiseCallback {
         mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
 
         AdvertiseSettings.Builder builder = new AdvertiseSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
-            builder.setAdvertiseMode(settings.getAdvertiseMode());
-            builder.setTxPowerLevel(settings.getAdvertiseTxPowerLevel());
+            if (settings != null) {
+                builder.setAdvertiseMode(settings.getAdvertiseMode());
+                builder.setTxPowerLevel(settings.getAdvertiseTxPowerLevel());
+            } else {
+                Log.e(TAG, "Failed to get the discovery manager settings instance - using default settings");
+                builder.setAdvertiseMode(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
+                builder.setTxPowerLevel(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
+            }
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleAdvertiser: Failed to apply settings: " + e.getMessage(), e);
         }
@@ -66,11 +72,29 @@ class BleAdvertiser extends AdvertiseCallback {
         setAdvertiseSettings(builder.build());
     }
 
+    /**
+     * Sets the advertise data. Restarts the instance, if it was started/running.
+     * @param advertiseData The advertise data to set.
+     */
     public void setAdvertiseData(AdvertiseData advertiseData) {
         Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
+        boolean wasStarted = isStarted();
+
+        if (wasStarted) {
+            stop(false);
+        }
+
         mAdvertiseData = advertiseData;
+
+        if (wasStarted) {
+            start();
+        }
     }
 
+    /**
+     * Sets the advertise settings. Note that the advertiser is not restarted automatically.
+     * @param advertiseSettings The advertise settings to set.
+     */
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
         if (advertiseSettings != null) {
             mAdvertiseSettings = advertiseSettings;
@@ -101,16 +125,18 @@ class BleAdvertiser extends AdvertiseCallback {
                 if (mAdvertiseData != null) {
                     try {
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
-                        setState(State.STARTING);
+                        setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
                     }
                 } else {
                     Log.e(TAG, "start: No advertisement data set");
                 }
+            } else {
+                Log.e(TAG, "start: No BLE advertiser instance");
             }
         } else {
-            Log.e(TAG, "start: No BLE advertiser instance");
+            Log.d(TAG, "start: Already running");
         }
 
         return (mState != State.NOT_STARTED);
@@ -118,17 +144,19 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Stops advertising.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    public synchronized void stop() {
+    public synchronized void stop(boolean notifyStateChanged) {
         if (mBluetoothLeAdvertiser != null) {
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(this);
+                Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
             }
         }
 
-        setState(State.NOT_STARTED);
+        setState(State.NOT_STARTED, notifyStateChanged);
     }
 
     /**
@@ -161,41 +189,38 @@ class BleAdvertiser extends AdvertiseCallback {
         }
 
         Log.e(TAG, "onStartFailure: " + reason + ", error code is " + errorCode);
+        setState(State.NOT_STARTED, true);
 
         if (mListener != null) {
             mListener.onAdvertiserFailedToStart(errorCode);
         }
-
-        setState(State.NOT_STARTED);
     }
 
     @Override
     public void onStartSuccess(AdvertiseSettings settingsInEffect) {
         Log.i(TAG, "onStartSuccess");
-        setState(State.RUNNING);
+        setState(State.RUNNING, true);
     }
 
     /**
      * Sets the state and notifies listener if required.
      * @param state The new state.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    private synchronized void setState(State state) {
+    private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
+            Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
-            switch (mState) {
-                case NOT_STARTED:
-                    if (mListener != null) {
+            if (notifyStateChanged && mListener != null) {
+                switch (mState) {
+                    case NOT_STARTED:
                         mListener.onIsAdvertiserStartedChanged(false);
-                    }
-
-                    break;
-                case RUNNING:
-                    if (mListener != null) {
+                        break;
+                    case RUNNING:
                         mListener.onIsAdvertiserStartedChanged(true);
-                    }
-
-                    break;
+                        break;
+                }
             }
         }
     }

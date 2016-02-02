@@ -1,23 +1,32 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.content.Context;
+import android.preference.PreferenceManager;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 
 /**
  * Connection manager settings.
  */
-public class ConnectionManagerSettings {
+public class ConnectionManagerSettings extends AbstractSettings {
     public interface Listener {
         void onConnectionManagerSettingsChanged();
     }
 
+    // Default settings
     public static final long DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS = BluetoothConnector.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES = BluetoothConnector.DEFAULT_MAX_NUMBER_OF_RETRIES;
+
+    // Keys for shared preferences
+    private static final String KEY_CONNECTION_TIMEOUT = "connection_timeout";
+    private static final String KEY_PORT_NUMBER = "port_number";
+    private static final String KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES = "max_number_of_connection_attempt_retries";
 
     private static final String TAG = ConnectionManagerSettings.class.getName();
     private static final int MAX_INSECURE_RFCOMM_SOCKET_PORT = 30;
@@ -29,11 +38,12 @@ public class ConnectionManagerSettings {
     private int mMaxNumberOfConnectionAttemptRetries = 0;
 
     /**
+     * @param context The application context for the shared preferences.
      * @return The singleton instance of this class.
      */
-    public static ConnectionManagerSettings getInstance() {
+    public static ConnectionManagerSettings getInstance(Context context) {
         if (mInstance == null) {
-            mInstance = new ConnectionManagerSettings();
+            mInstance = new ConnectionManagerSettings(context);
         }
 
         return mInstance;
@@ -42,7 +52,8 @@ public class ConnectionManagerSettings {
     /**
      * Private constructor.
      */
-    private ConnectionManagerSettings() {
+    private ConnectionManagerSettings(Context context) {
+        super(context); // Will create Shared preferences (and editor) instance
     }
 
     /**
@@ -65,10 +76,14 @@ public class ConnectionManagerSettings {
      * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
      */
     public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
-        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
+        if (mConnectionTimeoutInMilliseconds != connectionTimeoutInMilliseconds) {
+            mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
+            mSharedPreferencesEditor.putLong(KEY_CONNECTION_TIMEOUT, mConnectionTimeoutInMilliseconds);
+            mSharedPreferencesEditor.apply();
 
-        if (mListener != null) {
-            mListener.onConnectionManagerSettingsChanged();
+            if (mListener != null) {
+                mListener.onConnectionManagerSettingsChanged();
+            }
         }
     }
 
@@ -94,17 +109,21 @@ public class ConnectionManagerSettings {
     public boolean setInsecureRfcommSocketPortNumber(int insecureRfcommSocketPort) {
         boolean wasSet = false;
 
-        if (insecureRfcommSocketPort >= -1 && insecureRfcommSocketPort <= MAX_INSECURE_RFCOMM_SOCKET_PORT) {
-            Log.i(TAG, "setInsecureRfcommSocketPortNumber: Will use port " + insecureRfcommSocketPort + " when trying to connect");
-            mInsecureRfcommSocketPortNumber = insecureRfcommSocketPort;
+        if (mInsecureRfcommSocketPortNumber != insecureRfcommSocketPort) {
+            if (insecureRfcommSocketPort >= -1 && insecureRfcommSocketPort <= MAX_INSECURE_RFCOMM_SOCKET_PORT) {
+                Log.i(TAG, "setInsecureRfcommSocketPortNumber: Will use port " + insecureRfcommSocketPort + " when trying to connect");
+                mInsecureRfcommSocketPortNumber = insecureRfcommSocketPort;
+                mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mInsecureRfcommSocketPortNumber);
+                mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onConnectionManagerSettingsChanged();
+                if (mListener != null) {
+                    mListener.onConnectionManagerSettingsChanged();
+                }
+
+                wasSet = true;
+            } else {
+                Log.e(TAG, "setInsecureRfcommSocketPortNumber: Cannot set port, invalid port number: " + insecureRfcommSocketPort);
             }
-
-            wasSet = true;
-        } else {
-            Log.e(TAG, "setInsecureRfcommSocketPortNumber: Cannot set port, invalid port number: " + insecureRfcommSocketPort);
         }
 
         return wasSet;
@@ -122,10 +141,36 @@ public class ConnectionManagerSettings {
      * @param maxNumberOfRetries The maximum number of socket connection attempt retries for outgoing connections.
      */
     public void setMaxNumberOfConnectionAttemptRetries(int maxNumberOfRetries) {
-        mMaxNumberOfConnectionAttemptRetries = maxNumberOfRetries;
+        if (mMaxNumberOfConnectionAttemptRetries != maxNumberOfRetries) {
+            mMaxNumberOfConnectionAttemptRetries = maxNumberOfRetries;
+            mSharedPreferencesEditor.putInt(KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES, mMaxNumberOfConnectionAttemptRetries);
+            mSharedPreferencesEditor.apply();
 
-        if (mListener != null) {
-            mListener.onConnectionManagerSettingsChanged();
+            if (mListener != null) {
+                mListener.onConnectionManagerSettingsChanged();
+            }
         }
+    }
+
+    @Override
+    public void load() {
+        mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
+                KEY_CONNECTION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
+        mInsecureRfcommSocketPortNumber = mSharedPreferences.getInt(
+                KEY_PORT_NUMBER, SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+        mMaxNumberOfConnectionAttemptRetries = mSharedPreferences.getInt(
+                KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES, DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES);
+
+        Log.v(TAG, "load: "
+                + "\n\tConnection timeout in milliseconds: " + mConnectionTimeoutInMilliseconds + ", "
+                + "\n\tInsecure RFCOMM socket port number: " + mInsecureRfcommSocketPortNumber + ", "
+                + "\n\tMaximum number of connection attempt retries: " + mMaxNumberOfConnectionAttemptRetries);
+    }
+
+    @Override
+    public void resetDefaults() {
+        setConnectionTimeout(DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
+        setInsecureRfcommSocketPortNumber(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+        setMaxNumberOfConnectionAttemptRetries(DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES);
     }
 }

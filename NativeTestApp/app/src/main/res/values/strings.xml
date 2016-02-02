@@ -1,0 +1,32 @@
+<resources>
+    <string name="app_name">Thali Native Test</string>
+
+    <string name="action_settings">Settings</string>
+    <string name="action_connect">Connect</string>
+    <string name="action_disconnect">Disconnect</string>
+    <string name="action_send_data">Send data</string>
+    <string name="action_kill_all_connections">Kill all connections</string>
+    <string name="action_start_bluetooth_device_discovery">Start Bluetooth device discovery</string>
+    <string name="action_make_device_discoverable">Make device discoverable</string>
+
+    <string-array name="advertise_mode_string_array">
+        <item>ADVERTISE_MODE_LOW_POWER</item>
+        <item>ADVERTISE_MODE_BALANCED</item>
+        <item>ADVERTISE_MODE_LOW_LATENCY</item>
+    </string-array>
+
+    <string-array name="advertise_tx_power_level_string_array">
+        <item>ADVERTISE_TX_POWER_ULTRA_LOW</item>
+        <item>ADVERTISE_TX_POWER_LOW</item>
+        <item>ADVERTISE_TX_POWER_MEDIUM</item>
+        <item>ADVERTISE_TX_POWER_HIGH</item>
+    </string-array>
+
+    <string-array name="scan_mode_string_array">
+        <item>SCAN_MODE_LOW_POWER</item>
+        <item>SCAN_MODE_BALANCED</item>
+        <item>SCAN_MODE_LOW_LATENCY</item>
+    </string-array>
+
+    <string name="run_test">Run test</string>
+</resources>

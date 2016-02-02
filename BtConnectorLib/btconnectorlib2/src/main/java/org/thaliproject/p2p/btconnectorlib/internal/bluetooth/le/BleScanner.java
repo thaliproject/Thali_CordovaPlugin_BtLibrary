@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
@@ -12,7 +12,6 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,10 +63,15 @@ class BleScanner extends ScanCallback {
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         ScanSettings.Builder builder = new ScanSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance();
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
-            builder.setScanMode(settings.getScanMode());
+            if (settings != null) {
+                builder.setScanMode(settings.getScanMode());
+            } else {
+                Log.e(TAG, "Failed to get the discovery manager settings instance - using default settings");
+                builder.setScanMode(DiscoveryManagerSettings.DEFAULT_SCAN_MODE);
+            }
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleScanner: Failed to apply scan mode setting: " + e.getMessage(), e);
         }
@@ -91,13 +95,15 @@ class BleScanner extends ScanCallback {
             if (mBluetoothLeScanner != null) {
                 try {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
-                    setState(State.STARTING);
+                    setState(State.STARTING, true);
                 } catch (Exception e) {
                     Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
                 }
             } else {
                 Log.e(TAG, "start: No BLE scanner instance");
             }
+        } else {
+            Log.d(TAG, "start: Already running");
         }
 
         return (mState != State.NOT_STARTED);
@@ -105,17 +111,19 @@ class BleScanner extends ScanCallback {
 
     /**
      * Stops the scanning.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    public synchronized void stop() {
+    public synchronized void stop(boolean notifyStateChanged) {
         if (mBluetoothLeScanner != null) {
             try {
                 mBluetoothLeScanner.stopScan(this);
+                Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
             }
         }
 
-        setState(State.NOT_STARTED);
+        setState(State.NOT_STARTED, notifyStateChanged);
     }
 
     /**
@@ -125,7 +133,7 @@ class BleScanner extends ScanCallback {
         boolean wasStarted = (mState != State.NOT_STARTED);
 
         if (wasStarted) {
-            stop();
+            stop(false);
         }
 
         mScanFilters.clear();
@@ -144,7 +152,7 @@ class BleScanner extends ScanCallback {
             boolean wasStarted = (mState != State.NOT_STARTED);
 
             if (wasStarted) {
-                stop();
+                stop(false);
             }
 
             mScanFilters.add(scanFilter);
@@ -172,8 +180,15 @@ class BleScanner extends ScanCallback {
     }
 
     @Override
-    public void onBatchScanResults(List<ScanResult> results) {
-        // Not used
+    public void onBatchScanResults(List<ScanResult> scanResults) {
+        if (mListener != null) {
+            for (ScanResult scanResult : scanResults) {
+                if (scanResult != null) {
+                    //Log.v(TAG, "onBatchScanResults: Scan result: " + scanResult.toString());
+                    mListener.onScanResult(scanResult);
+                }
+            }
+        }
     }
 
     @Override
@@ -196,21 +211,20 @@ class BleScanner extends ScanCallback {
         }
 
         Log.e(TAG, "onScanFailed: " + reason + ", error code is " + errorCode);
+        setState(State.NOT_STARTED, true);
 
         if (mListener != null) {
             mListener.onScannerFailed(errorCode);
         }
-
-        setState(State.NOT_STARTED);
     }
 
     @Override
-    public void onScanResult(int callbackType, ScanResult result) {
-        if (result != null) {
-            Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + result.toString());
+    public void onScanResult(int callbackType, ScanResult scanResult) {
+        if (scanResult != null) {
+            //Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
 
             if (mListener != null) {
-                mListener.onScanResult(result);
+                mListener.onScanResult(scanResult);
             }
         }
     }
@@ -218,24 +232,22 @@ class BleScanner extends ScanCallback {
     /**
      * Sets the state and notifies listener if required.
      * @param state The new state.
+     * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
-    private synchronized void setState(State state) {
+    private synchronized void setState(State state, boolean notifyStateChanged) {
         if (mState != state) {
+            Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
-            switch (mState) {
-                case NOT_STARTED:
-                    if (mListener != null) {
+            if (notifyStateChanged && mListener != null) {
+                switch (mState) {
+                    case NOT_STARTED:
                         mListener.onIsScannerStartedChanged(false);
-                    }
-
-                    break;
-                case RUNNING:
-                    if (mListener != null) {
+                        break;
+                    case RUNNING:
                         mListener.onIsScannerStartedChanged(true);
-                    }
-
-                    break;
+                        break;
+                }
             }
         }
     }
