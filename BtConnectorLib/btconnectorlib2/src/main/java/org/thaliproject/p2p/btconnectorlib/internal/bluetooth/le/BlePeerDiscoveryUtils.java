@@ -38,22 +38,31 @@ class BlePeerDiscoveryUtils {
     private static Random mRandom = null;
 
     /**
-     * Creates a new scan filter using the given service UUID.
-     * @param serviceUuid The service UUID for the scan filter.
+     * Creates a new scan filter based on the given arguments.
+     * @param serviceUuid The service UUID for the scan filter. Use null to not set.
+     * @param useManufacturerId If true, will add the manufacturer ID to the filter properties.
      * @return A newly created scan filter or null in case of a failure.
      */
-    public static ScanFilter createScanFilter(UUID serviceUuid) {
+    public static ScanFilter createScanFilter(UUID serviceUuid, boolean useManufacturerId) {
+        Log.d(TAG, "createScanFilter: "
+                + ((serviceUuid != null) ? "Service UUID: \"" + serviceUuid.toString() + "\"" : "No service UUID")
+                + ", use manufacturer ID: " + useManufacturerId);
+
         ScanFilter scanFilter = null;
         ScanFilter.Builder builder = new ScanFilter.Builder();
 
         try {
-            builder.setManufacturerData(PeerAdvertisementFactory.MANUFACTURER_ID, null);
+            if (useManufacturerId) {
+                builder.setManufacturerData(PeerAdvertisementFactory.MANUFACTURER_ID, null);
+            }
 
             if (serviceUuid != null) {
-                builder.setServiceUuid(new ParcelUuid(serviceUuid));
+                ParcelUuid uuidMask = ParcelUuid.fromString("11111111-1111-1111-1110-000000000000");
+                builder.setServiceUuid(new ParcelUuid(serviceUuid), uuidMask);
             }
 
             scanFilter = builder.build();
+            Log.v(TAG, "createScanFilter: " + scanFilter.toString());
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
         }

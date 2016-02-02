@@ -253,6 +253,16 @@ public class ConnectionManager
         return wasCancelled;
     }
 
+    @Override
+    public void dispose() {
+        Log.i(TAG, "dispose");
+        super.dispose();
+
+        if (mState != ConnectionManagerState.NOT_STARTED) {
+            stop();
+        }
+    }
+
     /**
      * Applies the changed settings, if the connector instance already exists.
      */

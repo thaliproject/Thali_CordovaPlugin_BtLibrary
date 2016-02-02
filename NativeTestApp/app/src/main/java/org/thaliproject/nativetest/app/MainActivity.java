@@ -147,6 +147,7 @@ public class MainActivity
     @Override
     public void onDestroy() {
         Log.i(TAG, "onDestroy");
+        mConnectionEngine.dispose();
         super.onDestroy();
     }
 

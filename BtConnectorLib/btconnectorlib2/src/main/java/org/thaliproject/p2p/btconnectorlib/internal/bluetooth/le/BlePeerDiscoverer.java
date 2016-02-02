@@ -14,6 +14,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.util.EnumSet;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -161,7 +162,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         mBleScanner = new BleScanner(this, mBluetoothAdapter);
-        mBleScanner.addFilter(BlePeerDiscoveryUtils.createScanFilter(null));
+        mBleScanner.addFilter(BlePeerDiscoveryUtils.createScanFilter(mServiceUuid, false));
     }
 
     /**
@@ -450,21 +451,26 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private synchronized void checkScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
 
-        if (scanResult.getScanRecord() != null) {
+        if (scanResult != null && scanResult.getScanRecord() != null) {
             byte[] manufacturerData = null;
-            byte[] serviceData = null;
 
             manufacturerData = scanResult.getScanRecord().getManufacturerSpecificData(
                     PeerAdvertisementFactory.MANUFACTURER_ID);
-            serviceData = scanResult.getScanRecord().getServiceData(new ParcelUuid(mServiceUuid));
+            Map<ParcelUuid, byte[]> serviceData = scanResult.getScanRecord().getServiceData();
 
+            Log.d(TAG, "checkScanResult: " + manufacturerData + " " + serviceData);
             if (manufacturerData != null) {
                 parsedAdvertisement = BlePeerDiscoveryUtils.parseManufacturerData(manufacturerData, mServiceUuid);
-            } else if (serviceData != null) {
-                parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceData);
+            } else if (serviceData != null && serviceData.size() > 0) {
+                for (ParcelUuid uuid : serviceData.keySet()) {
+                    byte[] serviceDataContent = serviceData.get(uuid);
+                    //Log.v(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
+                    parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
 
-                if (parsedAdvertisement != null) {
-                    parsedAdvertisement.uuid = mServiceUuid;
+                    if (parsedAdvertisement != null) {
+                        parsedAdvertisement.uuid = mServiceUuid;
+                        break;
+                    }
                 }
             }
         }

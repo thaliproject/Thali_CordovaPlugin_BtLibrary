@@ -29,6 +29,18 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     }
 
     /**
+     * Releases resources.
+     *
+     * Should be called when getting rid of the instance. Note that after calling this method you
+     * should not use the instance anymore. Instead, if needed again, you must reconstruct the
+     * instance.
+     */
+    public void dispose() {
+        // No default implementation
+        Log.d(TAG, "dispose");
+    }
+
+    /**
      * Used for testing purposes.
      *
      * Turns Marshmallow emulation on/off. Basically what this does is that if enabled, will not be

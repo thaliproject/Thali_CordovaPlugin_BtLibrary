@@ -139,6 +139,15 @@ public class ConnectionEngine implements
     }
 
     /**
+     * Disposes both the discovery and the connection manager.
+     * After calling this method, this instance of the connection engine cannot be used again.
+     */
+    public void dispose() {
+        mDiscoveryManager.dispose();
+        mConnectionManager.dispose();
+    }
+
+    /**
      * Connects to the peer with the given properties.
      * @param peerProperties The properties of the peer to connect to.
      */
