@@ -305,6 +305,18 @@ public class DiscoveryManager
     }
 
     /**
+     * Starts the peer discovery.
+     *
+     * This method uses the Bluetooth MAC address to set the value of the peer ID.
+     * No peer name is used. Use this method, if you rely only on BLE based peer discovery.
+     *
+     * @return True, if started successfully or was already running. False otherwise.
+     */
+    public boolean start() {
+        return start(getBluetoothMacAddress(), PeerProperties.NO_PEER_NAME_STRING);
+    }
+
+    /**
      * Stops the peer discovery.
      * Calling this method does nothing, if not running.
      */
@@ -978,8 +990,9 @@ public class DiscoveryManager
         if (mBlePeerDiscoverer == null) {
             Log.v(TAG, "constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
             mBlePeerDiscoverer = new BlePeerDiscoverer(
-                    this, mBluetoothManager.getBluetoothAdapter(),
-                    mMyPeerName, mBleServiceUuid,
+                    this,
+                    mBluetoothManager.getBluetoothAdapter(),
+                    mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
                     getBluetoothMacAddress());
         }

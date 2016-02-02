@@ -65,6 +65,9 @@ class BleAdvertiser extends AdvertiseCallback {
                 builder.setAdvertiseMode(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
                 builder.setTxPowerLevel(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
             }
+
+            builder.setTimeout(0);
+            builder.setConnectable(false); // No characteristics support by default
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleAdvertiser: Failed to apply settings: " + e.getMessage(), e);
         }
@@ -124,7 +127,7 @@ class BleAdvertiser extends AdvertiseCallback {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
+                        mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);

@@ -19,8 +19,8 @@ public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
     public static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
     public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
+    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH = 17;
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
-    private static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH = 17;
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
     private static final int MAX_ALTERNATIVE_CHANNEL = 30;
