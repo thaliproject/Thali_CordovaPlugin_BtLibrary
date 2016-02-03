@@ -112,7 +112,7 @@ public class PeerModel {
      * @return True, if success. False otherwise.
      */
     public synchronized boolean modifyListOfDiscoveredPeers(PeerProperties peerProperties, boolean addOrUpdate) {
-        Log.v(TAG, "modifyListOfDiscoveredPeers: " + peerProperties.toString() + ", add/update: " + addOrUpdate);
+        //Log.v(TAG, "modifyListOfDiscoveredPeers: " + peerProperties.toString() + ", add/update: " + addOrUpdate);
         Iterator iterator = mDiscoveredPeers.entrySet().iterator();
         PeerProperties oldPeerProperties = null;
 

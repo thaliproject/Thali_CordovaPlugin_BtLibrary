@@ -5,11 +5,16 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
 import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.le.*;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
 import android.os.CountDownTimer;
 import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.util.EnumSet;
 import java.util.Map;
@@ -219,10 +224,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @param advertiseMode The advertise mode for the BLE advertiser.
      * @param advertiseTxPowerLevel The advertise TX power level for the BLE advertiser.
      * @param scanMode The scan mode for the BLE scanner.
+     * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
      * @return True, if all the settings were applied successfully. False, if at least one of
      * settings failed to be applied.
      */
-    public boolean applySettings(int advertiseMode, int advertiseTxPowerLevel, int scanMode) {
+    public boolean applySettings(int advertiseMode, int advertiseTxPowerLevel, int scanMode, long scanReportDelayInMilliseconds) {
         Log.i(TAG, "applySettings: Advertise mode: " + advertiseMode
                 + ", advertise TX power level: " + advertiseTxPowerLevel
                 + ", scan mode: " + scanMode);
@@ -265,6 +271,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         try {
             scanSettingsBuilder.setScanMode(scanMode);
+            scanSettingsBuilder.setReportDelay(scanReportDelayInMilliseconds);
+
+            if (CommonUtils.isMarshmallowOrHigher()) {
+                mBleScanner.applyAdditionalMarshmallowSettings(scanSettingsBuilder);
+            }
+
             scannerSettingsWereSet = true;
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "applySettings: Failed to apply scan mode setting: " + e.getMessage(), e);

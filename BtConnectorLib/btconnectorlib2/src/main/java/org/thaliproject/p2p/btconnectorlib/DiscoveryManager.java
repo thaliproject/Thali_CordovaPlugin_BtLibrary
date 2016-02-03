@@ -459,18 +459,19 @@ public class DiscoveryManager
     @Override
     public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+            mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode(), mSettings.getScanReportDelay());
         }
     }
 
     /**
      * From DiscoveryManagerSettings.Listener
      * @param scanMode The new scan mode.
+     * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
      */
     @Override
-    public void onScanModeSettingChanged(int scanMode) {
+    public void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
+            mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode, scanReportDelayInMilliseconds);
         }
     }
 

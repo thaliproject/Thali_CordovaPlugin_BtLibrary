@@ -10,7 +10,6 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
-
 import java.util.ArrayList;
 
 /**
@@ -41,10 +40,11 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel);
 
         /**
-         * Called when the scan mode is changed.
+         * Called when either the scan mode or the scan report delay is changed.
          * @param scanMode The new scan mode.
+         * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
          */
-        void onScanModeSettingChanged(int scanMode);
+        void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds);
     }
 
     // Default settings
@@ -56,6 +56,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
     public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
+    public static final long DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS = 500;
+    public static final long DEFAULT_SCAN_REPORT_DELAY_IN_BACKGROUND_IN_MILLISECONDS = 1000;
 
     // Keys for shared preferences
     private static final String KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = "automate_bluetooth_mac_address_resolution";
@@ -66,6 +68,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String KEY_ADVERTISE_MODE = "advertise_mode";
     private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
     private static final String KEY_SCAN_MODE = "scan_mode";
+    private static final String KEY_SCAN_REPORT_DELAY_IN_MILLISECONDS = "scan_report_delay";
 
     private static final int DISCOVERY_MODE_NOT_SET = -1;
     private static final int DISCOVERY_MODE_BLE = 0;
@@ -83,8 +86,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
     private int mScanMode = DEFAULT_SCAN_MODE;
+    private long mScanReportDelayInMilliseconds = DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS;
     private long mProvideBluetoothMacAddressTimeoutInMilliseconds = DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS;
-
 
     /**
      * @return The singleton instance of this class.
@@ -377,7 +380,34 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onScanModeSettingChanged(mScanMode);
+                    listener.onScanSettingsChanged(mScanMode, mScanReportDelayInMilliseconds);
+                }
+            }
+        }
+    }
+
+    /**
+     * @return The scan report delay in milliseconds.
+     */
+    public long getScanReportDelay() {
+        return mScanReportDelayInMilliseconds;
+    }
+
+    /**
+     * Sets the scan report delay.
+     * @param scanReportDelayInMilliseconds The scan report delay in milliseconds.
+     */
+    public void setScanReportDelay(long scanReportDelayInMilliseconds) {
+        if (mScanReportDelayInMilliseconds != scanReportDelayInMilliseconds
+                && scanReportDelayInMilliseconds >= 0) {
+            Log.i(TAG, "setScanReportDelay: " + mScanReportDelayInMilliseconds + " -> " + scanReportDelayInMilliseconds);
+            mScanReportDelayInMilliseconds = scanReportDelayInMilliseconds;
+            mSharedPreferencesEditor.putLong(KEY_SCAN_REPORT_DELAY_IN_MILLISECONDS, mScanReportDelayInMilliseconds);
+            mSharedPreferencesEditor.apply();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onScanSettingsChanged(mScanMode, mScanReportDelayInMilliseconds);
                 }
             }
         }
@@ -392,11 +422,14 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         mBluetoothMacAddress = mSharedPreferences.getString(KEY_BLUETOOTH_MAC_ADDRESS, null);
         int discoveryModeAsInt = mSharedPreferences.getInt(KEY_DISCOVERY_MODE, discoveryModeToInt(DEFAULT_DISCOVERY_MODE));
         mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
-        mPeerExpirationInMilliseconds = mSharedPreferences.getLong(KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+        mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
+                KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
         mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DEFAULT_ADVERTISE_MODE);
         mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
                 KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
         mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DEFAULT_SCAN_MODE);
+        mScanReportDelayInMilliseconds = mSharedPreferences.getLong(
+                KEY_SCAN_REPORT_DELAY_IN_MILLISECONDS, DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
 
         Log.v(TAG, "load: "
                 + "\n\tAutomate Bluetooth MAC address resolution: " + mAutomateBluetoothMacAddressResolution + ", "
@@ -406,7 +439,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                 + "\n\tPeer expiration time in milliseconds: " + mPeerExpirationInMilliseconds + ", "
                 + "\n\tAdvertise mode: " + mAdvertiseMode + ", "
                 + "\n\tAdvertise TX power level: " + mAdvertiseTxPowerLevel + ", "
-                + "\n\tScan mode: " + mScanMode);
+                + "\n\tScan mode: " + mScanMode + ", "
+                + "\n\tScan report delay in milliseconds: " + mScanReportDelayInMilliseconds);
     }
 
     @Override
@@ -420,6 +454,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         setAdvertiseMode(DEFAULT_ADVERTISE_MODE);
         setAdvertiseTxPowerLevel(DEFAULT_ADVERTISE_TX_POWER_LEVEL);
         setScanMode(DEFAULT_SCAN_MODE);
+        setScanReportDelay(DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
     }
 
     /**

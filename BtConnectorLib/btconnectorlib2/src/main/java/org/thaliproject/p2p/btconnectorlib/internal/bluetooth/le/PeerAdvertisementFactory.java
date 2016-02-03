@@ -9,7 +9,6 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
