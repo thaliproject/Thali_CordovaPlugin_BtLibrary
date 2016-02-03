@@ -80,17 +80,21 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseData The advertise data to set.
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
-        Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
-        boolean wasStarted = isStarted();
+        if (advertiseData != null) {
+            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
+            boolean wasStarted = isStarted();
 
-        if (wasStarted) {
-            stop(false);
-        }
+            if (wasStarted) {
+                stop(false);
+            }
 
-        mAdvertiseData = advertiseData;
+            mAdvertiseData = advertiseData;
 
-        if (wasStarted) {
-            start();
+            if (wasStarted) {
+                start();
+            }
+        } else {
+            Log.e(TAG, "setAdvertiseData: The given data is null");
         }
     }
 

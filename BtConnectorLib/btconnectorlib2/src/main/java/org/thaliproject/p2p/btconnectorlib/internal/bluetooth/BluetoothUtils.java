@@ -19,7 +19,8 @@ public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
     public static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
     public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
-    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH = 17;
+    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN = 11; // E.g. "0:0:0:0:0:0"
+    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX = 17; // E.g. "01:23:45:67:89:AB"
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
@@ -48,14 +49,17 @@ public class BluetoothUtils {
     public static boolean isValidBluetoothMacAddress(String bluetoothMacAddress) {
         boolean isValid = false;
 
-        if (bluetoothMacAddress != null && bluetoothMacAddress.length() == BLUETOOTH_MAC_ADDRESS_STRING_LENGTH) {
+        if (!isBluetoothMacAddressUnknown(bluetoothMacAddress)
+                && bluetoothMacAddress.length() >= BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN
+                && bluetoothMacAddress.length() <= BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX) {
             String[] bytesAsHexStringArray = bluetoothMacAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
 
             if (bytesAsHexStringArray.length == BLUETOOTH_ADDRESS_BYTE_COUNT) {
                 boolean allBytesAreValid = true;
 
                 for (String byteAsHexString : bytesAsHexStringArray) {
-                    if (byteAsHexString.length() != 2
+                    if (byteAsHexString.length() == 0
+                            || byteAsHexString.length() > 2
                             || !byteAsHexString.matches(UPPER_CASE_HEX_REGEXP_CONDITION)) {
                         allBytesAreValid = false;
                         break;

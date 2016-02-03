@@ -71,20 +71,59 @@ class BlePeerDiscoveryUtils {
     }
 
     /**
-     *
-     * @param serviceData
-     * @return
+     * Parses the given service data.
+     * @param serviceData The service data.
+     * @return A newly created ParsedAdvertisement instance, containing at least the Bluetooth MAC
+     * address, or null in case the parsing failed.
      */
     public static ParsedAdvertisement parseServiceData(byte[] serviceData) {
         ParsedAdvertisement parsedAdvertisement = null;
-        String bluetoothMacAddress = byteArrayToBluetoothMacAddress(serviceData);
+        byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
+
+        // Service data should be a "0" byte followed by the six bytes containing the Bluetooth MAC address
+        for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
+            bluetoothAddressAsByteArray[i] = serviceData[i + 1];
+        }
+
+        String bluetoothMacAddress = byteArrayToBluetoothMacAddress(bluetoothAddressAsByteArray);
 
         if (bluetoothMacAddress != null) {
             parsedAdvertisement = new ParsedAdvertisement();
-            parsedAdvertisement.bluetoothMacAddress = byteArrayToBluetoothMacAddress(serviceData);
+            parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
         }
 
         return parsedAdvertisement;
+    }
+
+    /**
+     * Checks the given UUID for "Provide Bluetooth MAC address" request ID.
+     * @param uuidToCheck The UUID to check.
+     * @param serviceUuid The expected service UUID to compare against.
+     * @return The request ID or null if not found.
+     */
+    public static String checkIfUuidContainsProvideBluetoothMacAddressRequestId(UUID uuidToCheck, UUID serviceUuid) {
+        String requestId = null;
+
+        if (uuidToCheck != null && serviceUuid != null) {
+            if (serviceUuid.compareTo(uuidToCheck) == 0) {
+                // The UUID is a match
+                // No need to do anything
+            } else {
+                // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
+                String beginningOfUuidToCheck = uuidToCheck.toString().substring(0, 22);
+
+                if (serviceUuid.toString().startsWith(beginningOfUuidToCheck)) {
+                    // The beginning of the UUID is a match
+                    // Parse the request ID
+                    requestId = PeerAdvertisementFactory.parseRequestIdFromUuid(uuidToCheck);
+                } else {
+                    Log.d(TAG, "checkIfUuidContainsProvideBluetoothMacAddressRequestId: UUID mismatch: Was expecting \""
+                            + serviceUuid + "\", got \"" + uuidToCheck + "\"");
+                }
+            }
+        }
+
+        return requestId;
     }
 
     /**
@@ -146,26 +185,8 @@ class BlePeerDiscoveryUtils {
 
         if (serviceUuid != null) {
             parsedAdvertisement = parseManufacturerData(manufacturerData);
-
-            if (parsedAdvertisement != null && parsedAdvertisement.uuid != null) {
-                if (serviceUuid.compareTo(parsedAdvertisement.uuid) == 0) {
-                    // The UUID is a match
-                    // No need to do anything
-                } else {
-                    // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
-                    String beginningOfParsedUuid = parsedAdvertisement.uuid.toString().substring(0, 22);
-
-                    if (serviceUuid.toString().startsWith(beginningOfParsedUuid)) {
-                        // The beginning of the UUID is a match
-                        // Parse the request ID
-                        parsedAdvertisement.provideBluetoothMacAddressRequestId =
-                                PeerAdvertisementFactory.parseRequestIdFromUuid(parsedAdvertisement.uuid);
-                    } else {
-                        Log.d(TAG, "parseManufacturerData: UUID mismatch: Was expecting \""
-                                + serviceUuid + "\", got \"" + parsedAdvertisement.uuid + "\"");
-                    }
-                }
-            }
+            parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                    checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
         }
 
         return parsedAdvertisement;
@@ -221,7 +242,8 @@ class BlePeerDiscoveryUtils {
         byte[] bluetoothMacAddressAsByteArray = null;
 
         if (bluetoothMacAddress != null
-                && bluetoothMacAddress.length() == BluetoothUtils.BLUETOOTH_MAC_ADDRESS_STRING_LENGTH) {
+                && bluetoothMacAddress.length() >= BluetoothUtils.BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN
+                && bluetoothMacAddress.length() <= BluetoothUtils.BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX) {
             int[] bluetoothAddressAsInt8Array = bluetoothAddressToInt8Array(bluetoothMacAddress);
 
             if (bluetoothAddressAsInt8Array != null

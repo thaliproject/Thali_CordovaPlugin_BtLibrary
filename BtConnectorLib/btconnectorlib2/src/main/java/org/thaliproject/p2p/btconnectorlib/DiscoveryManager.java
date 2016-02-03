@@ -1006,7 +1006,8 @@ public class DiscoveryManager
                     mBluetoothManager.getBluetoothAdapter(),
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
-                    getBluetoothMacAddress());
+                    getBluetoothMacAddress(),
+                    BlePeerDiscoverer.AdvertisementDataType.SERVICE_DATA);
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
