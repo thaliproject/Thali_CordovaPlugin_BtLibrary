@@ -190,6 +190,13 @@ public class DiscoveryManager
     }
 
     /**
+     * @return True, if Wi-Fi Direct is supported. False otherwise.
+     */
+    public boolean isWifiDirectSupported() {
+        return mWifiDirectManager.isWifiDirectSupported();
+    }
+
+    /**
      * @return The current state.
      */
     public DiscoveryManagerState getState() {
@@ -387,59 +394,16 @@ public class DiscoveryManager
     /**
      * From DiscoveryManagerSettings.Listener
      * @param discoveryMode The new discovery mode.
-     * @param forceRestart If true, should restart.
-     * @return True, if the mode was set successfully. False otherwise.
+     * @param startIfNotRunning If true, will start even if the discovery wasn't running.
      */
     @Override
-    public boolean onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean forceRestart) {
-        boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
-        boolean discoveryModeSet = false;
-
-        if (wasRunning || forceRestart) {
+    public void onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
+        if (mState != DiscoveryManagerState.NOT_STARTED) {
             stopForRestart();
+            start(mMyPeerName);
+        } else if (startIfNotRunning) {
+            start(mMyPeerName);
         }
-
-        if (!wasRunning || forceRestart) {
-            boolean isBleMultipleAdvertisementSupported = isBleMultipleAdvertisementSupported();
-            boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
-
-            switch (discoveryMode) {
-                case BLE:
-                    if (isBleMultipleAdvertisementSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case WIFI:
-                    if (isWifiSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case BLE_AND_WIFI:
-                    if (isBleMultipleAdvertisementSupported && isWifiSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-            }
-
-            if (!discoveryModeSet) {
-                Log.w(TAG, "onDiscoveryModeChanged: Failed to set discovery mode to " + discoveryMode
-                        + ", BLE advertisement supported: " + isBleMultipleAdvertisementSupported
-                        + ", Wi-Fi supported: " + isWifiSupported);
-            } else {
-                Log.i(TAG, "onDiscoveryModeChanged: Mode set to " + discoveryMode);
-            }
-        }
-
-        if (discoveryModeSet && (wasRunning || forceRestart)) {
-            discoveryModeSet = start(mMyPeerName);
-        }
-
-        return discoveryModeSet;
     }
 
     /**

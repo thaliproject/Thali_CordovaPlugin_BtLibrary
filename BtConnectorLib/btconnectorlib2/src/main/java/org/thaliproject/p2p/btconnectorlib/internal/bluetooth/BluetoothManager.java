@@ -121,8 +121,10 @@ public class BluetoothManager {
     public boolean isBleMultipleAdvertisementSupported() {
         boolean isSupported = false;
 
-        if (CommonUtils.isLollipopOrHigher() && mBluetoothAdapter != null) {
-            isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+        if (CommonUtils.isLollipopOrHigher()) {
+            if (mBluetoothAdapter != null) {
+                isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+            }
         } else {
             Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");
         }

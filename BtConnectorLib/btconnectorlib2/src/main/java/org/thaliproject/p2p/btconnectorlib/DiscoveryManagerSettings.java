@@ -21,10 +21,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         /**
          * Called when the desired discovery mode is changed.
          * @param discoveryMode The new discovery mode.
-         * @param forceRestart If true, should restart.
-         * @return True, if the mode was set successfully. False otherwise.
+         * @param startIfNotRunning If true, will start even if the discovery wasn't running.
          */
-        boolean onDiscoveryModeChanged(DiscoveryMode discoveryMode, boolean forceRestart);
+        void onDiscoveryModeChanged(DiscoveryMode discoveryMode, boolean startIfNotRunning);
 
         /**
          * Called when the peer expiration time is changed.
@@ -232,44 +231,75 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Sets the discovery mode.
      * @param discoveryMode The discovery mode to set.
-     * @param forceRestart If true and the discovery was running, will try to do a restart.
-     * @return True, if the mode was set. False otherwise (likely because not supported). Note that,
-     * if forceRestarts was true, false is also be returned in case the restart fails.
+     * @param startIfNotRunning If true, will start the discovery manager even if it wasn't running.
+     * @return True, if the given mode is supported and set or was already set. False otherwise
+     * (likely because not supported). Note that the mode is only validated, if a discovery manager
+     * instance exists.
      */
-    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean forceRestart) {
-        boolean wasSet = false;
+    public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
+        boolean ok = false;
 
-        if (mDiscoveryMode != discoveryMode) {
-            Log.i(TAG, "setDiscoveryMode: " + mDiscoveryMode + " -> " + discoveryMode);
-            DiscoveryMode previousDiscoveryMode = mDiscoveryMode;
+        if (mListeners.size() > 0) {
+            // Check if the given discovery mode is supported
+            DiscoveryManager discoveryManager = (DiscoveryManager)mListeners.get(0);
 
-            if (mListeners.size() > 0) {
-                previousDiscoveryMode = mDiscoveryMode;
-                mDiscoveryMode = discoveryMode;
-                wasSet = true;
+            if (discoveryManager != null) {
+                boolean isBleMultipleAdvertisementSupported = discoveryManager.isBleMultipleAdvertisementSupported();
+                boolean isWifiSupported = discoveryManager.isWifiDirectSupported();
 
-                for (Listener listener : mListeners) {
-                    if (!listener.onDiscoveryModeChanged(discoveryMode, forceRestart)) {
-                        wasSet = false;
-                    }
+                switch (discoveryMode) {
+                    case BLE:
+                        if (isBleMultipleAdvertisementSupported) {
+                            ok = true;
+                        }
+
+                        break;
+
+                    case WIFI:
+                        if (isWifiSupported) {
+                            ok = true;
+                        }
+
+                        break;
+
+                    case BLE_AND_WIFI:
+                        if (isBleMultipleAdvertisementSupported && isWifiSupported) {
+                            ok = true;
+                        }
+
+                        break;
+                }
+
+                if (ok) {
+                    Log.i(TAG, "setDiscoveryMode: Discovery mode " + discoveryMode + " is supported");
+                } else {
+                    Log.e(TAG, "setDiscoveryMode: Discovery mode " + discoveryMode
+                            + " is not supported; BLE advertisement supported: " + isBleMultipleAdvertisementSupported
+                            + ", Wi-Fi supported: " + isWifiSupported);
                 }
             } else {
-                Log.w(TAG, "setDiscoveryMode: Setting the discovery mode, but cannot verify if the new mode is supported");
-                mDiscoveryMode = discoveryMode;
-                wasSet = true;
+                Log.e(TAG, "setDiscoveryMode: Failed to get the discovery manager instance");
             }
+        } else {
+            // Cannot check if supported
+            Log.w(TAG, "setDiscoveryMode: Setting the discovery mode, but cannot verify if the new mode is supported");
+            ok = true;
+        }
 
-            if (wasSet) {
-                mSharedPreferencesEditor.putInt(KEY_DISCOVERY_MODE, discoveryModeToInt(mDiscoveryMode));
-                mSharedPreferencesEditor.apply();
-            } else {
-                Log.d(TAG, "setDiscoveryMode: Failed to set the discovery mode to "
-                        + discoveryMode + ", restoring the previous mode (" + previousDiscoveryMode + ")");
-                mDiscoveryMode = previousDiscoveryMode;
+        if (mDiscoveryMode != discoveryMode && ok) {
+            Log.i(TAG, "setDiscoveryMode: " + mDiscoveryMode + " -> " + discoveryMode);
+            mDiscoveryMode = discoveryMode;
+            mSharedPreferencesEditor.putInt(KEY_DISCOVERY_MODE, discoveryModeToInt(mDiscoveryMode));
+            mSharedPreferencesEditor.apply();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onDiscoveryModeChanged(discoveryMode, startIfNotRunning);
+                }
             }
         }
 
-        return wasSet;
+        return ok;
     }
 
     /**
