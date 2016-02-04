@@ -165,8 +165,8 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     /**
-     * Validates the read message, which should contain the identity of the peer, and if OK, will
-     * try to response with own identity.
+     * Validates the read message, which should contain the identity of the peer, and if OK, we will
+     * try to respond with our own identity.
      * @param bytes The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.

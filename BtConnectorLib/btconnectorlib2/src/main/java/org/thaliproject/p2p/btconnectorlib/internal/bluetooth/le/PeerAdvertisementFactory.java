@@ -24,7 +24,7 @@ class PeerAdvertisementFactory {
     private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
 
     /**
-     * Creates advertise data based on the given service UUID and Bluetooth MAC address.
+     * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
      *
      * advertiseData MUST be set to:
      *
