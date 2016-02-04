@@ -144,6 +144,10 @@ public class ConnectionManager
             case RUNNING:
                 Log.d(TAG, "start: Already running, call stop() first in order to restart");
                 break;
+
+            default:
+                Log.e(TAG, "start: Unrecognized state");
+                break;
         }
 
         return (mState == ConnectionManagerState.RUNNING);

@@ -10,7 +10,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Discovery manager settings.
@@ -47,7 +47,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     // Default settings
-    public static boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
+    public static final boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
     public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 40000;
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
@@ -77,7 +77,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
-    private final ArrayList<Listener> mListeners = new ArrayList<>();
+    private final CopyOnWriteArrayList<Listener> mListeners = new CopyOnWriteArrayList<>();
     private boolean mAutomateBluetoothMacAddressResolution = DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION;
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
@@ -124,6 +124,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                 Log.v(TAG, "addListener: Listener " + listener + " added. We now have " + mListeners.size() + " listener(s)");
             } else {
                 Log.e(TAG, "addListener: Listener " + listener + " already in the list");
+                throw new IllegalArgumentException(TAG + " addListener: Listener already in the list");
             }
         }
     }
@@ -241,13 +242,17 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
         if (mListeners.size() > 0) {
             // Check if the given discovery mode is supported
-            DiscoveryManager discoveryManager = (DiscoveryManager)mListeners.get(0);
+            DiscoveryManager discoveryManager = (DiscoveryManager) mListeners.get(0);
 
             if (discoveryManager != null) {
                 boolean isBleMultipleAdvertisementSupported = discoveryManager.isBleMultipleAdvertisementSupported();
                 boolean isWifiSupported = discoveryManager.isWifiDirectSupported();
 
                 switch (discoveryMode) {
+                    case NOT_SET:
+                        ok = true;
+                        break;
+
                     case BLE:
                         if (isBleMultipleAdvertisementSupported) {
                             ok = true;
@@ -267,6 +272,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                             ok = true;
                         }
 
+                        break;
+
+                    default:
+                        Log.e(TAG, "setDiscoveryMode: Unrecognized mode: " + discoveryMode);
                         break;
                 }
 
@@ -321,6 +330,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the peer expiration time. If the given value is zero or less, peers will not expire.
+     * Note that the new value is only applied to the peers we discover after setting it.
      * @param peerExpirationInMilliseconds The peer expiration time in milliseconds.
      */
     public void setPeerExpiration(long peerExpirationInMilliseconds) {
