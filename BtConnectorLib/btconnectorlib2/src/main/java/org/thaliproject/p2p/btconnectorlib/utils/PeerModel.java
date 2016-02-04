@@ -53,7 +53,7 @@ public class PeerModel {
     }
 
     /**
-     * Stops the check expired peers timer and clears the peer container.
+     * Stops the timer for checking for expired peers and clears the peer container.
      */
     public void clear() {
         Log.i(TAG, "clear");

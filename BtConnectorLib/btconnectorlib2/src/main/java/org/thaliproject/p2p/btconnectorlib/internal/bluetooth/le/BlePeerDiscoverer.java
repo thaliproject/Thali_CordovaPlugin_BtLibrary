@@ -36,6 +36,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state);
 
         /**
+         * Called when a peer was discovered.
+         * @param peerProperties The properties of the discovered peer.
+         */
+        void onPeerDiscovered(PeerProperties peerProperties);
+
+
+        // BRO MODE INTERFACES - NOT CURRENTLY BEING USED
+
+
+        /**
          * Called when we receive a request from a peer to provide it its Bluetooth MAC address.
          *
          * Note: This callback is not being used and thus not tested constantly so there is no
@@ -50,7 +60,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * via Bluetooth device discovery. After receiving this event, we should make our device
          * discoverable via Bluetooth.
          *
-         *
          * Note: This callback is not being used and thus not tested constantly so there is no
          * guarantee it'll work flawlessly.
          *
@@ -64,7 +73,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          *
          * Note: The operation is never considered to be completed, since this method is called
          * when the advertising timeouts.
-         *
          *
          * Note: This callback is not being used and thus not tested constantly so there is no
          * guarantee it'll work flawlessly.
@@ -83,12 +91,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * @param bluetoothMacAddress Our Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
-
-        /**
-         * Called when a peer was discovered.
-         * @param peerProperties The properties of the discovered peer.
-         */
-        void onPeerDiscovered(PeerProperties peerProperties);
     }
 
     /**
@@ -98,8 +100,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         NOT_STARTED,
         SCANNING,
         ADVERTISING_SELF, // Advertising our presence
-        ADVERTISING_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // When we need help to find out our own Bluetooth MAC address
-        ADVERTISING_PROVIDING_ASSISTANCE // When helping a peer with its Bluetooth MAC address
+        ADVERTISING_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // Bro Mode - When we need help to find out our own Bluetooth MAC address
+        ADVERTISING_PROVIDING_ASSISTANCE // Bro Mode - When helping a peer with its Bluetooth MAC address
     }
 
     public enum AdvertisementDataType {
@@ -110,9 +112,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     protected enum AdvertisementType {
         ADVERTISEMENT_UNKNOWN,
         ADVERTISEMENT_PEER_PROPERTIES, // Peer advertising its presence
-        ADVERTISEMENT_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // Peer requesting assistance
-        ADVERTISEMENT_PEER_READY_TO_PROVIDE_BLUETOOTH_MAC_ADDRESS, // Peer is ready to provide assistance to us
-        ADVERTISEMENT_PEER_PROVIDING_OUR_BLUETOOTH_MAC_ADDRESS // Peer has resolved our Bluetooth MAC address
+        ADVERTISEMENT_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // Bro Mode - Peer requesting assistance
+        ADVERTISEMENT_PEER_READY_TO_PROVIDE_BLUETOOTH_MAC_ADDRESS, // Bro Mode - Peer is ready to provide assistance to us
+        ADVERTISEMENT_PEER_PROVIDING_OUR_BLUETOOTH_MAC_ADDRESS // Bro Mode - Peer has resolved our Bluetooth MAC address
     }
 
     private static final String TAG = BlePeerDiscoverer.class.getName();
