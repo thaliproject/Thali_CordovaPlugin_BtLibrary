@@ -537,6 +537,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 case ADVERTISEMENT_PEER_PROVIDING_OUR_BLUETOOTH_MAC_ADDRESS:
                     mListener.onBluetoothMacAddressResolved(parsedAdvertisement.bluetoothMacAddress);
                     break;
+                default:
+                    Log.e(TAG, "checkScanResult: Unrecognized advertisement type");
             }
         }
     }

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.wifi;
@@ -10,7 +10,7 @@ import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.util.Log;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Manages the device Wi-Fi settings and provides information on Wi-Fi and Wi-Fi Direct status on
@@ -31,7 +31,7 @@ public class WifiDirectManager {
     private static final String TAG = WifiDirectManager.class.getName();
     private static WifiDirectManager mInstance = null;
     private final Context mContext;
-    private final ArrayList<WifiStateListener> mListeners = new ArrayList<>();
+    private final CopyOnWriteArrayList<WifiStateListener> mListeners = new CopyOnWriteArrayList<>();
     private WifiStateBroadcastReceiver mWifiStateBroadcastReceiver = null;
     private WifiP2pManager mP2pManager = null;
     private WifiP2pManager.Channel mP2pChannel = null;

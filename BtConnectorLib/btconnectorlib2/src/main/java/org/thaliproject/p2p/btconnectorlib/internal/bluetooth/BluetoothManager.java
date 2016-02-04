@@ -13,7 +13,7 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import java.util.ArrayList;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Manages the Bluetooth settings and provides information on the status of the
@@ -35,7 +35,7 @@ public class BluetoothManager {
     private static BluetoothManager mInstance = null;
     private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
-    private final ArrayList<BluetoothManagerListener> mListeners = new ArrayList<>();
+    private final CopyOnWriteArrayList<BluetoothManagerListener> mListeners = new CopyOnWriteArrayList<>();
     private BluetoothModeBroadcastReceiver mBluetoothBroadcastReceiver = null;
     private boolean mInitialized = false;
 

@@ -232,6 +232,9 @@ class BleScanner extends ScanCallback {
             case SCAN_FAILED_INTERNAL_ERROR:
                 reason = "Internal error";
                 break;
+            default:
+                reason = "Unknown error";
+                break;
         }
 
         Log.e(TAG, "onScanFailed: " + reason + ", error code is " + errorCode);
@@ -270,6 +273,9 @@ class BleScanner extends ScanCallback {
                         break;
                     case RUNNING:
                         mListener.onIsScannerStartedChanged(true);
+                        break;
+                    default:
+                        // Nothing to do here
                         break;
                 }
             }

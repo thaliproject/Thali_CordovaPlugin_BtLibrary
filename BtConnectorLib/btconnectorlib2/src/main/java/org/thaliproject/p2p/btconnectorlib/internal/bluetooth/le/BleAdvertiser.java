@@ -227,6 +227,9 @@ class BleAdvertiser extends AdvertiseCallback {
                     case RUNNING:
                         mListener.onIsAdvertiserStartedChanged(true);
                         break;
+                    default:
+                        // Nothing to do here
+                        break;
                 }
             }
         }

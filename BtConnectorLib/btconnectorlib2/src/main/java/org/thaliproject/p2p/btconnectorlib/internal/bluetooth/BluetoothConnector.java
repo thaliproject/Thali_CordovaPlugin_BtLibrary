@@ -380,7 +380,7 @@ public class BluetoothConnector
     }
 
     /**
-     * Restarts the connection timeout timer.
+     * Does nothing but logs the event.
      * @param peerProperties The peer properties.
      * @param who The Bluetooth client thread instance calling this callback.
      */
