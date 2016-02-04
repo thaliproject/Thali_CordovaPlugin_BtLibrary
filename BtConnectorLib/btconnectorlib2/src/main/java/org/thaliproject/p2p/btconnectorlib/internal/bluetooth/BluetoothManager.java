@@ -16,8 +16,8 @@ import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Manages the device Bluetooth settings and provides information on Bluetooth status on the
- * device.
+ * Manages the Bluetooth settings and provides information on the status of the
+ * Bluetooth device.
  */
 public class BluetoothManager {
     /**

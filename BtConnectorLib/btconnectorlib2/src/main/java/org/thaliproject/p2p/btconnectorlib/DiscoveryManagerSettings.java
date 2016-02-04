@@ -13,7 +13,6 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Discovery manager settings.
  * Manages all discovery manager settings except for the discovery mode.
  */
 public class DiscoveryManagerSettings extends AbstractSettings {
@@ -117,7 +116,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     /* Package */ void addListener(DiscoveryManager discoveryManager) {
         if (discoveryManager != null) {
-            Listener listener = (Listener) discoveryManager;
+            Listener listener = discoveryManager;
 
             if (!mListeners.contains(listener)) {
                 mListeners.add(listener);
@@ -135,7 +134,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     /* Package */ void removeListener(DiscoveryManager discoveryManager) {
         if (discoveryManager != null && mListeners.size() > 0) {
-            Listener listener = (Listener) discoveryManager;
+            Listener listener = discoveryManager;
 
             if (mListeners.remove(listener)) {
                 Log.v(TAG, "removeListener: Listener " + listener + " removed from the list");
