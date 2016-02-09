@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
@@ -341,9 +341,6 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             socketCreatedSuccessfully = true;
         } catch (IOException e) {
             exception = e;
-        } catch (Exception e) {
-            Log.e(TAG, "createSocketAndConnect: This should not happen: " + e.getMessage(), e);
-            exception = e;
         }
 
         if (socketCreatedSuccessfully) {
@@ -356,9 +353,6 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                     mSocket.close();
                 } catch (IOException e2) {
                 }
-            } catch (Exception e) {
-                Log.e(TAG, "createSocketAndConnect: This should not happen: " + e.getMessage(), e);
-                exception = e;
             }
         }
 

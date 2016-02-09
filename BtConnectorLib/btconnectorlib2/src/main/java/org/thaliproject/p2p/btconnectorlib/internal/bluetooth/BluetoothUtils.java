@@ -21,6 +21,7 @@ public class BluetoothUtils {
     public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
     public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN = 11; // E.g. "0:0:0:0:0:0"
     public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX = 17; // E.g. "01:23:45:67:89:AB"
+    private static final String MARSHMALLOW_FAKE_MAC_ADDRESS = "02:00:00:00:00:00";
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
@@ -29,11 +30,21 @@ public class BluetoothUtils {
 
     /**
      * Checks if the given Bluetooth MAC address is unknown (as in not set/missing).
+     *
+     * In addition, will check for false addresses introduced in Android 6.0;
+     * From http://developer.android.com/about/versions/marshmallow/android-6.0-changes.html:
+     *
+     * "To provide users with greater data protection, starting in this release, Android removes
+     * programmatic access to the device’s local hardware identifier for apps using the Wi-Fi and
+     * Bluetooth APIs. The WifiInfo.getMacAddress() and the BluetoothAdapter.getAddress() methods
+     * now return a constant value of 02:00:00:00:00:00."
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address to check.
      * @return True, if the Bluetooth MAC address is unknown.
      */
     public static boolean isBluetoothMacAddressUnknown(String bluetoothMacAddress) {
         return (bluetoothMacAddress == null
+                || bluetoothMacAddress.equals(MARSHMALLOW_FAKE_MAC_ADDRESS)
                 || bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
     }
 

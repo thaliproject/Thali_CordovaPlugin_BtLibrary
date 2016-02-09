@@ -94,7 +94,7 @@ class BleAdvertiser extends AdvertiseCallback {
                 start();
             }
         } else {
-            Log.e(TAG, "setAdvertiseData: The given data is null");
+            throw new NullPointerException("The given advertise data is null");
         }
     }
 
@@ -111,7 +111,7 @@ class BleAdvertiser extends AdvertiseCallback {
                     + ", timeout: " + mAdvertiseSettings.getTimeout()
                     + ", is connectable: " + mAdvertiseSettings.isConnectable());
         } else {
-            Log.e(TAG, "setAdvertiseSettings: The argument (AdvertiseSettings) cannot be null");
+            throw new NullPointerException("The argument (AdvertiseSettings) cannot be null");
         }
     }
 

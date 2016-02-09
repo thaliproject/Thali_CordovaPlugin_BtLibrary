@@ -162,7 +162,7 @@ public class PeerProperties {
      * @param newPeerProperties The new peer properties.
      * @return True, if data was copied. False otherwise.
      */
-    public static boolean checkNewPeerForMissingInformation(
+    public static boolean copyMissingValuesFromOldPeer(
             PeerProperties oldPeerProperties, PeerProperties newPeerProperties) {
         boolean dataWasCopied = false;
 

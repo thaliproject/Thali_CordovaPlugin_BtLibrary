@@ -182,7 +182,7 @@ class BleScanner extends ScanCallback {
                 + ", report delay in milliseconds: " + mScanSettings.getReportDelayMillis()
                 + ", scan result type: " + mScanSettings.getScanResultType());
         } else {
-            Log.e(TAG, "setScanSettings: The argument (ScanSettings) cannot be null");
+            throw new NullPointerException("The argument (ScanSettings) cannot be null");
         }
     }
 

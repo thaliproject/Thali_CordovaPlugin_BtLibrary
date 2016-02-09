@@ -37,6 +37,7 @@ class BlePeerDiscoveryUtils {
     public static final int ADVERTISEMENT_BYTE_COUNT = 24;
     private static final int UUID_LENGTH_IN_BYTES = 16;
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
+    private static final String SERVICE_UUID_MASK_AS_STRING = "11111111-1111-1111-1110-000000000000";
 
     private static Random mRandom = null;
 
@@ -60,7 +61,7 @@ class BlePeerDiscoveryUtils {
             }
 
             if (serviceUuid != null) {
-                ParcelUuid uuidMask = ParcelUuid.fromString("11111111-1111-1111-1110-000000000000");
+                ParcelUuid uuidMask = ParcelUuid.fromString(SERVICE_UUID_MASK_AS_STRING);
                 builder.setServiceUuid(new ParcelUuid(serviceUuid), uuidMask);
             }
 
@@ -75,24 +76,28 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Parses the given service data.
-     * @param serviceData The service data.
+     * @param serviceData The service data. Expected contain a "0" byte followed by the six bytes
+     *                    consisting of the Bluetooth MAC address.
      * @return A newly created ParsedAdvertisement instance, containing at least the Bluetooth MAC
      * address, or null in case the parsing failed.
      */
     public static ParsedAdvertisement parseServiceData(byte[] serviceData) {
         ParsedAdvertisement parsedAdvertisement = null;
-        byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
-        // Service data should be a "0" byte followed by the six bytes containing the Bluetooth MAC address
-        for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
-            bluetoothAddressAsByteArray[i] = serviceData[i + 1];
-        }
+        if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)
+                && serviceData[0] == 0x0) {
+            byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
-        String bluetoothMacAddress = byteArrayToBluetoothMacAddress(bluetoothAddressAsByteArray);
+            for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
+                bluetoothAddressAsByteArray[i] = serviceData[i + 1];
+            }
 
-        if (bluetoothMacAddress != null) {
-            parsedAdvertisement = new ParsedAdvertisement();
-            parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+            String bluetoothMacAddress = byteArrayToBluetoothMacAddress(bluetoothAddressAsByteArray);
+
+            if (bluetoothMacAddress != null) {
+                parsedAdvertisement = new ParsedAdvertisement();
+                parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+            }
         }
 
         return parsedAdvertisement;
@@ -161,7 +166,7 @@ class BlePeerDiscoveryUtils {
                 bytesExtracted = true;
             } catch (IOException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
-            } catch (Exception e) {
+            } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
         }
@@ -291,7 +296,7 @@ class BlePeerDiscoveryUtils {
                 bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
             } catch (IOException e) {
                 Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
-            } catch (Exception e) {
+            } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
             }
         }
@@ -301,6 +306,11 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Rotates the byte, with the given index, of the given UUID and returns the modified UUID.
+     *
+     * A UUID with rotated byte can be used to define and communicate a distinct state e.g.
+     * differentiate between willingness to provide assistance (peer its Bluetooth MAC address)
+     * instead of requesting assistance.
+     *
      * @param originalUuid The original UUID.
      * @param byteIndex The index of the byte (not the index of the char) to rotate. A UUID contains
      *                  16 bytes, so the last index is 15. Thus, greater value than 15 will result
@@ -313,10 +323,10 @@ class BlePeerDiscoveryUtils {
         int startIndexOfByte = byteIndex * 2; // Since byte as hex string is 2 characters
 
         // We have to take into account the dashes (UUID in form of a string) and add them to the
-        // index, if necessary:
+        // index, if necessary.
         //
         // UUID as string:  "de305d54-75b4-431b-adb2-eb6b9e546014"
-        // byte index:       0 1 2 3  4 5  6 7  8 9  ...
+        // Byte index:       0 1 2 3  4 5  6 7  8 9  ...
         //
         if (byteIndex > 9) {
             startIndexOfByte += 4;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
@@ -14,6 +14,7 @@ import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.IOException;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -126,6 +127,9 @@ public class BluetoothConnector
 
     /**
      * Sets the connection timeout. If the given value is negative or zero, no timeout is set.
+     * The timeout applies only to connections whose handshake hasn't succeeded. After a successful
+     * handshake this class no longer manages the connection but the responsibility is that of the
+     * listener.
      * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
      */
     public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
@@ -309,7 +313,7 @@ public class BluetoothConnector
             }
         } else {
             if (peerProperties == null) {
-                Log.e(TAG, "cancelConnectionAttempt: The given peer properties instance is null");
+                throw new NullPointerException("The given peer properties instance is null");
             } else {
                 Log.e(TAG, "cancelConnectionAttempt: No client threads to cancel");
             }
@@ -469,57 +473,41 @@ public class BluetoothConnector
             public void onFinish() {
                 this.cancel();
                 long currentTime = new Date().getTime();
-                boolean removed = true;
+                Iterator<BluetoothClientThread> iterator = mClientThreads.iterator();
 
-                while (removed) {
-                    removed = false;
+                while (iterator.hasNext()) {
+                    final BluetoothClientThread bluetoothClientThread = iterator.next();
+                    long startedTime = bluetoothClientThread.getTimeStarted();
 
-                    for (BluetoothClientThread bluetoothClientThread : mClientThreads) {
-                        final BluetoothClientThread currentBluetoothClientThread = bluetoothClientThread;
+                    if (startedTime > 0 && currentTime > startedTime + mConnectionTimeoutInMilliseconds) {
+                        // Got a client thread that needs to be cancelled
+                        iterator.remove();
+                        final PeerProperties peerProperties = bluetoothClientThread.getPeerProperties();
 
-                        if (currentBluetoothClientThread != null) {
-                            long startedTime = currentBluetoothClientThread.getTimeStarted();
-
-                            if (startedTime > 0 && currentTime > startedTime + mConnectionTimeoutInMilliseconds) {
-                                // Got a client thread that needs to be cancelled
-                                final PeerProperties peerProperties = currentBluetoothClientThread.getPeerProperties();
-
-                                if (peerProperties != null) {
-                                    Log.i(TAG, "Connection timeout for peer "
-                                            + peerProperties.toString() + " (thread ID: "
-                                            + currentBluetoothClientThread.getId() + ")");
-                                } else {
-                                    Log.i(TAG, "Connection timeout" + " (thread ID: "
-                                            + currentBluetoothClientThread.getId() + ")");
-                                }
-
-                                try {
-                                    mClientThreads.remove(currentBluetoothClientThread);
-                                } catch (Exception e) {
-                                    Log.e(TAG, "Failed to removed a timed out thread: " + e.getMessage(), e);
-                                }
-
-                                removed = true;
-
-                                new Thread() {
-                                    @Override
-                                    public void run() {
-                                        currentBluetoothClientThread.shutdown(); // Try to cancel
-                                    }
-                                }.start();
-
-                                mHandler.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        mBluetoothConnectorInstance.mListener.onConnectionTimeout(peerProperties);
-                                    }
-                                });
-
-                                break;
-                            }
+                        if (peerProperties != null) {
+                            Log.i(TAG, "Connection timeout for peer "
+                                    + peerProperties.toString() + " (thread ID: "
+                                    + bluetoothClientThread.getId() + ")");
+                        } else {
+                            Log.i(TAG, "Connection timeout" + " (thread ID: "
+                                    + bluetoothClientThread.getId() + ")");
                         }
+
+                        new Thread() {
+                            @Override
+                            public void run() {
+                                bluetoothClientThread.shutdown(); // Try to cancel
+                            }
+                        }.start();
+
+                        mHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                mBluetoothConnectorInstance.mListener.onConnectionTimeout(peerProperties);
+                            }
+                        });
                     }
-                } // while (removed)
+                }
 
                 if (mClientThreads.size() > 0) {
                     this.start(); // Restart
@@ -572,7 +560,7 @@ public class BluetoothConnector
                 }
             }
         } else {
-            Log.e(TAG, "shutdownAndRemoveClientThread: The given Bluetooth client thread instance is null");
+            throw new NullPointerException("The given Bluetooth client thread instance is null");
         }
 
         if (!wasShutdownAndRemoved) {

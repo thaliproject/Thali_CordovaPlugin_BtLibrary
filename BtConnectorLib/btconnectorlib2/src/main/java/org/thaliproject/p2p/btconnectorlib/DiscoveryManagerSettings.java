@@ -360,6 +360,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * @param advertiseMode The advertise mode to set.
      */
     public void setAdvertiseMode(int advertiseMode) {
+        if (!isValidAdvertiseMode(advertiseMode)) {
+            throw new IllegalArgumentException("Invalid advertise mode: " + advertiseMode);
+        }
+
         if (mAdvertiseMode != advertiseMode) {
             Log.i(TAG, "setAdvertiseMode: " + mAdvertiseMode + " -> " + advertiseMode);
             mAdvertiseMode = advertiseMode;
@@ -386,6 +390,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * @param advertiseTxPowerLevel The power level to set.
      */
     public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
+        if (!isValidAdvertiseTxPowerLevel(advertiseTxPowerLevel)) {
+            throw new IllegalArgumentException("Invalid power level: " + advertiseTxPowerLevel);
+        }
+
         if (mAdvertiseTxPowerLevel != advertiseTxPowerLevel) {
             Log.i(TAG, "setAdvertiseTxPowerLevel: " + mAdvertiseTxPowerLevel + " -> " + advertiseTxPowerLevel);
             mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
@@ -412,6 +420,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * @param scanMode The scan mode to set.
      */
     public void setScanMode(int scanMode) {
+        if (!isValidScanMode(scanMode)) {
+            throw new IllegalArgumentException("Invalid scan mode: " + scanMode);
+        }
+
         if (mScanMode != scanMode) {
             Log.i(TAG, "setScanMode: " + mScanMode + " -> " + scanMode);
             mScanMode = scanMode;
@@ -533,5 +545,51 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
 
         return DEFAULT_DISCOVERY_MODE;
+    }
+
+    /**
+     * Checks the validity of the given advertise mode.
+     * @param advertiseMode The advertise mode to check.
+     * @return True, if valid. False otherwise.
+     */
+    private boolean isValidAdvertiseMode(int advertiseMode) {
+        switch (advertiseMode) {
+            case AdvertiseSettings.ADVERTISE_MODE_BALANCED: return true;
+            case AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY: return true;
+            case AdvertiseSettings.ADVERTISE_MODE_LOW_POWER: return true;
+        }
+
+        return false;
+    }
+    /**
+     * Checks the validity of the given power level.
+     * @param advertiseTxPowerLevel The power level value to check.
+     * @return True, if valid. False otherwise.
+     */
+    private boolean isValidAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
+        switch (advertiseTxPowerLevel) {
+            case AdvertiseSettings.ADVERTISE_TX_POWER_HIGH: return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_LOW: return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM: return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW: return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks the validity of the given scan mode.
+     * @param scanMode The scan mode to check.
+     * @return True, if valid. False otherwise.
+     */
+    private boolean isValidScanMode(int scanMode) {
+        switch (scanMode) {
+            case ScanSettings.SCAN_MODE_BALANCED: return true;
+            case ScanSettings.SCAN_MODE_LOW_LATENCY: return true;
+            case ScanSettings.SCAN_MODE_LOW_POWER: return true;
+            case ScanSettings.SCAN_MODE_OPPORTUNISTIC: return true;
+        }
+
+        return false;
     }
 }
