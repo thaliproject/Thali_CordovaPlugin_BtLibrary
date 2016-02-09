@@ -77,8 +77,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
             UUID serviceRecordUuid, String myIdentityString)
             throws NullPointerException, IOException {
-        if (listener == null || bluetoothDeviceToConnectTo == null)
-        {
+        if (listener == null || bluetoothDeviceToConnectTo == null) {
             throw new NullPointerException("Either the listener or the Bluetooth device instance is null");
         }
 
@@ -109,97 +108,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 + " (thread ID: " + getId() + ")");
 
         mTimeStarted = new Date().getTime();
-        boolean socketConnectSucceeded = false;
-        String errorMessage = "";
-        int socketConnectAttemptNo = 1;
-
-        while (!socketConnectSucceeded && !mIsShuttingDown) {
-            Exception socketException = createSocketAndConnect(mInsecureRfcommSocketPort);
-
-            if (socketException == null) {
-                if (!mIsShuttingDown) {
-                    if (mListener != null) {
-                        mListener.onSocketConnected(mPeerProperties, this);
-                    }
-
-                    socketConnectSucceeded = true;
-
-                    // Log the choice of port
-                    String logMessage = "Socket connection succeeded";
-
-                    if (mInsecureRfcommSocketPort == 0) {
-                        logMessage += " (using port" + BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort() + ")";
-                    } else if (mInsecureRfcommSocketPort > 0) {
-                        logMessage += " (using port " + mInsecureRfcommSocketPort + ")";
-                    } else {
-                        logMessage += " (using system decided port)";
-                    }
-
-                    logMessage += ", total number of attempts: " + socketConnectAttemptNo
-                            + " (thread ID: " + getId() + ")";
-                    Log.i(TAG, logMessage);
-                } else {
-                    // Shutting down probably due to connection timeout
-                    Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
-                }
-            } else if (mInsecureRfcommSocketPort >= 0 && !mIsShuttingDown) {
-                // We were using a custom port, fallback to the standard method of creating a socket
-                socketException = createSocketAndConnect(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
-
-                if (socketException == null) {
-                    if (!mIsShuttingDown) {
-                        if (mListener != null) {
-                            mListener.onSocketConnected(mPeerProperties, this);
-                        }
-
-                        socketConnectSucceeded = true;
-
-                        Log.i(TAG, "Socket connection succeeded (using system decided port), total number of attempts: "
-                                + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
-                    } else {
-                        // Shutting down due to probably connection timeout
-                        Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
-                    }
-                } else {
-                    errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
-                            + socketException.getMessage();
-                }
-            } else if (!mIsShuttingDown) {
-                errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
-                        + socketException.getMessage();
-            }
-
-            if (!socketConnectSucceeded && !mIsShuttingDown) {
-                Log.d(TAG, errorMessage + " (thread ID: " + getId() + ")");
-
-                if (socketConnectAttemptNo < mMaxNumberOfRetries + 1) {
-                    Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS
-                            + " ms... (thread ID: " + getId() + ")");
-
-                    try {
-                        Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
-                    } catch (InterruptedException e) {
-                    }
-                } else {
-                    Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
-                            + ") reached, giving up... (thread ID: " + getId() + ")");
-
-                    if (mListener != null) {
-                        mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-                    }
-
-                    break;
-                }
-            }
-
-            socketConnectAttemptNo++;
-            errorMessage = "";
-        } // while (!socketConnectSucceeded && !mIsShuttingDown)
+        boolean socketConnectSucceeded = tryToConnect();
 
         if (socketConnectSucceeded && !mIsShuttingDown) {
+            String errorMessage = "";
+
             try {
                 mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
-                mHandshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                 mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
                 boolean handshakeSucceeded = mHandshakeThread.write(mMyIdentityString.getBytes()); // This does not throw exceptions
@@ -447,5 +363,100 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         }
 
         return exception;
+    }
+
+    /**
+     * Tries to establish a socket connection.
+     * @return True, if successful. False otherwise.
+     */
+    private synchronized boolean tryToConnect() {
+        boolean socketConnectSucceeded = false;
+        String errorMessage = "";
+        int socketConnectAttemptNo = 1;
+
+        while (!socketConnectSucceeded && !mIsShuttingDown) {
+            Exception socketException = createSocketAndConnect(mInsecureRfcommSocketPort);
+
+            if (socketException == null) {
+                if (!mIsShuttingDown) {
+                    if (mListener != null) {
+                        mListener.onSocketConnected(mPeerProperties, this);
+                    }
+
+                    socketConnectSucceeded = true;
+
+                    // Log the choice of port
+                    String logMessage = "Socket connection succeeded";
+
+                    if (mInsecureRfcommSocketPort == 0) {
+                        logMessage += " (using port" + BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort() + ")";
+                    } else if (mInsecureRfcommSocketPort > 0) {
+                        logMessage += " (using port " + mInsecureRfcommSocketPort + ")";
+                    } else {
+                        logMessage += " (using system decided port)";
+                    }
+
+                    logMessage += ", total number of attempts: " + socketConnectAttemptNo
+                            + " (thread ID: " + getId() + ")";
+                    Log.i(TAG, logMessage);
+                } else {
+                    // Shutting down probably due to connection timeout
+                    Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                }
+            } else if (mInsecureRfcommSocketPort >= 0 && !mIsShuttingDown) {
+                // We were using a custom port, fallback to the standard method of creating a socket
+                socketException = createSocketAndConnect(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+
+                if (socketException == null) {
+                    if (!mIsShuttingDown) {
+                        if (mListener != null) {
+                            mListener.onSocketConnected(mPeerProperties, this);
+                        }
+
+                        socketConnectSucceeded = true;
+
+                        Log.i(TAG, "Socket connection succeeded (using system decided port), total number of attempts: "
+                                + socketConnectAttemptNo + " (thread ID: " + getId() + ")");
+                    } else {
+                        // Shutting down due to probably connection timeout
+                        Log.i(TAG, "Socket connection succeeded, but we are shutting down (thread ID: " + getId() + ")");
+                    }
+                } else {
+                    errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
+                            + socketException.getMessage();
+                }
+            } else if (!mIsShuttingDown) {
+                errorMessage = "Failed to connect (tried " + socketConnectAttemptNo + " time(s)): "
+                        + socketException.getMessage();
+            }
+
+            if (!socketConnectSucceeded && !mIsShuttingDown) {
+                Log.d(TAG, errorMessage + " (thread ID: " + getId() + ")");
+
+                if (socketConnectAttemptNo < mMaxNumberOfRetries + 1) {
+                    Log.d(TAG, "Trying to connect again in " + WAIT_BETWEEN_RETRIES_IN_MILLISECONDS
+                            + " ms... (thread ID: " + getId() + ")");
+
+                    try {
+                        Thread.sleep(WAIT_BETWEEN_RETRIES_IN_MILLISECONDS);
+                    } catch (InterruptedException e) {
+                    }
+                } else {
+                    Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
+                            + ") reached, giving up... (thread ID: " + getId() + ")");
+
+                    if (mListener != null) {
+                        mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
+                    }
+
+                    break;
+                }
+            }
+
+            socketConnectAttemptNo++;
+            errorMessage = "";
+        } // while (!socketConnectSucceeded && !mIsShuttingDown)
+
+        return socketConnectSucceeded;
     }
 }

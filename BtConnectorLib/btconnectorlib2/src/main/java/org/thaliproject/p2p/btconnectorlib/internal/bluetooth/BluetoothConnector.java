@@ -180,7 +180,7 @@ public class BluetoothConnector
             }
 
             if (mServerThread != null) {
-                mServerThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                mServerThread.setUncaughtExceptionHandler(mUncaughtExceptionHandler);
                 mServerThread.start();
                 mIsServerThreadAlive = true;
             }
@@ -254,7 +254,7 @@ public class BluetoothConnector
             }
 
             if (bluetoothClientThread != null) {
-                bluetoothClientThread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler);
+                bluetoothClientThread.setUncaughtExceptionHandler(mUncaughtExceptionHandler);
                 bluetoothClientThread.setPeerProperties(peerProperties);
                 bluetoothClientThread.setInsecureRfcommSocketPortNumber(mInsecureRfcommSocketPort);
                 bluetoothClientThread.setMaxNumberOfRetries(mMaxNumberOfOutgoingConnectionAttemptRetries);

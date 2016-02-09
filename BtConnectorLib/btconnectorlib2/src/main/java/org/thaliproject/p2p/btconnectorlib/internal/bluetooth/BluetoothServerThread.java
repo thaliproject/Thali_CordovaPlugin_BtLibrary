@@ -121,7 +121,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                     }
 
                     if (handshakeThread != null) {
-                        handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                        handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                         handshakeThread.setExitThreadAfterRead(true);
                         mSocketIoThreads.add(handshakeThread);
                         handshakeThread.start();

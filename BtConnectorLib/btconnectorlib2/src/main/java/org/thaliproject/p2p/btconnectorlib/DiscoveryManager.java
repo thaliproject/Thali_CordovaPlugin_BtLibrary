@@ -551,16 +551,13 @@ public class DiscoveryManager
      * @param p2pDeviceList A list containing the discovered P2P devices.
      */
     @Override
-    public void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
+    public synchronized void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
         if (p2pDeviceList != null && p2pDeviceList.size() > 0) {
-            final Object[] p2pDeviceArray = p2pDeviceList.toArray();
-            WifiP2pDevice wifiP2pDevice = null;
+            int index = 0;
 
-            for (int i = 0; i < p2pDeviceArray.length; ++i) {
-                wifiP2pDevice = (WifiP2pDevice)p2pDeviceArray[i];
-
+            for (WifiP2pDevice wifiP2pDevice : p2pDeviceList) {
                 if (wifiP2pDevice != null) {
-                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (i + 1) + ": "
+                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (index + 1) + ": "
                             + wifiP2pDevice.deviceName + " " + wifiP2pDevice.deviceAddress);
 
                     PeerProperties peerProperties = mPeerModel.findDiscoveredPeer(wifiP2pDevice.deviceAddress);
@@ -569,6 +566,8 @@ public class DiscoveryManager
                         mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true);
                     }
                 }
+
+                index++;
             }
         }
     }
