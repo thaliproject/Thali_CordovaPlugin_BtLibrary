@@ -1,7 +1,9 @@
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.p2p.btconnectorlib.internal;
 
 import android.content.Context;
-import android.os.Build;
 import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -97,7 +99,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         String bluetoothMacAddress = getBluetoothMacAddress();
 
         if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
-            if (isNonEmptyString(mMyPeerId) && isNonEmptyString(mMyPeerName)
+            if (CommonUtils.isNonEmptyString(mMyPeerId) && CommonUtils.isNonEmptyString(mMyPeerName)
                     && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
                 try {
                     mMyIdentityString = CommonUtils.createIdentityString(
@@ -119,12 +121,4 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     @Override
     abstract public void onBluetoothAdapterScanModeChanged(int mode);
-
-    /**
-     * @param stringToCheck The string to check.
-     * @return True, if the given string is not null and not empty.
-     */
-    private boolean isNonEmptyString(String stringToCheck) {
-        return (stringToCheck != null && stringToCheck.length() > 0);
-    }
 }

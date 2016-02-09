@@ -87,6 +87,14 @@ public class CommonUtils {
     }
 
     /**
+     * @param stringToCheck The string to check.
+     * @return True, if the given string is not null and not empty.
+     */
+    public static boolean isNonEmptyString(String stringToCheck) {
+        return (stringToCheck != null && stringToCheck.length() > 0);
+    }
+
+    /**
      * Creates an identity string based on the given properties.
      * @param peerProperties The peer properties.
      * @return An identity string or null in case of a failure.
