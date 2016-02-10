@@ -158,39 +158,42 @@ public class PeerModel {
      * Adds or updates the given peer properties to the collection.
      * @param peerPropertiesToAddOrUpdate The peer properties to add/update.
      */
-    public synchronized void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
-        if (peerPropertiesToAddOrUpdate != null) {
-            //Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
-            PeerProperties oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
+    public void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
+        synchronized (this) {
+            if (peerPropertiesToAddOrUpdate != null) {
+                //Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
+                PeerProperties oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
 
-            if (oldPeerProperties != null) {
-                // This one was already in the list
-                // Make sure we don't lose any data when updating
-                PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
+                if (oldPeerProperties != null) {
+                    // This one was already in the list
+                    // Make sure we don't lose any data when updating
+                    PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
 
-                Log.v(TAG, "addOrUpdateDiscoveredPeer: Updating the timestamp of peer "
-                        + peerPropertiesToAddOrUpdate.toString());
-
-                if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
-                    // The new discovery result has more information than the old one
+                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
+                        // The new discovery result has more information than the old one
+                        for (Listener listener : mListeners) {
+                            listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
+                        }
+                    }
+                } else {
+                    // The given peer was not in the list before, hence it is a new one
                     for (Listener listener : mListeners) {
-                        listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
+                        listener.onPeerAdded(peerPropertiesToAddOrUpdate);
                     }
                 }
-            } else {
-                // The given peer was not in the list before, hence it is a new one
-                Log.d(TAG, "addOrUpdateDiscoveredPeer: Adding a new peer: " + peerPropertiesToAddOrUpdate.toString());
 
-                for (Listener listener : mListeners) {
-                    listener.onPeerAdded(peerPropertiesToAddOrUpdate);
+                mDiscoveredPeers.put(peerPropertiesToAddOrUpdate, new Timestamp(new Date().getTime()));
+
+                Log.v(TAG, "addOrUpdateDiscoveredPeer: "
+                        + ((oldPeerProperties == null)
+                            ? ("New peer, " + peerPropertiesToAddOrUpdate.toString() + ", added")
+                            : ("Timestamp of peer " + peerPropertiesToAddOrUpdate.toString() + " updated"))
+                        + " - the peer count is " + mDiscoveredPeers.size());
+
+                if (mCheckExpiredPeersTimer == null) {
+                    createCheckPeerExpirationTimer();
+                    mCheckExpiredPeersTimer.start();
                 }
-            }
-
-            mDiscoveredPeers.put(peerPropertiesToAddOrUpdate, new Timestamp(new Date().getTime()));
-
-            if (mCheckExpiredPeersTimer == null) {
-                createCheckPeerExpirationTimer();
-                mCheckExpiredPeersTimer.start();
             }
         }
     }

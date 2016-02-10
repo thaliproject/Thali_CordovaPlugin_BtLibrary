@@ -198,7 +198,7 @@ public class PeerProperties {
         boolean isMatch = false;
 
         if (other != null && other.getBluetoothMacAddress() != null && mBluetoothMacAddress != null) {
-            isMatch = other.getBluetoothMacAddress().equalsIgnoreCase(mBluetoothMacAddress);
+            isMatch = other.getBluetoothMacAddress().equals(mBluetoothMacAddress);
         }
 
         return isMatch;
