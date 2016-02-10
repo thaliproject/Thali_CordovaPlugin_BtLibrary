@@ -14,12 +14,12 @@ import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.BluetoothMacAddressResolutionHelper;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 import java.util.Collection;
 import java.util.Date;
@@ -222,15 +222,13 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
-     * @param myPeerId Our peer ID (used for the identity).
      * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public synchronized boolean start(String myPeerId, String myPeerName) {
+    public synchronized boolean start(String myPeerName) {
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
-        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName + ", mode: " + discoveryMode);
+        Log.i(TAG, "start: Peer name: " + myPeerName + ", mode: " + discoveryMode);
         mShouldBeRunning = true;
-        mMyPeerId = myPeerId;
         mMyPeerName = myPeerName;
 
         mBluetoothManager.bind(this);
@@ -300,24 +298,13 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
-     * This method uses the Bluetooth MAC address to set the value of the peer ID.
-     * @param myPeerName Our peer name (used for the identity).
-     * @return True, if started successfully or was already running. False otherwise.
-     */
-    public boolean start(String myPeerName) {
-        return start(getBluetoothMacAddress(), myPeerName);
-    }
-
-    /**
-     * Starts the peer discovery.
      *
-     * This method uses the Bluetooth MAC address to set the value of the peer ID.
      * No peer name is used. Use this method, if you rely only on BLE based peer discovery.
      *
      * @return True, if started successfully or was already running. False otherwise.
      */
     public boolean start() {
-        return start(getBluetoothMacAddress(), PeerProperties.NO_PEER_NAME_STRING);
+        return start(PeerProperties.NO_PEER_NAME_STRING);
     }
 
     /**
@@ -495,7 +482,7 @@ public class DiscoveryManager
                 if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()
                         && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
-                    start(mMyPeerId, mMyPeerName);
+                    start(mMyPeerName);
                 }
             }
         }
@@ -530,7 +517,7 @@ public class DiscoveryManager
             } else {
                 if (mShouldBeRunning) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
-                    start(mMyPeerId, mMyPeerName);
+                    start(mMyPeerName);
                 }
             }
         }

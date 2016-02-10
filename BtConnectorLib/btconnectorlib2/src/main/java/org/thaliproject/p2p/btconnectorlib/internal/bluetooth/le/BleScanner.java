@@ -12,7 +12,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.ArrayList;
 import java.util.List;
 

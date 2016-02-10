@@ -104,13 +104,11 @@ public class ConnectionManager
 
     /**
      * Initializes the components and starts the listener for incoming connections.
-     * @param myPeerId Our peer ID (used for the identity).
      * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public boolean start(String myPeerId, String myPeerName) {
-        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
-        mMyPeerId = myPeerId;
+    public boolean start(String myPeerName) {
+        Log.i(TAG, "start: Peer name: " + myPeerName);
         mMyPeerName = myPeerName;
 
         switch (mState) {
@@ -151,23 +149,6 @@ public class ConnectionManager
         }
 
         return (mState == ConnectionManagerState.RUNNING);
-    }
-
-    /**
-     * Initializes the components and starts the listener for incoming connections. This method
-     * uses the Bluetooth address to set the value of the peer ID.
-     * @param myPeerName Our peer name (used for the identity).
-     * @return True, if started successfully or was already running. False otherwise.
-     */
-    public boolean start(String myPeerName) {
-        String bluetoothMacAddress = getBluetoothMacAddress();
-        boolean wasStarted = false;
-
-        if (bluetoothMacAddress != null) {
-            wasStarted = start(getBluetoothMacAddress(), myPeerName);
-        }
-
-        return wasStarted;
     }
 
     /**
@@ -229,7 +210,7 @@ public class ConnectionManager
             Log.i(TAG, "connect: " + peerToConnectTo.toString());
 
             try {
-                BluetoothDevice device = mBluetoothManager.getRemoteDevice(peerToConnectTo.getBluetoothAddress());
+                BluetoothDevice device = mBluetoothManager.getRemoteDevice(peerToConnectTo.getBluetoothMacAddress());
                 success = mBluetoothConnector.connect(device, peerToConnectTo, mMyUuid);
             } catch (NullPointerException e) {
                 Log.e(TAG, "connect: Failed to start connecting to peer "
@@ -297,7 +278,7 @@ public class ConnectionManager
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting...");
-                start(mMyPeerId, mMyPeerName);
+                start(mMyPeerName);
             }
         }
     }

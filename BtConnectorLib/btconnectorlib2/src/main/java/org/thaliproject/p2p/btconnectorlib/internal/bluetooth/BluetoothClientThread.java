@@ -6,10 +6,8 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
-import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.io.IOException;
 import java.util.Date;
 import java.util.UUID;
@@ -207,40 +205,31 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
+        final BluetoothSocket bluetoothSocket = who.getSocket();
+
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
-        String identityString = new String(bytes);
-        PeerProperties peerProperties = new PeerProperties();
-        boolean resolvedPropertiesOk = false;
 
-        if (!identityString.isEmpty()) {
-            try {
-                resolvedPropertiesOk =
-                        CommonUtils.getPropertiesFromIdentityString(identityString, peerProperties);
-            } catch (JSONException e) {
-                Log.e(TAG, "Failed to resolve peer properties: " + e.getMessage(), e);
+        PeerProperties peerProperties =
+                BluetoothUtils.validateReceivedHandshakeMessage(bytes, bluetoothSocket);
+
+        if (peerProperties != null) {
+            Log.i(TAG, "Handshake succeeded with " + peerProperties.toString());
+
+            // Set the resolved properties to the associated thread
+            who.setPeerProperties(peerProperties);
+
+            if (mListener != null) {
+                // On successful handshake, we'll pass the socket for the listener, so it's now
+                // the listeners responsibility to close the socket once done. Thus, do not
+                // close the socket here. Do not either close the input and output streams,
+                // since that will invalidate the socket as well.
+                mListener.onHandshakeSucceeded(bluetoothSocket, peerProperties, this);
+                mHandshakeThread = null;
+            } else {
+                // No listener to deal with the socket, shut it down
+                shutdown();
             }
-
-            if (resolvedPropertiesOk) {
-                Log.i(TAG, "Handshake succeeded with " + peerProperties.toString());
-
-                // Set the resolved properties to the associated thread
-                who.setPeerProperties(peerProperties);
-
-                if (mListener != null) {
-                    // On successful handshake, we'll pass the socket for the listener, so it's now
-                    // the listeners responsibility to close the socket once done. Thus, do not
-                    // close the socket here. Do not either close the input and output streams,
-                    // since that will invalidate the socket as well.
-                    mListener.onHandshakeSucceeded(who.getSocket(), peerProperties, this);
-                    mHandshakeThread = null;
-                } else {
-                    // No listener to deal with the socket, shut it down
-                    shutdown();
-                }
-            }
-        }
-
-        if (!resolvedPropertiesOk) {
+        } else {
             String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
             Log.e(TAG, errorMessage);
             shutdown();

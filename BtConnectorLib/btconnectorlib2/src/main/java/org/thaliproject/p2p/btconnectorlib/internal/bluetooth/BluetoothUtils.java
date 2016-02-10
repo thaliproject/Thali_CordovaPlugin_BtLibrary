@@ -7,7 +7,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -89,30 +91,62 @@ public class BluetoothUtils {
     }
 
     /**
-     * Creates a handshake message for Thali Bluetooth client to send to the server.
-     *
-     * See http://thaliproject.org/PresenceProtocolBindings/#the-bluetooth-handshake-and-binding-tcpip-to-bluetooth
-     * for more details.
-     *
-     * @param hasNotification Should be true, if the client has a notifications for the server.
-     * @return The newly created handshake message as a byte array.
+     * Extracts the Bluetooth MAC address of the peer from the given Bluetooth socket instance.
+     * @param bluetoothSocket The Bluetooth socket.
+     * @return The Bluetooth MAC address or null in case of an error.
      */
-    public static byte[] createClientHandshakeMessage(boolean hasNotification) {
-        byte[] message = new byte[1];
-        message[0] = hasNotification ? (byte)0x1 : 0x0;
-        return message;
+    public static String getBluetoothMacAddressFromSocket(final BluetoothSocket bluetoothSocket) {
+        String bluetoothMacAddress = null;
+
+        if (bluetoothSocket != null && bluetoothSocket.getRemoteDevice() != null) {
+            bluetoothMacAddress = bluetoothSocket.getRemoteDevice().getAddress();
+        } else {
+            // The whole purpose of this method is to have exception free, quick way to get the
+            // Bluetooth MAC address. Thus, do not throw an exception here.
+            Log.e(TAG, "getBluetoothMacAddressFromSocket: Either the socket or its remote device is null");
+        }
+
+        return bluetoothMacAddress;
     }
 
     /**
-     * Creates a handshake message for Thali Bluetooth server to send to the client.
-     *
-     * See http://thaliproject.org/PresenceProtocolBindings/#the-bluetooth-handshake-and-binding-tcpip-to-bluetooth
-     * for more details.
-     *
-     * @return The newly created handshake message as a byte array.
+     * Checks the validity of the received handshake message.
+     * @param handshakeMessage The received handshake message as a byte array.
+     * @param bluetoothSocketOfSender The Bluetooth socket of the sender.
+     * @return The resolved peer properties of the sender, if the handshake was valid. Null otherwise.
      */
-    public static byte[] createServerHandshakeMessage() {
-        return createClientHandshakeMessage(false);
+    public static PeerProperties validateReceivedHandshakeMessage(
+            byte[] handshakeMessage, BluetoothSocket bluetoothSocketOfSender) {
+        String identityString = new String(handshakeMessage);
+        PeerProperties peerProperties = new PeerProperties();
+        boolean receivedHandshakeMessageValidated = false;
+
+        if (!identityString.isEmpty()) {
+            try {
+                receivedHandshakeMessageValidated =
+                        AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                                identityString, peerProperties);
+            } catch (JSONException e) {
+                Log.e(TAG, "validateReceivedHandshakeMessage: Failed to resolve peer properties: "
+                        + e.getMessage(), e);
+            }
+
+            if (receivedHandshakeMessageValidated) {
+                String bluetoothMacAddress =
+                        BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
+
+                if (bluetoothMacAddress == null
+                        || !bluetoothMacAddress.equals(peerProperties.getBluetoothMacAddress())) {
+                    Log.e(TAG, "validateReceivedHandshakeMessage: Bluetooth MAC address mismatch: Got \""
+                            + peerProperties.getBluetoothMacAddress()
+                            + "\", but was expecting \"" + bluetoothMacAddress + "\"");
+
+                    receivedHandshakeMessageValidated = false;
+                }
+            }
+        }
+
+        return receivedHandshakeMessageValidated ? peerProperties : null;
     }
 
     /**

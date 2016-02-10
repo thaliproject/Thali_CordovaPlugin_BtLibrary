@@ -12,7 +12,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
