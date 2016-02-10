@@ -86,7 +86,7 @@ public class ConnectionEngine implements
         boolean wasConnectionManagerStarted = mConnectionManager.start(PEER_NAME);
         boolean wasDiscoveryManagerStarted =
                 (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
-                 || mDiscoveryManager.start(PEER_NAME));
+                 || mDiscoveryManager.start(PEER_NAME, true));
 
         if (wasConnectionManagerStarted) {
             if (mCheckConnectionsTimer != null) {
@@ -219,7 +219,7 @@ public class ConnectionEngine implements
         if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "onRequestPermissionsResult: Permission granted");
-                mDiscoveryManager.start(PEER_NAME);
+                mDiscoveryManager.start(PEER_NAME, true);
             } else {
                 Log.e(TAG, "onRequestPermissionsResult: Permission denied");
             }

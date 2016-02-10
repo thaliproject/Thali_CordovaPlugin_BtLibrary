@@ -148,6 +148,7 @@ public class DiscoveryManager
     private long mLastTimeDeviceWasMadeDiscoverable = 0;
     private int mPreviousDeviceDiscoverableTimeInSeconds = 0;
     private boolean mShouldBeRunning = false;
+    private boolean mShouldBeAdvertising = false;
 
     /**
      * Constructor.
@@ -223,14 +224,16 @@ public class DiscoveryManager
     /**
      * Starts the peer discovery.
      * @param myPeerName Our peer name (used for the identity).
+     * @param startAdvertising If true, will start both scanner/discoverer and advertiser.
+     *                         If false, will only start the scanner/discoverer.
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public synchronized boolean start(String myPeerName) {
+    public synchronized boolean start(String myPeerName, boolean startAdvertising) {
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         Log.i(TAG, "start: Peer name: " + myPeerName + ", mode: " + discoveryMode);
         mShouldBeRunning = true;
+        mShouldBeAdvertising = startAdvertising;
         mMyPeerName = myPeerName;
-
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
@@ -242,7 +245,7 @@ public class DiscoveryManager
                 if (mBluetoothManager.isBluetoothEnabled()) {
                     // Try to start BLE based discovery
                     stopBluetoothDeviceDiscovery();
-                    bleDiscoveryStarted = startBlePeerDiscoverer();
+                    bleDiscoveryStarted = startBlePeerDiscoverer(mShouldBeAdvertising);
                 } else {
                     Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
                 }
@@ -252,7 +255,7 @@ public class DiscoveryManager
                 if (mWifiDirectManager.isWifiEnabled()) {
                     if (verifyIdentityString()) {
                         // Try to start Wi-Fi Direct based discovery
-                        wifiDiscoveryStarted = startWifiPeerDiscovery();
+                        wifiDiscoveryStarted = startWifiPeerDiscovery(mShouldBeAdvertising);
                     } else {
                         if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
                             Log.e(TAG, "start: Identity string is null or empty");
@@ -298,13 +301,33 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
-     *
      * No peer name is used. Use this method, if you rely only on BLE based peer discovery.
      *
+     * @param startAdvertising If true, will start both scanner/discoverer and advertiser.
+     *                         If false, will only start the scanner/discoverer.
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public boolean start() {
-        return start(PeerProperties.NO_PEER_NAME_STRING);
+    public boolean start(boolean startAdvertising) {
+        return start(PeerProperties.NO_PEER_NAME_STRING, startAdvertising);
+    }
+
+    /**
+     * Stops advertising. Call start() with startAdvertising argument as 'true' to restart.
+     */
+    public synchronized void stopAdvertising() {
+        if (mShouldBeAdvertising) {
+            Log.i(TAG, "stopAdvertising");
+        }
+
+        mShouldBeAdvertising = false;
+
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.stopAdvertiser();
+        }
+
+        if (mWifiPeerDiscoverer != null) {
+            mWifiPeerDiscoverer.stopAdvertiser();
+        }
     }
 
     /**
@@ -409,9 +432,9 @@ public class DiscoveryManager
     public void onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
         if (mState != DiscoveryManagerState.NOT_STARTED) {
             stopForRestart();
-            start(mMyPeerName);
+            start(mMyPeerName, mShouldBeAdvertising);
         } else if (startIfNotRunning) {
-            start(mMyPeerName);
+            start(mMyPeerName, mShouldBeAdvertising);
         }
     }
 
@@ -482,7 +505,7 @@ public class DiscoveryManager
                 if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()
                         && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
-                    start(mMyPeerName);
+                    start(mMyPeerName, mShouldBeAdvertising);
                 }
             }
         }
@@ -517,7 +540,7 @@ public class DiscoveryManager
             } else {
                 if (mShouldBeRunning) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
-                    start(mMyPeerName);
+                    start(mMyPeerName, mShouldBeAdvertising);
                 }
             }
         }
@@ -527,11 +550,11 @@ public class DiscoveryManager
      * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
      *
      * Does nothing but logs the event.
-     * @param isStarted If true, the discovery was started. If false, it was stopped.
+     * @param state The new state.
      */
     @Override
-    public void onIsWifiPeerDiscoveryStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsWifiPeerDiscoveryStartedChanged: " + isStarted);
+    public void onWifiPeerDiscovererStateChanged(EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet> state) {
+        Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + state);
     }
 
     /**
@@ -669,7 +692,7 @@ public class DiscoveryManager
             @Override
             public void run() {
                 if (mShouldBeRunning) {
-                    start(mMyPeerName);
+                    start(mMyPeerName, mShouldBeAdvertising);
                 } else {
                     setState(DiscoveryManagerState.NOT_STARTED);
                 }
@@ -700,7 +723,7 @@ public class DiscoveryManager
                     mBluetoothMacAddressResolutionHelper.stopReceiveBluetoothMacAddressMode();
 
                     if (mShouldBeRunning) {
-                        start(mMyPeerName);
+                        start(mMyPeerName, mShouldBeAdvertising);
                     }  else {
                         setState(DiscoveryManagerState.NOT_STARTED);
                     }
@@ -745,7 +768,7 @@ public class DiscoveryManager
                     stopBlePeerDiscoverer(false);
 
                     if (mShouldBeRunning) {
-                        start(mMyPeerName);
+                        start(mMyPeerName, mShouldBeAdvertising);
                     } else {
                         setState(DiscoveryManagerState.NOT_STARTED);
                     }
@@ -774,7 +797,7 @@ public class DiscoveryManager
                     }
                 } else {
                     if (mShouldBeRunning) {
-                        start(mMyPeerName);
+                        start(mMyPeerName, mShouldBeAdvertising);
                     }
                 }
             }
@@ -849,9 +872,11 @@ public class DiscoveryManager
 
     /**
      * Tries to start the BLE peer discoverer.
+     * @param startAdvertising If true, will start both scanner and advertiser.
+     *                         If false, will only start the scanner.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startBlePeerDiscoverer() {
+    private synchronized boolean startBlePeerDiscoverer(boolean startAdvertising) {
         boolean started = false;
         boolean permissionsGranted = false;
 
@@ -867,7 +892,11 @@ public class DiscoveryManager
                 getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
-                    started = mBlePeerDiscoverer.start();
+                    if (startAdvertising) {
+                        started = mBlePeerDiscoverer.startScannerAndAdvertiser();
+                    } else {
+                        started = mBlePeerDiscoverer.startScanner();
+                    }
                 } else {
                     Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");
                 }
@@ -890,7 +919,7 @@ public class DiscoveryManager
      */
     private synchronized void stopBlePeerDiscoverer(boolean updateState) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.stop();
+            mBlePeerDiscoverer.stopScannerAndAdvertiser();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
 
@@ -907,9 +936,11 @@ public class DiscoveryManager
     /**
      * Tries to start the Wi-Fi Direct based peer discovery.
      * Note that this method does not validate the current state nor the identity string.
+     * @param startAdvertising If true, will start both discoverer and advertiser.
+     *                         If false, will only start the discoverer.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startWifiPeerDiscovery() {
+    private synchronized boolean startWifiPeerDiscovery(boolean startAdvertising) {
         boolean started = false;
 
         if (mWifiDirectManager.bind(this)) {
@@ -920,16 +951,21 @@ public class DiscoveryManager
                 if (p2pManager != null && channel != null) {
                     mWifiPeerDiscoverer = new WifiPeerDiscoverer(
                             mContext, channel, p2pManager, this, mServiceType, mMyIdentityString);
-
-                    mWifiPeerDiscoverer.start();
                 } else {
                     Log.e(TAG, "startWifiPeerDiscovery: Failed to get Wi-Fi P2P manager or channel");
                 }
             }
 
             if (mWifiPeerDiscoverer != null) {
-                started = mWifiPeerDiscoverer.start();
-                Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
+                if (startAdvertising) {
+                    started = mWifiPeerDiscoverer.startDiscovererAndAdvertiser();
+                } else {
+                    started = mWifiPeerDiscoverer.startDiscoverer();
+                }
+
+                if (started) {
+                    Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
+                }
             }
         } else {
             Log.e(TAG, "startWifiPeerDiscovery: Failed to start, this may indicate that Wi-Fi Direct is not supported on this device");
@@ -944,7 +980,7 @@ public class DiscoveryManager
      */
     private synchronized void stopWifiPeerDiscovery(boolean updateState) {
         if (mWifiPeerDiscoverer != null) {
-            mWifiPeerDiscoverer.stop();
+            mWifiPeerDiscoverer.stopDiscovererAndAdvertiser();
             mWifiPeerDiscoverer = null;
             Log.i(TAG, "stopWifiPeerDiscovery: Stopped");
 

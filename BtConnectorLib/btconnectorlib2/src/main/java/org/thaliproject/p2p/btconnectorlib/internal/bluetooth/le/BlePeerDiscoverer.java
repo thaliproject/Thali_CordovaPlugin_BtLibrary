@@ -298,12 +298,39 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     /**
-     * Starts the BLE peer discovery.
-     * @return True, if starting or already started. False, if failed to start.
+     * Starts the BLE scanner.
+     * @return True, if starting or already started. False otherwise.
      */
-    public synchronized boolean start() {
-        Log.i(TAG, "start");
-        stopPeerAddressHelperAdvertiser();
+    public synchronized boolean startScanner() {
+        if (!mBleScanner.isStarted()) {
+            Log.i(TAG, "startScanner: Starting...");
+        }
+
+        return mBleScanner.start();
+    }
+
+    /**
+     * Stops the BLE scanner.
+     */
+    public synchronized void stopScanner() {
+        if (mBleScanner.isStarted()) {
+            Log.i(TAG, "stopScanner: Stopping...");
+        }
+
+        mBleScanner.stop(true);
+    }
+
+    /**
+     * Starts the BLE advertiser.
+     * @return True, if starting or already started. False otherwise.
+     */
+    public synchronized boolean startAdvertiser() {
+        stopPeerAddressHelperAdvertiser(); // Need to stop, if running, since we can have only one advertiser
+
+        if (!mBleAdvertiser.isStarted()) {
+            Log.i(TAG, "startAdvertiser: Starting...");
+        }
+
         AdvertiseData advertiseData = null;
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mMyBluetoothMacAddress)) {
@@ -316,33 +343,37 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         mBleAdvertiser.setAdvertiseData(advertiseData);
 
-        return (mBleScanner.start() && mBleAdvertiser.start());
+        return mBleAdvertiser.start();
+    }
+
+    /**
+     * Stops the BLE advertiser.
+     */
+    public synchronized void stopAdvertiser() {
+        if (mBleAdvertiser.isStarted()) {
+            Log.i(TAG, "stopAdvertiser: Stopping...");
+        }
+
+        mBleAdvertiser.stop(true);
+    }
+
+    /**
+     * Starts the BLE peer discovery.
+     * @return True, if starting or already started. False, if failed to start.
+     */
+    public synchronized boolean startScannerAndAdvertiser() {
+        Log.i(TAG, "startScannerAndAdvertiser");
+        return (startScanner() && startAdvertiser());
     }
 
     /**
      * Stops the BLE peer discovery.
      */
-    public synchronized void stop() {
-        Log.i(TAG, "stop");
+    public synchronized void stopScannerAndAdvertiser() {
+        Log.i(TAG, "stopScannerAndAdvertiser");
         stopPeerAddressHelperAdvertiser();
-        mBleAdvertiser.stop(true);
-        mBleScanner.stop(true);
-    }
-
-    /**
-     * Stops the BLE scanner. Call BlePeerDiscoverer.start to restart.
-     */
-    public synchronized void stopScanner() {
-        Log.d(TAG, "stopScanner");
-        mBleScanner.stop(true);
-    }
-
-    /**
-     * Stops the BLE advertiser. Call BlePeerDiscoverer.start to restart.
-     */
-    public synchronized void stopAdvertiser() {
-        Log.d(TAG, "stopAdvertiser");
-        mBleAdvertiser.stop(true);
+        stopScanner();
+        stopAdvertiser();
     }
 
     /**
@@ -575,7 +606,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         if (!mStateSet.equals(deducedStateSet)) {
-            Log.d(TAG, "updateState(): State changed from " + mStateSet + " to " + deducedStateSet);
+            Log.d(TAG, "updateState: State changed from " + mStateSet + " to " + deducedStateSet);
             mStateSet = deducedStateSet;
             mListener.onBlePeerDiscovererStateChanged(mStateSet);
         }
