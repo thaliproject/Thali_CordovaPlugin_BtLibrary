@@ -62,8 +62,8 @@ public class DiscoveryManager
          * Called when a permission check for a certain functionality is needed. The activity
          * utilizing this class then needs to perform the check and return true, if allowed.
          *
-         * Note: The permission check is only needed if we are running on Marshmallow (Android
-         * version 6.x) or higher.
+         * Note: The permission check is only needed if we are running on Marshmallow
+         * (Android version 6.x) or higher.
          *
          * @param permission The permission to check.
          * @return True, if permission is granted. False, if not.
@@ -77,7 +77,7 @@ public class DiscoveryManager
         void onDiscoveryManagerStateChanged(DiscoveryManagerState state);
 
         /**
-         * Called when we discovery a device, which needs to find out its own Bluetooth MAC address.
+         * Called when we discovery a device that needs to find out its own Bluetooth MAC address.
          *
          * Part of Bro Mode.
          *

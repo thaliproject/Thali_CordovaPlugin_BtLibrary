@@ -36,6 +36,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state);
 
         /**
+         * Called when a peer was discovered.
+         * @param peerProperties The properties of the discovered peer.
+         */
+        void onPeerDiscovered(PeerProperties peerProperties);
+
+
+        // BRO MODE INTERFACES:
+
+        /**
          * Called when we receive a request from a peer to provide it its Bluetooth MAC address.
          *
          * Part of Bro Mode.
@@ -77,12 +86,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * @param bluetoothMacAddress Our Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
-
-        /**
-         * Called when a peer was discovered.
-         * @param peerProperties The properties of the discovered peer.
-         */
-        void onPeerDiscovered(PeerProperties peerProperties);
     }
 
     /**
@@ -91,9 +94,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     public enum BlePeerDiscovererStateSet {
         NOT_STARTED,
         SCANNING,
-        ADVERTISING_SELF, // Advertising our presence
-        ADVERTISING_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // When we need help to find out our own Bluetooth MAC address
-        ADVERTISING_PROVIDING_ASSISTANCE // When helping a peer with its Bluetooth MAC address
+        ADVERTISING, // Advertising our presence
+        ADVERTISING_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST, // Bro Mode - When we need help to find out our own Bluetooth MAC address
+        ADVERTISING_PROVIDING_ASSISTANCE // Bro Mode - When helping a peer with its Bluetooth MAC address
     }
 
     public enum AdvertisementDataType {
@@ -597,7 +600,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 // We do not need our own Bluetooth MAC address
                 deducedStateSet.add(BlePeerDiscovererStateSet.ADVERTISING_PROVIDE_BLUETOOTH_MAC_ADDRESS_REQUEST);
             } else {
-                deducedStateSet.add(BlePeerDiscovererStateSet.ADVERTISING_SELF);
+                deducedStateSet.add(BlePeerDiscovererStateSet.ADVERTISING);
             }
         }
 
