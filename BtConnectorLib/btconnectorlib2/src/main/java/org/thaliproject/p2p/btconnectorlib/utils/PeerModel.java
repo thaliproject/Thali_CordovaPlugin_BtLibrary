@@ -166,10 +166,10 @@ public class PeerModel {
             if (oldPeerProperties != null) {
                 // This one was already in the list
                 // Make sure we don't lose any data when updating
+                PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
+
                 Log.v(TAG, "addOrUpdateDiscoveredPeer: Updating the timestamp of peer "
                         + peerPropertiesToAddOrUpdate.toString());
-
-                PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
 
                 if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
                     // The new discovery result has more information than the old one
