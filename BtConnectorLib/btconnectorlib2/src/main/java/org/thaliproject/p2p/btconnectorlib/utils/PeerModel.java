@@ -42,7 +42,7 @@ public class PeerModel {
 
     private static final String TAG = PeerModel.class.getName();
     private final HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
-    private final Listener mListener;
+    private final CopyOnWriteArrayList<Listener> mListeners = new CopyOnWriteArrayList<>();
     private final DiscoveryManagerSettings mSettings;
     private CountDownTimer mCheckExpiredPeersTimer = null;
 
@@ -51,8 +51,30 @@ public class PeerModel {
      * @param settings The Discovery manager settings.
      */
     public PeerModel(Listener listener, DiscoveryManagerSettings settings) {
-        mListener = listener;
         mSettings = settings;
+        addListener(listener);
+    }
+
+    /**
+     * Adds the given listener.
+     * @param listener The listener to add.
+     */
+    public void addListener(Listener listener) {
+        if (listener != null && !mListeners.contains(listener)) {
+            mListeners.add(listener);
+            Log.d(TAG, "addListener: New listener added - the number of listeners is now " + mListeners.size());
+        }
+    }
+
+    /**
+     * Removes the given listener.
+     * @param listener The listener to remove.
+     */
+    public void removeListener(Listener listener) {
+        if (mListeners.contains(listener)) {
+            mListeners.remove(listener);
+            Log.d(TAG, "removeListener: Listener removed - the number of listeners is now " + mListeners.size());
+        }
     }
 
     /**
@@ -151,16 +173,16 @@ public class PeerModel {
 
                 if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
                     // The new discovery result has more information than the old one
-                    if (mListener != null) {
-                        mListener.onPeerUpdated(peerPropertiesToAddOrUpdate);
+                    for (Listener listener : mListeners) {
+                        listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
                     }
                 }
             } else {
                 // The given peer was not in the list before, hence it is a new one
                 Log.d(TAG, "addOrUpdateDiscoveredPeer: Adding a new peer: " + peerPropertiesToAddOrUpdate.toString());
 
-                if (mListener != null) {
-                    mListener.onPeerAdded(peerPropertiesToAddOrUpdate);
+                for (Listener listener : mListeners) {
+                    listener.onPeerAdded(peerPropertiesToAddOrUpdate);
                 }
             }
 
@@ -203,8 +225,8 @@ public class PeerModel {
             }
 
             for (PeerProperties expiredPeer : expiredPeers) {
-                if (mListener != null) {
-                    mListener.onPeerExpiredAndRemoved(expiredPeer);
+                for (Listener listener : mListeners) {
+                    listener.onPeerExpiredAndRemoved(expiredPeer);
                 }
             }
 
