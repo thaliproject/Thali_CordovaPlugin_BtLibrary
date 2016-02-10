@@ -56,7 +56,7 @@ public class FindMyBluetoothAddressTest
         }
 
         mDiscoveryManager.clearIdentityString();
-        return mDiscoveryManager.start(TestEngine.PEER_NAME, true);
+        return mDiscoveryManager.start(true, true);
     }
 
     @Override

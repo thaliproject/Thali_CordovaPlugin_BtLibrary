@@ -22,7 +22,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected static final String JSON_ID_PEER_NAME = "name";
     protected static final String JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS = "address";
     protected final BluetoothManager mBluetoothManager;
-    protected String mMyPeerName = null;
+    protected String mMyPeerName = PeerProperties.NO_PEER_NAME_STRING;
     protected String mMyIdentityString = "";
     protected boolean mEmulateMarshmallow = false;
 

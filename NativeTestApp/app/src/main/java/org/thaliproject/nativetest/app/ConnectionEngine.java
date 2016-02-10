@@ -65,6 +65,7 @@ public class ConnectionEngine implements
         mModel = PeerAndConnectionModel.getInstance();
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
         mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
+        mDiscoveryManager.setPeerName(PEER_NAME);
     }
 
     /**
@@ -86,7 +87,7 @@ public class ConnectionEngine implements
         boolean wasConnectionManagerStarted = mConnectionManager.start(PEER_NAME);
         boolean wasDiscoveryManagerStarted =
                 (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
-                 || mDiscoveryManager.start(PEER_NAME, true));
+                 || mDiscoveryManager.start(true, true));
 
         if (wasConnectionManagerStarted) {
             if (mCheckConnectionsTimer != null) {
@@ -219,7 +220,7 @@ public class ConnectionEngine implements
         if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "onRequestPermissionsResult: Permission granted");
-                mDiscoveryManager.start(PEER_NAME, true);
+                mDiscoveryManager.start(true, true);
             } else {
                 Log.e(TAG, "onRequestPermissionsResult: Permission denied");
             }

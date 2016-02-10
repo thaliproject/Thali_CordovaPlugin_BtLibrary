@@ -154,7 +154,7 @@ public class Settings {
                         if (getDesiredDiscoveryMode() != DiscoveryManager.DiscoveryMode.NOT_SET
                             && mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
                             Log.d(TAG, "Starting the discovery manager...");
-                            mDiscoveryManager.start(ConnectionEngine.PEER_NAME, true);
+                            mDiscoveryManager.start(true, true);
                         }
                     }
                 }, START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS);
