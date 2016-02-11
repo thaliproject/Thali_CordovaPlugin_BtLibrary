@@ -14,6 +14,7 @@ import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import java.io.IOException;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -472,15 +473,15 @@ public class BluetoothConnector
             public void onFinish() {
                 this.cancel();
                 long currentTime = new Date().getTime();
-                final int threadCount = mClientThreads.size();
-
-                for (int i = threadCount - 1; i >= 0; --i) {
-                    final BluetoothClientThread bluetoothClientThread = mClientThreads.get(i);
+                Iterator<BluetoothClientThread> iterator = mClientThreads.iterator();
+                
+                while (iterator.hasNext()) {
+                    final BluetoothClientThread bluetoothClientThread = iterator.next();
                     long startedTime = bluetoothClientThread.getTimeStarted();
 
                     if (startedTime > 0 && currentTime > startedTime + mConnectionTimeoutInMilliseconds) {
                         // Got a client thread that needs to be cancelled
-                        mClientThreads.remove(i);
+                        mClientThreads.remove(bluetoothClientThread);
                         final PeerProperties peerProperties = bluetoothClientThread.getPeerProperties();
 
                         if (peerProperties != null) {
