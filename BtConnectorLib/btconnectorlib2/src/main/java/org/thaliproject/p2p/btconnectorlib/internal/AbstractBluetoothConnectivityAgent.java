@@ -35,6 +35,18 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     }
 
     /**
+     * Sets the peer name. Not mandatory - the functionality is 100 % even when not set.
+     * The name is used in the identity string.
+     * @param myPeerName Our peer name.
+     */
+    public void setPeerName(String myPeerName) {
+        if (!mMyPeerName.equals(myPeerName)) {
+            Log.i(TAG, "setPeerName: " + myPeerName);
+            mMyPeerName = myPeerName;
+        }
+    }
+
+    /**
      * Releases resources.
      *
      * Should be called when getting rid of the instance. Note that after calling this method you

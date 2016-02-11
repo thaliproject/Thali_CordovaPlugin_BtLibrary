@@ -222,18 +222,6 @@ public class DiscoveryManager
     }
 
     /**
-     * Sets the peer name. Not mandatory - the discovery can function 100 % even when not set.
-     * The name is used when advertising via Wi-Fi Direct.
-     * @param myPeerName Our peer name.
-     */
-    public void setPeerName(String myPeerName) {
-        if (!mMyPeerName.equals(myPeerName)) {
-            Log.i(TAG, "setPeerName: " + myPeerName);
-            mMyPeerName = myPeerName;
-        }
-    }
-
-    /**
      * Starts the peer discovery.
      * @param startDiscovery If true, will start the scanner/discovery.
      * @param startAdvertising If true, will start the advertiser.

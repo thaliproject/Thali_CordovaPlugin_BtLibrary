@@ -63,7 +63,10 @@ public class ConnectionEngine implements
         mContext = context;
         mActivity = activity;
         mModel = PeerAndConnectionModel.getInstance();
+
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
+        mConnectionManager.setPeerName(PEER_NAME);
+
         mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
         mDiscoveryManager.setPeerName(PEER_NAME);
     }
@@ -84,7 +87,8 @@ public class ConnectionEngine implements
     public synchronized boolean start() {
         mShuttingDown = false;
 
-        boolean wasConnectionManagerStarted = mConnectionManager.start(PEER_NAME);
+        boolean wasConnectionManagerStarted = mConnectionManager.start();
+        
         boolean wasDiscoveryManagerStarted =
                 (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
                  || mDiscoveryManager.start(true, true));

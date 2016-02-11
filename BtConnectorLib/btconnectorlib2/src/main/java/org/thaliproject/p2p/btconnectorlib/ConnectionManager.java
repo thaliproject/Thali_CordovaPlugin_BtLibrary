@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
@@ -104,12 +104,10 @@ public class ConnectionManager
 
     /**
      * Initializes the components and starts the listener for incoming connections.
-     * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public boolean start(String myPeerName) {
-        Log.i(TAG, "start: Peer name: " + myPeerName);
-        mMyPeerName = myPeerName;
+    public boolean start() {
+        Log.i(TAG, "start");
 
         switch (mState) {
             case NOT_STARTED:
@@ -278,7 +276,7 @@ public class ConnectionManager
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting...");
-                start(mMyPeerName);
+                start();
             }
         }
     }
