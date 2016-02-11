@@ -474,7 +474,7 @@ public class BluetoothConnector
                 this.cancel();
                 long currentTime = new Date().getTime();
                 Iterator<BluetoothClientThread> iterator = mClientThreads.iterator();
-                
+
                 while (iterator.hasNext()) {
                     final BluetoothClientThread bluetoothClientThread = iterator.next();
                     long startedTime = bluetoothClientThread.getTimeStarted();
