@@ -106,11 +106,31 @@ public class PeerModel {
     }
 
     /**
+     * Tries to find a discovered peer with the given Bluetooth MAC address.
+     * @param bluetoothMacAddress The Bluetooth MAC address of a peer to find.
+     * @return A peer properties instance if found, null if not.
+     */
+    public synchronized PeerProperties getDiscoveredPeerByBluetoothMacAddress(final String bluetoothMacAddress) {
+        PeerProperties foundPeerProperties = null;
+
+        for (PeerProperties peerProperties : mDiscoveredPeers.keySet()) {
+            if (peerProperties != null
+                    && peerProperties.getBluetoothMacAddress() != null
+                    && peerProperties.getBluetoothMacAddress().equals(bluetoothMacAddress)) {
+                foundPeerProperties = peerProperties;
+                break;
+            }
+        }
+
+        return foundPeerProperties;
+    }
+
+    /**
      * Tries to find a discovered peer with the given device address.
      * @param deviceAddress The device address of a peer to find.
      * @return A peer properties instance if found, null if not.
      */
-    public synchronized PeerProperties getDiscoveredPeer(final String deviceAddress) {
+    public synchronized PeerProperties getDiscoveredPeerByDeviceAddress(final String deviceAddress) {
         PeerProperties foundPeerProperties = null;
 
         for (PeerProperties peerProperties : mDiscoveredPeers.keySet()) {

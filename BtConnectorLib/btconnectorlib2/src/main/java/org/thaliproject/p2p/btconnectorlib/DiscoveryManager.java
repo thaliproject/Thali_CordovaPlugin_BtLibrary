@@ -202,6 +202,13 @@ public class DiscoveryManager
     }
 
     /**
+     * @return The peer model.
+     */
+    public PeerModel getPeerModel() {
+        return mPeerModel;
+    }
+
+    /**
      * Used to check, if some required permission has not been granted by the user.
      * @return The name of the missing permission or null, if none.
      */
@@ -380,22 +387,6 @@ public class DiscoveryManager
             discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, durationInSeconds);
             mContext.startActivity(discoverableIntent);
         }
-    }
-
-    /**
-     * Adds the given peer to the list of discovered peer, if not already in the list. If the peer
-     * is in the list, its timestamp is updated.
-     *
-     * This method is public so that, for instance, if you get a peer lost event while you still
-     * have an existing connection with that peer, it is definitely not lost and can be added back.
-     * You might also get an incoming connection from a peer that you haven't discovered yet so it
-     * makes sense to add it.
-     *
-     * @param peerProperties The properties of a discovered peer.
-     */
-    public void addOrUpdateDiscoveredPeer(PeerProperties peerProperties) {
-        Log.i(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
-        mPeerModel.addOrUpdateDiscoveredPeer(peerProperties);
     }
 
     @Override
@@ -609,7 +600,7 @@ public class DiscoveryManager
                     Log.d(TAG, "onP2pDeviceListChanged: Peer " + (index + 1) + ": "
                             + wifiP2pDevice.deviceName + " " + wifiP2pDevice.deviceAddress);
 
-                    PeerProperties peerProperties = mPeerModel.getDiscoveredPeer(wifiP2pDevice.deviceAddress);
+                    PeerProperties peerProperties = mPeerModel.getDiscoveredPeerByDeviceAddress(wifiP2pDevice.deviceAddress);
 
                     if (peerProperties != null) {
                         mPeerModel.addOrUpdateDiscoveredPeer(peerProperties);

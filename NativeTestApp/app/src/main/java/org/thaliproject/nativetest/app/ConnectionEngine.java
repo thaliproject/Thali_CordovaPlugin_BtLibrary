@@ -274,7 +274,7 @@ public class ConnectionEngine implements
             if (isIncoming) {
                 // Add peer, if it was not discovered before
                 mModel.addOrUpdatePeer(peerProperties);
-                mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
+                mDiscoveryManager.getPeerModel().addOrUpdateDiscoveredPeer(peerProperties);
             }
 
             // Update the peer name, if already in the model
@@ -402,7 +402,7 @@ public class ConnectionEngine implements
 
         if (mModel.hasConnectionToPeer(peerProperties)) {
             // We are connected so it can't be lost
-            mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
+            mDiscoveryManager.getPeerModel().addOrUpdateDiscoveredPeer(peerProperties);
         } else {
             mModel.removePeer(peerProperties);
             LogFragment.logMessage("Peer " + peerProperties.toString() + " lost");
