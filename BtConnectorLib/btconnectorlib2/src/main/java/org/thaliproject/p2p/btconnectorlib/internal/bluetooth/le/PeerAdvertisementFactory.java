@@ -5,8 +5,10 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le;
 
 import android.annotation.TargetApi;
 import android.bluetooth.le.AdvertiseData;
+import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -22,14 +24,66 @@ class PeerAdvertisementFactory {
     private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
 
     /**
-     * Tries to create an advertise data based on the given peer properties.
-     * @param peerName The peer name.
+     * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
+     *
+     * advertiseData MUST be set to:
+     *
+     *  addManufacturerData() - This MUST NOT be set. We need all the space in the BLE Advertisement we can get.
+     *  addServiceData(serviceDataUuid, serviceData) - serviceDataUuid MUST be set to the Thali service's BLE UUID and serviceData MUST be set to the single byte "0" followed by the Bluetooth MAC address as a byte stream.
+     *  addServiceUuid(serviceUuid) - serviceUuid MUST be set to the Thali service's BLE UUID.
+     *  setIncludeDeviceName() - Must be set to false. We need the space.
+     *  setIncludeTxPowerLevel() - Must be set to false. We need the space.
+     *
      * @param serviceUuid The service UUID.
-     * @param bluetoothAddress The Bluetooth address.
+     * @param bluetoothMacAddress The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
-    public static AdvertiseData createAdvertiseData(String peerName, UUID serviceUuid, String bluetoothAddress) {
-        Log.i(TAG, "createAdvertiseData: From: " + peerName + " " + serviceUuid + " " + bluetoothAddress);
+    public static AdvertiseData createAdvertiseDataToServiceData(UUID serviceUuid, String bluetoothMacAddress) {
+        Log.i(TAG, "createAdvertiseDataToServiceData: Service UUID: \"" + serviceUuid
+                + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
+
+        AdvertiseData advertiseData = null;
+        byte[] bluetoothMacAddressAsByteArray =
+                BlePeerDiscoveryUtils.bluetoothMacAddressToByteArray(bluetoothMacAddress);
+
+        if (bluetoothMacAddressAsByteArray != null) {
+            AdvertiseData.Builder builder = new AdvertiseData.Builder();
+
+            ParcelUuid serviceUuidAsParcelUuid = new ParcelUuid(serviceUuid);
+
+            builder.addServiceUuid(serviceUuidAsParcelUuid);
+            builder.setIncludeDeviceName(false);
+            builder.setIncludeTxPowerLevel(false);
+
+            byte[] serviceDataAsByteArray = new byte[bluetoothMacAddressAsByteArray.length + 1];
+            serviceDataAsByteArray[0] = 0x0;
+
+            for (int i = 0; i < bluetoothMacAddressAsByteArray.length; ++i) {
+                serviceDataAsByteArray[i + 1] = bluetoothMacAddressAsByteArray[i];
+            }
+
+            try {
+                builder.addServiceData(serviceUuidAsParcelUuid, serviceDataAsByteArray);
+                advertiseData = builder.build();
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "createAdvertiseDataToServiceData: " + e.getMessage(), e);
+            }
+        }
+
+        Log.v(TAG, "createAdvertiseDataToServiceData: Created: " + advertiseData);
+        return advertiseData;
+    }
+
+    /**
+     * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
+     * @param serviceUuid The service UUID.
+     * @param bluetoothMacAddress The Bluetooth MAC address.
+     * @return A newly created AdvertiseData instance or null in case of a failure.
+     */
+    public static AdvertiseData createAdvertiseDataToManufacturerData(UUID serviceUuid, String bluetoothMacAddress) {
+        Log.i(TAG, "createAdvertiseDataToManufacturerData: Service UUID: \"" + serviceUuid
+                + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
+
         AdvertiseData advertiseData = null;
         AdvertiseData.Builder builder = new AdvertiseData.Builder();
 
@@ -60,18 +114,18 @@ class PeerAdvertisementFactory {
             //dataOutputStream.writeByte(0xff); // Manufacturer reserved byte
 
             // Insert the Bluetooth address after the UUID (six bytes)
-            int[] bluetoothAddressAsInt8Array = BlePeerDiscoveryUtils.bluetoothAddressToInt8Array(bluetoothAddress);
+            int[] bluetoothMacAddressAsInt8Array = BlePeerDiscoveryUtils.bluetoothAddressToInt8Array(bluetoothMacAddress);
 
-            if (bluetoothAddressAsInt8Array != null
-                    && bluetoothAddressAsInt8Array.length == BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
-                for (int bluetoothAddressByte : bluetoothAddressAsInt8Array) {
+            if (bluetoothMacAddressAsInt8Array != null
+                    && bluetoothMacAddressAsInt8Array.length == BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+                for (int bluetoothAddressByte : bluetoothMacAddressAsInt8Array) {
                     dataOutputStream.writeByte(bluetoothAddressByte);
                 }
 
                 ok = true;
             }
         } catch (IOException e) {
-            Log.e(TAG, "createAdvertiseData: " + e.getMessage(), e);
+            Log.e(TAG, "createAdvertiseDataToManufacturerData: " + e.getMessage(), e);
         }
 
         if (ok) {
@@ -81,8 +135,11 @@ class PeerAdvertisementFactory {
                 builder.addManufacturerData(MANUFACTURER_ID, byteArrayOutputStream.toByteArray());
                 ok = true;
             } catch (IllegalArgumentException e) {
-                Log.e(TAG, "createAdvertiseData: " + e.getMessage(), e);
+                Log.e(TAG, "createAdvertiseDataToManufacturerData: " + e.getMessage(), e);
             }
+
+            builder.setIncludeDeviceName(false);
+            builder.setIncludeTxPowerLevel(false);
         }
 
         if (ok) {
@@ -166,7 +223,7 @@ class PeerAdvertisementFactory {
             while (serviceUuid.compareTo(provideBluetoothMacAddressRequestUuid) == 0) {
                 StringBuilder stringBuilder = new StringBuilder();
 
-                for (int i = 0; i < BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
+                for (int i = 0; i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
                     stringBuilder.append(BlePeerDiscoveryUtils.generatedRandomByteAsHexString());
                 }
 
@@ -189,7 +246,7 @@ class PeerAdvertisementFactory {
     public static String parseRequestIdFromUuid(UUID provideBluetoothMacAddressRequestUuid) {
         String uuidAsString = provideBluetoothMacAddressRequestUuid.toString();
         return uuidAsString.substring(
-                uuidAsString.length() - BlePeerDiscoveryUtils.BLUETOOTH_ADDRESS_BYTE_COUNT * 2,
+                uuidAsString.length() - BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT * 2,
                 uuidAsString.length());
     }
 }

@@ -1,22 +1,28 @@
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
+ * See the license file delivered with this project for further information.
+ */
 package org.thaliproject.p2p.btconnectorlib.internal;
 
 import android.content.Context;
-import android.os.Build;
 import android.util.Log;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
 /**
- * An abstract base class for classes utilizing Bluetooth connectivity and need to validate the
- * identity string. For internal use of the library only.
+ * An abstract base class for classes utilizing Bluetooth connectivity that need to validate the
+ * identity string. For internal use only.
  */
 public abstract class AbstractBluetoothConnectivityAgent implements BluetoothManager.BluetoothManagerListener {
     protected static String TAG = AbstractBluetoothConnectivityAgent.class.getName();
+    protected static final String JSON_ID_PEER_NAME = "name";
+    protected static final String JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS = "address";
     protected final BluetoothManager mBluetoothManager;
-    protected String mMyPeerId = null;
-    protected String mMyPeerName = null;
+    protected String mMyPeerName = PeerProperties.NO_PEER_NAME_STRING;
     protected String mMyIdentityString = "";
     protected boolean mEmulateMarshmallow = false;
 
@@ -26,6 +32,30 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      */
     public AbstractBluetoothConnectivityAgent(Context context) {
         mBluetoothManager = BluetoothManager.getInstance(context);
+    }
+
+    /**
+     * Sets the peer name. Not mandatory - the functionality is 100 % even when not set.
+     * The name is used in the identity string.
+     * @param myPeerName Our peer name.
+     */
+    public void setPeerName(String myPeerName) {
+        if (!mMyPeerName.equals(myPeerName)) {
+            Log.i(TAG, "setPeerName: " + myPeerName);
+            mMyPeerName = myPeerName;
+        }
+    }
+
+    /**
+     * Releases resources.
+     *
+     * Should be called when getting rid of the instance. Note that after calling this method you
+     * should not use the instance anymore. Instead, if needed again, you must reconstruct the
+     * instance.
+     */
+    public void dispose() {
+        // No default implementation
+        Log.d(TAG, "dispose");
     }
 
     /**
@@ -76,6 +106,27 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         mMyIdentityString = null;
     }
 
+    @Override
+    abstract public void onBluetoothAdapterScanModeChanged(int mode);
+
+    /**
+     * Resolves the peer properties from the given identity string.
+     * @param identityString The identity string.
+     * @param peerProperties The peer properties to contain the resolved values.
+     * @return True, if all the properties contain data (not validated though). False otherwise.
+     * @throws JSONException
+     */
+    public static boolean getPropertiesFromIdentityString(
+            String identityString, PeerProperties peerProperties)
+            throws JSONException {
+
+        JSONObject jsonObject = new JSONObject(identityString);
+        peerProperties.setName(jsonObject.getString(JSON_ID_PEER_NAME));
+        peerProperties.setBluetoothMacAddress(jsonObject.getString(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS));
+
+        return peerProperties.isValid();
+    }
+
     /**
      * Verifies the validity of our identity string. If not yet created, will try to create it.
      * If the identity string already exists, it won't be recreated.
@@ -85,19 +136,17 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         String bluetoothMacAddress = getBluetoothMacAddress();
 
         if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
-            if (isNonEmptyString(mMyPeerId) && isNonEmptyString(mMyPeerName)
+            if (CommonUtils.isNonEmptyString(mMyPeerName)
                     && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
                 try {
-                    mMyIdentityString = CommonUtils.createIdentityString(
-                            mMyPeerId, mMyPeerName, bluetoothMacAddress);
+                    mMyIdentityString = createIdentityString(mMyPeerName, bluetoothMacAddress);
                     Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
                 } catch (JSONException e) {
                     Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
                 }
             } else {
                 Log.d(TAG, "verifyIdentityString: One or more of the following values are invalid: "
-                        + "Peer ID: \"" + mMyPeerId
-                        + "\", peer name: \"" + mMyPeerName
+                        + "Peer name: \"" + mMyPeerName
                         + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
             }
         }
@@ -105,14 +154,39 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         return (mMyIdentityString != null && mMyIdentityString.length() > 0);
     }
 
-    @Override
-    abstract public void onBluetoothAdapterScanModeChanged(int mode);
+    /**
+     * Creates an identity string based on the given arguments.
+     * @param name The peer name.
+     * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
+     * @return An identity string or null in case of a failure.
+     * @throws JSONException
+     */
+    private String createIdentityString(String name, String bluetoothMacAddress)
+            throws JSONException {
+
+        String identityString = null;
+        JSONObject jsonObject = new JSONObject();
+
+        try {
+            jsonObject.put(JSON_ID_PEER_NAME, name);
+            jsonObject.put(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS, bluetoothMacAddress);
+            identityString = jsonObject.toString();
+        } catch (JSONException e) {
+            Log.e(TAG, "createIdentityString: Failed to construct a JSON object (from data "
+                    + name + " " + bluetoothMacAddress + "): " + e.getMessage(), e);
+            throw e;
+        }
+
+        return identityString;
+    }
 
     /**
-     * @param stringToCheck The string to check.
-     * @return True, if the given string is not null and not empty.
+     * Creates an identity string based on the given properties.
+     * @param peerProperties The peer properties.
+     * @return An identity string or null in case of a failure.
+     * @throws JSONException
      */
-    private boolean isNonEmptyString(String stringToCheck) {
-        return (stringToCheck != null && stringToCheck.length() > 0);
+    public String createIdentityString(PeerProperties peerProperties) throws JSONException {
+        return createIdentityString(peerProperties.getName(), peerProperties.getBluetoothMacAddress());
     }
 }

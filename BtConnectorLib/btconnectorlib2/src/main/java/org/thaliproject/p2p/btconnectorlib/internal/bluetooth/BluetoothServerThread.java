@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
@@ -7,10 +7,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
-import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,8 +47,8 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mBluetoothUuid;
     private final String mBluetoothName;
-    private BluetoothServerSocket mServerSocket = null;
     private final String mMyIdentityString;
+    private BluetoothServerSocket mServerSocket = null;
     private boolean mStopThread = false;
 
     /**
@@ -59,13 +57,13 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param myBluetoothUuid Our Bluetooth UUID for the server socket.
      * @param myBluetoothName Our Bluetooth name for the server socket.
-     * @param myIdentityString The identity string for the response.
+     * @param myIndentityString Our identity (possible name and the Bluetooth MAC address).
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
      * @throws IOException Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
      */
     public BluetoothServerThread(
             Listener listener, BluetoothAdapter bluetoothAdapter,
-            UUID myBluetoothUuid, String myBluetoothName, String myIdentityString)
+            UUID myBluetoothUuid, String myBluetoothName, String myIndentityString)
             throws NullPointerException, IOException {
         if (listener == null || bluetoothAdapter == null)
         {
@@ -76,7 +74,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
         mBluetoothAdapter = bluetoothAdapter;
         mBluetoothUuid = myBluetoothUuid;
         mBluetoothName = myBluetoothName;
-        mMyIdentityString = myIdentityString;
+        mMyIdentityString = myIndentityString;
     }
 
     /**
@@ -121,7 +119,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                     }
 
                     if (handshakeThread != null) {
-                        handshakeThread.setDefaultUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                        handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                         handshakeThread.setExitThreadAfterRead(true);
                         mSocketIoThreads.add(handshakeThread);
                         handshakeThread.start();
@@ -165,8 +163,8 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     }
 
     /**
-     * Validates the read message, which should contain the identity of the peer, and if OK, will
-     * try to response with own identity.
+     * Validates the read message, which should contain the identity of the peer, and if OK, we will
+     * try to respond with our own identity.
      * @param bytes The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
@@ -175,33 +173,22 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
-        String identityString = new String(bytes);
-        PeerProperties peerProperties = new PeerProperties();
-        boolean resolvedPropertiesOk = false;
 
-        if (!identityString.isEmpty()) {
-            try {
-                resolvedPropertiesOk =
-                        CommonUtils.getPropertiesFromIdentityString(identityString, peerProperties);
-            } catch (JSONException e) {
-                Log.e(TAG, "Failed to resolve peer properties: " + e.getMessage(), e);
+        PeerProperties peerProperties =
+                BluetoothUtils.validateReceivedHandshakeMessage(bytes, who.getSocket());
+
+        if (peerProperties != null) {
+            Log.i(TAG, "Got valid identity from " + peerProperties.toString());
+
+            // Set the resolved properties to the associated thread
+            who.setPeerProperties(peerProperties);
+
+            // Respond to client
+            if (!who.write(mMyIdentityString.getBytes())) {
+                Log.e(TAG, "Failed to respond to thread with ID " + threadId);
+                removeThreadFromList(threadId, true);
             }
-
-            if (resolvedPropertiesOk) {
-                Log.i(TAG, "Got valid identity from " + peerProperties.toString());
-
-                // Set the resolved properties to the associated thread
-                who.setPeerProperties(peerProperties);
-
-                // Respond by sending our identification
-                if (!who.write(mMyIdentityString.getBytes())) {
-                    Log.e(TAG, "Failed to respond to thread with ID " + threadId);
-                    removeThreadFromList(threadId, true);
-                }
-            }
-        }
-
-        if (!resolvedPropertiesOk) {
+        } else {
             Log.e(TAG, "Failed to receive valid identity (thread ID: " + threadId + ")");
             removeThreadFromList(threadId, true);
         }

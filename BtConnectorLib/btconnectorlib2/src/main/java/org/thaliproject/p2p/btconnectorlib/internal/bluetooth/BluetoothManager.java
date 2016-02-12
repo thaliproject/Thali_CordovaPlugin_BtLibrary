@@ -12,11 +12,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.util.Log;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
-import java.util.ArrayList;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
- * Manages the device Bluetooth settings and provides information on Bluetooth status on the
+ * Manages the device Bluetooth settings and provides information on the status of the Bluetooth
  * device.
  */
 public class BluetoothManager {
@@ -35,7 +35,7 @@ public class BluetoothManager {
     private static BluetoothManager mInstance = null;
     private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
-    private final ArrayList<BluetoothManagerListener> mListeners = new ArrayList<>();
+    private final CopyOnWriteArrayList<BluetoothManagerListener> mListeners = new CopyOnWriteArrayList<>();
     private BluetoothModeBroadcastReceiver mBluetoothBroadcastReceiver = null;
     private boolean mInitialized = false;
 
@@ -121,8 +121,10 @@ public class BluetoothManager {
     public boolean isBleMultipleAdvertisementSupported() {
         boolean isSupported = false;
 
-        if (CommonUtils.isLollipopOrHigher() && mBluetoothAdapter != null) {
-            isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+        if (CommonUtils.isLollipopOrHigher()) {
+            if (mBluetoothAdapter != null) {
+                isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+            }
         } else {
             Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");
         }

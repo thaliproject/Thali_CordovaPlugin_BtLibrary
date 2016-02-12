@@ -10,17 +10,16 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.internal.BluetoothMacAddressResolutionHelper;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
-import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BluetoothGattManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 import java.util.Collection;
 import java.util.Date;
@@ -37,6 +36,7 @@ public class DiscoveryManager
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
             BlePeerDiscoverer.BlePeerDiscoveryListener,
             BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener,
+            BluetoothMacAddressResolutionHelper.BluetoothMacAddressResolutionHelperListener,
             PeerModel.Listener,
             DiscoveryManagerSettings.Listener {
 
@@ -62,8 +62,8 @@ public class DiscoveryManager
          * Called when a permission check for a certain functionality is needed. The activity
          * utilizing this class then needs to perform the check and return true, if allowed.
          *
-         * Note: The permission check is only needed if ran on Marshmallow (Android version 6.x)
-         * or higher.
+         * Note: The permission check is only needed if we are running on Marshmallow
+         * (Android version 6.x) or higher.
          *
          * @param permission The permission to check.
          * @return True, if permission is granted. False, if not.
@@ -77,13 +77,12 @@ public class DiscoveryManager
         void onDiscoveryManagerStateChanged(DiscoveryManagerState state);
 
         /**
-         * Called when we discovery a device, which needs to find out its own Bluetooth MAC address.
+         * Called when we discovery a device that needs to find out its own Bluetooth MAC address.
+         *
+         * Part of Bro Mode.
          *
          * Note: If the Bluetooth MAC address resolution process is set to be automated, this
          * callback will not be called.
-         *
-         * Note: This callback is not being used and thus not tested constantly so there is no
-         * guarantee it'll work flawlessly.
          *
          * @param requestId The request ID associated with the device.
          */
@@ -94,19 +93,17 @@ public class DiscoveryManager
          * via Bluetooth device discovery. After receiving this event, we should make our device
          * discoverable via Bluetooth.
          *
+         * Part of Bro Mode.
+         *
          * Note: If the Bluetooth MAC address resolution process is set to be automated, this
          * callback will not be called.
-         *
-         * Note: This callback is not being used and thus not tested constantly so there is no
-         * guarantee it'll work flawlessly.
          */
         void onPeerReadyToProvideBluetoothMacAddress();
 
         /**
          * Called when the Bluetooth MAC address of this device is resolved.
          *
-         * Note: This callback is not being used and thus not tested constantly so there is no
-         * guarantee it'll work flawlessly.
+         * Part of Bro Mode.
          *
          * @param bluetoothMacAddress The Bluetooth MAC address.
          */
@@ -150,7 +147,8 @@ public class DiscoveryManager
     private String mMissingPermission = null;
     private long mLastTimeDeviceWasMadeDiscoverable = 0;
     private int mPreviousDeviceDiscoverableTimeInSeconds = 0;
-    private boolean mShouldBeRunning = false;
+    private boolean mShouldBeScanning = false;
+    private boolean mShouldBeAdvertising = false;
 
     /**
      * Constructor.
@@ -190,10 +188,24 @@ public class DiscoveryManager
     }
 
     /**
+     * @return True, if Wi-Fi Direct is supported. False otherwise.
+     */
+    public boolean isWifiDirectSupported() {
+        return mWifiDirectManager.isWifiDirectSupported();
+    }
+
+    /**
      * @return The current state.
      */
     public DiscoveryManagerState getState() {
         return mState;
+    }
+
+    /**
+     * @return The peer model.
+     */
+    public PeerModel getPeerModel() {
+        return mPeerModel;
     }
 
     /**
@@ -218,17 +230,19 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
-     * @param myPeerId Our peer ID (used for the identity).
-     * @param myPeerName Our peer name (used for the identity).
+     * @param startDiscovery If true, will start the scanner/discovery.
+     * @param startAdvertising If true, will start the advertiser.
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public synchronized boolean start(String myPeerId, String myPeerName) {
+    public synchronized boolean start(boolean startDiscovery, boolean startAdvertising) {
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
-        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName + ", mode: " + discoveryMode);
-        mShouldBeRunning = true;
-        mMyPeerId = myPeerId;
-        mMyPeerName = myPeerName;
 
+        Log.i(TAG, "start: Discovery mode: " + discoveryMode
+                + ", start discovery: " + startDiscovery
+                + ", start advertiser: " + startAdvertising);
+
+        mShouldBeScanning = startDiscovery;
+        mShouldBeAdvertising = startAdvertising;
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
@@ -240,7 +254,7 @@ public class DiscoveryManager
                 if (mBluetoothManager.isBluetoothEnabled()) {
                     // Try to start BLE based discovery
                     stopBluetoothDeviceDiscovery();
-                    bleDiscoveryStarted = startBlePeerDiscoverer();
+                    bleDiscoveryStarted = startBlePeerDiscoverer(mShouldBeScanning, mShouldBeAdvertising);
                 } else {
                     Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
                 }
@@ -250,7 +264,7 @@ public class DiscoveryManager
                 if (mWifiDirectManager.isWifiEnabled()) {
                     if (verifyIdentityString()) {
                         // Try to start Wi-Fi Direct based discovery
-                        wifiDiscoveryStarted = startWifiPeerDiscovery();
+                        wifiDiscoveryStarted = startWifiPeerDiscovery(mShouldBeScanning, mShouldBeAdvertising);
                     } else {
                         if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
                             Log.e(TAG, "start: Identity string is null or empty");
@@ -286,6 +300,8 @@ public class DiscoveryManager
                 }
 
                 Log.i(TAG, "start: OK");
+            } else {
+                setState(DiscoveryManagerState.NOT_STARTED);
             }
         } else {
             Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
@@ -295,13 +311,41 @@ public class DiscoveryManager
     }
 
     /**
-     * Starts the peer discovery.
-     * This method uses the Bluetooth MAC address to set the value of the peer ID.
-     * @param myPeerName Our peer name (used for the identity).
-     * @return True, if started successfully or was already running. False otherwise.
+     * Stops discovery. Call start() with startDiscovery argument as 'true' to restart.
      */
-    public boolean start(String myPeerName) {
-        return start(getBluetoothMacAddress(), myPeerName);
+    public synchronized void stopDiscovery() {
+        if (mShouldBeScanning) {
+            Log.i(TAG, "stopDiscovery");
+        }
+
+        mShouldBeScanning = false;
+
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.stopScanner();
+        }
+
+        if (mWifiPeerDiscoverer != null) {
+            mWifiPeerDiscoverer.stopDiscoverer();
+        }
+    }
+
+    /**
+     * Stops advertising. Call start() with startAdvertising argument as 'true' to restart.
+     */
+    public synchronized void stopAdvertising() {
+        if (mShouldBeAdvertising) {
+            Log.i(TAG, "stopAdvertising");
+        }
+
+        mShouldBeAdvertising = false;
+
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.stopAdvertiser();
+        }
+
+        if (mWifiPeerDiscoverer != null) {
+            mWifiPeerDiscoverer.stopAdvertiser();
+        }
     }
 
     /**
@@ -313,7 +357,8 @@ public class DiscoveryManager
             Log.i(TAG, "stop: Stopping peer discovery...");
         }
 
-        mShouldBeRunning = false;
+        mShouldBeScanning = false;
+        mShouldBeAdvertising = false;
 
         stopForRestart();
 
@@ -344,78 +389,56 @@ public class DiscoveryManager
         }
     }
 
+    @Override
+    public void dispose() {
+        Log.i(TAG, "dispose");
+        super.dispose();
+
+        if (mState != DiscoveryManagerState.NOT_STARTED) {
+            stop();
+        }
+
+        mSettings.removeListener(this);
+    }
+
     /**
-     * Adds the given peer to the list of discovered peer, if not already in the list. If the peer
-     * is in the list, its timestamp is updated.
-     *
-     * This method is public so that, for instance, if you get a peer lost event while you still
-     * have an existing connection with that peer, it is definitely not lost and can be added back.
-     * You might also get an incoming connection from a peer that you haven't discovered yet so it
-     * makes sense to add it.
-     *
-     * @param peerProperties The properties of a discovered peer.
+     * Constructs the BlePeerDiscoverer instance, if one does not already exist.
+     * @return The BlePeerDiscoverer instance.
      */
-    public void addOrUpdateDiscoveredPeer(PeerProperties peerProperties) {
-        Log.i(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
-        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true);
+    public BlePeerDiscoverer getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
+        if (mBlePeerDiscoverer == null) {
+            Log.v(TAG, "getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
+            mBlePeerDiscoverer = new BlePeerDiscoverer(
+                    this,
+                    mBluetoothManager.getBluetoothAdapter(),
+                    mBleServiceUuid,
+                    mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
+                    getBluetoothMacAddress(),
+                    BlePeerDiscoverer.AdvertisementDataType.SERVICE_DATA);
+        }
+
+        if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
+                && BluetoothUtils.isValidBluetoothMacAddress(getBluetoothMacAddress())) {
+            Log.v(TAG, "getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Updating Bluetooth MAC address...");
+            mBlePeerDiscoverer.setBluetoothMacAddress(getBluetoothMacAddress());
+        }
+
+        return mBlePeerDiscoverer;
     }
 
     /**
      * From DiscoveryManagerSettings.Listener
      * @param discoveryMode The new discovery mode.
-     * @param forceRestart If true, should restart.
-     * @return True, if the mode was set successfully. False otherwise.
+     * @param startIfNotRunning If true, will start even if the discovery wasn't running.
      */
     @Override
-    public boolean onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean forceRestart) {
-        boolean wasRunning = (mState != DiscoveryManagerState.NOT_STARTED);
-        boolean discoveryModeSet = false;
-
-        if (wasRunning || forceRestart) {
+    public void onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
+        if (mState != DiscoveryManagerState.NOT_STARTED) {
             stopForRestart();
+            start(mShouldBeScanning, mShouldBeAdvertising);
+        } else if (startIfNotRunning) {
+            start(true, true);
         }
-
-        if (!wasRunning || forceRestart) {
-            boolean isBleMultipleAdvertisementSupported = isBleMultipleAdvertisementSupported();
-            boolean isWifiSupported = mWifiDirectManager.isWifiDirectSupported();
-
-            switch (discoveryMode) {
-                case BLE:
-                    if (isBleMultipleAdvertisementSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case WIFI:
-                    if (isWifiSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-
-                case BLE_AND_WIFI:
-                    if (isBleMultipleAdvertisementSupported && isWifiSupported) {
-                        discoveryModeSet = true;
-                    }
-
-                    break;
-            }
-
-            if (!discoveryModeSet) {
-                Log.w(TAG, "onDiscoveryModeChanged: Failed to set discovery mode to " + discoveryMode
-                        + ", BLE advertisement supported: " + isBleMultipleAdvertisementSupported
-                        + ", Wi-Fi supported: " + isWifiSupported);
-            } else {
-                Log.i(TAG, "onDiscoveryModeChanged: Mode set to " + discoveryMode);
-            }
-        }
-
-        if (discoveryModeSet && (wasRunning || forceRestart)) {
-            discoveryModeSet = start(mMyPeerName);
-        }
-
-        return discoveryModeSet;
     }
 
     /**
@@ -424,7 +447,7 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
-        mPeerModel.updatePeerExpirationTime(peerExpirationInMilliseconds);
+        mPeerModel.onPeerExpirationTimeChanged();
     }
 
     /**
@@ -435,18 +458,23 @@ public class DiscoveryManager
     @Override
     public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(advertiseMode, advertiseTxPowerLevel, mSettings.getScanMode());
+            mBlePeerDiscoverer.applySettings(
+                    advertiseMode, advertiseTxPowerLevel,
+                    mSettings.getScanMode(), mSettings.getScanReportDelay());
         }
     }
 
     /**
      * From DiscoveryManagerSettings.Listener
      * @param scanMode The new scan mode.
+     * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
      */
     @Override
-    public void onScanModeSettingChanged(int scanMode) {
+    public void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(), scanMode);
+            mBlePeerDiscoverer.applySettings(
+                    mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(),
+                    scanMode, scanReportDelayInMilliseconds);
         }
     }
 
@@ -477,10 +505,11 @@ public class DiscoveryManager
                     }
                 }
             } else {
-                if (mShouldBeRunning && mBluetoothManager.isBluetoothEnabled()
+                if ((mShouldBeScanning || mShouldBeAdvertising)
+                        && mBluetoothManager.isBluetoothEnabled()
                         && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
-                    start(mMyPeerId, mMyPeerName);
+                    start(mShouldBeScanning, mShouldBeAdvertising);
                 }
             }
         }
@@ -513,9 +542,9 @@ public class DiscoveryManager
                     }
                 }
             } else {
-                if (mShouldBeRunning) {
+                if (mShouldBeScanning || mShouldBeAdvertising) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
-                    start(mMyPeerId, mMyPeerName);
+                    start(mShouldBeScanning, mShouldBeAdvertising);
                 }
             }
         }
@@ -525,11 +554,11 @@ public class DiscoveryManager
      * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
      *
      * Does nothing but logs the event.
-     * @param isStarted If true, the discovery was started. If false, it was stopped.
+     * @param state The new state.
      */
     @Override
-    public void onIsWifiPeerDiscoveryStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsWifiPeerDiscoveryStartedChanged: " + isStarted);
+    public void onWifiPeerDiscovererStateChanged(EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet> state) {
+        Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + state);
     }
 
     /**
@@ -552,7 +581,7 @@ public class DiscoveryManager
     @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
         //Log.d(TAG, "onPeerDiscovered: " + peerProperties.toString());
-        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true); // Will notify us, if added/updated
+        mPeerModel.addOrUpdateDiscoveredPeer(peerProperties); // Will notify us, if added/updated
     }
 
     /**
@@ -562,30 +591,31 @@ public class DiscoveryManager
      * @param p2pDeviceList A list containing the discovered P2P devices.
      */
     @Override
-    public void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
+    public synchronized void onP2pDeviceListChanged(Collection<WifiP2pDevice> p2pDeviceList) {
         if (p2pDeviceList != null && p2pDeviceList.size() > 0) {
-            final Object[] p2pDeviceArray = p2pDeviceList.toArray();
-            WifiP2pDevice wifiP2pDevice = null;
+            int index = 0;
 
-            for (int i = 0; i < p2pDeviceArray.length; ++i) {
-                wifiP2pDevice = (WifiP2pDevice)p2pDeviceArray[i];
-
+            for (WifiP2pDevice wifiP2pDevice : p2pDeviceList) {
                 if (wifiP2pDevice != null) {
-                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (i + 1) + ": "
+                    Log.d(TAG, "onP2pDeviceListChanged: Peer " + (index + 1) + ": "
                             + wifiP2pDevice.deviceName + " " + wifiP2pDevice.deviceAddress);
 
-                    PeerProperties peerProperties = mPeerModel.findDiscoveredPeer(wifiP2pDevice.deviceAddress);
+                    PeerProperties peerProperties = mPeerModel.getDiscoveredPeerByDeviceAddress(wifiP2pDevice.deviceAddress);
 
                     if (peerProperties != null) {
-                        mPeerModel.modifyListOfDiscoveredPeers(peerProperties, true);
+                        mPeerModel.addOrUpdateDiscoveredPeer(peerProperties);
                     }
                 }
+
+                index++;
             }
         }
     }
 
     /**
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
+     * Part of Bro Mode.
      *
      * Forwards the event to the listener, if the Bluetooth MAC address resolution process is not
      * set to be automated.
@@ -624,6 +654,8 @@ public class DiscoveryManager
     /**
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
      *
+     * Part of Bro Mode.
+     *
      * Forwards the event to the listener, if the Bluetooth MAC address resolution process is not
      * set to be automated.
      *
@@ -649,6 +681,9 @@ public class DiscoveryManager
 
     /**
      * From both BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
+     * Part of Bro Mode.
+     *
      * @param requestId The request ID associated with the device in need of assistance.
      * @param wasCompleted True, if the operation was completed.
      */
@@ -660,17 +695,15 @@ public class DiscoveryManager
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                if (mShouldBeRunning) {
-                    start(mMyPeerName);
-                } else {
-                    setState(DiscoveryManagerState.NOT_STARTED);
-                }
+                start(mShouldBeScanning, mShouldBeAdvertising);
             }
         });
     }
 
     /**
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
+     *
+     * Part of Bro Mode.
      *
      * Stores and forwards the resolved Bluetooth MAC address to the listener.
      * @param bluetoothMacAddress Our Bluetooth MAC address.
@@ -686,14 +719,8 @@ public class DiscoveryManager
                 @Override
                 public void run() {
                     mListener.onBluetoothMacAddressResolved(bluetoothMacAddress);
-
                     mBluetoothMacAddressResolutionHelper.stopReceiveBluetoothMacAddressMode();
-
-                    if (mShouldBeRunning) {
-                        start(mMyPeerName);
-                    }  else {
-                        setState(DiscoveryManagerState.NOT_STARTED);
-                    }
+                    start(mShouldBeScanning, mShouldBeAdvertising);
                 }
             });
         }
@@ -701,6 +728,8 @@ public class DiscoveryManager
 
     /**
      * From BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener
+     *
+     * Part of Bro Mode.
      *
      * Initiates the operation to read the Bluetooth GATT characteristic containing the request ID
      * from a GATT service of the given Bluetooth device.
@@ -711,6 +740,55 @@ public class DiscoveryManager
         String bluetoothMacAddress = bluetoothDevice.getAddress();
         Log.d(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
         mBluetoothMacAddressResolutionHelper.provideBluetoothMacAddressToDevice(bluetoothDevice);
+    }
+
+    /**
+     * From BluetoothMacAddressResolutionHelper.BluetoothMacAddressResolutionHelperListener
+     *
+     * Part of Bro Mode.
+     *
+     * Changes the state based on the given argument.
+     * @param isStarted If true, was started. If false, was stopped.
+     */
+    @Override
+    public void onProvideBluetoothMacAddressModeStartedChanged(final boolean isStarted) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (isStarted) {
+                    setState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
+                } else {
+                    stopBluetoothDeviceDiscovery();
+                    stopBlePeerDiscoverer(false);
+                    start(mShouldBeScanning, mShouldBeAdvertising);
+                }
+            }
+        });
+    }
+
+    /**
+     * From BluetoothMacAddressResolutionHelper.BluetoothMacAddressResolutionHelperListener
+     *
+     * Part of Bro Mode.
+     *
+     * Changes the state based on the given argument.
+     * @param isStarted If true, was started. If false, was stopped.
+     */
+    @Override
+    public void onReceiveBluetoothMacAddressModeStartedChanged(final boolean isStarted) {
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                if (isStarted) {
+                    if (mBlePeerDiscoverer != null) {
+                        Log.v(TAG, "onReceiveBluetoothMacAddressModeStartedChanged: Stopping BLE scanning in order to increase the bandwidth for GATT");
+                        mBlePeerDiscoverer.stopScanner();
+                    }
+                } else {
+                    start(mShouldBeScanning, mShouldBeAdvertising);
+                }
+            }
+        });
     }
 
     /**
@@ -781,9 +859,11 @@ public class DiscoveryManager
 
     /**
      * Tries to start the BLE peer discoverer.
+     * @param startScanner If true, will start the scanner.
+     * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startBlePeerDiscoverer() {
+    private synchronized boolean startBlePeerDiscoverer(boolean startScanner, boolean startAdvertising) {
         boolean started = false;
         boolean permissionsGranted = false;
 
@@ -796,10 +876,16 @@ public class DiscoveryManager
 
         if (permissionsGranted) {
             if (mBluetoothManager.bind(this)) {
-                constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
+                getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
-                    started = mBlePeerDiscoverer.start();
+                    if (startScanner && startAdvertising) {
+                        started = mBlePeerDiscoverer.startScannerAndAdvertiser();
+                    } else if (startScanner) {
+                        started = mBlePeerDiscoverer.startScanner();
+                    } else if (startAdvertising) {
+                        started = mBlePeerDiscoverer.startAdvertiser();
+                    }
                 } else {
                     Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");
                 }
@@ -822,7 +908,7 @@ public class DiscoveryManager
      */
     private synchronized void stopBlePeerDiscoverer(boolean updateState) {
         if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.stop();
+            mBlePeerDiscoverer.stopScannerAndAdvertiser();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
 
@@ -839,9 +925,11 @@ public class DiscoveryManager
     /**
      * Tries to start the Wi-Fi Direct based peer discovery.
      * Note that this method does not validate the current state nor the identity string.
+     * @param startDiscoverer If true, will start the discoverer.
+     * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startWifiPeerDiscovery() {
+    private synchronized boolean startWifiPeerDiscovery(boolean startDiscoverer, boolean startAdvertising) {
         boolean started = false;
 
         if (mWifiDirectManager.bind(this)) {
@@ -852,16 +940,23 @@ public class DiscoveryManager
                 if (p2pManager != null && channel != null) {
                     mWifiPeerDiscoverer = new WifiPeerDiscoverer(
                             mContext, channel, p2pManager, this, mServiceType, mMyIdentityString);
-
-                    mWifiPeerDiscoverer.start();
                 } else {
                     Log.e(TAG, "startWifiPeerDiscovery: Failed to get Wi-Fi P2P manager or channel");
                 }
             }
 
             if (mWifiPeerDiscoverer != null) {
-                started = mWifiPeerDiscoverer.start();
-                Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
+                if (startDiscoverer && startAdvertising) {
+                    started = mWifiPeerDiscoverer.startDiscovererAndAdvertiser();
+                } else if (startDiscoverer) {
+                    started = mWifiPeerDiscoverer.startDiscoverer();
+                } else if (startAdvertising) {
+                    started = mWifiPeerDiscoverer.startAdvertiser();
+                }
+
+                if (started) {
+                    Log.d(TAG, "startWifiPeerDiscovery: Wi-Fi Direct OK");
+                }
             }
         } else {
             Log.e(TAG, "startWifiPeerDiscovery: Failed to start, this may indicate that Wi-Fi Direct is not supported on this device");
@@ -876,7 +971,7 @@ public class DiscoveryManager
      */
     private synchronized void stopWifiPeerDiscovery(boolean updateState) {
         if (mWifiPeerDiscoverer != null) {
-            mWifiPeerDiscoverer.stop();
+            mWifiPeerDiscoverer.stopDiscovererAndAdvertiser();
             mWifiPeerDiscoverer = null;
             Log.i(TAG, "stopWifiPeerDiscovery: Stopped");
 
@@ -968,319 +1063,6 @@ public class DiscoveryManager
                     }
                 });
             }
-        }
-    }
-
-    /**
-     * Constructs the BlePeerDiscoverer instance, if one does not already exist.
-     */
-    private void constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
-        if (mBlePeerDiscoverer == null) {
-            Log.v(TAG, "constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
-            mBlePeerDiscoverer = new BlePeerDiscoverer(
-                    this, mBluetoothManager.getBluetoothAdapter(),
-                    mMyPeerName, mBleServiceUuid,
-                    mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
-                    getBluetoothMacAddress());
-        }
-
-        if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
-                && BluetoothUtils.isValidBluetoothMacAddress(getBluetoothMacAddress())) {
-            Log.v(TAG, "constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Updating Bluetooth MAC address...");
-            mBlePeerDiscoverer.setBluetoothMacAddress(getBluetoothMacAddress());
-        }
-    }
-
-    /**
-     * A helper class to manage providing peer/receiving Bluetooth MAC address.
-     */
-    private class BluetoothMacAddressResolutionHelper implements BluetoothGattManager.BluetoothGattManagerListener {
-        private final String TAG = DiscoveryManager.class.getName()
-                + "/" + BluetoothMacAddressResolutionHelper.class.getSimpleName();
-
-        protected final UUID mProvideBluetoothMacAddressRequestUuid;
-        private final DiscoveryManager mDiscoveryManager;
-        private final DiscoveryManagerSettings mSettings;
-        private final BluetoothGattManager mBluetoothGattManager;
-
-        private CountDownTimer mReceiveBluetoothMacAddressTimeoutTimer = null;
-        private String mCurrentProvideBluetoothMacAddressRequestId = null;
-        private boolean mIsProvideBluetoothMacAddressModeStarted = false;
-        private boolean mIsReceiveBluetoothMacAddressModeStarted = false;
-
-        /**
-         * Constructor.
-         * @param context The application context.
-         * @param discoveryManager The discovery manager instance.
-         * @param bleServiceUuid Our BLE service UUID for the Bluetooth GATT manager.
-         * @param provideBluetoothMacAddressRequestUuid The UUID for "Provide Bluetooth MAC address" request.
-         */
-        public BluetoothMacAddressResolutionHelper(
-                Context context, DiscoveryManager discoveryManager, UUID bleServiceUuid, UUID provideBluetoothMacAddressRequestUuid) {
-            mDiscoveryManager = discoveryManager;
-            mBluetoothGattManager = new BluetoothGattManager(this, context, bleServiceUuid);
-            mSettings = DiscoveryManagerSettings.getInstance(context);
-            mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
-        }
-
-        /**
-         * @return The UUID for "Provide Bluetooth MAC address" request.
-         */
-        public UUID getProvideBluetoothMacAddressRequestUuid() {
-            return mProvideBluetoothMacAddressRequestUuid;
-        }
-
-        /**
-         * @return The request ID of the current "Provide Bluetooth MAC address" request.
-         */
-        public String getCurrentProvideBluetoothMacAddressRequestId() {
-            return mCurrentProvideBluetoothMacAddressRequestId;
-        }
-
-        /**
-         * @return True, if the "Provide Bluetooth MAC address" mode is started.
-         */
-        public boolean getIsProvideBluetoothMacAddressModeStarted() {
-            return mIsProvideBluetoothMacAddressModeStarted;
-        }
-
-        /**
-         * @return True, if the Bluetooth GATT server for receiving the Bluetooth MAC address is started.
-         */
-        public boolean getIsBluetoothMacAddressGattServerStarted() {
-            return mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted();
-        }
-
-        /**
-         * @return True, if the "Receive Bluetooth MAC address" mode is started.
-         */
-        public boolean getIsReceiveBluetoothMacAddressModeStarted() {
-            return mIsReceiveBluetoothMacAddressModeStarted;
-        }
-
-        /**
-         * Stops all Bluetooth MAC address resolution operations.
-         */
-        public synchronized void stopAllBluetoothMacAddressResolutionOperations() {
-            stopProvideBluetoothMacAddressMode(); // Stops the Bluetooth device discovery if it was running
-            stopReceiveBluetoothMacAddressMode();
-            mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-        }
-
-        /**
-         * Starts the "Provide Bluetooth MAC address" mode for certain period of time.
-         * @param requestId The request ID to identify the device in need of assistance. This ID should
-         *                  have been provided by the said device via onProvideBluetoothMacAddressRequest
-         *                  callback.
-         * @return True, if the "Provide Bluetooth MAC address" mode was started successfully. False otherwise.
-         */
-        public synchronized boolean startProvideBluetoothMacAddressMode(String requestId) {
-            Log.d(TAG, "startProvideBluetoothMacAddressMode: " + requestId);
-            boolean wasStarted = false;
-
-            if (mDiscoveryManager.isBleMultipleAdvertisementSupported()) {
-                if (!mIsProvideBluetoothMacAddressModeStarted) {
-                    mIsProvideBluetoothMacAddressModeStarted = true;
-                    mCurrentProvideBluetoothMacAddressRequestId = requestId;
-
-                    if (mCurrentProvideBluetoothMacAddressRequestId != null
-                            && mCurrentProvideBluetoothMacAddressRequestId.length() > 0) {
-                        if (startBluetoothDeviceDiscovery()) {
-                            mDiscoveryManager.constructBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
-
-                            if (mDiscoveryManager.mBlePeerDiscoverer.startPeerAddressHelperAdvertiser(
-                                    mCurrentProvideBluetoothMacAddressRequestId,
-                                    PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN,
-                                    mSettings.getProvideBluetoothMacAddressTimeout())) {
-                                mDiscoveryManager.setState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
-                                wasStarted = true;
-                            } else {
-                                Log.e(TAG, "startProvideBluetoothMacAddressMode: Failed to start advertising our willingness to help via BLE");
-                            }
-                        } else {
-                            Log.e(TAG, "startProvideBluetoothMacAddressMode: Failed to start Bluetooth device discovery");
-                        }
-                    } else {
-                        Log.e(TAG, "startProvideBluetoothMacAddressMode: Invalid request ID: "
-                                + mCurrentProvideBluetoothMacAddressRequestId);
-                    }
-                } else {
-                    Log.d(TAG, "startProvideBluetoothMacAddressMode: Already started");
-                }
-            } else {
-                Log.e(TAG, "startProvideBluetoothMacAddressMode: Bluetooth LE advertising is not supported on this device");
-            }
-
-            if (!wasStarted) {
-                // Failed to start, restore previous state
-                stopProvideBluetoothMacAddressMode();
-
-                if (mShouldBeRunning) {
-                    mDiscoveryManager.start(mMyPeerName);
-                } else {
-                    mDiscoveryManager.setState(DiscoveryManagerState.NOT_STARTED);
-                }
-            }
-
-            return wasStarted;
-        }
-
-        /**
-         * Stops the "Provide Bluetooth MAC address" mode. Switches back to the normal mode, if was
-         * running when switched to "Provide Bluetooth MAC address" mode.
-         */
-        public synchronized void stopProvideBluetoothMacAddressMode() {
-            Log.d(TAG, "stopProvideBluetoothMacAddressMode");
-            mCurrentProvideBluetoothMacAddressRequestId = null;
-            mBluetoothGattManager.clearBluetoothGattClientOperationQueue();
-            mDiscoveryManager.stopBluetoothDeviceDiscovery();
-            mDiscoveryManager.stopBlePeerDiscoverer(false);
-            mIsProvideBluetoothMacAddressModeStarted = false;
-        }
-
-        /**
-         * Tries to provide the given device with its Bluetooth MAC address via Bluetooth GATT service.
-         * @param bluetoothDevice The Bluetooth device to provide the address to.
-         */
-        public void provideBluetoothMacAddressToDevice(BluetoothDevice bluetoothDevice) {
-            if (bluetoothDevice != null) {
-                mBluetoothGattManager.provideBluetoothMacAddressToDevice(
-                        bluetoothDevice, mCurrentProvideBluetoothMacAddressRequestId);
-            }
-        }
-
-        /**
-         * Starts "Receive Bluetooth MAC address" mode. This should be called when
-         * we get notified that there is a peer ready to provide us our Bluetooth
-         * MAC address.
-         * @param requestId Our "Provide Bluetooth MAC address" request ID.
-         */
-        public synchronized void startReceiveBluetoothMacAddressMode(String requestId) {
-            if (!mIsReceiveBluetoothMacAddressModeStarted) {
-                mIsReceiveBluetoothMacAddressModeStarted = true;
-                Log.i(TAG, "startReceiveBluetoothMacAddressMode: Starting...");
-
-                if (mReceiveBluetoothMacAddressTimeoutTimer != null) {
-                    mReceiveBluetoothMacAddressTimeoutTimer.cancel();
-                    mReceiveBluetoothMacAddressTimeoutTimer = null;
-                }
-
-                if (mDiscoveryManager.mBlePeerDiscoverer != null) {
-                    Log.v(TAG, "startReceiveBluetoothMacAddressMode: Stopping BLE scanning in order to increase the bandwidth for GATT");
-                    mDiscoveryManager.mBlePeerDiscoverer.stopScanner();
-                }
-
-                startBluetoothMacAddressGattServer(requestId); // Starts if not yet started, otherwise does nothing
-
-                if (mSettings.getAutomateBluetoothMacAddressResolution()) {
-                    long durationInSeconds = mSettings.getProvideBluetoothMacAddressTimeout();
-
-                    if (durationInSeconds == 0) {
-                        durationInSeconds = DiscoveryManagerSettings.DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS;
-                    } else {
-                        durationInSeconds /= 1000;
-                    }
-
-                    mDiscoveryManager.makeDeviceDiscoverable((int)durationInSeconds);
-                }
-
-                long timeoutInMilliseconds = mSettings.getProvideBluetoothMacAddressTimeout();
-
-                mReceiveBluetoothMacAddressTimeoutTimer =
-                        new CountDownTimer(timeoutInMilliseconds, timeoutInMilliseconds) {
-                            @Override
-                            public void onTick(long l) {
-                                // Not used
-                            }
-
-                            @Override
-                            public void onFinish() {
-                                Log.d(TAG, "Receive Bluetooth MAC address timeout");
-                                this.cancel();
-                                mReceiveBluetoothMacAddressTimeoutTimer = null;
-                                stopReceiveBluetoothMacAddressMode();
-
-                                if (mDiscoveryManager.mShouldBeRunning) {
-                                    mDiscoveryManager.start(mMyPeerName);
-                                }
-                            }
-                        };
-
-                mReceiveBluetoothMacAddressTimeoutTimer.start();
-            } else {
-                Log.d(TAG, "startReceiveBluetoothMacAddressMode: Already started");
-            }
-        }
-
-        /**
-         * Stops "Receive Bluetooth MAC address" mode.
-         */
-        public synchronized void stopReceiveBluetoothMacAddressMode() {
-            if (mReceiveBluetoothMacAddressTimeoutTimer != null) {
-                mReceiveBluetoothMacAddressTimeoutTimer.cancel();
-                mReceiveBluetoothMacAddressTimeoutTimer = null;
-            }
-
-            // Uncomment the following to stop the Bluetooth GATT server
-            //mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-
-            mIsReceiveBluetoothMacAddressModeStarted = false;
-        }
-
-        /**
-         * Starts the Bluetooth GATT server for receiving the Bluetooth MAC address.
-         * @param requestId
-         */
-        public void startBluetoothMacAddressGattServer(String requestId) {
-            Log.v(TAG, "startBluetoothMacAddressGattServer: Request ID: " + requestId);
-
-            if (!mBluetoothGattManager.getIsBluetoothMacAddressRequestServerStarted()) {
-                mBluetoothGattManager.startBluetoothMacAddressRequestServer(requestId);
-            } else {
-                Log.d(TAG, "startBluetoothMacAddressGattServer: Already started");
-            }
-        }
-
-        /**
-         * From BluetoothGattManager.BluetoothGattManagerListener
-         *
-         * Logs the event.
-         *
-         * @param operationCountInQueue The new operation count.
-         */
-        @Override
-        public void onBluetoothGattClientOperationCountInQueueChanged(int operationCountInQueue) {
-            Log.v(TAG, "onBluetoothGattClientOperationCountInQueueChanged: " + operationCountInQueue);
-        }
-
-        /**
-         * From BluetoothGattManager.BluetoothGattManagerListener
-         *
-         * Stops the "Provide Bluetooth MAC address" mode and forwards the event to the discovery manager.
-         *
-         * @param requestId The request ID associated with the device in need of assistance.
-         * @param wasCompleted True, if the operation was completed.
-         */
-        @Override
-        public void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted) {
-            Log.d(TAG, "onProvideBluetoothMacAddressResult: Operation with request ID \""
-                    + requestId + (wasCompleted ? "\" was completed" : "\" was not completed"));
-            stopProvideBluetoothMacAddressMode();
-            mDiscoveryManager.onProvideBluetoothMacAddressResult(requestId, wasCompleted);
-        }
-
-        /**
-         * From BlePeerDiscoverer.BlePeerDiscoveryListener
-         *
-         * Stops the Bluetooth GATT server and forwards the event to the discovery manager.
-         *
-         * @param bluetoothMacAddress Our Bluetooth MAC address.
-         */
-        @Override
-        public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-            Log.d(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
-            mBluetoothGattManager.stopBluetoothMacAddressRequestServer();
-            mDiscoveryManager.onBluetoothMacAddressResolved(bluetoothMacAddress);
         }
     }
 }

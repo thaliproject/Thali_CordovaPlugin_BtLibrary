@@ -15,6 +15,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A model for discovered peers.
+ *
+ * Peer expiration is based on a time elapsed since we last saw the peer.
  */
 public class PeerModel {
     public interface Listener {
@@ -32,14 +34,15 @@ public class PeerModel {
 
         /**
          * Called when an existing peer expired and was removed from the model.
+         * Peer expiration is based on a time elapsed since we last saw the peer.
          * @param peerProperties The properties of the expired and removed peer.
          */
         void onPeerExpiredAndRemoved(PeerProperties peerProperties);
     }
 
     private static final String TAG = PeerModel.class.getName();
-    private final HashMap<Timestamp, PeerProperties> mDiscoveredPeers = new HashMap<>();
-    private final Listener mListener;
+    private final HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
+    private final CopyOnWriteArrayList<Listener> mListeners = new CopyOnWriteArrayList<>();
     private final DiscoveryManagerSettings mSettings;
     private CountDownTimer mCheckExpiredPeersTimer = null;
 
@@ -48,17 +51,38 @@ public class PeerModel {
      * @param settings The Discovery manager settings.
      */
     public PeerModel(Listener listener, DiscoveryManagerSettings settings) {
-        mListener = listener;
         mSettings = settings;
+        addListener(listener);
     }
 
     /**
-     * Stops the check expired peers timer and clears the peer container.
+     * Adds the given listener.
+     * @param listener The listener to add.
+     */
+    public void addListener(Listener listener) {
+        if (listener != null && !mListeners.contains(listener)) {
+            mListeners.add(listener);
+            Log.d(TAG, "addListener: New listener added - the number of listeners is now " + mListeners.size());
+        }
+    }
+
+    /**
+     * Removes the given listener.
+     * @param listener The listener to remove.
+     */
+    public void removeListener(Listener listener) {
+        if (mListeners.contains(listener)) {
+            mListeners.remove(listener);
+            Log.d(TAG, "removeListener: Listener removed - the number of listeners is now " + mListeners.size());
+        }
+    }
+
+    /**
+     * Stops the timer for checking for expired peers and clears the peer container.
      */
     public void clear() {
-        Log.i(TAG, "clear");
-
         if (mCheckExpiredPeersTimer != null) {
+            Log.i(TAG, "clear");
             mCheckExpiredPeersTimer.cancel();
             mCheckExpiredPeersTimer = null;
         }
@@ -68,13 +92,13 @@ public class PeerModel {
 
     /**
      * Recreates the check expired peers timer.
-     * @param peerExpirationInMilliseconds Not used, since it is expected that the time has been
-     *                                     updated to the settings, where the timer will retrieve it
-     *                                     when reconstructed.
+     *
+     * Peer expiration is based on a time elapsed since we last saw the peer.
+     *
+     * This method takes no argument, since it is expected that the time has been updated to the
+     * settings, where the timer will retrieve it when reconstructed.
      */
-    public void updatePeerExpirationTime(long peerExpirationInMilliseconds) {
-        Log.d(TAG, "updatePeerExpirationTime: " + peerExpirationInMilliseconds);
-
+    public void onPeerExpirationTimeChanged() {
         if (mCheckExpiredPeersTimer != null) {
             // Recreate the timer
             createCheckPeerExpirationTimer();
@@ -82,95 +106,116 @@ public class PeerModel {
     }
 
     /**
-     * Tries to find a discovered peer with the given device address.
-     * @param deviceAddress The device address of a peer to find.
+     * Tries to find a discovered peer with the given Bluetooth MAC address.
+     * @param bluetoothMacAddress The Bluetooth MAC address of a peer to find.
      * @return A peer properties instance if found, null if not.
      */
-    public synchronized PeerProperties findDiscoveredPeer(final String deviceAddress) {
-        Iterator iterator = mDiscoveredPeers.entrySet().iterator();
-        PeerProperties peerProperties = null;
+    public synchronized PeerProperties getDiscoveredPeerByBluetoothMacAddress(final String bluetoothMacAddress) {
+        PeerProperties foundPeerProperties = null;
 
-        while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry) iterator.next();
-            PeerProperties existingPeerProperties = (PeerProperties) entry.getValue();
-
-            if (existingPeerProperties != null
-                    && existingPeerProperties.getDeviceAddress() != null
-                    && existingPeerProperties.getDeviceAddress().equalsIgnoreCase(deviceAddress)) {
-                peerProperties = existingPeerProperties;
+        for (PeerProperties peerProperties : mDiscoveredPeers.keySet()) {
+            if (peerProperties != null
+                    && peerProperties.getBluetoothMacAddress() != null
+                    && peerProperties.getBluetoothMacAddress().equals(bluetoothMacAddress)) {
+                foundPeerProperties = peerProperties;
                 break;
             }
         }
 
-        return peerProperties;
+        return foundPeerProperties;
     }
 
     /**
-     * Tries to modify the list of discovered peers.
-     * @param peerProperties The properties of the peer to modify (add/update or remove).
-     * @parma addOrUpdate If true, will add/update. If false, will remove.
-     * @return True, if success. False otherwise.
+     * Tries to find a discovered peer with the given device address.
+     * @param deviceAddress The device address of a peer to find.
+     * @return A peer properties instance if found, null if not.
      */
-    public synchronized boolean modifyListOfDiscoveredPeers(PeerProperties peerProperties, boolean addOrUpdate) {
-        Log.v(TAG, "modifyListOfDiscoveredPeers: " + peerProperties.toString() + ", add/update: " + addOrUpdate);
-        Iterator iterator = mDiscoveredPeers.entrySet().iterator();
+    public synchronized PeerProperties getDiscoveredPeerByDeviceAddress(final String deviceAddress) {
+        PeerProperties foundPeerProperties = null;
+
+        for (PeerProperties peerProperties : mDiscoveredPeers.keySet()) {
+            if (peerProperties != null
+                    && peerProperties.getDeviceAddress() != null
+                    && peerProperties.getDeviceAddress().equalsIgnoreCase(deviceAddress)) {
+                foundPeerProperties = peerProperties;
+                break;
+            }
+        }
+
+        return foundPeerProperties;
+    }
+
+    /**
+     * Removes the given peer properties from the collection.
+     * @param peerPropertiesToRemove The peer properties to remove.
+     * @return The found and removed peer properties or null, if not found.
+     */
+    public synchronized PeerProperties removePeer(PeerProperties peerPropertiesToRemove) {
         PeerProperties oldPeerProperties = null;
 
-        // Always remove first
-        while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry) iterator.next();
+        if (peerPropertiesToRemove != null) {
+            Iterator iterator = mDiscoveredPeers.entrySet().iterator();
 
-            if (entry != null) {
-                PeerProperties existingPeerProperties = (PeerProperties) entry.getValue();
+            while (iterator.hasNext()) {
+                HashMap.Entry entry = (HashMap.Entry) iterator.next();
 
-                if (existingPeerProperties.equals(peerProperties)) {
-                    oldPeerProperties = existingPeerProperties;
-                    iterator.remove();
-                    break;
-                }
-            }
-        }
+                if (entry != null) {
+                    PeerProperties peerProperties = (PeerProperties) entry.getKey();
 
-        boolean success = false;
-
-        if (addOrUpdate) {
-            if (oldPeerProperties != null) {
-                // This one was already in the list (same ID)
-                // Make sure we don't lose any data when updating
-                Log.v(TAG, "modifyListOfDiscoveredPeers: Updating the timestamp of peer "
-                        + peerProperties.toString());
-
-                PeerProperties.checkNewPeerForMissingInformation(oldPeerProperties, peerProperties);
-
-                if (peerProperties.hasMoreInformation(oldPeerProperties)) {
-                    // The new discovery result has more information than the old one
-                    if (mListener != null) {
-                        mListener.onPeerUpdated(peerProperties);
+                    if (peerProperties.equals(peerPropertiesToRemove)) {
+                        oldPeerProperties = peerProperties;
+                        iterator.remove();
+                        break;
                     }
                 }
-            } else {
-                // The given peer was not in the list before, hence it is a new one
-                Log.d(TAG, "modifyListOfDiscoveredPeers: Adding a new peer: " + peerProperties.toString());
-
-                if (mListener != null) {
-                    mListener.onPeerAdded(peerProperties);
-                }
             }
-
-            mDiscoveredPeers.put(new Timestamp(new Date().getTime()), peerProperties);
-
-            if (mCheckExpiredPeersTimer == null) {
-                createCheckPeerExpirationTimer();
-                mCheckExpiredPeersTimer.start();
-            }
-
-            success = true;
-        } else if (oldPeerProperties != null) {
-            Log.d(TAG, "modifyListOfDiscoveredPeers: Removed peer " + peerProperties.toString());
-            success = true;
         }
 
-        return success;
+        return oldPeerProperties;
+    }
+
+    /**
+     * Adds or updates the given peer properties to the collection.
+     * @param peerPropertiesToAddOrUpdate The peer properties to add/update.
+     */
+    public void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
+        synchronized (this) {
+            if (peerPropertiesToAddOrUpdate != null) {
+                //Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
+                PeerProperties oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
+
+                if (oldPeerProperties != null) {
+                    // This one was already in the list
+                    // Make sure we don't lose any data when updating
+                    PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
+
+                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
+                        // The new discovery result has more information than the old one
+                        for (Listener listener : mListeners) {
+                            listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
+                        }
+                    }
+                } else {
+                    // The given peer was not in the list before, hence it is a new one
+                    for (Listener listener : mListeners) {
+                        listener.onPeerAdded(peerPropertiesToAddOrUpdate);
+                    }
+                }
+
+                mDiscoveredPeers.put(peerPropertiesToAddOrUpdate, new Timestamp(new Date().getTime()));
+
+                Log.v(TAG, "addOrUpdateDiscoveredPeer: "
+                        + ((oldPeerProperties == null)
+                            ? ("New peer, " + peerPropertiesToAddOrUpdate.toString() + ", added")
+                            : ("Timestamp of peer " + peerPropertiesToAddOrUpdate.toString() + " updated"))
+                        + " - the peer count is " + mDiscoveredPeers.size());
+
+                if (mCheckExpiredPeersTimer == null) {
+                    createCheckPeerExpirationTimer();
+                    mCheckExpiredPeersTimer.start();
+                }
+            }
+        }
     }
 
     /**
@@ -184,8 +229,8 @@ public class PeerModel {
         // Find and copy expired peers to a separate list
         while (iterator.hasNext()) {
             HashMap.Entry entry = (HashMap.Entry)iterator.next();
-            Timestamp entryTimestamp = (Timestamp)entry.getKey();
-            PeerProperties entryPeerProperties = (PeerProperties)entry.getValue();
+            PeerProperties entryPeerProperties = (PeerProperties) entry.getKey();
+            Timestamp entryTimestamp = (Timestamp) entry.getValue();
 
             //Log.v(TAG, "checkListForExpiredPeers: Peer " + entryPeerProperties.toString() + " is now "
             //        + ((timestampNow.getTime() - entryTimestamp.getTime()) / 1000) + " seconds old");
@@ -199,12 +244,12 @@ public class PeerModel {
         if (expiredPeers.size() > 0) {
             // First remove all the expired peers from the list and only then notify the listener
             for (PeerProperties expiredPeer : expiredPeers) {
-                modifyListOfDiscoveredPeers(expiredPeer, false);
+                removePeer(expiredPeer);
             }
 
             for (PeerProperties expiredPeer : expiredPeers) {
-                if (mListener != null) {
-                    mListener.onPeerExpiredAndRemoved(expiredPeer);
+                for (Listener listener : mListeners) {
+                    listener.onPeerExpiredAndRemoved(expiredPeer);
                 }
             }
 

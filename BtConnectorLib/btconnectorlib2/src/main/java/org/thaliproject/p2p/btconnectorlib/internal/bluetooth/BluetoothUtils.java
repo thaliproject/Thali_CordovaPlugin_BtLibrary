@@ -7,7 +7,9 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -19,8 +21,10 @@ public class BluetoothUtils {
     private static final String TAG = BluetoothUtils.class.getName();
     public static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
     public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
+    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN = 11; // E.g. "0:0:0:0:0:0"
+    public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX = 17; // E.g. "01:23:45:67:89:AB"
+    private static final String MARSHMALLOW_FAKE_MAC_ADDRESS = "02:00:00:00:00:00";
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
-    private static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH = 17;
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
     private static final int MAX_ALTERNATIVE_CHANNEL = 30;
@@ -28,11 +32,21 @@ public class BluetoothUtils {
 
     /**
      * Checks if the given Bluetooth MAC address is unknown (as in not set/missing).
+     *
+     * In addition, will check for false addresses introduced in Android 6.0;
+     * From http://developer.android.com/about/versions/marshmallow/android-6.0-changes.html:
+     *
+     * "To provide users with greater data protection, starting in this release, Android removes
+     * programmatic access to the device’s local hardware identifier for apps using the Wi-Fi and
+     * Bluetooth APIs. The WifiInfo.getMacAddress() and the BluetoothAdapter.getAddress() methods
+     * now return a constant value of 02:00:00:00:00:00."
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address to check.
      * @return True, if the Bluetooth MAC address is unknown.
      */
     public static boolean isBluetoothMacAddressUnknown(String bluetoothMacAddress) {
         return (bluetoothMacAddress == null
+                || bluetoothMacAddress.equals(MARSHMALLOW_FAKE_MAC_ADDRESS)
                 || bluetoothMacAddress.equals(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
     }
 
@@ -48,14 +62,17 @@ public class BluetoothUtils {
     public static boolean isValidBluetoothMacAddress(String bluetoothMacAddress) {
         boolean isValid = false;
 
-        if (bluetoothMacAddress != null && bluetoothMacAddress.length() == BLUETOOTH_MAC_ADDRESS_STRING_LENGTH) {
+        if (!isBluetoothMacAddressUnknown(bluetoothMacAddress)
+                && bluetoothMacAddress.length() >= BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN
+                && bluetoothMacAddress.length() <= BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX) {
             String[] bytesAsHexStringArray = bluetoothMacAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
 
             if (bytesAsHexStringArray.length == BLUETOOTH_ADDRESS_BYTE_COUNT) {
                 boolean allBytesAreValid = true;
 
                 for (String byteAsHexString : bytesAsHexStringArray) {
-                    if (byteAsHexString.length() != 2
+                    if (byteAsHexString.length() == 0
+                            || byteAsHexString.length() > 2
                             || !byteAsHexString.matches(UPPER_CASE_HEX_REGEXP_CONDITION)) {
                         allBytesAreValid = false;
                         break;
@@ -71,6 +88,65 @@ public class BluetoothUtils {
         }
 
         return isValid;
+    }
+
+    /**
+     * Extracts the Bluetooth MAC address of the peer from the given Bluetooth socket instance.
+     * @param bluetoothSocket The Bluetooth socket.
+     * @return The Bluetooth MAC address or null in case of an error.
+     */
+    public static String getBluetoothMacAddressFromSocket(final BluetoothSocket bluetoothSocket) {
+        String bluetoothMacAddress = null;
+
+        if (bluetoothSocket != null && bluetoothSocket.getRemoteDevice() != null) {
+            bluetoothMacAddress = bluetoothSocket.getRemoteDevice().getAddress();
+        } else {
+            // The whole purpose of this method is to have exception free, quick way to get the
+            // Bluetooth MAC address. Thus, do not throw an exception here.
+            Log.e(TAG, "getBluetoothMacAddressFromSocket: Either the socket or its remote device is null");
+        }
+
+        return bluetoothMacAddress;
+    }
+
+    /**
+     * Checks the validity of the received handshake message.
+     * @param handshakeMessage The received handshake message as a byte array.
+     * @param bluetoothSocketOfSender The Bluetooth socket of the sender.
+     * @return The resolved peer properties of the sender, if the handshake was valid. Null otherwise.
+     */
+    public static PeerProperties validateReceivedHandshakeMessage(
+            byte[] handshakeMessage, BluetoothSocket bluetoothSocketOfSender) {
+        String identityString = new String(handshakeMessage);
+        PeerProperties peerProperties = new PeerProperties();
+        boolean receivedHandshakeMessageValidated = false;
+
+        if (!identityString.isEmpty()) {
+            try {
+                receivedHandshakeMessageValidated =
+                        AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                                identityString, peerProperties);
+            } catch (JSONException e) {
+                Log.e(TAG, "validateReceivedHandshakeMessage: Failed to resolve peer properties: "
+                        + e.getMessage(), e);
+            }
+
+            if (receivedHandshakeMessageValidated) {
+                String bluetoothMacAddress =
+                        BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
+
+                if (bluetoothMacAddress == null
+                        || !bluetoothMacAddress.equals(peerProperties.getBluetoothMacAddress())) {
+                    Log.e(TAG, "validateReceivedHandshakeMessage: Bluetooth MAC address mismatch: Got \""
+                            + peerProperties.getBluetoothMacAddress()
+                            + "\", but was expecting \"" + bluetoothMacAddress + "\"");
+
+                    receivedHandshakeMessageValidated = false;
+                }
+            }
+        }
+
+        return receivedHandshakeMessageValidated ? peerProperties : null;
     }
 
     /**

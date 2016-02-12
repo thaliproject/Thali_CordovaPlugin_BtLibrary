@@ -65,6 +65,9 @@ class BleAdvertiser extends AdvertiseCallback {
                 builder.setAdvertiseMode(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE);
                 builder.setTxPowerLevel(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL);
             }
+
+            builder.setTimeout(0);
+            builder.setConnectable(false); // No characteristics support by default
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleAdvertiser: Failed to apply settings: " + e.getMessage(), e);
         }
@@ -77,17 +80,21 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseData The advertise data to set.
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
-        Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
-        boolean wasStarted = isStarted();
+        if (advertiseData != null) {
+            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
+            boolean wasStarted = isStarted();
 
-        if (wasStarted) {
-            stop(false);
-        }
+            if (wasStarted) {
+                stop(false);
+            }
 
-        mAdvertiseData = advertiseData;
+            mAdvertiseData = advertiseData;
 
-        if (wasStarted) {
-            start();
+            if (wasStarted) {
+                start();
+            }
+        } else {
+            throw new NullPointerException("The given advertise data is null");
         }
     }
 
@@ -104,7 +111,7 @@ class BleAdvertiser extends AdvertiseCallback {
                     + ", timeout: " + mAdvertiseSettings.getTimeout()
                     + ", is connectable: " + mAdvertiseSettings.isConnectable());
         } else {
-            Log.e(TAG, "setAdvertiseSettings: The argument (AdvertiseSettings) cannot be null");
+            throw new NullPointerException("The argument (AdvertiseSettings) cannot be null");
         }
     }
 
@@ -124,7 +131,7 @@ class BleAdvertiser extends AdvertiseCallback {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, this);
+                        mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
@@ -219,6 +226,9 @@ class BleAdvertiser extends AdvertiseCallback {
                         break;
                     case RUNNING:
                         mListener.onIsAdvertiserStartedChanged(true);
+                        break;
+                    default:
+                        // Nothing to do here
                         break;
                 }
             }

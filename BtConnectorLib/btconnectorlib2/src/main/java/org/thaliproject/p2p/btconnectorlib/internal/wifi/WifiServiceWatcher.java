@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.internal.wifi;
@@ -11,7 +11,7 @@ import android.os.Handler;
 import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
-import org.thaliproject.p2p.btconnectorlib.internal.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 
 /**
  * Watcher for Wi-Fi P2P services (peers) matching the desired service type and which also have a
@@ -164,8 +164,9 @@ class WifiServiceWatcher {
                 boolean resolvedPropertiesOk = false;
 
                 try {
-                    resolvedPropertiesOk = CommonUtils.getPropertiesFromIdentityString(
-                            identityString, peerProperties);
+                    resolvedPropertiesOk =
+                            AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                                    identityString, peerProperties);
                 } catch (JSONException e) {
                     Log.e(TAG, "onDnsSdServiceAvailable: Failed to resolve peer properties: " + e.getMessage(), e);
                 }

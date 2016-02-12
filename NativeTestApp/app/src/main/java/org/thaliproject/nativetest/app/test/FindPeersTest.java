@@ -35,7 +35,7 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
         mDiscoveryManager = mTestEngine.getDiscoveryManager();
         mDiscoveryManager.stop();
         mModel = PeerAndConnectionModel.getInstance();
-        return mDiscoveryManager.start(TestEngine.PEER_NAME);
+        return mDiscoveryManager.start(true, true);
     }
 
     @Override

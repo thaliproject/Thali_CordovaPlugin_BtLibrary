@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib;
@@ -104,14 +104,10 @@ public class ConnectionManager
 
     /**
      * Initializes the components and starts the listener for incoming connections.
-     * @param myPeerId Our peer ID (used for the identity).
-     * @param myPeerName Our peer name (used for the identity).
      * @return True, if started successfully or was already running. False otherwise.
      */
-    public boolean start(String myPeerId, String myPeerName) {
-        Log.i(TAG, "start: Peer ID: " + myPeerId + ", peer name: " + myPeerName);
-        mMyPeerId = myPeerId;
-        mMyPeerName = myPeerName;
+    public boolean start() {
+        Log.i(TAG, "start");
 
         switch (mState) {
             case NOT_STARTED:
@@ -144,26 +140,13 @@ public class ConnectionManager
             case RUNNING:
                 Log.d(TAG, "start: Already running, call stop() first in order to restart");
                 break;
+
+            default:
+                Log.e(TAG, "start: Unrecognized state");
+                break;
         }
 
         return (mState == ConnectionManagerState.RUNNING);
-    }
-
-    /**
-     * Initializes the components and starts the listener for incoming connections. This method
-     * uses the Bluetooth address to set the value of the peer ID.
-     * @param myPeerName Our peer name (used for the identity).
-     * @return True, if started successfully or was already running. False otherwise.
-     */
-    public boolean start(String myPeerName) {
-        String bluetoothMacAddress = getBluetoothMacAddress();
-        boolean wasStarted = false;
-
-        if (bluetoothMacAddress != null) {
-            wasStarted = start(getBluetoothMacAddress(), myPeerName);
-        }
-
-        return wasStarted;
     }
 
     /**
@@ -225,7 +208,7 @@ public class ConnectionManager
             Log.i(TAG, "connect: " + peerToConnectTo.toString());
 
             try {
-                BluetoothDevice device = mBluetoothManager.getRemoteDevice(peerToConnectTo.getBluetoothAddress());
+                BluetoothDevice device = mBluetoothManager.getRemoteDevice(peerToConnectTo.getBluetoothMacAddress());
                 success = mBluetoothConnector.connect(device, peerToConnectTo, mMyUuid);
             } catch (NullPointerException e) {
                 Log.e(TAG, "connect: Failed to start connecting to peer "
@@ -251,6 +234,16 @@ public class ConnectionManager
         }
 
         return wasCancelled;
+    }
+
+    @Override
+    public void dispose() {
+        Log.i(TAG, "dispose");
+        super.dispose();
+
+        if (mState != ConnectionManagerState.NOT_STARTED) {
+            stop();
+        }
     }
 
     /**
@@ -283,7 +276,7 @@ public class ConnectionManager
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting...");
-                start(mMyPeerId, mMyPeerName);
+                start();
             }
         }
     }

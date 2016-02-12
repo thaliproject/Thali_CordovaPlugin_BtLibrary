@@ -63,8 +63,12 @@ public class ConnectionEngine implements
         mContext = context;
         mActivity = activity;
         mModel = PeerAndConnectionModel.getInstance();
+
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
+        mConnectionManager.setPeerName(PEER_NAME);
+
         mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
+        mDiscoveryManager.setPeerName(PEER_NAME);
     }
 
     /**
@@ -83,10 +87,11 @@ public class ConnectionEngine implements
     public synchronized boolean start() {
         mShuttingDown = false;
 
-        boolean wasConnectionManagerStarted = mConnectionManager.start(PEER_NAME);
+        boolean wasConnectionManagerStarted = mConnectionManager.start();
+        
         boolean wasDiscoveryManagerStarted =
                 (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
-                 || mDiscoveryManager.start(PEER_NAME));
+                 || mDiscoveryManager.start(true, true));
 
         if (wasConnectionManagerStarted) {
             if (mCheckConnectionsTimer != null) {
@@ -136,6 +141,15 @@ public class ConnectionEngine implements
 
         mModel.closeAllConnections();
         mModel.clearPeers();
+    }
+
+    /**
+     * Disposes both the discovery and the connection manager.
+     * After calling this method, this instance of the connection engine cannot be used again.
+     */
+    public void dispose() {
+        mDiscoveryManager.dispose();
+        mConnectionManager.dispose();
     }
 
     /**
@@ -210,7 +224,7 @@ public class ConnectionEngine implements
         if (requestCode == PERMISSION_REQUEST_ACCESS_COARSE_LOCATION && grantResults.length > 0) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.d(TAG, "onRequestPermissionsResult: Permission granted");
-                mDiscoveryManager.start(PEER_NAME);
+                mDiscoveryManager.start(true, true);
             } else {
                 Log.e(TAG, "onRequestPermissionsResult: Permission denied");
             }
@@ -260,7 +274,7 @@ public class ConnectionEngine implements
             if (isIncoming) {
                 // Add peer, if it was not discovered before
                 mModel.addOrUpdatePeer(peerProperties);
-                mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
+                mDiscoveryManager.getPeerModel().addOrUpdateDiscoveredPeer(peerProperties);
             }
 
             // Update the peer name, if already in the model
@@ -388,7 +402,7 @@ public class ConnectionEngine implements
 
         if (mModel.hasConnectionToPeer(peerProperties)) {
             // We are connected so it can't be lost
-            mDiscoveryManager.addOrUpdateDiscoveredPeer(peerProperties);
+            mDiscoveryManager.getPeerModel().addOrUpdateDiscoveredPeer(peerProperties);
         } else {
             mModel.removePeer(peerProperties);
             LogFragment.logMessage("Peer " + peerProperties.toString() + " lost");

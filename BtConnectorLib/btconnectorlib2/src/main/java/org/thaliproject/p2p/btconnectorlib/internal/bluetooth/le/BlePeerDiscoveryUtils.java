@@ -9,7 +9,9 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Date;
@@ -33,33 +35,103 @@ class BlePeerDiscoveryUtils {
     private static final String TAG = BlePeerDiscoveryUtils.class.getName();
 
     public static final int ADVERTISEMENT_BYTE_COUNT = 24;
-    public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
+    private static final int UUID_LENGTH_IN_BYTES = 16;
     private static final String BLUETOOTH_ADDRESS_SEPARATOR = ":";
+    private static final String SERVICE_UUID_MASK_AS_STRING = "11111111-1111-1111-1110-000000000000";
 
     private static Random mRandom = null;
 
     /**
-     * Creates a new scan filter using the given service UUID.
-     * @param serviceUuid The service UUID for the scan filter.
+     * Creates a new scan filter based on the given arguments.
+     * @param serviceUuid The service UUID for the scan filter. Use null to not set.
+     * @param useManufacturerId If true, will add the manufacturer ID to the filter properties.
      * @return A newly created scan filter or null in case of a failure.
      */
-    public static ScanFilter createScanFilter(UUID serviceUuid) {
+    public static ScanFilter createScanFilter(UUID serviceUuid, boolean useManufacturerId) {
+        Log.d(TAG, "createScanFilter: "
+                + ((serviceUuid != null) ? "Service UUID: \"" + serviceUuid.toString() + "\"" : "No service UUID")
+                + ", use manufacturer ID: " + useManufacturerId);
+
         ScanFilter scanFilter = null;
         ScanFilter.Builder builder = new ScanFilter.Builder();
 
         try {
-            builder.setManufacturerData(PeerAdvertisementFactory.MANUFACTURER_ID, null);
+            if (useManufacturerId) {
+                builder.setManufacturerData(PeerAdvertisementFactory.MANUFACTURER_ID, null);
+            }
 
             if (serviceUuid != null) {
-                builder.setServiceUuid(new ParcelUuid(serviceUuid));
+                ParcelUuid uuidMask = ParcelUuid.fromString(SERVICE_UUID_MASK_AS_STRING);
+                builder.setServiceUuid(new ParcelUuid(serviceUuid), uuidMask);
             }
 
             scanFilter = builder.build();
+            Log.v(TAG, "createScanFilter: " + scanFilter.toString());
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
         }
 
         return scanFilter;
+    }
+
+    /**
+     * Parses the given service data.
+     * @param serviceData The service data. Expected contain a "0" byte followed by the six bytes
+     *                    consisting of the Bluetooth MAC address.
+     * @return A newly created ParsedAdvertisement instance, containing at least the Bluetooth MAC
+     * address, or null in case the parsing failed.
+     */
+    public static ParsedAdvertisement parseServiceData(byte[] serviceData) {
+        ParsedAdvertisement parsedAdvertisement = null;
+
+        if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)
+                && serviceData[0] == 0x0) {
+            byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
+
+            for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
+                bluetoothAddressAsByteArray[i] = serviceData[i + 1];
+            }
+
+            String bluetoothMacAddress = byteArrayToBluetoothMacAddress(bluetoothAddressAsByteArray);
+
+            if (bluetoothMacAddress != null) {
+                parsedAdvertisement = new ParsedAdvertisement();
+                parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+            }
+        }
+
+        return parsedAdvertisement;
+    }
+
+    /**
+     * Checks the given UUID for "Provide Bluetooth MAC address" request ID.
+     * @param uuidToCheck The UUID to check.
+     * @param serviceUuid The expected service UUID to compare against.
+     * @return The request ID or null if not found.
+     */
+    public static String checkIfUuidContainsProvideBluetoothMacAddressRequestId(UUID uuidToCheck, UUID serviceUuid) {
+        String requestId = null;
+
+        if (uuidToCheck != null && serviceUuid != null) {
+            if (serviceUuid.compareTo(uuidToCheck) == 0) {
+                // The UUID is a match
+                // No need to do anything
+            } else {
+                // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
+                String beginningOfUuidToCheck = uuidToCheck.toString().substring(0, 22);
+
+                if (serviceUuid.toString().startsWith(beginningOfUuidToCheck)) {
+                    // The beginning of the UUID is a match
+                    // Parse the request ID
+                    requestId = PeerAdvertisementFactory.parseRequestIdFromUuid(uuidToCheck);
+                } else {
+                    Log.d(TAG, "checkIfUuidContainsProvideBluetoothMacAddressRequestId: UUID mismatch: Was expecting \""
+                            + serviceUuid + "\", got \"" + uuidToCheck + "\"");
+                }
+            }
+        }
+
+        return requestId;
     }
 
     /**
@@ -85,7 +157,7 @@ class BlePeerDiscoveryUtils {
                 serviceUuidAsByteArray = new byte[16];
                 dataInputStream.read(serviceUuidAsByteArray);
 
-                bluetoothAddressAsInt8Array = new int[BLUETOOTH_ADDRESS_BYTE_COUNT];
+                bluetoothAddressAsInt8Array = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
                 for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
                     bluetoothAddressAsInt8Array[i] = dataInputStream.readByte();
@@ -94,7 +166,7 @@ class BlePeerDiscoveryUtils {
                 bytesExtracted = true;
             } catch (IOException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
-            } catch (Exception e) {
+            } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
         }
@@ -103,10 +175,7 @@ class BlePeerDiscoveryUtils {
 
         if (bytesExtracted) {
             parsedAdvertisement = new ParsedAdvertisement();
-            ByteBuffer byteBuffer = ByteBuffer.wrap(serviceUuidAsByteArray);
-            long mostSignificantBits = byteBuffer.getLong();
-            long leastSignificantBits = byteBuffer.getLong();
-            parsedAdvertisement.uuid = new UUID(mostSignificantBits, leastSignificantBits);
+            parsedAdvertisement.uuid = byteArrayToUuid(serviceUuidAsByteArray);
             parsedAdvertisement.bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
         }
 
@@ -124,96 +193,124 @@ class BlePeerDiscoveryUtils {
 
         if (serviceUuid != null) {
             parsedAdvertisement = parseManufacturerData(manufacturerData);
-
-            if (parsedAdvertisement != null && parsedAdvertisement.uuid != null) {
-                if (serviceUuid.compareTo(parsedAdvertisement.uuid) == 0) {
-                    // The UUID is a match
-                    // No need to do anything
-                } else {
-                    // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
-                    String beginningOfParsedUuid = parsedAdvertisement.uuid.toString().substring(0, 22);
-
-                    if (serviceUuid.toString().startsWith(beginningOfParsedUuid)) {
-                        // The beginning of the UUID is a match
-                        // Parse the request ID
-                        parsedAdvertisement.provideBluetoothMacAddressRequestId =
-                                PeerAdvertisementFactory.parseRequestIdFromUuid(parsedAdvertisement.uuid);
-                    } else {
-                        Log.d(TAG, "parseManufacturerData: UUID mismatch: Was expecting \""
-                                + serviceUuid + "\", got \"" + parsedAdvertisement.uuid + "\"");
-                    }
-                }
-            }
+            parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                    checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
         }
 
         return parsedAdvertisement;
     }
 
     /**
-     * Converts the given peer name into an array of two bytes (sort of like a hash, but not quite).
-     * @param peerName The peer name to convert.
-     * @return An array of two bytes.
+     * Converts the given UUID into a byte array.
+     * @param uuid The UUID to convert.
+     * @return A newly created byte array or null in case of a failure.
      */
-    public static byte[] peerNameAsTwoByteArray(String peerName) {
-        byte[] twoByteArray =  new byte[2];
-        twoByteArray[0] = (byte)peerName.length(); // The first byte is the length of the original peer name
+    public static byte[] uuidToByteArray(UUID uuid) {
+        byte[] uuidAsByteArray = null;
 
-        for (int i = 0; i < peerName.length(); ++i) {
-            twoByteArray[1] += (byte)peerName.charAt(i);
+        if (uuid != null) {
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream(UUID_LENGTH_IN_BYTES);
+            DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
+            try {
+                dataOutputStream.writeLong(uuid.getMostSignificantBits());
+                dataOutputStream.writeLong(uuid.getLeastSignificantBits());
+                uuidAsByteArray = byteArrayOutputStream.toByteArray();
+            } catch (IOException e) {
+                Log.e(TAG, "uuidToByteArray: " + e.getMessage(), e);
+            }
         }
 
-        return twoByteArray;
+        return uuidAsByteArray;
     }
 
     /**
-     * Converts the given Bluetooth address into an integer array.
-     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
-     * @param bluetoothAddress The Bluetooth address to convert.
-     * @return An integer array containing the Bluetooth address.
+     * Converts the given byte array, which is expected to contain the UUID, into a UUID instance.
+     * @param byteArray The byte array containing the UUID.
+     * @return A newly created UUID instance or null in case of a failure.
      */
-    public static int[] bluetoothAddressToInt8Array(String bluetoothAddress) {
-        String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
-        int[] intArray = null;
+    public static UUID byteArrayToUuid(byte[] byteArray) {
+        if (byteArray != null && byteArray.length >= UUID_LENGTH_IN_BYTES) {
+            ByteBuffer byteBuffer = ByteBuffer.wrap(byteArray);
+            long mostSignificantBits = byteBuffer.getLong();
+            long leastSignificantBits = byteBuffer.getLong();
+            return new UUID(mostSignificantBits, leastSignificantBits);
+        }
 
-        if (hexStringArray.length >= BLUETOOTH_ADDRESS_BYTE_COUNT) {
-            intArray = new int[hexStringArray.length];
+        return null;
+    }
 
-            for (int i = 0; i < hexStringArray.length; ++i) {
+
+    /**
+     * Converts the given Bluetooth MAC address into a byte array.
+     * @param bluetoothMacAddress The Bluetooth MAC address to convert.
+     * @return A newly created byte array containing the Bluetooth MAC address or null in case of a failure.
+     */
+    public static byte[] bluetoothMacAddressToByteArray(String bluetoothMacAddress) {
+        byte[] bluetoothMacAddressAsByteArray = null;
+
+        if (bluetoothMacAddress != null
+                && bluetoothMacAddress.length() >= BluetoothUtils.BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN
+                && bluetoothMacAddress.length() <= BluetoothUtils.BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX) {
+            int[] bluetoothAddressAsInt8Array = bluetoothAddressToInt8Array(bluetoothMacAddress);
+
+            if (bluetoothAddressAsInt8Array != null
+                    && bluetoothAddressAsInt8Array.length == BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+                ByteArrayOutputStream byteArrayOutputStream =
+                        new ByteArrayOutputStream(BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT);
+                DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+
                 try {
-                    intArray[i] = Integer.parseInt(hexStringArray[i], 16);
-                } catch (NumberFormatException e) {
-                    Log.e(TAG, "bluetoothAddressToInt8Array: " + e.getMessage(), e);
-                    intArray = null;
-                    break;
+                    for (int bluetoothAddressByte : bluetoothAddressAsInt8Array) {
+                        dataOutputStream.writeByte(bluetoothAddressByte);
+                    }
+
+                    bluetoothMacAddressAsByteArray = byteArrayOutputStream.toByteArray();
+                } catch (IOException e) {
+                    Log.e(TAG, "bluetoothMacAddressToByteArray: " + e.getMessage(), e);
                 }
             }
         }
 
-        return intArray;
+        return bluetoothMacAddressAsByteArray;
     }
 
     /**
-     * Tries to parse a Bluetooth address from the given integer array.
-     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
-     * @param bluetoothAddressAsInt8Array The integer array containing the Bluetooth address.
-     * @return The parsed Bluetooth address.
+     * Converts the given byte array, which should contain the Bluetooth MAC address, into a string.
+     * @param byteArray The byte array containing the Bluetooth MAC address.
+     * @return A newly created string containing the Bluetooth MAC address or null in case of a failure.
      */
-    public static String int8ArrayToBluetoothAddress(int[] bluetoothAddressAsInt8Array) {
-        StringBuilder stringBuilder = new StringBuilder();
+    public static String byteArrayToBluetoothMacAddress(byte[] byteArray) {
+        String bluetoothMacAddress = null;
 
-        for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
-            stringBuilder.append(Integer.toHexString(bluetoothAddressAsInt8Array[i] & 0xff));
+        if (byteArray != null && byteArray.length >= BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArray);
+            DataInputStream dataInputStream = new DataInputStream(byteArrayInputStream);
+            int[] bluetoothAddressAsInt8Array = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
-            if (i < bluetoothAddressAsInt8Array.length - 1) {
-                stringBuilder.append(BLUETOOTH_ADDRESS_SEPARATOR);
+            try {
+                for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
+                    bluetoothAddressAsInt8Array[i] = dataInputStream.readByte();
+                }
+
+                bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+            } catch (IOException e) {
+                Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
+            } catch (IndexOutOfBoundsException e) {
+                Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
             }
         }
 
-        return stringBuilder.toString().toUpperCase();
+        return bluetoothMacAddress;
     }
 
     /**
      * Rotates the byte, with the given index, of the given UUID and returns the modified UUID.
+     *
+     * A UUID with rotated byte can be used to define and communicate a distinct state e.g.
+     * differentiate between willingness to provide assistance (peer its Bluetooth MAC address)
+     * instead of requesting assistance.
+     *
      * @param originalUuid The original UUID.
      * @param byteIndex The index of the byte (not the index of the char) to rotate. A UUID contains
      *                  16 bytes, so the last index is 15. Thus, greater value than 15 will result
@@ -226,10 +323,10 @@ class BlePeerDiscoveryUtils {
         int startIndexOfByte = byteIndex * 2; // Since byte as hex string is 2 characters
 
         // We have to take into account the dashes (UUID in form of a string) and add them to the
-        // index, if necessary:
+        // index, if necessary.
         //
         // UUID as string:  "de305d54-75b4-431b-adb2-eb6b9e546014"
-        // byte index:       0 1 2 3  4 5  6 7  8 9  ...
+        // Byte index:       0 1 2 3  4 5  6 7  8 9  ...
         //
         if (byteIndex > 9) {
             startIndexOfByte += 4;
@@ -311,5 +408,52 @@ class BlePeerDiscoveryUtils {
 
         int randomInt8 = mRandom.nextInt(256);
         return Integer.toHexString(randomInt8);
+    }
+
+    /**
+     * Converts the given Bluetooth address into an integer array.
+     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     * @param bluetoothAddress The Bluetooth address to convert.
+     * @return An integer array containing the Bluetooth address.
+     */
+    protected static int[] bluetoothAddressToInt8Array(String bluetoothAddress) {
+        String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
+        int[] intArray = null;
+
+        if (hexStringArray.length >= BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+            intArray = new int[hexStringArray.length];
+
+            for (int i = 0; i < hexStringArray.length; ++i) {
+                try {
+                    intArray[i] = Integer.parseInt(hexStringArray[i], 16);
+                } catch (NumberFormatException e) {
+                    Log.e(TAG, "bluetoothAddressToInt8Array: " + e.getMessage(), e);
+                    intArray = null;
+                    break;
+                }
+            }
+        }
+
+        return intArray;
+    }
+
+    /**
+     * Tries to parse a Bluetooth address from the given integer array.
+     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     * @param bluetoothAddressAsInt8Array The integer array containing the Bluetooth address.
+     * @return The parsed Bluetooth address.
+     */
+    private static String int8ArrayToBluetoothAddress(int[] bluetoothAddressAsInt8Array) {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
+            stringBuilder.append(Integer.toHexString(bluetoothAddressAsInt8Array[i] & 0xff));
+
+            if (i < bluetoothAddressAsInt8Array.length - 1) {
+                stringBuilder.append(BLUETOOTH_ADDRESS_SEPARATOR);
+            }
+        }
+
+        return stringBuilder.toString().toUpperCase();
     }
 }

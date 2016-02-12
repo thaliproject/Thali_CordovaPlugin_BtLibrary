@@ -12,6 +12,7 @@ import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,9 +69,15 @@ class BleScanner extends ScanCallback {
         try {
             if (settings != null) {
                 builder.setScanMode(settings.getScanMode());
+                builder.setReportDelay(settings.getScanReportDelay());
             } else {
                 Log.e(TAG, "Failed to get the discovery manager settings instance - using default settings");
                 builder.setScanMode(DiscoveryManagerSettings.DEFAULT_SCAN_MODE);
+                builder.setReportDelay(DiscoveryManagerSettings.DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
+            }
+
+            if (CommonUtils.isMarshmallowOrHigher()) {
+                applyAdditionalMarshmallowSettings(builder);
             }
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "BleScanner: Failed to apply scan mode setting: " + e.getMessage(), e);
@@ -175,8 +182,25 @@ class BleScanner extends ScanCallback {
                 + ", report delay in milliseconds: " + mScanSettings.getReportDelayMillis()
                 + ", scan result type: " + mScanSettings.getScanResultType());
         } else {
-            Log.e(TAG, "setScanSettings: The argument (ScanSettings) cannot be null");
+            throw new NullPointerException("The argument (ScanSettings) cannot be null");
         }
+    }
+
+    /**
+     * Applies the additional, default scan setting values for Marshmallow.
+     *
+     * Thali specs dictate that when calling startScan the settings argument MUST be used and MUST be set to:
+     *
+     *  setCallbackType(callbackType) - If on API 23 then callbackType MUST be set to the flag CALLBACK_TYPE_ALL_MATCHES and MUST NOT include the CALLBACK_TYPE_MATCH_LOST. We are explicitly not going to worry about announcing when a BLE peripheral has gone. It really shouldn't matter given how we are using BLE.
+     *  setMatchMode(matchMode) - If on API 23 then matchMode MUST be set to MATCH_MODE_STICKY .
+     *  setNumOfMatches(numOfMatches) - If on API 23 then numOfMatches MUST bet set to MATCH_NUM_MAX_ADVERTISEMENT.
+     */
+    @TargetApi(23)
+    public void applyAdditionalMarshmallowSettings(ScanSettings.Builder scanSettingsBuilder) {
+        Log.d(TAG, "applyAdditionalMarshmallowSettings");
+        scanSettingsBuilder.setCallbackType(ScanSettings.CALLBACK_TYPE_ALL_MATCHES);
+        scanSettingsBuilder.setMatchMode(ScanSettings.MATCH_MODE_STICKY);
+        scanSettingsBuilder.setNumOfMatches(ScanSettings.MATCH_NUM_MAX_ADVERTISEMENT);
     }
 
     @Override
@@ -207,6 +231,9 @@ class BleScanner extends ScanCallback {
                 break;
             case SCAN_FAILED_INTERNAL_ERROR:
                 reason = "Internal error";
+                break;
+            default:
+                reason = "Unknown error";
                 break;
         }
 
@@ -246,6 +273,9 @@ class BleScanner extends ScanCallback {
                         break;
                     case RUNNING:
                         mListener.onIsScannerStartedChanged(true);
+                        break;
+                    default:
+                        // Nothing to do here
                         break;
                 }
             }

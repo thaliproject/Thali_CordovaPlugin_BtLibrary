@@ -228,7 +228,7 @@ public class BluetoothGattManager {
                 }
             }
         } else {
-            Log.e(TAG, "provideBluetoothMacAddressToDevice: The given BluetoothDevice instance is null");
+            throw new NullPointerException("The given BluetoothDevice instance is null");
         }
     }
 

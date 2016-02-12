@@ -87,7 +87,7 @@ public class BluetoothSocketIoThread extends Thread {
     }
 
     /**
-     * Sets whether the thread should exit after on read() call or not.
+     * Sets whether the thread should exit after a read() call or not.
      * @param exit If true, will exit after one read() call. If false, will keep reading until closed.
      */
     public void setExitThreadAfterRead(boolean exit) {
