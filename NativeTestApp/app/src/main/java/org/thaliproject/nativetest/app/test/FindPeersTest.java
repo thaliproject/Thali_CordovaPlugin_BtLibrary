@@ -63,7 +63,19 @@ public class FindPeersTest extends AbstractTest implements DiscoveryManager.Disc
     }
 
     @Override
-    public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
+    public void onWifiEnabledChanged(boolean isEnabled) {
+        // Not used
+    }
+
+    @Override
+    public void onBluetoothEnabledChanged(boolean isEnabled) {
+        // Not used
+    }
+
+    @Override
+    public void onDiscoveryManagerStateChanged(
+            DiscoveryManager.DiscoveryManagerState state,
+            boolean isDiscovering, boolean isAdvertising) {
         // Not used
     }
 

@@ -3,6 +3,7 @@
  */
 package org.thaliproject.p2p.btconnectorlib.internal;
 
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.os.CountDownTimer;
@@ -10,6 +11,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BluetoothGattManager;
 import java.util.UUID;
@@ -17,7 +19,9 @@ import java.util.UUID;
 /**
  * A helper class to manage providing peer/receiving Bluetooth MAC address (Bro Mode).
  */
-public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager.BluetoothGattManagerListener {
+public class BluetoothMacAddressResolutionHelper
+        implements BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener,
+                   BluetoothGattManager.BluetoothGattManagerListener {
     public interface BluetoothMacAddressResolutionHelperListener {
         /**
          * Called when we start/stop providing peer its Bluetooth MAC address.
@@ -32,14 +36,16 @@ public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager
         void onReceiveBluetoothMacAddressModeStartedChanged(boolean isStarted);
     }
 
-    private final String TAG = DiscoveryManager.class.getName()
-            + "/" + BluetoothMacAddressResolutionHelper.class.getSimpleName();
+    private final String TAG = BluetoothMacAddressResolutionHelper.class.getName();
 
+    private final Context mContext;
+    private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mProvideBluetoothMacAddressRequestUuid;
     private final DiscoveryManager mDiscoveryManager;
     private final DiscoveryManagerSettings mSettings;
     private final BluetoothGattManager mBluetoothGattManager;
 
+    private BluetoothDeviceDiscoverer mBluetoothDeviceDiscoverer = null;
     private CountDownTimer mReceiveBluetoothMacAddressTimeoutTimer = null;
     private String mCurrentProvideBluetoothMacAddressRequestId = null;
     private boolean mIsProvideBluetoothMacAddressModeStarted = false;
@@ -48,13 +54,16 @@ public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager
     /**
      * Constructor.
      * @param context The application context.
+     * @param bluetoothAdapter The Bluetooth adapter instance.
      * @param discoveryManager The discovery manager instance.
      * @param bleServiceUuid Our BLE service UUID for the Bluetooth GATT manager.
      * @param provideBluetoothMacAddressRequestUuid The UUID for "Provide Bluetooth MAC address" request.
      */
     public BluetoothMacAddressResolutionHelper(
-            Context context, DiscoveryManager discoveryManager,
+            Context context, BluetoothAdapter bluetoothAdapter, DiscoveryManager discoveryManager,
             UUID bleServiceUuid, UUID provideBluetoothMacAddressRequestUuid) {
+        mContext = context;
+        mBluetoothAdapter = bluetoothAdapter;
         mDiscoveryManager = discoveryManager;
         mBluetoothGattManager = new BluetoothGattManager(this, context, bleServiceUuid);
         mSettings = DiscoveryManagerSettings.getInstance(context);
@@ -123,7 +132,7 @@ public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager
 
                 if (mCurrentProvideBluetoothMacAddressRequestId != null
                         && mCurrentProvideBluetoothMacAddressRequestId.length() > 0) {
-                    if (mDiscoveryManager.startBluetoothDeviceDiscovery()) {
+                    if (startBluetoothDeviceDiscovery()) {
                         BlePeerDiscoverer blePeerDiscoverer =
                                 mDiscoveryManager.getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
@@ -166,6 +175,7 @@ public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager
         mCurrentProvideBluetoothMacAddressRequestId = null;
         mBluetoothGattManager.clearBluetoothGattClientOperationQueue();
         mIsProvideBluetoothMacAddressModeStarted = false;
+        stopBluetoothDeviceDiscovery();
         mDiscoveryManager.onProvideBluetoothMacAddressModeStartedChanged(false);
     }
 
@@ -262,6 +272,80 @@ public class BluetoothMacAddressResolutionHelper implements BluetoothGattManager
         } else {
             Log.d(TAG, "startBluetoothMacAddressGattServer: Already started");
         }
+    }
+
+    /**
+     * Starts Bluetooth device discovery.
+     *
+     * Note that Bluetooth LE scanner cannot be running, when doing Bluetooth device discovery.
+     * Otherwise, the state of the Bluetooth stack on the device may become invalid. Observed
+     * consequences on Lollipop (Android version 5.x) include BLE scanning not turning on
+     * ("app cannot be registered" error state) and finally the application utilizing this library
+     * won't start at all (you get only a blank screen). To prevent this, calling this method will
+     * always stop BLE discovery.
+     *
+     * This method should not be called directly by an app utilizing this library. The method is
+     * public for testing purposes only.
+     *
+     * @return True, if started successfully. False otherwise.
+     */
+    public synchronized boolean startBluetoothDeviceDiscovery() {
+        Log.d(TAG, "startBluetoothDeviceDiscovery");
+
+        BlePeerDiscoverer blePeerDiscoverer =
+                mDiscoveryManager.getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
+        blePeerDiscoverer.stopScanner();
+
+        if (mBluetoothDeviceDiscoverer == null) {
+            mBluetoothDeviceDiscoverer = new BluetoothDeviceDiscoverer(mContext, mBluetoothAdapter, this);
+        }
+
+        boolean isStarted = false;
+
+        if (blePeerDiscoverer == null
+                || !blePeerDiscoverer.getState().contains(BlePeerDiscoverer.BlePeerDiscovererStateSet.SCANNING)) {
+            isStarted = (mBluetoothDeviceDiscoverer.isRunning()
+                    || mBluetoothDeviceDiscoverer.start(mSettings.getProvideBluetoothMacAddressTimeout()));
+        } else {
+            Log.e(TAG, "startBluetoothDeviceDiscovery: Bluetooth LE peer discoverer cannot be running, when doing Bluetooth LE scanning");
+        }
+
+        return isStarted;
+    }
+
+    /**
+     * Stops the Bluetooth device discovery.
+     *
+     * This method should not be called directly by an app utilizing this library. The method is
+     * public for testing purposes only.
+     *
+     * @return True, if stopped. False otherwise.
+     */
+    public synchronized boolean stopBluetoothDeviceDiscovery() {
+        boolean wasStopped = false;
+
+        if (mBluetoothDeviceDiscoverer != null) {
+            mBluetoothDeviceDiscoverer.stop();
+            mBluetoothDeviceDiscoverer = null;
+            Log.d(TAG, "stopBluetoothDeviceDiscovery: Stopped");
+            wasStopped = true;
+        }
+
+        return wasStopped;
+    }
+
+    /**
+     * From BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener
+     *
+     * Initiates the operation to read the Bluetooth GATT characteristic containing the request ID
+     * from a GATT service of the given Bluetooth device.
+     * @param bluetoothDevice The Bluetooth device.
+     */
+    @Override
+    public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
+        String bluetoothMacAddress = bluetoothDevice.getAddress();
+        Log.d(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
+        provideBluetoothMacAddressToDevice(bluetoothDevice);
     }
 
     /**

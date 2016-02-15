@@ -5,7 +5,6 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
 import android.net.wifi.p2p.WifiP2pDevice;
@@ -14,11 +13,12 @@ import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.BluetoothMacAddressResolutionHelper;
-import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothDeviceDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer.BlePeerDiscovererStateSet;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer.WifiPeerDiscovererStateSet;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 import java.util.Collection;
@@ -35,7 +35,6 @@ public class DiscoveryManager
             WifiDirectManager.WifiStateListener,
             WifiPeerDiscoverer.WifiPeerDiscoveryListener,
             BlePeerDiscoverer.BlePeerDiscoveryListener,
-            BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener,
             BluetoothMacAddressResolutionHelper.BluetoothMacAddressResolutionHelperListener,
             PeerModel.Listener,
             DiscoveryManagerSettings.Listener {
@@ -71,10 +70,46 @@ public class DiscoveryManager
         boolean onPermissionCheckRequired(String permission);
 
         /**
+         * Called when Wi-Fi is enabled/disabled.
+         * @param isEnabled True, if enabled. False, if disabled.
+         */
+        void onWifiEnabledChanged(boolean isEnabled);
+
+        /**
+         * Called when Bluetooth is enabled/disabled.
+         * @param isEnabled True, if enabled. False, if disabled.
+         */
+        void onBluetoothEnabledChanged(boolean isEnabled);
+
+        /**
          * Called when the state of this instance is changed.
          * @param state The new state.
+         * @param isDiscovering True, if peer discovery is active. False otherwise.
+         * @param isAdvertising True, if advertising is active. False otherwise.
          */
-        void onDiscoveryManagerStateChanged(DiscoveryManagerState state);
+        void onDiscoveryManagerStateChanged(
+                DiscoveryManagerState state, boolean isDiscovering, boolean isAdvertising);
+
+        /**
+         * Called when a new peer is discovered.
+         * @param peerProperties The properties of the new peer.
+         */
+        void onPeerDiscovered(PeerProperties peerProperties);
+
+        /**
+         * Called when a peer data is updated (missing data is added). This callback is never
+         * called, if data is lost.
+         * @param peerProperties The updated properties of a discovered peer.
+         */
+        void onPeerUpdated(PeerProperties peerProperties);
+
+        /**
+         * Called when an existing peer is lost (i.e. not available anymore).
+         * @param peerProperties The properties of the lost peer.
+         */
+        void onPeerLost(PeerProperties peerProperties);
+
+        // Bro Mode callbacks ->
 
         /**
          * Called when we discovery a device that needs to find out its own Bluetooth MAC address.
@@ -108,25 +143,6 @@ public class DiscoveryManager
          * @param bluetoothMacAddress The Bluetooth MAC address.
          */
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
-
-        /**
-         * Called when a new peer is discovered.
-         * @param peerProperties The properties of the new peer.
-         */
-        void onPeerDiscovered(PeerProperties peerProperties);
-
-        /**
-         * Called when a peer data is updated (missing data is added). This callback is never
-         * called, if data is lost.
-         * @param peerProperties The updated properties of a discovered peer.
-         */
-        void onPeerUpdated(PeerProperties peerProperties);
-
-        /**
-         * Called when an existing peer is lost (i.e. not available anymore).
-         * @param peerProperties The properties of the lost peer.
-         */
-        void onPeerLost(PeerProperties peerProperties);
     }
 
     private static final String TAG = DiscoveryManager.class.getName();
@@ -139,9 +155,10 @@ public class DiscoveryManager
     private WifiDirectManager mWifiDirectManager = null;
     private BlePeerDiscoverer mBlePeerDiscoverer = null;
     private WifiPeerDiscoverer mWifiPeerDiscoverer = null;
-    private BluetoothDeviceDiscoverer mBluetoothDeviceDiscoverer = null;
     private DiscoveryManagerState mState = DiscoveryManagerState.NOT_STARTED;
     private DiscoveryManagerSettings mSettings = null;
+    private EnumSet<WifiPeerDiscovererStateSet> mWifiPeerDiscovererStateSet = EnumSet.of(WifiPeerDiscovererStateSet.NOT_STARTED);
+    private EnumSet<BlePeerDiscovererStateSet> mBlePeerDiscovererStateSet = EnumSet.of(BlePeerDiscovererStateSet.NOT_STARTED);
     private PeerModel mPeerModel = null;
     private BluetoothMacAddressResolutionHelper mBluetoothMacAddressResolutionHelper = null;
     private String mMissingPermission = null;
@@ -149,6 +166,8 @@ public class DiscoveryManager
     private int mPreviousDeviceDiscoverableTimeInSeconds = 0;
     private boolean mShouldBeScanning = false;
     private boolean mShouldBeAdvertising = false;
+    private boolean mIsDiscovering = false;
+    private boolean mIsAdvertising = false;
 
     /**
      * Constructor.
@@ -168,7 +187,8 @@ public class DiscoveryManager
         mServiceType = serviceType;
 
         mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
-                context, this, mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid));
+                context, mBluetoothManager.getBluetoothAdapter(), this,
+                mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid));
 
         mSettings = DiscoveryManagerSettings.getInstance(mContext);
         mSettings.load();
@@ -202,21 +222,6 @@ public class DiscoveryManager
     }
 
     /**
-     * @return The peer model.
-     */
-    public PeerModel getPeerModel() {
-        return mPeerModel;
-    }
-
-    /**
-     * Used to check, if some required permission has not been granted by the user.
-     * @return The name of the missing permission or null, if none.
-     */
-    public String getMissingPermission() {
-        return mMissingPermission;
-    }
-
-    /**
      * Checks the current state and returns true, if running regardless of the discovery mode in use.
      * @return True, if running regardless of the mode. False otherwise.
      */
@@ -226,6 +231,59 @@ public class DiscoveryManager
                 || mState == DiscoveryManagerState.RUNNING_BLE
                 || mState == DiscoveryManagerState.RUNNING_WIFI
                 || mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+    }
+
+    /**
+     * @return True, if peer discovery is active. False otherwise.
+     */
+    public boolean isDiscovering() {
+        boolean isBleScannerRunning =
+                (mBlePeerDiscoverer != null
+                        && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.SCANNING));
+        boolean isWifiDiscovering =
+                (mWifiPeerDiscoverer != null
+                        && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.SCANNING));
+
+        return (isBleScannerRunning || isWifiDiscovering);
+    }
+
+    /**
+     * @return True, if advertising is active. False otherwise.
+     */
+    public boolean isAdvertising() {
+        boolean isBleAdvertiserRunning =
+                (mBlePeerDiscoverer != null
+                        && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.ADVERTISING));
+        boolean isWifiAdvertiserRunning =
+                (mWifiPeerDiscoverer != null
+                        && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.ADVERTISING));
+
+        return (isBleAdvertiserRunning || isWifiAdvertiserRunning);
+    }
+
+    /**
+     * @return The peer model.
+     */
+    public PeerModel getPeerModel() {
+        return mPeerModel;
+    }
+
+    /**
+     * Returns the Bluetooth MAC address resolution helper. Note that the helper isn't meant to be
+     * used directly. This getter is here strictly for testing purposes.
+     *
+     * @return The Bluetooth MAC address resolution helper.
+     */
+    public BluetoothMacAddressResolutionHelper getBluetoothMacAddressResolutionHelper() {
+        return mBluetoothMacAddressResolutionHelper;
+    }
+
+    /**
+     * Used to check, if some required permission has not been granted by the user.
+     * @return The name of the missing permission or null, if none.
+     */
+    public String getMissingPermission() {
+        return mMissingPermission;
     }
 
     /**
@@ -253,7 +311,7 @@ public class DiscoveryManager
             if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
                 if (mBluetoothManager.isBluetoothEnabled()) {
                     // Try to start BLE based discovery
-                    stopBluetoothDeviceDiscovery();
+                    mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
                     bleDiscoveryStarted = startBlePeerDiscoverer(mShouldBeScanning, mShouldBeAdvertising);
                 } else {
                     Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
@@ -281,7 +339,7 @@ public class DiscoveryManager
                     || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
                     || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
                 if (bleDiscoveryStarted && wifiDiscoveryStarted) {
-                    setState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+                    updateState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
                 } else if (bleDiscoveryStarted) {
                     if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
                         Log.i(TAG, "start: Our Bluetooth MAC address is not known");
@@ -291,17 +349,17 @@ public class DiscoveryManager
                                     mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
                         }
 
-                        setState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+                        updateState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
                     } else {
-                        setState(DiscoveryManagerState.RUNNING_BLE);
+                        updateState(DiscoveryManagerState.RUNNING_BLE);
                     }
                 } else if (wifiDiscoveryStarted) {
-                    setState(DiscoveryManagerState.RUNNING_WIFI);
+                    updateState(DiscoveryManagerState.RUNNING_WIFI);
                 }
 
                 Log.i(TAG, "start: OK");
             } else {
-                setState(DiscoveryManagerState.NOT_STARTED);
+                updateState(DiscoveryManagerState.NOT_STARTED);
             }
         } else {
             Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
@@ -367,7 +425,7 @@ public class DiscoveryManager
 
         mPeerModel.clear();
 
-        setState(DiscoveryManagerState.NOT_STARTED);
+        updateState(DiscoveryManagerState.NOT_STARTED);
     }
 
     /**
@@ -481,11 +539,12 @@ public class DiscoveryManager
     /**
      * From BluetoothManager.BluetoothManagerListener
      *
-     * Stops/restarts the BLE based peer discovery depending on the given mode.
+     * Stops/restarts the BLE based peer discovery depending on the given mode and notifies the listener.
      * @param mode The new mode.
      */
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
+        final boolean isBluetoothEnabled = (mode != BluetoothAdapter.SCAN_MODE_NONE);
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
 
         if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
@@ -499,9 +558,9 @@ public class DiscoveryManager
                     if (discoveryMode == DiscoveryMode.BLE ||
                             (discoveryMode == DiscoveryMode.BLE_AND_WIFI &&
                                     !mWifiDirectManager.isWifiEnabled())) {
-                        setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                        updateState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
                     } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                        setState(DiscoveryManagerState.RUNNING_WIFI);
+                        updateState(DiscoveryManagerState.RUNNING_WIFI);
                     }
                 }
             } else {
@@ -513,6 +572,13 @@ public class DiscoveryManager
                 }
             }
         }
+
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onBluetoothEnabledChanged(isBluetoothEnabled);
+            }
+        });
     }
 
     /**
@@ -523,6 +589,7 @@ public class DiscoveryManager
      */
     @Override
     public void onWifiStateChanged(int state) {
+        final boolean isWifiEnabled = (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED);
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
 
         if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
@@ -536,9 +603,9 @@ public class DiscoveryManager
                     if (discoveryMode == DiscoveryMode.WIFI
                             || (discoveryMode == DiscoveryMode.BLE_AND_WIFI
                                 && !mBluetoothManager.isBluetoothEnabled())) {
-                        setState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                        updateState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
                     } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                        setState(DiscoveryManagerState.RUNNING_BLE);
+                        updateState(DiscoveryManagerState.RUNNING_BLE);
                     }
                 }
             } else {
@@ -548,28 +615,43 @@ public class DiscoveryManager
                 }
             }
         }
+
+        mHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onWifiEnabledChanged(isWifiEnabled);
+            }
+        });
     }
 
     /**
      * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
      *
-     * Does nothing but logs the event.
+     * Stores the new state and notifies the listener.
      * @param state The new state.
      */
     @Override
-    public void onWifiPeerDiscovererStateChanged(EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet> state) {
-        Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + state);
+    public void onWifiPeerDiscovererStateChanged(EnumSet<WifiPeerDiscovererStateSet> state) {
+        if (!mWifiPeerDiscovererStateSet.equals(state)) {
+            Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + mWifiPeerDiscovererStateSet + " -> " + state);
+            mWifiPeerDiscovererStateSet = state;
+            updateState(mState); // Notify the listener
+        }
     }
 
     /**
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
      *
-     * Does nothing but logs the event.
+     * Stores the new state and notifies the listener.
      * @param state The new state.
      */
     @Override
-    public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscoverer.BlePeerDiscovererStateSet> state) {
-        Log.i(TAG, "onBlePeerDiscovererStateChanged: " + state);
+    public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state) {
+        if (!mBlePeerDiscovererStateSet.equals(state)) {
+            Log.i(TAG, "onBlePeerDiscovererStateChanged: " + mBlePeerDiscovererStateSet + " -> " + state);
+            mBlePeerDiscovererStateSet = state;
+            updateState(mState); // Notify listener
+        }
     }
 
     /**
@@ -727,22 +809,6 @@ public class DiscoveryManager
     }
 
     /**
-     * From BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener
-     *
-     * Part of Bro Mode.
-     *
-     * Initiates the operation to read the Bluetooth GATT characteristic containing the request ID
-     * from a GATT service of the given Bluetooth device.
-     * @param bluetoothDevice The Bluetooth device.
-     */
-    @Override
-    public void onBluetoothDeviceDiscovered(BluetoothDevice bluetoothDevice) {
-        String bluetoothMacAddress = bluetoothDevice.getAddress();
-        Log.d(TAG, "onBluetoothDeviceDiscovered: " + bluetoothMacAddress);
-        mBluetoothMacAddressResolutionHelper.provideBluetoothMacAddressToDevice(bluetoothDevice);
-    }
-
-    /**
      * From BluetoothMacAddressResolutionHelper.BluetoothMacAddressResolutionHelperListener
      *
      * Part of Bro Mode.
@@ -756,9 +822,8 @@ public class DiscoveryManager
             @Override
             public void run() {
                 if (isStarted) {
-                    setState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
+                    updateState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
                 } else {
-                    stopBluetoothDeviceDiscovery();
                     stopBlePeerDiscoverer(false);
                     start(mShouldBeScanning, mShouldBeAdvertising);
                 }
@@ -914,9 +979,9 @@ public class DiscoveryManager
 
             if (updateState) {
                 if (mState == DiscoveryManagerState.RUNNING_BLE) {
-                    setState(DiscoveryManagerState.NOT_STARTED);
+                    updateState(DiscoveryManagerState.NOT_STARTED);
                 } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
-                    setState(DiscoveryManagerState.RUNNING_WIFI);
+                    updateState(DiscoveryManagerState.RUNNING_WIFI);
                 }
             }
         }
@@ -977,89 +1042,36 @@ public class DiscoveryManager
 
             if (updateState) {
                 if (mState == DiscoveryManagerState.RUNNING_WIFI) {
-                    setState(DiscoveryManagerState.NOT_STARTED);
+                    updateState(DiscoveryManagerState.NOT_STARTED);
                 } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
-                    setState(DiscoveryManagerState.RUNNING_BLE);
+                    updateState(DiscoveryManagerState.RUNNING_BLE);
                 }
             }
         }
     }
 
     /**
-     * Starts Bluetooth device discovery.
-     *
-     * Note that Bluetooth LE scanner cannot be running, when doing Bluetooth device discovery.
-     * Otherwise, the state of the Bluetooth stack on the device may become invalid. Observed
-     * consequences on Lollipop (Android version 5.x) include BLE scanning not turning on
-     * ("app cannot be registered" error state) and finally the application utilizing this library
-     * won't start at all (you get only a blank screen). To prevent this, calling this method will
-     * always stop BLE discovery.
-     *
-     * This method should not be called directly by an app utilizing this library. The method is
-     * public for testing purposes only.
-     *
-     * @return True, if started successfully. False otherwise.
-     */
-    public synchronized boolean startBluetoothDeviceDiscovery() {
-        Log.d(TAG, "startBluetoothDeviceDiscovery");
-
-        if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.stopScanner();
-        }
-
-        if (mBluetoothDeviceDiscoverer == null) {
-            mBluetoothDeviceDiscoverer =
-                    new BluetoothDeviceDiscoverer(mContext, mBluetoothManager.getBluetoothAdapter(), this);
-        }
-
-        boolean isStarted = false;
-
-        if (mBlePeerDiscoverer == null
-            || !mBlePeerDiscoverer.getState().contains(BlePeerDiscoverer.BlePeerDiscovererStateSet.SCANNING)) {
-            isStarted = (mBluetoothDeviceDiscoverer.isRunning()
-                    || mBluetoothDeviceDiscoverer.start(mSettings.getProvideBluetoothMacAddressTimeout()));
-        } else {
-            Log.e(TAG, "startBluetoothDeviceDiscovery: Bluetooth LE peer discoverer cannot be running, when doing Bluetooth LE scanning");
-        }
-
-        return isStarted;
-    }
-
-    /**
-     * Stops the Bluetooth device discovery.
-     *
-     * This method should not be called directly by an app utilizing this library. The method is
-     * public for testing purposes only.
-     *
-     * @return True, if stopped. False otherwise.
-     */
-    public synchronized boolean stopBluetoothDeviceDiscovery() {
-        boolean wasStopped = false;
-
-        if (mBluetoothDeviceDiscoverer != null) {
-            mBluetoothDeviceDiscoverer.stop();
-            mBluetoothDeviceDiscoverer = null;
-            Log.d(TAG, "stopBluetoothDeviceDiscovery: Stopped");
-            wasStopped = true;
-        }
-
-        return wasStopped;
-    }
-
-    /**
-     * Sets the state of this instance and notifies the listener.
+     * Updates the state of this instance and notifies the listener.
      * @param state The new state.
      */
-    private synchronized void setState(final DiscoveryManagerState state) {
-        if (mState != state) {
-            Log.d(TAG, "setState: " + state.toString());
+    private synchronized void updateState(final DiscoveryManagerState state) {
+        final boolean isDiscovering = isDiscovering();
+        final boolean isAdvertising = isAdvertising();
+
+        if (mState != state || mIsDiscovering != isDiscovering || mIsAdvertising != isAdvertising) {
             mState = state;
+            mIsDiscovering = isDiscovering;
+            mIsAdvertising = isAdvertising;
+
+            Log.d(TAG, "updateState: State: " + mState
+                    + ", is discovering: " + mIsDiscovering
+                    + ", is advertising: " + mIsAdvertising);
 
             if (mListener != null) {
                 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        mListener.onDiscoveryManagerStateChanged(state);
+                        mListener.onDiscoveryManagerStateChanged(state, isDiscovering, isAdvertising);
                     }
                 });
             }

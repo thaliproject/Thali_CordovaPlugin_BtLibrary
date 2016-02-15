@@ -175,7 +175,7 @@ public class ConnectionEngine implements
      * Starts the Bluetooth device discovery.
      */
     public void startBluetoothDeviceDiscovery() {
-        mDiscoveryManager.startBluetoothDeviceDiscovery();
+        mDiscoveryManager.getBluetoothMacAddressResolutionHelper().startBluetoothDeviceDiscovery();
     }
 
     /**
@@ -354,10 +354,41 @@ public class ConnectionEngine implements
         return (permissionCheck == PackageManager.PERMISSION_GRANTED);
     }
 
+    /**
+     * @param isEnabled True, if enabled. False, if disabled.
+     */
     @Override
-    public void onDiscoveryManagerStateChanged(DiscoveryManager.DiscoveryManagerState discoveryManagerState) {
-        LogFragment.logMessage("Discovery manager state changed: " + discoveryManagerState);
-        MainActivity.showToast("Discovery manager state changed: " + discoveryManagerState);
+    public void onWifiEnabledChanged(boolean isEnabled) {
+        Log.d(TAG, "onWifiEnabledChanged: " + isEnabled);
+    }
+
+    /**
+     * @param isEnabled True, if enabled. False, if disabled.
+     */
+    @Override
+    public void onBluetoothEnabledChanged(boolean isEnabled) {
+        Log.d(TAG, "onBluetoothEnabledChanged: " + isEnabled);
+    }
+
+    /**
+     * @param state The new state.
+     * @param isDiscovering True, if peer discovery is active. False otherwise.
+     * @param isAdvertising True, if advertising is active. False otherwise.
+     */
+    @Override
+    public void onDiscoveryManagerStateChanged(
+            DiscoveryManager.DiscoveryManagerState state,
+            boolean isDiscovering, boolean isAdvertising) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append("Discovery manager state changed: ");
+        stringBuilder.append(state);
+        stringBuilder.append(", ");
+        stringBuilder.append(isDiscovering ? "discovering/scanning" : "not discovering/scanning");
+        stringBuilder.append(", ");
+        stringBuilder.append(isAdvertising ? "advertising" : "not advertising");
+        String message = stringBuilder.toString();
+        LogFragment.logMessage(message);
+        MainActivity.showToast(message);
     }
 
     @Override

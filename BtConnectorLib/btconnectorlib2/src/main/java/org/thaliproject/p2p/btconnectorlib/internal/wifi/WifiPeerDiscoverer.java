@@ -85,6 +85,13 @@ public class WifiPeerDiscoverer implements
     }
 
     /**
+     * @return The current state of this class.
+     */
+    public EnumSet<WifiPeerDiscovererStateSet> getState() {
+        return mStateSet;
+    }
+
+    /**
      * Starts the Wi-Fi P2P device discovery.
      * @return True, if starting or already started. False otherwise.
      */
