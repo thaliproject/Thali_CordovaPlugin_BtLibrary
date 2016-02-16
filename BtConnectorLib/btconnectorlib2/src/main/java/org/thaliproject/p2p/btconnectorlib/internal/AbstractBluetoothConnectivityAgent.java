@@ -31,7 +31,18 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      * @param context The application context.
      */
     public AbstractBluetoothConnectivityAgent(Context context) {
+        if (context == null) {
+            throw new NullPointerException("Context is null");
+        }
+
         mBluetoothManager = BluetoothManager.getInstance(context);
+    }
+
+    /**
+     * @return The Bluetooth manager instance. Guaranteed not to be null.
+     */
+    public BluetoothManager getBluetoothManager() {
+        return mBluetoothManager;
     }
 
     /**

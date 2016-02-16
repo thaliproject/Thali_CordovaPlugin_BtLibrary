@@ -262,6 +262,13 @@ public class DiscoveryManager
     }
 
     /**
+     * @return The Wi-Fi Direct manager instance.
+     */
+    public WifiDirectManager getWifiDirectManager() {
+        return mWifiDirectManager;
+    }
+
+    /**
      * @return The peer model.
      */
     public PeerModel getPeerModel() {
