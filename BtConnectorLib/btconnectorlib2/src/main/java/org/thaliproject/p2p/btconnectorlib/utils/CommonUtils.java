@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
 /**
  * Commonly used utils and constants.
@@ -49,6 +50,19 @@ public class CommonUtils {
         }
 
         return (permissionCheck == PackageManager.PERMISSION_GRANTED);
+    }
+
+    /**
+     * Checks whether the given Bluetooth MAC address has the proper form or not.
+     *
+     * A valid Bluetooth MAC address has form of: 01:23:45:67:89:AB
+     * Note that the possible alphabets in the string have to be upper case.
+     *
+     * @param bluetoothMacAddress The Bluetooth MAC address to validate.
+     * @return True, if the address is valid. False otherwise.
+     */
+    public static boolean isValidBluetoothMacAddress(String bluetoothMacAddress) {
+        return BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress);
     }
 
     /**

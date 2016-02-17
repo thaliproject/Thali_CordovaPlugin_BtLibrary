@@ -15,6 +15,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class ConnectionManagerSettings extends AbstractSettings {
     public interface Listener {
         void onConnectionManagerSettingsChanged();
+        void onHandshakeRequiredSettingChanged(boolean hanshakeRequired);
     }
 
     // Default settings
@@ -211,7 +212,7 @@ public class ConnectionManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onConnectionManagerSettingsChanged();
+                    listener.onHandshakeRequiredSettingChanged(mHandshakeRequired);
                 }
             }
         }

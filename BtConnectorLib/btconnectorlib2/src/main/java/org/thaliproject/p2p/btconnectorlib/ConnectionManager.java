@@ -257,6 +257,18 @@ public class ConnectionManager
             mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
             mBluetoothConnector.setInsecureRfcommSocketPort(mSettings.getInsecureRfcommSocketPortNumber());
             mBluetoothConnector.setMaxNumberOfOutgoingConnectionAttemptRetries(mSettings.getMaxNumberOfConnectionAttemptRetries());
+        }
+    }
+
+    /**
+     * Applies the changed setting, if the connector instance already exists.
+     * The reason why this is a separate callback, is that when changing the setting we have to
+     * restart the server thread.
+     * @param hanshakeRequired True, if a handshake protocol should be applied when establishing a connection.
+     */
+    @Override
+    public void onHandshakeRequiredSettingChanged(boolean hanshakeRequired) {
+        if (mBluetoothConnector != null) {
             mBluetoothConnector.setHandshakeRequired(mSettings.getHandshakeRequired());
         }
     }
