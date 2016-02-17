@@ -61,7 +61,7 @@ public class BluetoothConnector
     public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothClientThread.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_MAX_NUMBER_OF_RETRIES = BluetoothClientThread.DEFAULT_MAX_NUMBER_OF_RETRIES;
-    public static final boolean DEFAULT_HANDSHAKE_REQUIRED = false;
+    public static final boolean DEFAULT_HANDSHAKE_REQUIRED = true;
     private static final long CONNECTION_TIMEOUT_TIMER_INTERVAL_IN_MILLISECONDS = 5000;
     private static final long SERVER_RESTART_DELAY_IN_MILLISECONDS = 2000;
 

@@ -194,7 +194,7 @@ public class MainActivity
         PeerProperties peerProperties = null;
 
         if (mPeerListFragment != null) {
-            mPeerListFragment.getSelectedPeerProperties();
+            peerProperties = mPeerListFragment.getSelectedPeerProperties();
         }
 
         PeerAndConnectionModel model = PeerAndConnectionModel.getInstance();

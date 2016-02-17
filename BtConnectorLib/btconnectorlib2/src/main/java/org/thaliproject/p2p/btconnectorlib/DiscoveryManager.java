@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.BluetoothMacAddressResolutionHelper;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer.BlePeerDiscovererStateSet;
@@ -201,22 +202,22 @@ public class DiscoveryManager
 
     /**
      * @return True, if the multi advertisement is supported by the chipset. Note that if Bluetooth
-     * is not enabled on the device, this method will only check whether or not Bluetooth LE is
-     * supported.
+     * is not enabled on the device (and we haven't resolved if supported before), this method will
+     * only check whether or not Bluetooth LE is supported.
      */
     public boolean isBleMultipleAdvertisementSupported() {
-        boolean isSupported = mBluetoothManager.isBleMultipleAdvertisementSupported();
+        BluetoothManager.FeatureSupportedStatus featureSupportedStatus =
+                mBluetoothManager.isBleMultipleAdvertisementSupported();
+        boolean isSupported = (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.SUPPORTED);
 
-        if (!isSupported && !mBluetoothManager.isBluetoothEnabled()) {
-            isSupported = mBluetoothManager.isBleSupported();
-
-            if (isSupported) {
-                Log.w(TAG, "isBleMultipleAdvertisementSupported: "
-                        + "Bluetooth is not enabled so we could not check whether or not Bluetooth"
-                        + "LE multi advertisement is supported. However, Bluetooth LE is supported "
-                        + "so we just *assume* multi advertisement is supported too (which may not "
-                        + "always be the case).");
-            }
+        if (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED
+                && mBluetoothManager.isBleSupported()) {
+            Log.w(TAG, "isBleMultipleAdvertisementSupported: "
+                    + "Bluetooth is not enabled so we could not check whether or not Bluetooth"
+                    + "LE multi advertisement is supported. However, Bluetooth LE is supported "
+                    + "so we just *assume* multi advertisement is supported too (which may not "
+                    + "always be the case).");
+            isSupported = true;
         }
 
         return isSupported;

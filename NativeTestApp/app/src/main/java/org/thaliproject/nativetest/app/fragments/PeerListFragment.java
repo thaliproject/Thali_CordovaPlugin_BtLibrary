@@ -65,9 +65,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    PeerProperties peerProperties = (PeerProperties)mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemLongClick: " + peerProperties.toString());
-                    mSelectedPeerProperties = peerProperties;
+                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
+                    Log.i(TAG, "onItemLongClick: " + mSelectedPeerProperties.toString());
 
                     if (mListener != null) {
                         mListener.onPeerSelected(mSelectedPeerProperties);
