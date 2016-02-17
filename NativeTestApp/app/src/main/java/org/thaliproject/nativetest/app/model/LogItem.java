@@ -3,6 +3,7 @@
  */
 package org.thaliproject.nativetest.app.model;
 
+import java.net.NoRouteToHostException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 
@@ -10,15 +11,21 @@ import java.text.SimpleDateFormat;
  * Contains data for a single log item.
  */
 public class LogItem {
+    public enum LogMessageType {
+        NORMAL,
+        ERROR,
+        TEST
+    }
+
     public Timestamp timestamp;
     public String timestampString = "";
     public String message = "";
-    public boolean isError = false;
+    public LogMessageType type = LogMessageType.NORMAL;
 
-    public LogItem(Timestamp timestamp, String message, boolean isError) {
+    public LogItem(Timestamp timestamp, String message, LogMessageType type) {
         this.timestamp = timestamp;
         this.timestampString = new SimpleDateFormat("hh:mm:ss").format(timestamp);
         this.message = message;
-        this.isError = isError;
+        this.type = type;
     }
 }

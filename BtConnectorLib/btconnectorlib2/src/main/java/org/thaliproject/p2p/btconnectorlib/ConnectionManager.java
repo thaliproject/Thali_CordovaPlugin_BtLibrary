@@ -90,7 +90,7 @@ public class ConnectionManager
 
         mSettings = ConnectionManagerSettings.getInstance(mContext);
         mSettings.load();
-        mSettings.setListener(this);
+        mSettings.addListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());
     }
@@ -209,7 +209,7 @@ public class ConnectionManager
 
             try {
                 BluetoothDevice device = mBluetoothManager.getRemoteDevice(peerToConnectTo.getBluetoothMacAddress());
-                success = mBluetoothConnector.connect(device, peerToConnectTo, mMyUuid);
+                success = mBluetoothConnector.connect(device, peerToConnectTo);
             } catch (NullPointerException e) {
                 Log.e(TAG, "connect: Failed to start connecting to peer "
                         + peerToConnectTo.toString() + ": " + e.getMessage(), e);
@@ -244,6 +244,8 @@ public class ConnectionManager
         if (mState != ConnectionManagerState.NOT_STARTED) {
             stop();
         }
+
+        mSettings.removeListener(this);
     }
 
     /**
@@ -255,6 +257,7 @@ public class ConnectionManager
             mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
             mBluetoothConnector.setInsecureRfcommSocketPort(mSettings.getInsecureRfcommSocketPortNumber());
             mBluetoothConnector.setMaxNumberOfOutgoingConnectionAttemptRetries(mSettings.getMaxNumberOfConnectionAttemptRetries());
+            mBluetoothConnector.setHandshakeRequired(mSettings.getHandshakeRequired());
         }
     }
 

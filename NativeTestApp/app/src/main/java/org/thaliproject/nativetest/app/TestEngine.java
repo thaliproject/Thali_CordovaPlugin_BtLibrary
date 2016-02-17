@@ -6,6 +6,7 @@ package org.thaliproject.nativetest.app;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
+import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.test.AbstractTest;
 import org.thaliproject.nativetest.app.test.FindMyBluetoothAddressTest;
 import org.thaliproject.nativetest.app.test.FindPeersTest;
@@ -126,14 +127,30 @@ public class TestEngine extends ConnectionEngine implements TestListener {
         if (mListener != null) {
             mListener.onTestFinished(testName, successRate, results);
         }
+
+        mCurrentTest = null;
     }
 
+    /**
+     * @param state The new state.
+     * @param isDiscovering True, if peer discovery is active. False otherwise.
+     * @param isAdvertising True, if advertising is active. False otherwise.
+     */
     @Override
-    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
-
-        if (mCurrentTest instanceof DiscoveryManager.DiscoveryManagerListener) {
-            ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onBluetoothMacAddressResolved(bluetoothMacAddress);
+    public void onDiscoveryManagerStateChanged(
+            DiscoveryManager.DiscoveryManagerState state,
+            boolean isDiscovering, boolean isAdvertising) {
+        if (mCurrentTest != null) {
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.append("TEST ENGINE: Discovery manager state changed: ");
+            stringBuilder.append(state);
+            stringBuilder.append(", ");
+            stringBuilder.append(isDiscovering ? "discovering/scanning" : "not discovering/scanning");
+            stringBuilder.append(", ");
+            stringBuilder.append(isAdvertising ? "advertising" : "not advertising");
+            String message = stringBuilder.toString();
+            LogFragment.logTestEngineMessage(message);
+            MainActivity.showToast(message);
         }
     }
 
@@ -161,6 +178,15 @@ public class TestEngine extends ConnectionEngine implements TestListener {
 
         if (mCurrentTest instanceof DiscoveryManager.DiscoveryManagerListener) {
             ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onPeerLost(peerProperties);
+        }
+    }
+
+    @Override
+    public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+        Log.i(TAG, "onBluetoothMacAddressResolved: " + bluetoothMacAddress);
+
+        if (mCurrentTest instanceof DiscoveryManager.DiscoveryManagerListener) {
+            ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onBluetoothMacAddressResolved(bluetoothMacAddress);
         }
     }
 }

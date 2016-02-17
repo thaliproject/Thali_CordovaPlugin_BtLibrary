@@ -88,10 +88,16 @@ public class ConnectionEngine implements
         mShuttingDown = false;
 
         boolean wasConnectionManagerStarted = mConnectionManager.start();
-        
-        boolean wasDiscoveryManagerStarted =
-                (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
-                 || mDiscoveryManager.start(true, true));
+
+        boolean shouldDiscoveryManagerBeRunning =
+                (mSettings.getEnableBleDiscovery() || mSettings.getEnableWifiDiscovery());
+        boolean wasDiscoveryManagerStarted = false;
+
+        if (shouldDiscoveryManagerBeRunning) {
+            wasDiscoveryManagerStarted =
+                    (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
+                            || mDiscoveryManager.start(true, true));
+        }
 
         if (wasConnectionManagerStarted) {
             if (mCheckConnectionsTimer != null) {
@@ -118,12 +124,12 @@ public class ConnectionEngine implements
             LogFragment.logError("Failed to start the connection manager");
         }
 
-        if (!wasDiscoveryManagerStarted) {
+        if (shouldDiscoveryManagerBeRunning && !wasDiscoveryManagerStarted) {
             Log.e(TAG, "start: Failed to start the discovery manager");
             LogFragment.logError("Failed to start the discovery manager");
         }
 
-        return (wasConnectionManagerStarted || wasDiscoveryManagerStarted);
+        return (wasConnectionManagerStarted || (!shouldDiscoveryManagerBeRunning || wasDiscoveryManagerStarted));
     }
 
     /**
@@ -150,6 +156,8 @@ public class ConnectionEngine implements
     public void dispose() {
         mDiscoveryManager.dispose();
         mConnectionManager.dispose();
+        mDiscoveryManager = null;
+        mConnectionManager = null;
     }
 
     /**

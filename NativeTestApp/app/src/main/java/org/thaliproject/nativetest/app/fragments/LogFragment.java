@@ -60,7 +60,7 @@ public class LogFragment extends Fragment {
      * @param message The message for the log item.
      */
     public static void logMessage(String message) {
-        addLogItem(message, false);
+        addLogItem(message, LogItem.LogMessageType.NORMAL);
     }
 
     /**
@@ -68,17 +68,25 @@ public class LogFragment extends Fragment {
      * @param errorMessage The error message for the log item.
      */
     public static void logError(String errorMessage) {
-        addLogItem(errorMessage, true);
+        addLogItem(errorMessage, LogItem.LogMessageType.ERROR);
     }
 
     /**
      * Adds a new log item with the given message.
      * @param message The message for the log item.
-     * @param isError If true, will mark this message as an error.
      */
-    private static synchronized void addLogItem(String message, boolean isError) {
+    public static void logTestEngineMessage(String message) {
+        addLogItem(message, LogItem.LogMessageType.TEST);
+    }
+
+    /**
+     * Adds a new log item with the given message.
+     * @param message The message for the log item.
+     * @param logMessageType The message type.
+     */
+    private static synchronized void addLogItem(String message, LogItem.LogMessageType logMessageType) {
         Timestamp timestamp = new Timestamp(new Date().getTime());
-        LogItem logItem = new LogItem(timestamp, message, isError);
+        LogItem logItem = new LogItem(timestamp, message, logMessageType);
         mLog.add(0, logItem);
 
         if (mLog.size() > MAX_NUMBER_OF_LOG_ITEMS) {
@@ -140,8 +148,10 @@ public class LogFragment extends Fragment {
                 mDefaultTextViewColors = textView.getTextColors();
             }
 
-            if (logItem.isError) {
+            if (logItem.type == LogItem.LogMessageType.ERROR) {
                 textView.setTextColor(Color.RED);
+            } else if (logItem.type == LogItem.LogMessageType.TEST) {
+                textView.setTextColor(Color.BLUE);
             } else {
                 textView.setTextColor(mDefaultTextViewColors);
             }
@@ -149,8 +159,10 @@ public class LogFragment extends Fragment {
             textView = (TextView)view.findViewById(R.id.message);
             textView.setText(logItem.message);
 
-            if (logItem.isError) {
+            if (logItem.type == LogItem.LogMessageType.ERROR) {
                 textView.setTextColor(Color.RED);
+            } else if (logItem.type == LogItem.LogMessageType.TEST) {
+                textView.setTextColor(Color.BLUE);
             } else {
                 textView.setTextColor(mDefaultTextViewColors);
             }

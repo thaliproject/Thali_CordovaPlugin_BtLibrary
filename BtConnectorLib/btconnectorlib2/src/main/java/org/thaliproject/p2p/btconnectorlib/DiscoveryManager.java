@@ -50,7 +50,6 @@ public class DiscoveryManager
     }
 
     public enum DiscoveryMode {
-        NOT_SET,
         BLE,
         WIFI,
         BLE_AND_WIFI
@@ -201,10 +200,26 @@ public class DiscoveryManager
     }
 
     /**
-     * @return True, if Bluetooth LE advertising is supported. False otherwise.
+     * @return True, if the multi advertisement is supported by the chipset. Note that if Bluetooth
+     * is not enabled on the device, this method will only check whether or not Bluetooth LE is
+     * supported.
      */
     public boolean isBleMultipleAdvertisementSupported() {
-        return mBluetoothManager.isBleMultipleAdvertisementSupported();
+        boolean isSupported = mBluetoothManager.isBleMultipleAdvertisementSupported();
+
+        if (!isSupported && !mBluetoothManager.isBluetoothEnabled()) {
+            isSupported = mBluetoothManager.isBleSupported();
+
+            if (isSupported) {
+                Log.w(TAG, "isBleMultipleAdvertisementSupported: "
+                        + "Bluetooth is not enabled so we could not check whether or not Bluetooth"
+                        + "LE multi advertisement is supported. However, Bluetooth LE is supported "
+                        + "so we just *assume* multi advertisement is supported too (which may not "
+                        + "always be the case).");
+            }
+        }
+
+        return isSupported;
     }
 
     /**
@@ -311,65 +326,66 @@ public class DiscoveryManager
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
-        if (discoveryMode != DiscoveryMode.NOT_SET) {
-            boolean bleDiscoveryStarted = false;
-            boolean wifiDiscoveryStarted = false;
+        boolean bleDiscoveryStarted = false;
+        boolean wifiDiscoveryStarted = false;
 
-            if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                if (mBluetoothManager.isBluetoothEnabled()) {
-                    // Try to start BLE based discovery
-                    mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
+        if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+            if (mBluetoothManager.isBluetoothEnabled()) {
+                // Try to start BLE based discovery
+                mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
+
+                if (isBleMultipleAdvertisementSupported()) {
                     bleDiscoveryStarted = startBlePeerDiscoverer(mShouldBeScanning, mShouldBeAdvertising);
                 } else {
-                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
+                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because the device does not support Bluetooth LE multi advertisement");
                 }
-            }
-
-            if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                if (mWifiDirectManager.isWifiEnabled()) {
-                    if (verifyIdentityString()) {
-                        // Try to start Wi-Fi Direct based discovery
-                        wifiDiscoveryStarted = startWifiPeerDiscovery(mShouldBeScanning, mShouldBeAdvertising);
-                    } else {
-                        if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
-                            Log.e(TAG, "start: Identity string is null or empty");
-                        } else {
-                            Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
-                        }
-                    }
-                } else {
-                    Log.e(TAG, "start: Cannot start Wi-Fi Direct based peer discovery, because Wi-Fi is not enabled on the device");
-                }
-            }
-
-            if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
-                    || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
-                    || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
-                if (bleDiscoveryStarted && wifiDiscoveryStarted) {
-                    updateState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-                } else if (bleDiscoveryStarted) {
-                    if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
-                        Log.i(TAG, "start: Our Bluetooth MAC address is not known");
-
-                        if (mBlePeerDiscoverer != null) {
-                            mBluetoothMacAddressResolutionHelper.startBluetoothMacAddressGattServer(
-                                    mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
-                        }
-
-                        updateState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
-                    } else {
-                        updateState(DiscoveryManagerState.RUNNING_BLE);
-                    }
-                } else if (wifiDiscoveryStarted) {
-                    updateState(DiscoveryManagerState.RUNNING_WIFI);
-                }
-
-                Log.i(TAG, "start: OK");
             } else {
-                updateState(DiscoveryManagerState.NOT_STARTED);
+                Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
             }
+        }
+
+        if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+            if (mWifiDirectManager.isWifiEnabled()) {
+                if (verifyIdentityString()) {
+                    // Try to start Wi-Fi Direct based discovery
+                    wifiDiscoveryStarted = startWifiPeerDiscovery(mShouldBeScanning, mShouldBeAdvertising);
+                } else {
+                    if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
+                        Log.e(TAG, "start: Identity string is null or empty");
+                    } else {
+                        Log.e(TAG, "start: Invalid identity string: " + mMyIdentityString);
+                    }
+                }
+            } else {
+                Log.e(TAG, "start: Cannot start Wi-Fi Direct based peer discovery, because Wi-Fi is not enabled on the device");
+            }
+        }
+
+        if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
+                || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
+                || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
+            if (bleDiscoveryStarted && wifiDiscoveryStarted) {
+                updateState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+            } else if (bleDiscoveryStarted) {
+                if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
+                    Log.i(TAG, "start: Our Bluetooth MAC address is not known");
+
+                    if (mBlePeerDiscoverer != null) {
+                        mBluetoothMacAddressResolutionHelper.startBluetoothMacAddressGattServer(
+                                mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
+                    }
+
+                    updateState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+                } else {
+                    updateState(DiscoveryManagerState.RUNNING_BLE);
+                }
+            } else if (wifiDiscoveryStarted) {
+                updateState(DiscoveryManagerState.RUNNING_WIFI);
+            }
+
+            Log.i(TAG, "start: OK");
         } else {
-            Log.e(TAG, "start: Discovery mode not set, call setDiscoveryMode() to set");
+            updateState(DiscoveryManagerState.NOT_STARTED);
         }
 
         return isRunning();

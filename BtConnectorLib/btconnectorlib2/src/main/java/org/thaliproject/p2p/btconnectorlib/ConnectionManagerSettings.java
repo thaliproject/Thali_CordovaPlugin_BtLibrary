@@ -4,10 +4,10 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.content.Context;
-import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Connection manager settings.
@@ -22,20 +22,23 @@ public class ConnectionManagerSettings extends AbstractSettings {
     public static final int SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT = BluetoothConnector.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
     public static final int DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES = BluetoothConnector.DEFAULT_MAX_NUMBER_OF_RETRIES;
+    public static final boolean DEFAULT_HANDSHAKE_REQUIRED = BluetoothConnector.DEFAULT_HANDSHAKE_REQUIRED;
 
     // Keys for shared preferences
     private static final String KEY_CONNECTION_TIMEOUT = "connection_timeout";
     private static final String KEY_PORT_NUMBER = "port_number";
     private static final String KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES = "max_number_of_connection_attempt_retries";
+    private static final String KEY_HANDSHAKE_REQUIRED = "require_handshake";
 
     private static final String TAG = ConnectionManagerSettings.class.getName();
     private static final int MAX_INSECURE_RFCOMM_SOCKET_PORT = 30;
 
     private static ConnectionManagerSettings mInstance = null;
-    private Listener mListener = null;
+    private final CopyOnWriteArrayList<Listener> mListeners = new CopyOnWriteArrayList<>();
     private long mConnectionTimeoutInMilliseconds = DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS;
     private int mInsecureRfcommSocketPortNumber = DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT;
-    private int mMaxNumberOfConnectionAttemptRetries = 0;
+    private int mMaxNumberOfConnectionAttemptRetries = DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES;
+    private boolean mHandshakeRequired = DEFAULT_HANDSHAKE_REQUIRED;
 
     /**
      * @param context The application context for the shared preferences.
@@ -57,11 +60,41 @@ public class ConnectionManagerSettings extends AbstractSettings {
     }
 
     /**
-     * Sets the listener. Note: Only the connection manager can act as a listener.
+     * Adds a listener. In the ideal situation there is only one connection manager and thus, one
+     * listener. However, for testing we might need to use multiple.
+     *
+     * Note: Only the connection manager can act as a listener.
+     *
      * @param connectionManager The connection manager instance.
      */
-    public void setListener(ConnectionManager connectionManager) {
-        mListener = connectionManager;
+    /* Package */ void addListener(ConnectionManager connectionManager) {
+        if (connectionManager != null) {
+            Listener listener = connectionManager;
+
+            if (!mListeners.contains(listener)) {
+                mListeners.add(listener);
+                Log.v(TAG, "addListener: Listener " + listener + " added. We now have " + mListeners.size() + " listener(s)");
+            } else {
+                Log.e(TAG, "addListener: Listener " + listener + " already in the list");
+                throw new IllegalArgumentException(TAG + " addListener: Listener already in the list");
+            }
+        }
+    }
+
+    /**
+     * Removes the given listener from the list.
+     * @param connectionManager The listener to remove.
+     */
+    /* Package */ void removeListener(ConnectionManager connectionManager) {
+        if (connectionManager != null && mListeners.size() > 0) {
+            Listener listener = connectionManager;
+
+            if (mListeners.remove(listener)) {
+                Log.v(TAG, "removeListener: Listener " + listener + " removed from the list");
+            } else {
+                Log.e(TAG, "removeListener: Listener " + listener + " not in the list");
+            }
+        }
     }
 
     /**
@@ -81,8 +114,10 @@ public class ConnectionManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putLong(KEY_CONNECTION_TIMEOUT, mConnectionTimeoutInMilliseconds);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onConnectionManagerSettingsChanged();
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onConnectionManagerSettingsChanged();
+                }
             }
         }
     }
@@ -116,8 +151,10 @@ public class ConnectionManagerSettings extends AbstractSettings {
                 mSharedPreferencesEditor.putInt(KEY_PORT_NUMBER, mInsecureRfcommSocketPortNumber);
                 mSharedPreferencesEditor.apply();
 
-                if (mListener != null) {
-                    mListener.onConnectionManagerSettingsChanged();
+                if (mListeners.size() > 0) {
+                    for (Listener listener : mListeners) {
+                        listener.onConnectionManagerSettingsChanged();
+                    }
                 }
 
                 wasSet = true;
@@ -146,25 +183,60 @@ public class ConnectionManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES, mMaxNumberOfConnectionAttemptRetries);
             mSharedPreferencesEditor.apply();
 
-            if (mListener != null) {
-                mListener.onConnectionManagerSettingsChanged();
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onConnectionManagerSettingsChanged();
+                }
+            }
+        }
+    }
+
+    /**
+     * @return True, if a handshake protocol should be applied when establishing a connection.
+     */
+    public boolean getHandshakeRequired() {
+        return mHandshakeRequired;
+    }
+
+    /**
+     * Sets the value indicating whether we require a handshake protocol when establishing a connection or not.
+     * @param requireHandshake True, if a handshake protocol should be applied when establishing a connection.
+     */
+    public void setHandshakeRequired(boolean requireHandshake) {
+        if (mHandshakeRequired != requireHandshake) {
+            Log.d(TAG, "setHandshakeRequired: " + mHandshakeRequired + " -> " + requireHandshake);
+            mHandshakeRequired = requireHandshake;
+            mSharedPreferencesEditor.putBoolean(KEY_HANDSHAKE_REQUIRED, mHandshakeRequired);
+            mSharedPreferencesEditor.apply();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onConnectionManagerSettingsChanged();
+                }
             }
         }
     }
 
     @Override
     public void load() {
-        mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
-                KEY_CONNECTION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
-        mInsecureRfcommSocketPortNumber = mSharedPreferences.getInt(
-                KEY_PORT_NUMBER, SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
-        mMaxNumberOfConnectionAttemptRetries = mSharedPreferences.getInt(
-                KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES, DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES);
+        if (!mLoaded) {
+            mLoaded = true;
+            mConnectionTimeoutInMilliseconds = mSharedPreferences.getLong(
+                    KEY_CONNECTION_TIMEOUT, DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
+            mInsecureRfcommSocketPortNumber = mSharedPreferences.getInt(
+                    KEY_PORT_NUMBER, SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
+            mMaxNumberOfConnectionAttemptRetries = mSharedPreferences.getInt(
+                    KEY_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES, DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES);
+            mHandshakeRequired = mSharedPreferences.getBoolean(KEY_HANDSHAKE_REQUIRED, DEFAULT_HANDSHAKE_REQUIRED);
 
-        Log.v(TAG, "load: "
-                + "\n\tConnection timeout in milliseconds: " + mConnectionTimeoutInMilliseconds + ", "
-                + "\n\tInsecure RFCOMM socket port number: " + mInsecureRfcommSocketPortNumber + ", "
-                + "\n\tMaximum number of connection attempt retries: " + mMaxNumberOfConnectionAttemptRetries);
+            Log.v(TAG, "load: "
+                    + "\n    - Connection timeout in milliseconds: " + mConnectionTimeoutInMilliseconds
+                    + "\n    - Insecure RFCOMM socket port number: " + mInsecureRfcommSocketPortNumber
+                    + "\n    - Maximum number of connection attempt retries: " + mMaxNumberOfConnectionAttemptRetries
+                    + "\n    - Handshake required: " + mHandshakeRequired);
+        } else {
+            Log.v(TAG, "load: Already loaded");
+        }
     }
 
     @Override
@@ -172,5 +244,6 @@ public class ConnectionManagerSettings extends AbstractSettings {
         setConnectionTimeout(DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS);
         setInsecureRfcommSocketPortNumber(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
         setMaxNumberOfConnectionAttemptRetries(DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES);
+        setHandshakeRequired(DEFAULT_HANDSHAKE_REQUIRED);
     }
 }

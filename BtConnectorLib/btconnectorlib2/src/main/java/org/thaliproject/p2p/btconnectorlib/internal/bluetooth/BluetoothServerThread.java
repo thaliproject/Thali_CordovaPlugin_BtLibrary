@@ -16,7 +16,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 /**
  * Thread listening to incoming connections via Bluetooth server socket.
  */
-class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Listener {
+class BluetoothServerThread extends AbstractBluetoothThread implements BluetoothSocketIoThread.Listener {
     /**
      * Listener interface.
      */
@@ -45,9 +45,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     private final CopyOnWriteArrayList<BluetoothSocketIoThread> mSocketIoThreads = new CopyOnWriteArrayList<BluetoothSocketIoThread>();
     private final Listener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
-    private final UUID mBluetoothUuid;
     private final String mBluetoothName;
-    private final String mMyIdentityString;
     private BluetoothServerSocket mServerSocket = null;
     private boolean mStopThread = false;
 
@@ -55,26 +53,26 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * Constructor.
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
-     * @param myBluetoothUuid Our Bluetooth UUID for the server socket.
+     * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
      * @param myBluetoothName Our Bluetooth name for the server socket.
-     * @param myIndentityString Our identity (possible name and the Bluetooth MAC address).
+     * @param myIdentityString Our identity (possible name and the Bluetooth MAC address). Used for
+     *                         handshake (if required).
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
      * @throws IOException Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
      */
     public BluetoothServerThread(
             Listener listener, BluetoothAdapter bluetoothAdapter,
-            UUID myBluetoothUuid, String myBluetoothName, String myIndentityString)
+            UUID serviceRecordUuid, String myBluetoothName, String myIdentityString)
             throws NullPointerException, IOException {
-        if (listener == null || bluetoothAdapter == null)
-        {
+        super(serviceRecordUuid, myIdentityString);
+
+        if (listener == null || bluetoothAdapter == null) {
             throw new NullPointerException("Either the listener or the Bluetooth adapter instance is null");
         }
 
         mListener = listener;
         mBluetoothAdapter = bluetoothAdapter;
-        mBluetoothUuid = myBluetoothUuid;
         mBluetoothName = myBluetoothName;
-        mMyIdentityString = myIndentityString;
     }
 
     /**
@@ -87,17 +85,17 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
     public void run() {
         while (!mStopThread) {
             try {
-                mServerSocket = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(mBluetoothName, mBluetoothUuid);
+                mServerSocket = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(mBluetoothName, mServiceRecordUuid);
             } catch (IOException e) {
                 Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
             }
 
             if (mServerSocket != null) {
                 Log.i(TAG, "Waiting for incoming connections...");
-                BluetoothSocket socket = null;
+                BluetoothSocket bluetoothSocket = null;
 
                 try {
-                    socket = mServerSocket.accept(); // Blocking call
+                    bluetoothSocket = mServerSocket.accept(); // Blocking call
                     Log.i(TAG, "Incoming connection accepted");
                 } catch (IOException e) {
                     if (!mStopThread) {
@@ -106,24 +104,38 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
                         mStopThread = true;
                     }
 
-                    socket = null;
+                    bluetoothSocket = null;
                 }
 
-                if (socket != null) {
-                    BluetoothSocketIoThread handshakeThread = null;
+                if (bluetoothSocket != null) {
+                    if (mHandshakeRequired) {
+                        BluetoothSocketIoThread handshakeThread = null;
 
-                    try {
-                        handshakeThread = new BluetoothSocketIoThread(socket, this);
-                    } catch (IOException e) {
-                        Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
-                    }
+                        try {
+                            handshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
+                        } catch (IOException e) {
+                            Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
+                        }
 
-                    if (handshakeThread != null) {
-                        handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
-                        handshakeThread.setExitThreadAfterRead(true);
-                        mSocketIoThreads.add(handshakeThread);
-                        handshakeThread.start();
-                        Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
+                        if (handshakeThread != null) {
+                            handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+                            handshakeThread.setExitThreadAfterRead(true);
+                            mSocketIoThreads.add(handshakeThread);
+                            handshakeThread.start();
+                            Log.d(TAG, "Incoming connection initialized (thread ID: " + handshakeThread.getId() + ")");
+                        }
+                    } else {
+                        // No handshake required
+                        String bluetoothMacAddress = BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocket);
+
+                        if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+                            PeerProperties peerProperties = new PeerProperties(bluetoothMacAddress);
+                            mListener.onIncomingConnectionConnected(bluetoothSocket, peerProperties);
+                        } else {
+                            String errorMessage = "Invalid Bluetooth MAC address: " + bluetoothMacAddress;
+                            Log.e(TAG, errorMessage);
+                            mListener.onIncomingConnectionFailed(errorMessage);
+                        }
                     }
                 } else if (!mStopThread) {
                     Log.e(TAG, "Socket is null");
@@ -141,6 +153,7 @@ class BluetoothServerThread extends Thread implements BluetoothSocketIoThread.Li
      * Shuts down this thread.
      * Clears the list of IO threads and closes the server socket.
      */
+    @Override
     public synchronized void shutdown() {
         Log.d(TAG, "shutdown");
         mStopThread = true;

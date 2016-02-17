@@ -14,6 +14,7 @@ public abstract class AbstractSettings {
     protected static Context mContext = null;
     protected SharedPreferences mSharedPreferences;
     protected SharedPreferences.Editor mSharedPreferencesEditor;
+    protected boolean mLoaded = false;
 
     /**
      * Constructor.

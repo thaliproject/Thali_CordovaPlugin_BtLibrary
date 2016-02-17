@@ -107,7 +107,7 @@ public class PeerAndConnectionModel {
             Log.i(TAG, "addOrUpdatePeer: Peer " + peerProperties.toString() + " added to list");
         }
 
-        if (!alreadyInTheList || wasUpdated && mListener != null) {
+        if ((!alreadyInTheList || wasUpdated) && mListener != null) {
             mListener.onDataChanged();
         }
 

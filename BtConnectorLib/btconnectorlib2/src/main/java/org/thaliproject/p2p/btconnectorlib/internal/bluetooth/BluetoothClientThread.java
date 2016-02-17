@@ -15,17 +15,18 @@ import java.util.UUID;
 /**
  * Thread for initiating outgoing connections.
  */
-class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Listener {
+class BluetoothClientThread extends AbstractBluetoothThread implements BluetoothSocketIoThread.Listener {
     /**
      * Thread listener.
      */
     public interface Listener {
         /**
          * Called when socket connection with a peer succeeds.
+         * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          * @param who The Bluetooth client thread instance calling this callback.
          */
-        void onSocketConnected(PeerProperties peerProperties, BluetoothClientThread who);
+        void onSocketConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties, BluetoothClientThread who);
 
         /**
          * Called when successfully connected to and validated (handshake OK) a peer.
@@ -51,10 +52,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
     public static final int DEFAULT_MAX_NUMBER_OF_RETRIES = 0;
     private static final int WAIT_BETWEEN_RETRIES_IN_MILLISECONDS = 300;
     private final BluetoothDevice mBluetoothDeviceToConnectTo;
-    private final UUID mServiceRecordUuid;
-    private final String mMyIdentityString;
     private Listener mListener = null;
-    private BluetoothSocket mSocket = null;
+    private BluetoothSocket mBluetoothSocket = null;
     private BluetoothSocketIoThread mHandshakeThread = null;
     private PeerProperties mPeerProperties;
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
@@ -66,7 +65,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      * Constructor.
      * @param listener The listener.
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param serviceRecordUuid Our UUID (service record uuid to lookup RFCOMM channel).
+     * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
      * @param myIdentityString Our identity.
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth device instance is null.
      * @throws IOException Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
@@ -75,6 +74,8 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
             UUID serviceRecordUuid, String myIdentityString)
             throws NullPointerException, IOException {
+        super(serviceRecordUuid, myIdentityString);
+
         if (listener == null || bluetoothDeviceToConnectTo == null) {
             throw new NullPointerException("Either the listener or the Bluetooth device instance is null");
         }
@@ -108,11 +109,11 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         mTimeStarted = new Date().getTime();
         boolean socketConnectSucceeded = tryToConnect();
 
-        if (socketConnectSucceeded && !mIsShuttingDown) {
+        if (mHandshakeRequired && socketConnectSucceeded && !mIsShuttingDown) {
             String errorMessage = "";
 
             try {
-                mHandshakeThread = new BluetoothSocketIoThread(mSocket, this);
+                mHandshakeThread = new BluetoothSocketIoThread(mBluetoothSocket, this);
                 mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                 mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
@@ -171,18 +172,6 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         mMaxNumberOfRetries = maxNumberOfRetries;
     }
 
-    /**
-     * Stops the IO thread and closes the socket. This is a graceful shutdown i.e. no error messages
-     * are logged by run() nor will the listener be notified (onConnectionFailed), when this method
-     * is called.
-     */
-    public synchronized void shutdown() {
-        Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
-        mIsShuttingDown = true;
-        mListener = null;
-        close();
-    }
-
     public PeerProperties getPeerProperties() {
         return mPeerProperties;
     }
@@ -193,6 +182,19 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      */
     public void setPeerProperties(PeerProperties peerProperties) {
         mPeerProperties = peerProperties;
+    }
+
+    /**
+     * Stops the IO thread and closes the socket. This is a graceful shutdown i.e. no error messages
+     * are logged by run() nor will the listener be notified (onConnectionFailed), when this method
+     * is called.
+     */
+    @Override
+    public synchronized void shutdown() {
+        Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
+        mIsShuttingDown = true;
+        mListener = null;
+        close();
     }
 
     /**
@@ -232,11 +234,12 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         } else {
             String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
             Log.e(TAG, errorMessage);
-            shutdown();
 
             if (mListener != null) {
                 mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
             }
+
+            shutdown();
         }
     }
 
@@ -283,14 +286,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             mHandshakeThread = null;
         }
 
-        if (mSocket != null) {
+        if (mBluetoothSocket != null) {
             try {
-                mSocket.close();
+                mBluetoothSocket.close();
             } catch (IOException e) {
                 Log.w(TAG, "Failed to close the socket: " + e.getMessage());
             }
 
-            mSocket = null;
+            mBluetoothSocket = null;
         }
     }
 
@@ -303,9 +306,9 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
      */
     private synchronized Exception createSocketAndConnect(final int port) {
         // Make sure the current socket, if one exists, is closed
-        if (mSocket != null) {
+        if (mBluetoothSocket != null) {
             try {
-                mSocket.close();
+                mBluetoothSocket.close();
             } catch (IOException e) {
             }
         }
@@ -316,14 +319,14 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
         try {
             if (port == SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT) {
                 // Use the standard method of creating a socket
-                mSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
+                mBluetoothSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
             } else if (port == 0) {
                 // Use a rotating port number
-                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
+                mBluetoothSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
             } else {
                 // Use the given port number
-                mSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
+                mBluetoothSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, port, false);
             }
 
@@ -334,12 +337,12 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
 
         if (socketCreatedSuccessfully) {
             try {
-                mSocket.connect(); // Blocking call
+                mBluetoothSocket.connect(); // Blocking call
             } catch (IOException e) {
                 exception = e;
 
                 try {
-                    mSocket.close();
+                    mBluetoothSocket.close();
                 } catch (IOException e2) {
                 }
             }
@@ -363,7 +366,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
             if (socketException == null) {
                 if (!mIsShuttingDown) {
                     if (mListener != null) {
-                        mListener.onSocketConnected(mPeerProperties, this);
+                        mListener.onSocketConnected(mBluetoothSocket, mPeerProperties, this);
                     }
 
                     socketConnectSucceeded = true;
@@ -393,7 +396,7 @@ class BluetoothClientThread extends Thread implements BluetoothSocketIoThread.Li
                 if (socketException == null) {
                     if (!mIsShuttingDown) {
                         if (mListener != null) {
-                            mListener.onSocketConnected(mPeerProperties, this);
+                            mListener.onSocketConnected(mBluetoothSocket, mPeerProperties, this);
                         }
 
                         socketConnectSucceeded = true;

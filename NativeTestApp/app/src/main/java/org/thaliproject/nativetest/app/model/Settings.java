@@ -40,6 +40,7 @@ public class Settings {
     private int mBufferSizeInBytes = Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES;
     private boolean mAutoConnect = false;
     private boolean mAutoConnectEvenWhenIncomingConnectionEstablished = false;
+    private boolean mLoaded = false;
 
     /**
      * Returns the singleton instance of this class. Creates the instance if not already created.
@@ -70,25 +71,34 @@ public class Settings {
      * Loads the settings.
      */
     public void load() {
-        mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
-        mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
+        if (!mLoaded) {
+            mLoaded = true;
+            mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
+            mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
 
-        mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
-        mBufferSizeInBytes = mSharedPreferences.getInt(
-                KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
-        mAutoConnect = mSharedPreferences.getBoolean(KEY_AUTO_CONNECT, false);
-        mAutoConnectEvenWhenIncomingConnectionEstablished = mSharedPreferences.getBoolean(
-                KEY_AUTO_CONNECT_WHEN_INCOMING, false);
+            mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
+            mBufferSizeInBytes = mSharedPreferences.getInt(
+                    KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
+            mAutoConnect = mSharedPreferences.getBoolean(KEY_AUTO_CONNECT, false);
+            mAutoConnectEvenWhenIncomingConnectionEstablished = mSharedPreferences.getBoolean(
+                    KEY_AUTO_CONNECT_WHEN_INCOMING, false);
 
-        Log.i(TAG, "load: "
-                + "\n\tEnable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
-                + "\n\tEnable BLE peer discovery: " + mEnableBleDiscovery
-                + "\n\tData amount in bytes: " + mDataAmountInBytes
-                + "\n\tBuffer size in bytes: " + mBufferSizeInBytes
-                + "\n\tAuto connect enabled: " + mAutoConnect
-                + "\n\tAuto connect even when incoming connection established: " + mAutoConnectEvenWhenIncomingConnectionEstablished);
+            Log.i(TAG, "load: "
+                    + "\n    - Enable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
+                    + "\n    - Enable BLE peer discovery: " + mEnableBleDiscovery
+                    + "\n    - Data amount in bytes: " + mDataAmountInBytes
+                    + "\n    - Buffer size in bytes: " + mBufferSizeInBytes
+                    + "\n    - Auto connect enabled: " + mAutoConnect
+                    + "\n    - Auto connect even when incoming connection established: " + mAutoConnectEvenWhenIncomingConnectionEstablished);
 
-        mDiscoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
+            DiscoveryManager.DiscoveryMode discoveryMode = getDesiredDiscoveryMode();
+
+            if (discoveryMode != null) {
+                mDiscoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
+            }
+        } else {
+            Log.v(TAG, "load: Already loaded");
+        }
     }
 
     public void setDiscoveryManager(DiscoveryManager discoveryManager) {
@@ -121,7 +131,7 @@ public class Settings {
      * @return The desired discovery mode based on the current settings.
      */
     public DiscoveryManager.DiscoveryMode getDesiredDiscoveryMode() {
-        DiscoveryManager.DiscoveryMode desiredMode = DiscoveryManager.DiscoveryMode.NOT_SET;
+        DiscoveryManager.DiscoveryMode desiredMode = null;
 
         if (mEnableWifiDiscovery && mEnableBleDiscovery) {
             desiredMode = DiscoveryManager.DiscoveryMode.BLE_AND_WIFI;
@@ -138,7 +148,7 @@ public class Settings {
         DiscoveryManager.DiscoveryMode desiredMode = getDesiredDiscoveryMode();
         Log.i(TAG, "setDesiredDiscoveryMode: " + desiredMode);
 
-        if (desiredMode == DiscoveryManager.DiscoveryMode.NOT_SET) {
+        if (desiredMode == null) {
             if (mDiscoveryManager != null) {
                 mDiscoveryManager.stop();
             }
@@ -151,7 +161,7 @@ public class Settings {
                 handler.postDelayed(new Runnable() {
                     @Override
                     public void run() {
-                        if (getDesiredDiscoveryMode() != DiscoveryManager.DiscoveryMode.NOT_SET
+                        if (getDesiredDiscoveryMode() != null
                             && mDiscoveryManager.getState() == DiscoveryManager.DiscoveryManagerState.NOT_STARTED) {
                             Log.d(TAG, "Starting the discovery manager...");
                             mDiscoveryManager.start(true, true);
@@ -160,6 +170,14 @@ public class Settings {
                 }, START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS);
             }
         }
+    }
+
+    public boolean getHandshakeRequired() {
+        return mConnectionManagerSettings.getHandshakeRequired();
+    }
+
+    public void setHandshakeRequired(boolean handshakeRequired) {
+        mConnectionManagerSettings.setHandshakeRequired(handshakeRequired);
     }
 
     public boolean getEnableWifiDiscovery() {

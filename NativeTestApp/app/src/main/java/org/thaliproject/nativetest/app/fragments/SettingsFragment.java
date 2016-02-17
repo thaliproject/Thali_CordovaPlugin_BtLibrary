@@ -23,6 +23,7 @@ public class SettingsFragment extends Fragment {
     private Settings mSettings = null;
     private EditText mConnectionTimeoutEditText = null;
     private EditText mPortNumberEditText = null;
+    private CheckBox mHandshakeRequiredCheckbox = null;
     private CheckBox mEnableWifiCheckBox = null;
     private CheckBox mEnableBleCheckBox = null;
     private EditText mBufferSizeEditText = null;
@@ -88,6 +89,15 @@ public class SettingsFragment extends Fragment {
                         mPortNumberEditText.setText(String.valueOf(mSettings.getPortNumber()));
                     }
                 }
+            }
+        });
+
+        mHandshakeRequiredCheckbox = (CheckBox) view.findViewById(R.id.handshakeRequiredCheckBox);
+        mHandshakeRequiredCheckbox.setChecked(mSettings.getHandshakeRequired());
+        mHandshakeRequiredCheckbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                mSettings.setHandshakeRequired(b);
             }
         });
 

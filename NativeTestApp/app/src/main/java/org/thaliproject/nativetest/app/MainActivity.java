@@ -66,6 +66,7 @@ public class MainActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d(TAG, "onCreate");
         setContentView(R.layout.activity_main);
 
         mThisInstance = this;
@@ -148,6 +149,7 @@ public class MainActivity
     public void onDestroy() {
         Log.i(TAG, "onDestroy");
         mConnectionEngine.dispose();
+        mConnectionEngine = null;
         super.onDestroy();
     }
 
@@ -241,6 +243,7 @@ public class MainActivity
 
     @Override
     public void onConnectRequest(PeerProperties peerProperties) {
+        Log.d(TAG, "onConnectRequest: " + peerProperties);
         mConnectionEngine.connect(peerProperties);
     }
 
@@ -253,14 +256,14 @@ public class MainActivity
     public void onTestStarting(String testName) {
         Log.i(TAG, "onTestStarting: " + testName);
         mConnectionEngine.stop();
-        LogFragment.logMessage("Starting test \"" + testName + "\"");
+        LogFragment.logTestEngineMessage("Starting test \"" + testName + "\"");
     }
 
     @Override
     public void onTestFinished(String testName, float successRate, String results) {
         int successRateInPercentages = Math.round(successRate * 100);
         Log.i(TAG, "onTestFinished: Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " %");
-        LogFragment.logMessage("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " % - Results: " + results);
+        LogFragment.logTestEngineMessage("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " % - Results: " + results);
         showToast("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " %");
         mConnectionEngine.start();
     }

@@ -6,11 +6,9 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 import android.annotation.TargetApi;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
+import android.content.*;
 import android.content.pm.PackageManager;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -32,12 +30,16 @@ public class BluetoothManager {
     }
 
     private static final String TAG = BluetoothManager.class.getName();
+    private static final String KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED = "is_bluetooth_le_multi_advertisement_supported";
     private static BluetoothManager mInstance = null;
     private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
     private final CopyOnWriteArrayList<BluetoothManagerListener> mListeners = new CopyOnWriteArrayList<>();
     private BluetoothModeBroadcastReceiver mBluetoothBroadcastReceiver = null;
+    private SharedPreferences mSharedPreferences;
+    private SharedPreferences.Editor mSharedPreferencesEditor;
     private boolean mInitialized = false;
+    private boolean mIsBleMultipleAdvertisementSupported = false;
 
     /**
      * Getter for the singleton instance of this class.
@@ -59,6 +61,11 @@ public class BluetoothManager {
     private BluetoothManager(Context context) {
         mContext = context;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mSharedPreferencesEditor = mSharedPreferences.edit();
+
+        mIsBleMultipleAdvertisementSupported =
+                mSharedPreferences.getBoolean(KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED, false);
     }
 
     /**
@@ -115,6 +122,11 @@ public class BluetoothManager {
     }
 
     /**
+     * Checks if the chipset has a support for Bluetooth LE multi advertisement.
+     *
+     * Note that this method will return false, if the Bluetooth is not enabled on the device and we
+     * have no stored value that says otherwise.
+     *
      * @return True, if the multi advertisement is supported by the chipset.
      */
     @TargetApi(21)
@@ -123,7 +135,29 @@ public class BluetoothManager {
 
         if (CommonUtils.isLollipopOrHigher()) {
             if (mBluetoothAdapter != null) {
-                isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+                if (isBluetoothEnabled()) {
+                    isSupported = mBluetoothAdapter.isMultipleAdvertisementSupported();
+
+                    if (isSupported && !mIsBleMultipleAdvertisementSupported) {
+                        // Store the value in case this is queried sometime when the Bluetooth is
+                        // disabled
+                        Log.v(TAG, "isBleMultipleAdvertisementSupported: Storing the value ("
+                                + isSupported + ") in persistent storage");
+
+                        mIsBleMultipleAdvertisementSupported = isSupported;
+                        mSharedPreferencesEditor.putBoolean(
+                                KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED, mIsBleMultipleAdvertisementSupported);
+                        mSharedPreferencesEditor.apply();
+                    }
+                } else {
+                    isSupported = mIsBleMultipleAdvertisementSupported;
+
+                    if (!isSupported) {
+                        Log.w(TAG, "isBleMultipleAdvertisementSupported: Cannot do the check when the Bluetooth is disabled - will return false");
+                    }
+                }
+            } else {
+                Log.e(TAG, "isBleMultipleAdvertisementSupported: No Bluetooth adapter - This may indicate that the device has no Bluetooth support at all");
             }
         } else {
             Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");

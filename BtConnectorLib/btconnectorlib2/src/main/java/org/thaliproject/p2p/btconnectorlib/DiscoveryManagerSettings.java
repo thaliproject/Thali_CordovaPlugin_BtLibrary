@@ -239,6 +239,11 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public boolean setDiscoveryMode(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
         boolean ok = false;
 
+        if (discoveryMode == null) {
+            Log.e(TAG, "setDiscoveryMode: Discovery mode cannot be null");
+            throw new NullPointerException("Discovery mode cannot be null");
+        }
+
         if (mListeners.size() > 0) {
             // Check if the given discovery mode is supported
             DiscoveryManager discoveryManager = (DiscoveryManager) mListeners.get(0);
@@ -248,10 +253,6 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                 boolean isWifiSupported = discoveryManager.isWifiDirectSupported();
 
                 switch (discoveryMode) {
-                    case NOT_SET:
-                        ok = true;
-                        break;
-
                     case BLE:
                         if (isBleMultipleAdvertisementSupported) {
                             ok = true;
@@ -466,32 +467,37 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     @Override
     public void load() {
-        mAutomateBluetoothMacAddressResolution = mSharedPreferences.getBoolean(
-                KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
-        mProvideBluetoothMacAddressTimeoutInMilliseconds = mSharedPreferences.getLong(
-                KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS, DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
-        mBluetoothMacAddress = mSharedPreferences.getString(KEY_BLUETOOTH_MAC_ADDRESS, null);
-        int discoveryModeAsInt = mSharedPreferences.getInt(KEY_DISCOVERY_MODE, discoveryModeToInt(DEFAULT_DISCOVERY_MODE));
-        mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
-        mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
-                KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
-        mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DEFAULT_ADVERTISE_MODE);
-        mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
-                KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
-        mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DEFAULT_SCAN_MODE);
-        mScanReportDelayInMilliseconds = mSharedPreferences.getLong(
-                KEY_SCAN_REPORT_DELAY_IN_MILLISECONDS, DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
+        if (!mLoaded) {
+            mLoaded = true;
+            mAutomateBluetoothMacAddressResolution = mSharedPreferences.getBoolean(
+                    KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION, DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION);
+            mProvideBluetoothMacAddressTimeoutInMilliseconds = mSharedPreferences.getLong(
+                    KEY_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS, DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS);
+            mBluetoothMacAddress = mSharedPreferences.getString(KEY_BLUETOOTH_MAC_ADDRESS, null);
+            int discoveryModeAsInt = mSharedPreferences.getInt(KEY_DISCOVERY_MODE, discoveryModeToInt(DEFAULT_DISCOVERY_MODE));
+            mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
+            mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
+                    KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+            mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DEFAULT_ADVERTISE_MODE);
+            mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
+                    KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
+            mScanMode = mSharedPreferences.getInt(KEY_SCAN_MODE, DEFAULT_SCAN_MODE);
+            mScanReportDelayInMilliseconds = mSharedPreferences.getLong(
+                    KEY_SCAN_REPORT_DELAY_IN_MILLISECONDS, DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
 
-        Log.v(TAG, "load: "
-                + "\n\tAutomate Bluetooth MAC address resolution: " + mAutomateBluetoothMacAddressResolution + ", "
-                + "\n\tProvide Bluetooth MAC address timeout in milliseconds: " + mProvideBluetoothMacAddressTimeoutInMilliseconds + ", "
-                + "\n\tBluetooth MAC address: " + mBluetoothMacAddress + ", "
-                + "\n\tDiscovery mode: " + mDiscoveryMode + ", "
-                + "\n\tPeer expiration time in milliseconds: " + mPeerExpirationInMilliseconds + ", "
-                + "\n\tAdvertise mode: " + mAdvertiseMode + ", "
-                + "\n\tAdvertise TX power level: " + mAdvertiseTxPowerLevel + ", "
-                + "\n\tScan mode: " + mScanMode + ", "
-                + "\n\tScan report delay in milliseconds: " + mScanReportDelayInMilliseconds);
+            Log.v(TAG, "load: "
+                    + "\n    - Automate Bluetooth MAC address resolution: " + mAutomateBluetoothMacAddressResolution
+                    + "\n    - Provide Bluetooth MAC address timeout in milliseconds: " + mProvideBluetoothMacAddressTimeoutInMilliseconds
+                    + "\n    - Bluetooth MAC address: " + mBluetoothMacAddress
+                    + "\n    - Discovery mode: " + mDiscoveryMode
+                    + "\n    - Peer expiration time in milliseconds: " + mPeerExpirationInMilliseconds
+                    + "\n    - Advertise mode: " + mAdvertiseMode
+                    + "\n    - Advertise TX power level: " + mAdvertiseTxPowerLevel
+                    + "\n    - Scan mode: " + mScanMode
+                    + "\n    - Scan report delay in milliseconds: " + mScanReportDelayInMilliseconds);
+        } else {
+            Log.v(TAG, "load: Already loaded");
+        }
     }
 
     @Override
@@ -515,7 +521,6 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private int discoveryModeToInt(DiscoveryMode discoveryMode) {
         switch (discoveryMode) {
-            case NOT_SET: return DISCOVERY_MODE_NOT_SET;
             case BLE: return DISCOVERY_MODE_BLE;
             case WIFI: return DISCOVERY_MODE_WIFI;
             case BLE_AND_WIFI: return DISCOVERY_MODE_BLE_AND_WIFI;
@@ -534,7 +539,6 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private DiscoveryMode intToDiscoveryMode(int discoveryModeAsInt) {
         switch (discoveryModeAsInt) {
-            case DISCOVERY_MODE_NOT_SET: return DiscoveryMode.NOT_SET;
             case DISCOVERY_MODE_BLE: return DiscoveryMode.BLE;
             case DISCOVERY_MODE_WIFI: return DiscoveryMode.WIFI;
             case DISCOVERY_MODE_BLE_AND_WIFI: return DiscoveryMode.BLE_AND_WIFI;
