@@ -166,8 +166,8 @@ public class BluetoothManager {
                     // Use the value resolved before
                     featureSupportedStatus = mBleMultipleAdvertisementSupportedStatus;
                 } else {
-                    Log.w(TAG, "isBleMultipleAdvertisementSupported: Cannot do the check when the Bluetooth is disabled - will return \"not supported\"");
-                    featureSupportedStatus = FeatureSupportedStatus.NOT_SUPPORTED;
+                    Log.w(TAG, "isBleMultipleAdvertisementSupported: Cannot do the check when the Bluetooth is disabled - will return \"not resolved\"");
+                    featureSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
                 }
             } else {
                 Log.e(TAG, "isBleMultipleAdvertisementSupported: No Bluetooth adapter - This may indicate that the device has no Bluetooth support at all");
