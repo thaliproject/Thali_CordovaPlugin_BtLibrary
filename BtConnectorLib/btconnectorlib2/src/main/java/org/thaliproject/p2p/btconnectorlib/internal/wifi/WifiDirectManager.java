@@ -31,11 +31,11 @@ public class WifiDirectManager {
     private static final String TAG = WifiDirectManager.class.getName();
     private static WifiDirectManager mInstance = null;
     private final Context mContext;
+    private final WifiManager mWifiManager;
     private final CopyOnWriteArrayList<WifiStateListener> mListeners = new CopyOnWriteArrayList<>();
     private WifiStateBroadcastReceiver mWifiStateBroadcastReceiver = null;
     private WifiP2pManager mP2pManager = null;
     private WifiP2pManager.Channel mP2pChannel = null;
-    private WifiManager mWifiManager = null;
     private boolean mInitialized = false;
 
     /**
@@ -57,6 +57,7 @@ public class WifiDirectManager {
      */
     private WifiDirectManager(Context context) {
         mContext = context;
+        mWifiManager = (WifiManager) mContext.getSystemService(Context.WIFI_SERVICE);
     }
 
     /**
@@ -147,7 +148,6 @@ public class WifiDirectManager {
             }
 
             mP2pChannel = mP2pManager.initialize(mContext, mContext.getMainLooper(), null);
-            mWifiManager = (WifiManager)mContext.getSystemService(Context.WIFI_SERVICE);
             mInitialized = true;
         }
 
@@ -170,7 +170,6 @@ public class WifiDirectManager {
 
         mP2pManager = null;
         mP2pChannel = null;
-        mWifiManager = null;
         mInitialized = false;
     }
 
