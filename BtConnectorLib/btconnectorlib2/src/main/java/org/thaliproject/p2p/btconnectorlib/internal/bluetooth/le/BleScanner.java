@@ -43,7 +43,6 @@ class BleScanner extends ScanCallback {
 
     private enum State {
         NOT_STARTED,
-        STARTING,
         RUNNING
     }
 
@@ -102,7 +101,7 @@ class BleScanner extends ScanCallback {
             if (mBluetoothLeScanner != null) {
                 try {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
-                    setState(State.STARTING, true);
+                    setState(State.RUNNING, true);
                 } catch (Exception e) {
                     Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
                 }
@@ -222,6 +221,12 @@ class BleScanner extends ScanCallback {
         switch (errorCode) {
             case SCAN_FAILED_ALREADY_STARTED:
                 reason = "BLE scan with the same settings is already started by the app";
+
+                try {
+                    mBluetoothLeScanner.stopScan(this);
+                } catch (IllegalStateException e) {
+                }
+
                 break;
             case SCAN_FAILED_APPLICATION_REGISTRATION_FAILED:
                 reason = "App cannot be registered";
