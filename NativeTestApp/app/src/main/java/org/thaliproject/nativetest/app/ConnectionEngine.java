@@ -156,8 +156,7 @@ public class ConnectionEngine implements
      * After calling this method, this instance of the connection engine cannot be used again.
      */
     public void dispose() {
-        mDiscoveryManager.dispose();
-        mConnectionManager.dispose();
+        stop();
         mDiscoveryManager = null;
         mConnectionManager = null;
     }
