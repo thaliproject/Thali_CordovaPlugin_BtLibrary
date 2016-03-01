@@ -238,8 +238,10 @@ public class ConnectionEngine implements
                 Log.e(TAG, "onRequestPermissionsResult: Permission denied");
             }
 
-            mAlertDialog.dismiss();
-            mAlertDialog = null;
+            if (mAlertDialog != null) {
+                mAlertDialog.dismiss();
+                mAlertDialog = null;
+            }
         }
     }
     
