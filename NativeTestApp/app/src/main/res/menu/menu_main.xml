@@ -27,4 +27,8 @@
           android:title="@string/action_make_device_discoverable"
           android:orderInCategory="101"
           app:showAsAction="never"/>
+    <item android:id="@+id/action_reset"
+          android:title="Reset"
+          android:orderInCategory="101"
+          app:showAsAction="never" />
 </menu>

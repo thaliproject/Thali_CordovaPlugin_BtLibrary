@@ -43,6 +43,7 @@ public class ConnectionEngine implements
     protected static final String SERVICE_NAME = "Thali Test Sample App";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
+    protected static final long NOTIFY_STATE_CHANGED_DELAY_IN_MILLISECONDS = 500;
     protected static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
     private static final int PERMISSION_REQUEST_ACCESS_COARSE_LOCATION = 1;
 
@@ -53,6 +54,7 @@ public class ConnectionEngine implements
     protected DiscoveryManager mDiscoveryManager = null;
     protected PeerAndConnectionModel mModel = null;
     protected CountDownTimer mCheckConnectionsTimer = null;
+    protected CountDownTimer mNotifyStateChangedTimer = null;
     private AlertDialog mAlertDialog = null;
     private boolean mShuttingDown = false;
 
@@ -244,7 +246,8 @@ public class ConnectionEngine implements
     
     @Override
     public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState connectionManagerState) {
-        LogFragment.logMessage("Connection manager state changed: " + connectionManagerState);
+        Log.v(TAG, "onConnectionManagerStateChanged: " + connectionManagerState);
+        restartNotifyStateChangedTimer();
     }
 
     /**
@@ -387,16 +390,8 @@ public class ConnectionEngine implements
     public void onDiscoveryManagerStateChanged(
             DiscoveryManager.DiscoveryManagerState state,
             boolean isDiscovering, boolean isAdvertising) {
-        StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("Discovery manager state changed: ");
-        stringBuilder.append(state);
-        stringBuilder.append(", ");
-        stringBuilder.append(isDiscovering ? "discovering/scanning" : "not discovering/scanning");
-        stringBuilder.append(", ");
-        stringBuilder.append(isAdvertising ? "advertising" : "not advertising");
-        String message = stringBuilder.toString();
-        LogFragment.logMessage(message);
-        MainActivity.showToast(message);
+        Log.v(TAG, "onDiscoveryManagerStateChanged: " + state + ", " + isDiscovering + ", " + isAdvertising);
+        restartNotifyStateChangedTimer();
     }
 
     @Override
@@ -463,10 +458,9 @@ public class ConnectionEngine implements
     }
 
     @Override
-    public void onDisconnected(String reason, Connection connection) {
+    public void onDisconnected(String reason, final Connection connection) {
         Log.i(TAG, "onDisconnected: Peer " + connection.getPeerProperties().toString()
                 + " disconnected: " + reason);
-        final Connection finalConnection = connection;
         final PeerProperties peerProperties = connection.getPeerProperties();
         final String peerName = peerProperties.getName();
         final boolean wasIncoming = connection.getIsIncoming();
@@ -475,13 +469,13 @@ public class ConnectionEngine implements
             new Thread() {
                 @Override
                 public void run() {
-                    if (!mModel.addOrRemoveConnection(finalConnection, false) && !mShuttingDown) {
+                    if (!mModel.addOrRemoveConnection(connection, false) && !mShuttingDown) {
                         Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
                     } else if (!mShuttingDown) {
-                        Log.d(TAG, "onDisconnected: Connection " + finalConnection.toString() + " removed from the list");
+                        Log.d(TAG, "onDisconnected: Connection " + connection.toString() + " removed from the list");
                     }
 
-                    finalConnection.close(true);
+                    connection.close(true);
 
                     final int totalNumberOfConnections = mModel.getTotalNumberOfConnections();
 
@@ -541,6 +535,47 @@ public class ConnectionEngine implements
                 mConnectionManager.connect(peerProperties);
             }
         }
+    }
+
+    protected synchronized void restartNotifyStateChangedTimer() {
+        if (mNotifyStateChangedTimer != null) {
+            mNotifyStateChangedTimer.cancel();
+            mNotifyStateChangedTimer = null;
+        }
+
+        mNotifyStateChangedTimer = new CountDownTimer(
+                NOTIFY_STATE_CHANGED_DELAY_IN_MILLISECONDS, NOTIFY_STATE_CHANGED_DELAY_IN_MILLISECONDS) {
+            @Override
+            public void onTick(long l) {
+                // Not used
+            }
+
+            @Override
+            public void onFinish() {
+                this.cancel();
+                mNotifyStateChangedTimer = null;
+
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder.append("Connectivity: ");
+                stringBuilder.append((mConnectionManager != null)
+                        ? mConnectionManager.getState() : "not running");
+                stringBuilder.append(", discovery: ");
+                stringBuilder.append((mDiscoveryManager != null)
+                        ? mDiscoveryManager.getState() : "not running");
+                stringBuilder.append(", ");
+                stringBuilder.append((mDiscoveryManager != null && mDiscoveryManager.isDiscovering())
+                        ? "discovering/scanning" : "not discovering/scanning");
+                stringBuilder.append(", ");
+                stringBuilder.append((mDiscoveryManager != null && mDiscoveryManager.isAdvertising())
+                        ? "advertising" : "not advertising");
+                String message = stringBuilder.toString();
+
+                LogFragment.logMessage(message);
+                MainActivity.showToast(message);
+            }
+        };
+
+        mNotifyStateChangedTimer.start();
     }
 
     /**

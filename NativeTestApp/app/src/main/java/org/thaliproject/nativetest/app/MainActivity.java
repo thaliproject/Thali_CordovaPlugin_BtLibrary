@@ -4,7 +4,6 @@
 package org.thaliproject.nativetest.app;
 
 import android.content.Context;
-import android.content.pm.PackageManager;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -26,8 +25,6 @@ import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.slidingtabs.SlidingTabLayout;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
-import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
-import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 public class MainActivity
@@ -72,12 +69,6 @@ public class MainActivity
         mThisInstance = this;
         mContext = getApplicationContext();
 
-        if (mConnectionEngine == null) {
-            mConnectionEngine = new ConnectionEngine(mContext, this);
-            mConnectionEngine.bindSettings();
-            mTestEngine = new TestEngine(mContext, this, this);
-        }
-
         // Set up the action bar.
         final ActionBar actionBar = getSupportActionBar();
 
@@ -93,10 +84,7 @@ public class MainActivity
 
         mSettingsFragment = new SettingsFragment();
 
-        //mTestsFragment = new TestsFragment();
-        //mTestsFragment.setTestEngine((TestEngine) mTestEngine);
-
-        mConnectionEngine.start();
+        createAndStartEngine();
     }
 
     /**
@@ -148,8 +136,7 @@ public class MainActivity
     @Override
     public void onDestroy() {
         Log.i(TAG, "onDestroy");
-        mConnectionEngine.dispose();
-        mConnectionEngine = null;
+        destroyEngine();
         super.onDestroy();
     }
 
@@ -226,6 +213,10 @@ public class MainActivity
             case R.id.action_make_device_discoverable:
                 mConnectionEngine.makeDeviceDiscoverable();
                 break;
+            case R.id.action_reset:
+                destroyEngine();
+                createAndStartEngine();
+                break;
         }
 
         return wasConsumed || super.onOptionsItemSelected(item);
@@ -266,6 +257,31 @@ public class MainActivity
         LogFragment.logTestEngineMessage("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " % - Results: " + results);
         showToast("Test \"" + testName + "\" finished with success rate of " + successRateInPercentages + " %");
         mConnectionEngine.start();
+    }
+
+    private void createAndStartEngine() {
+        if (mConnectionEngine == null) {
+            mConnectionEngine = new ConnectionEngine(mContext, this);
+            mConnectionEngine.bindSettings();
+        }
+
+        if (mTestEngine == null) {
+            mTestEngine = new TestEngine(mContext, this, this);
+        }
+
+        mConnectionEngine.start();
+    }
+
+    private void destroyEngine() {
+        if (mConnectionEngine != null) {
+            mConnectionEngine.dispose();
+            mConnectionEngine = null;
+        }
+
+        if (mTestEngine != null) {
+            mTestEngine.dispose();
+            mTestEngine = null;
+        }
     }
 
     /**
