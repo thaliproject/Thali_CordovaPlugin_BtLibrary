@@ -46,7 +46,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     private final Listener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final String mBluetoothName;
-    private BluetoothServerSocket mServerSocket = null;
+    private BluetoothServerSocket mBluetoothServerSocket = null;
     private boolean mStopThread = false;
 
     /**
@@ -85,17 +85,19 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     public void run() {
         while (!mStopThread) {
             try {
-                mServerSocket = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(mBluetoothName, mServiceRecordUuid);
+                mBluetoothServerSocket =
+                        mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(
+                                mBluetoothName, mServiceRecordUuid);
             } catch (IOException e) {
                 Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
             }
 
-            if (mServerSocket != null) {
+            if (mBluetoothServerSocket != null && !mStopThread) {
                 Log.i(TAG, "Waiting for incoming connections...");
                 BluetoothSocket bluetoothSocket = null;
 
                 try {
-                    bluetoothSocket = mServerSocket.accept(); // Blocking call
+                    bluetoothSocket = mBluetoothServerSocket.accept(); // Blocking call
                     Log.i(TAG, "Incoming connection accepted");
                 } catch (IOException e) {
                     if (!mStopThread) {
@@ -142,8 +144,17 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                     mListener.onIncomingConnectionFailed("Socket is null");
                     mStopThread = true;
                 }
-            }
-        }
+
+                try {
+                    mBluetoothServerSocket.close();
+                    Log.v(TAG, "Bluetooth server socket closed");
+                } catch (IOException | NullPointerException e) {
+                    Log.e(TAG, "Failed to close the Bluetooth server socket: " + e.getMessage(), e);
+                }
+
+                mBluetoothServerSocket = null;
+            } // if (mBluetoothServerSocket != null && !mStopThread)
+        } // while (!mStopThread)
 
         Log.d(TAG, "Exiting thread");
         mListener.onServerStopped();
@@ -160,17 +171,17 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
         for (BluetoothSocketIoThread thread : mSocketIoThreads) {
             if (thread != null) {
-                thread.close(true);
+                thread.close(true, true);
             }
         }
 
         mSocketIoThreads.clear();
 
-        if (mServerSocket != null) {
+        if (mBluetoothServerSocket != null) {
             try {
-                mServerSocket.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+                mBluetoothServerSocket.close();
+            } catch (IOException | NullPointerException e) {
+                Log.e(TAG, "Failed to close the Bluetooth server socket: " + e.getMessage(), e);
             }
         }
     }
@@ -267,7 +278,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                 mSocketIoThreads.remove(thread);
 
                 if (closeSocketAndStreams) {
-                    thread.close(true);
+                    thread.close(true, true);
                 }
 
                 threadRemoved = true;

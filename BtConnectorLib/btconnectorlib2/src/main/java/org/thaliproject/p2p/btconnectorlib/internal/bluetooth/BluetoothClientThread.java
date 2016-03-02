@@ -282,7 +282,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     private synchronized void close() {
         if (mHandshakeThread != null) {
-            mHandshakeThread.close(false);
+            mHandshakeThread.close(true, false);
             mHandshakeThread = null;
         }
 

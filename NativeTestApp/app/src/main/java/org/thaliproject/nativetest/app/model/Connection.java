@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.nativetest.app.model;
@@ -155,7 +155,7 @@ public class Connection implements BluetoothSocketIoThread.Listener {
 
     public void close(boolean closeSocket) {
         if (!mIsClosed) {
-            mBluetoothSocketIoThread.close(closeSocket);
+            mBluetoothSocketIoThread.close(true, closeSocket);
             Log.d(TAG, "close: Closed");
             mIsClosed = true;
         }

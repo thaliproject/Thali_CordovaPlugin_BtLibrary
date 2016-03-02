@@ -178,27 +178,31 @@ public class BluetoothSocketIoThread extends Thread {
     }
 
     /**
-     * Closes the input and output streams and, if requested, the socket.
+     * Closes, if requested, the input and output streams and the socket.
      * Note that after calling this method, this instance is no longer in valid state and must be
      * disposed of.
+     * @param closeStreams If true, will close the input and output streams.
      * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
      */
-    public synchronized void close(boolean closeSocket) {
+    public synchronized void close(boolean closeStreams, boolean closeSocket) {
         mIsShuttingDown = true;
 
-        if (mInputStream != null) {
-            try {
-                mInputStream.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Failed to close the input stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
+        if (closeStreams) {
+            if (mInputStream != null) {
+                try {
+                    mInputStream.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to close the input stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
+                }
             }
-        }
 
-        if (mOutputStream != null) {
-            try {
-                mOutputStream.close();
-            } catch (IOException e) {
-                Log.w(TAG, "Failed to close the output stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
+
+            if (mOutputStream != null) {
+                try {
+                    mOutputStream.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Failed to close the output stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
+                }
             }
         }
 
