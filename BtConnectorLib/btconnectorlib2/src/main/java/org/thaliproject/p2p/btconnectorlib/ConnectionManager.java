@@ -128,7 +128,6 @@ public class ConnectionManager
                         mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
 
                         if (mBluetoothConnector.startListeningForIncomingConnections()) {
-                            setState(ConnectionManagerState.RUNNING);
                             Log.i(TAG, "startListeningForIncomingConnections: OK");
                         } else {
                             Log.e(TAG, "startListeningForIncomingConnections: Failed to start");
@@ -166,7 +165,12 @@ public class ConnectionManager
 
         mBluetoothConnector.stopListeningForIncomingConnections();
         mBluetoothManager.release(this);
-        setState(ConnectionManagerState.NOT_STARTED);
+
+        if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+            // We won't get the onIsServerStartedChanged event, when we are waiting for Bluetooth to
+            // be enabled. Thus, we need to change the state here.
+            setState(ConnectionManagerState.NOT_STARTED);
+        }
     }
 
     /**
@@ -283,6 +287,25 @@ public class ConnectionManager
     }
 
     /**
+     * Sets the state based on the given argument.
+     *
+     * @param isStarted If true, the server thread is started. If false, the server thread is stopped.
+     */
+    @Override
+    public void onIsServerStartedChanged(boolean isStarted) {
+        Log.d(TAG, "onIsServerStartedChanged: " + isStarted);
+
+        if (isStarted) {
+            setState(ConnectionManagerState.RUNNING);
+        } else {
+            // We don't want to change the state, if we are waiting for Bluetooth to be enabled
+            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+                setState(ConnectionManagerState.NOT_STARTED);
+            }
+        }
+    }
+
+    /**
      * Does nothing but logs the event.
      *
      * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
@@ -295,6 +318,7 @@ public class ConnectionManager
 
     /**
      * Notifies the listener about a successful connection.
+     *
      * @param bluetoothSocket The Bluetooth socket.
      * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
      * @param peerProperties The properties of the peer connected to.

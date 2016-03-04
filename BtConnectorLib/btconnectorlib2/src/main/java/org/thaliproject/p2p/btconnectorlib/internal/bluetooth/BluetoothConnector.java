@@ -28,6 +28,14 @@ public class BluetoothConnector
      */
     public interface BluetoothConnectorListener {
         /**
+         * Called when the Bluetooth server thread is started and ready to accept incoming
+         * connections or when the thread is stopped.
+         *
+         * @param isStarted If true, the server thread is started. If false, the server thread is stopped.
+         */
+        void onIsServerStartedChanged(boolean isStarted);
+
+        /**
          * Called when connecting to a Bluetooth device.
          *
          * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
@@ -74,8 +82,6 @@ public class BluetoothConnector
     private final UUID mServiceRecordUuid;
     private final String mMyBluetoothName;
     private final Handler mHandler;
-    private final ConnectionManagerSettings mConnectionManagerSettings;
-    private final BluetoothConnector mBluetoothConnectorInstance;
     private final Thread.UncaughtExceptionHandler mUncaughtExceptionHandler;
     private String mMyIdentityString = null;
     private BluetoothServerThread mServerThread = null;
@@ -113,7 +119,7 @@ public class BluetoothConnector
         mMyBluetoothName = myBluetoothName;
         mHandler = new Handler(context.getMainLooper());
 
-        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(context);
+        ConnectionManagerSettings mConnectionManagerSettings = ConnectionManagerSettings.getInstance(context);
         mConnectionTimeoutInMilliseconds = mConnectionManagerSettings.getConnectionTimeout();
         mInsecureRfcommSocketPort = mConnectionManagerSettings.getInsecureRfcommSocketPortNumber();
         mMaxNumberOfOutgoingConnectionAttemptRetries = mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries();
@@ -135,8 +141,6 @@ public class BluetoothConnector
         };
 
         setIdentityString(myIdentityString);
-
-        mBluetoothConnectorInstance = this;
     }
 
     /**
@@ -254,9 +258,14 @@ public class BluetoothConnector
                 mServerThread.setHandshakeRequired(mHandshakeRequired);
                 mServerThread.start();
                 mIsServerThreadAlive = true;
+                mListener.onIsServerStartedChanged(true);
             }
         } else {
-            Log.d(TAG, "startListeningForIncomingConnections: Already started");
+            if (mIsServerThreadAlive) {
+                Log.d(TAG, "startListeningForIncomingConnections: Already started");
+            } else {
+                Log.e(TAG, "startListeningForIncomingConnections: The process of stopping the server thread is still ongoing, please wait for the process to complete before restarting");
+            }
         }
 
         return mIsServerThreadAlive;
@@ -266,10 +275,9 @@ public class BluetoothConnector
      * Stops listening for incoming connections.
      */
     public synchronized void stopListeningForIncomingConnections() {
-        mIsStoppingServer = true; // So that we don't automatically restart
-
         if (mServerThread != null) {
             Log.i(TAG, "stopListeningForIncomingConnections: Stopping...");
+            mIsStoppingServer = true; // So that we don't automatically restart
             mServerThread.shutdown();
             mServerThread = null;
         }
@@ -342,7 +350,6 @@ public class BluetoothConnector
                     } catch (RuntimeException e) {
                         Log.e(TAG, "connect: Failed to create the connection timeout timer: " + e.getMessage(), e);
                     }
-
                 }
 
                 bluetoothClientThread.start();
@@ -442,9 +449,9 @@ public class BluetoothConnector
             @Override
             public void run() {
                 if (bluetoothSocket.isConnected()) {
-                    mBluetoothConnectorInstance.mListener.onConnected(bluetoothSocket, true, peerProperties);
+                    mListener.onConnected(bluetoothSocket, true, peerProperties);
                 } else {
-                    mBluetoothConnectorInstance.onIncomingConnectionFailed("Disconnected");
+                    onIncomingConnectionFailed("Disconnected");
                 }
             }
         });
@@ -463,7 +470,7 @@ public class BluetoothConnector
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mBluetoothConnectorInstance.mListener.onConnectionFailed(null, tempErrorMessage);
+                mListener.onConnectionFailed(null, tempErrorMessage);
             }
         });
     }
@@ -474,17 +481,25 @@ public class BluetoothConnector
      */
     @Override
     public void onServerStopped() {
-        Log.i(TAG, "onServerStopped");
+        final boolean wasServerExplicitlyStopped = mIsStoppingServer;
+        Log.i(TAG, "onServerStopped: Was explicitly stopped: " + wasServerExplicitlyStopped);
+        mIsStoppingServer = false;
         mIsServerThreadAlive = false;
 
-        if (!mIsStoppingServer) {
+        if (wasServerExplicitlyStopped) {
+            // Was deliberately stopped
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onIsServerStartedChanged(false);
+                }
+            });
+        } else {
             // Was not stopped deliberately.
             // This instance is still valid, let's try to restart the server.
             Log.i(TAG, "onServerStopped: Restarting the server...");
             startListeningForIncomingConnections();
         }
-
-        mIsStoppingServer = false;
     }
 
     /**
@@ -534,7 +549,7 @@ public class BluetoothConnector
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                mBluetoothConnectorInstance.mListener.onConnectionFailed(tempPeerProperties, tempErrorMessage);
+                mListener.onConnectionFailed(tempPeerProperties, tempErrorMessage);
             }
         });
 
@@ -567,9 +582,9 @@ public class BluetoothConnector
                 @Override
                 public void run() {
                     if (bluetoothSocket.isConnected()) {
-                        mBluetoothConnectorInstance.mListener.onConnected(bluetoothSocket, false, peerProperties);
+                        mListener.onConnected(bluetoothSocket, false, peerProperties);
                     } else {
-                        mBluetoothConnectorInstance.onConnectionFailed(peerProperties, "Disconnected", bluetoothClientThread);
+                        onConnectionFailed(peerProperties, "Disconnected", bluetoothClientThread);
                     }
                 }
             });
@@ -627,7 +642,7 @@ public class BluetoothConnector
                         mHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                mBluetoothConnectorInstance.mListener.onConnectionTimeout(peerProperties);
+                                mListener.onConnectionTimeout(peerProperties);
                             }
                         });
                     }
