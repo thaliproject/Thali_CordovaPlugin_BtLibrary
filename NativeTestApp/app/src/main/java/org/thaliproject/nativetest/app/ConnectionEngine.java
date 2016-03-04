@@ -56,7 +56,7 @@ public class ConnectionEngine implements
     protected CountDownTimer mCheckConnectionsTimer = null;
     protected CountDownTimer mNotifyStateChangedTimer = null;
     private AlertDialog mAlertDialog = null;
-    private boolean mShuttingDown = false;
+    private boolean mIsShuttingDown = false;
 
     /**
      * Constructor.
@@ -78,18 +78,30 @@ public class ConnectionEngine implements
      */
     public void bindSettings() {
         mSettings = Settings.getInstance(mContext);
+        mSettings.setConnectionManager(mConnectionManager);
         mSettings.setDiscoveryManager(mDiscoveryManager);
         mSettings.load();
     }
 
     /**
      * Starts both the connection and the discovery manager.
+     *
      * @return True, if started successfully. False otherwise.
      */
     public synchronized boolean start() {
-        mShuttingDown = false;
+        mIsShuttingDown = false;
 
-        boolean wasConnectionManagerStarted = mConnectionManager.start();
+        boolean shouldConnectionManagerBeRunning = mSettings.getListenForIncomingConnections();
+        boolean wasConnectionManagerStarted = false;
+
+        if (shouldConnectionManagerBeRunning) {
+            wasConnectionManagerStarted = mConnectionManager.startListeningForIncomingConnections();
+
+            if (!wasConnectionManagerStarted) {
+                Log.e(TAG, "start: Failed to start the connection manager");
+                LogFragment.logError("Failed to start the connection manager");
+            }
+        }
 
         boolean shouldDiscoveryManagerBeRunning =
                 (mSettings.getEnableBleDiscovery() || mSettings.getEnableWifiDiscovery());
@@ -99,52 +111,49 @@ public class ConnectionEngine implements
             wasDiscoveryManagerStarted =
                     (mDiscoveryManager.getState() != DiscoveryManager.DiscoveryManagerState.NOT_STARTED
                             || mDiscoveryManager.start(true, true));
+
+            if (!shouldDiscoveryManagerBeRunning) {
+                Log.e(TAG, "start: Failed to start the discovery manager");
+                LogFragment.logError("Failed to start the discovery manager");
+            }
         }
 
-        if (wasConnectionManagerStarted) {
-            if (mCheckConnectionsTimer != null) {
-                mCheckConnectionsTimer.cancel();
-                mCheckConnectionsTimer = null;
+        if (mCheckConnectionsTimer != null) {
+            mCheckConnectionsTimer.cancel();
+            mCheckConnectionsTimer = null;
+        }
+
+        mCheckConnectionsTimer = new CountDownTimer(
+                CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS,
+                CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS) {
+            @Override
+            public void onTick(long l) {
+                // Not used
             }
 
-            mCheckConnectionsTimer = new CountDownTimer(
-                    CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS,
-                    CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS) {
-                @Override
-                public void onTick(long l) {
-                    // Not used
-                }
+            @Override
+            public void onFinish() {
+                sendPingToAllPeers();
+                mCheckConnectionsTimer.start();
+            }
+        };
 
-                @Override
-                public void onFinish() {
-                    sendPingToAllPeers();
-                    mCheckConnectionsTimer.start();
-                }
-            };
-        } else {
-            Log.e(TAG, "start: Failed to start the connection manager");
-            LogFragment.logError("Failed to start the connection manager");
-        }
-
-        if (shouldDiscoveryManagerBeRunning && !wasDiscoveryManagerStarted) {
-            Log.e(TAG, "start: Failed to start the discovery manager");
-            LogFragment.logError("Failed to start the discovery manager");
-        }
-
-        return (wasConnectionManagerStarted || (!shouldDiscoveryManagerBeRunning || wasDiscoveryManagerStarted));
+        return ((!shouldConnectionManagerBeRunning || wasConnectionManagerStarted)
+                && (!shouldDiscoveryManagerBeRunning || wasDiscoveryManagerStarted));
     }
 
     /**
      * Stops both the connection and the discovery manager.
      */
     public synchronized void stop() {
-        mShuttingDown = true;
+        mIsShuttingDown = true;
 
         if (mCheckConnectionsTimer != null) {
             mCheckConnectionsTimer.cancel();
         }
 
-        mConnectionManager.stop();
+        mConnectionManager.stopListeningForIncomingConnections();
+        mConnectionManager.cancelAllConnectionAttempts();
         mDiscoveryManager.stop();
 
         mModel.closeAllConnections();
@@ -157,12 +166,15 @@ public class ConnectionEngine implements
      */
     public void dispose() {
         stop();
+        mDiscoveryManager.dispose();
+        mConnectionManager.dispose();
         mDiscoveryManager = null;
         mConnectionManager = null;
     }
 
     /**
      * Connects to the peer with the given properties.
+     *
      * @param peerProperties The properties of the peer to connect to.
      */
     public synchronized void connect(PeerProperties peerProperties) {
@@ -196,6 +208,7 @@ public class ConnectionEngine implements
 
     /**
      * Starts sending data to the peer with the given properties.
+     *
      * @param peerProperties The properties of the peer to send data to.
      */
     public synchronized void startSendingData(PeerProperties peerProperties) {
@@ -219,6 +232,7 @@ public class ConnectionEngine implements
 
     /**
      * Called when the user grants/denies a permission request.
+     *
      * @param requestCode The request code associated with the permission request.
      * @param permissions The permissions in question.
      * @param grantResults The grant results (granted/denied).
@@ -254,6 +268,7 @@ public class ConnectionEngine implements
     /**
      * Constructs a Bluetooth socket IO thread for the new connection and adds it to the list of
      * connections.
+     *
      * @param bluetoothSocket The Bluetooth socket.
      * @param isIncoming If true, this is an incoming connection. If false, this is an outgoing connection.
      * @param peerProperties The peer properties.
@@ -316,8 +331,6 @@ public class ConnectionEngine implements
 
             MainActivity.showToast("Failed to connect to " + peerProperties.getName() + ": Connection timeout");
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString() + ": Connection timeout");
-
-            autoConnectIfEnabled(peerProperties);
         } else {
             MainActivity.showToast("Failed to connect: Connection timeout");
             LogFragment.logError("Failed to connect: Connection timeout");
@@ -337,8 +350,6 @@ public class ConnectionEngine implements
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
-
-            autoConnectIfEnabled(peerProperties);
 
         } else {
             MainActivity.showToast("Failed to connect" + ((errorMessage != null) ? (": " + errorMessage) : ""));
@@ -470,9 +481,9 @@ public class ConnectionEngine implements
             new Thread() {
                 @Override
                 public void run() {
-                    if (!mModel.addOrRemoveConnection(connection, false) && !mShuttingDown) {
+                    if (!mModel.addOrRemoveConnection(connection, false) && !mIsShuttingDown) {
                         Log.e(TAG, "onDisconnected: Failed to remove the connection, because not found in the list");
-                    } else if (!mShuttingDown) {
+                    } else if (!mIsShuttingDown) {
                         Log.d(TAG, "onDisconnected: Connection " + connection.toString() + " removed from the list");
                     }
 
@@ -525,15 +536,18 @@ public class ConnectionEngine implements
 
     /**
      * Tries to connect to the peer with the given properties if the auto-connect is enabled.
+     *
      * @param peerProperties The peer properties.
      */
     protected synchronized void autoConnectIfEnabled(PeerProperties peerProperties) {
-        if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
-            if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
-                    || !mModel.hasConnectionToPeer(peerProperties, true)) {
-                // Do auto-connect
-                Log.i(TAG, "autoConnectIfEnabled: Auto-connecting to peer " + peerProperties.toString());
-                mConnectionManager.connect(peerProperties);
+        if (!mIsShuttingDown) {
+            if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
+                if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
+                        || !mModel.hasConnectionToPeer(peerProperties, true)) {
+                    // Do auto-connect
+                    Log.i(TAG, "autoConnectIfEnabled: Auto-connecting to peer " + peerProperties.toString());
+                    connect(peerProperties);
+                }
             }
         }
     }
@@ -581,6 +595,7 @@ public class ConnectionEngine implements
 
     /**
      * Prompts the user to grant the given permission.
+     *
      * @param permission The permission, which needs to be granted.
      */
     private void requestPermission(final String permission) {

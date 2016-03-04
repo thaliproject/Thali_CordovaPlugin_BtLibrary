@@ -22,6 +22,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     public interface Listener {
         /**
          * Called when socket connection with a peer succeeds.
+         *
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          * @param who The Bluetooth client thread instance calling this callback.
@@ -31,6 +32,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         /**
          * Called when successfully connected to and validated (handshake OK) a peer.
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
+         *
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
          * @param peerProperties The peer properties.
          * @param who The Bluetooth client thread instance calling this callback.
@@ -39,6 +41,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         /**
          * Called when connection attempt fails.
+         *
          * @param peerProperties The peer properties.
          * @param errorMessage The error message.
          * @param who The Bluetooth client thread instance calling this callback.
@@ -63,6 +66,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Constructor.
+     *
      * @param listener The listener.
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
@@ -83,7 +87,6 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         mListener = listener;
         mBluetoothDeviceToConnectTo = bluetoothDeviceToConnectTo;
         mServiceRecordUuid = serviceRecordUuid;
-        mMyIdentityString = myIdentityString;
         mPeerProperties = new PeerProperties();
     }
 
@@ -117,7 +120,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
                 mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                 mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
-                boolean handshakeSucceeded = mHandshakeThread.write(mMyIdentityString.getBytes()); // This does not throw exceptions
+                boolean handshakeSucceeded = mHandshakeThread.write(getHandshakeMessage()); // This does not throw exceptions
 
                 if (handshakeSucceeded) {
                     Log.d(TAG, "Outgoing connection initialized (*handshake* thread ID: "
@@ -156,6 +159,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Sets the preferred port to be used by the insecure RFCOMM socket.
+     *
      * @param insecureRfcommSocketPort The port to use.
      */
     public void setInsecureRfcommSocketPortNumber(int insecureRfcommSocketPort) {
@@ -165,6 +169,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Sets the maximum number of socket connection attempt retries (0 means only one attempt).
+     *
      * @param maxNumberOfRetries The maximum number of socket connection attempt retries.
      */
     public void setMaxNumberOfRetries(int maxNumberOfRetries) {
@@ -178,6 +183,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Stores the given properties to be used when reporting failures.
+     *
      * @param peerProperties The peer properties.
      */
     public void setPeerProperties(PeerProperties peerProperties) {
@@ -200,6 +206,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Tries to validate the read message, which should contain the identity of the peer. If the
      * identity is valid, notify the user that we have established a connection.
+     *
      * @param bytes The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
@@ -245,7 +252,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Does nothing, but logs the event.
-     * @param buffer
+     *
+     * @param buffer The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
      */
@@ -258,6 +266,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * If the handshake thread instance is still around, it means we got a connection failure in our
      * hands and we need to notify the listener and shutdown.
+     *
      * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
      * @param who The related BluetoothSocketIoThread instance.
      */
@@ -299,6 +308,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Creates an insecure Bluetooth socket with the service record UUID and tries to connect.
+     *
      * @param port If -1, will use a standard method for socket creation (OS decides).
      *             If 0, will use a rotating port number (see BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort).
      *             If greater than 0, will use the given port number.
@@ -353,6 +363,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Tries to establish a socket connection.
+     *
      * @return True, if successful. False otherwise.
      */
     private synchronized boolean tryToConnect() {

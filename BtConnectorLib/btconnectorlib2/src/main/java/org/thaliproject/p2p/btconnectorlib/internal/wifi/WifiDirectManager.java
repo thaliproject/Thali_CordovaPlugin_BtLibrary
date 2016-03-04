@@ -23,6 +23,7 @@ public class WifiDirectManager {
     public interface WifiStateListener {
         /**
          * Called when the Wi-Fi state on the device is changed (e.g. enabled or disabled).
+         *
          * @param state The new state.
          */
         void onWifiStateChanged(int state);
@@ -40,6 +41,7 @@ public class WifiDirectManager {
 
     /**
      * Getter for the singleton instance of this class.
+     *
      * @param context The application context.
      * @return The singleton instance of this class.
      */
@@ -53,6 +55,7 @@ public class WifiDirectManager {
 
     /**
      * Constructor.
+     *
      * @param context The application context.
      */
     private WifiDirectManager(Context context) {
@@ -70,7 +73,7 @@ public class WifiDirectManager {
      * @return True, if bound successfully (or already bound). If false is returned, this could
      * indicate the lack of Bluetooth hardware support.
      */
-    public boolean bind(WifiStateListener listener) {
+    public synchronized boolean bind(WifiStateListener listener) {
         if (!mListeners.contains(listener)) {
             Log.i(TAG, "bind: Binding a new listener");
             mListeners.add(listener);
@@ -82,15 +85,19 @@ public class WifiDirectManager {
     /**
      * Removes the given listener from the list of listeners. If, after this, the list of listeners
      * is empty, there is no reason to keep this instance "running" and we can de-initialize.
+     *
      * @param listener The listener to remove.
      */
-    public void release(WifiStateListener listener) {
-        if (!mListeners.remove(listener)) {
-            Log.e(TAG, "release: The given listener does not exist in the list");
+    public synchronized void release(WifiStateListener listener) {
+        if (!mListeners.remove(listener) && mListeners.size() > 0) {
+            Log.e(TAG, "release: The given listener does not exist in the list - probably already removed");
         }
 
         if (mListeners.size() == 0) {
-            Log.i(TAG, "release: No more listeners, de-initializing...");
+            if (mInitialized) {
+                Log.i(TAG, "release: No more listeners, de-initializing...");
+            }
+
             deinitialize();
         } else {
             Log.d(TAG, "release: " + mListeners.size() + " listener(s) left");
@@ -100,6 +107,7 @@ public class WifiDirectManager {
     /**
      * Checks whether the device supports Wi-Fi Direct or not. Note that this method also retrieves
      * the WifiP2pManager instance.
+     *
      * @return True, if Wi-Fi Direct is supported. False otherwise.
      */
     public boolean isWifiDirectSupported() {
@@ -131,6 +139,7 @@ public class WifiDirectManager {
 
     /**
      * Registers the broadcast receiver to listen to Wi-Fi state changes.
+     *
      * @return True, if successfully initialized (even if that the initialization was done earlier).
      * If false is returned, this could indicate the lack of Wi-Fi Direct hardware support.
      */

@@ -1,4 +1,4 @@
-/* Copyright (c) 2015 Microsoft Corporation. This software is licensed under the MIT License.
+/* Copyright (c) 2015-2016 Microsoft Corporation. This software is licensed under the MIT License.
  * See the license file delivered with this project for further information.
  */
 package org.thaliproject.p2p.btconnectorlib.utils;
@@ -21,6 +21,7 @@ public class BluetoothSocketIoThread extends Thread {
     public interface Listener {
         /**
          * Called when bytes were successfully read.
+         *
          * @param bytes The array of bytes read.
          * @param size The size of the array.
          * @param who The related BluetoothSocketIoThread instance.
@@ -29,6 +30,7 @@ public class BluetoothSocketIoThread extends Thread {
 
         /**
          * Called when bytes were written successfully.
+         *
          * @param bytes The array of bytes written.
          * @param size The size of the array.
          * @param who The related BluetoothSocketIoThread instance.
@@ -37,6 +39,7 @@ public class BluetoothSocketIoThread extends Thread {
 
         /**
          * Called when the socket associated with the BluetoothSocketIoThread instance is disconnected.
+         *
          * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
          * @param who The related BluetoothSocketIoThread instance.
          */
@@ -56,6 +59,7 @@ public class BluetoothSocketIoThread extends Thread {
 
     /**
      * Constructor.
+     *
      * @param socket A Bluetooth socket.
      * @param listener The listener.
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth socket instance is null.
@@ -88,6 +92,7 @@ public class BluetoothSocketIoThread extends Thread {
 
     /**
      * Sets whether the thread should exit after a read() call or not.
+     *
      * @param exit If true, will exit after one read() call. If false, will keep reading until closed.
      */
     public void setExitThreadAfterRead(boolean exit) {
@@ -105,6 +110,7 @@ public class BluetoothSocketIoThread extends Thread {
     /**
      * Sets the buffer size used by the input stream.
      * Note that the buffer size needs to be set before calling start(). Otherwise, it will have no effect.
+     *
      * @param bufferSizeInBytes The buffer size in bytes.
      */
     public void setBufferSize(int bufferSizeInBytes) {
@@ -151,6 +157,7 @@ public class BluetoothSocketIoThread extends Thread {
 
     /**
      * Writes the given bytes to the output stream of the socket.
+     *
      * @param bytes The bytes to write.
      * @return True, if the given bytes were written successfully. False otherwise.
      */
@@ -181,6 +188,7 @@ public class BluetoothSocketIoThread extends Thread {
      * Closes, if requested, the input and output streams and the socket.
      * Note that after calling this method, this instance is no longer in valid state and must be
      * disposed of.
+     *
      * @param closeStreams If true, will close the input and output streams.
      * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
      */

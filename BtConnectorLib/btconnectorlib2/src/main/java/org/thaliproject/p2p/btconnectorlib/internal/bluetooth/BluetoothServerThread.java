@@ -24,6 +24,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
         /**
          * Called when an incoming connection is validated (handshake OK) and connected.
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
+         *
          * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
          * @param peerProperties The peer properties.
          */
@@ -31,6 +32,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
         /**
          * Called when the incoming connection fails.
+         *
          * @param reason The reason for the failure.
          */
         void onIncomingConnectionFailed(String reason);
@@ -51,6 +53,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Constructor.
+     *
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
@@ -189,6 +192,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Validates the read message, which should contain the identity of the peer, and if OK, we will
      * try to respond with our own identity.
+     *
      * @param bytes The array of bytes read.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
@@ -208,7 +212,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
             who.setPeerProperties(peerProperties);
 
             // Respond to client
-            if (!who.write(mMyIdentityString.getBytes())) {
+            if (!who.write(getHandshakeMessage())) {
                 Log.e(TAG, "Failed to respond to thread with ID " + threadId);
                 removeThreadFromList(threadId, true);
             }
@@ -221,6 +225,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * This will get called, if the response to an incoming connection was successful. Thus, we can
      * assume we have initiated a connection.
+     *
      * @param bytes The array of bytes written.
      * @param size The size of the array.
      * @param who The related BluetoothSocketIoThread instance.
@@ -263,6 +268,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Removes the given socket IO thread from the list of threads.
+     *
      * @param threadId The ID of the thread to remove.
      * @param closeSocketAndStreams If true, will close the socket and streams associated with the thread.
      * @return True, if the thread was removed from the list. False, if not found.
@@ -291,6 +297,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * Removes the given socket IO thread from the list of threads.
+     *
      * @param threadToRemove The thread to remove.
      * @param closeSocketAndStreams If true, will close the socket and streams associated with the thread.
      * @return True, if the thread was removed from the list. False, if not found.

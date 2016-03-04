@@ -8,7 +8,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import org.thaliproject.nativetest.app.ConnectionEngine;
+import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -23,6 +23,13 @@ public class Settings {
     private final SharedPreferences mSharedPreferences;
     private final SharedPreferences.Editor mSharedPreferencesEditor;
 
+    private static final boolean DEFAULT_LISTEN_FOR_INCOMING_CONNECTIONS = true;
+    private static final boolean DEFAULT_ENABLE_WIFI_DISCOVERY = false;
+    private static final boolean DEFAULT_ENABLE_BLE_DISCOVERY = true;
+    private static final boolean DEFAULT_AUTO_CONNECT = false;
+    private static final boolean DEFAULT_AUTO_CONNECT_WHEN_INCOMING = false;
+
+    private static final String KEY_LISTEN_FOR_INCOMING_CONNECTIONS = "listen_for_incoming_connections";
     private static final String KEY_ENABLE_WIFI_DISCOVERY = "enable_wifi_discovery";
     private static final String KEY_ENABLE_BLE_DISCOVERY = "enable_ble_discovery";
     private static final String KEY_DATA_AMOUNT = "data_amount";
@@ -31,9 +38,11 @@ public class Settings {
     private static final String KEY_AUTO_CONNECT_WHEN_INCOMING = "auto_connect_when_incoming";
     private static final long START_DISCOVERY_MANAGER_DELAY_IN_MILLISECONDS = 3000;
 
+    private ConnectionManager mConnectionManager = null;
     private DiscoveryManager mDiscoveryManager = null;
     private DiscoveryManagerSettings mDiscoveryManagerSettings = null;
     private ConnectionManagerSettings mConnectionManagerSettings = null;
+    private boolean mListenForIncomingConnections = true;
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
     private long mDataAmountInBytes = Connection.DEFAULT_DATA_AMOUNT_IN_BYTES;
@@ -73,17 +82,23 @@ public class Settings {
     public void load() {
         if (!mLoaded) {
             mLoaded = true;
-            mEnableWifiDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_WIFI_DISCOVERY, true);
-            mEnableBleDiscovery = mSharedPreferences.getBoolean(KEY_ENABLE_BLE_DISCOVERY, true);
+            mListenForIncomingConnections = mSharedPreferences.getBoolean(
+                    KEY_LISTEN_FOR_INCOMING_CONNECTIONS, DEFAULT_LISTEN_FOR_INCOMING_CONNECTIONS);
+
+            mEnableWifiDiscovery = mSharedPreferences.getBoolean(
+                    KEY_ENABLE_WIFI_DISCOVERY, DEFAULT_ENABLE_WIFI_DISCOVERY);
+            mEnableBleDiscovery = mSharedPreferences.getBoolean(
+                    KEY_ENABLE_BLE_DISCOVERY, DEFAULT_ENABLE_BLE_DISCOVERY);
 
             mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
             mBufferSizeInBytes = mSharedPreferences.getInt(
                     KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
-            mAutoConnect = mSharedPreferences.getBoolean(KEY_AUTO_CONNECT, false);
+            mAutoConnect = mSharedPreferences.getBoolean(KEY_AUTO_CONNECT, DEFAULT_AUTO_CONNECT);
             mAutoConnectEvenWhenIncomingConnectionEstablished = mSharedPreferences.getBoolean(
-                    KEY_AUTO_CONNECT_WHEN_INCOMING, false);
+                    KEY_AUTO_CONNECT_WHEN_INCOMING, DEFAULT_AUTO_CONNECT_WHEN_INCOMING);
 
             Log.i(TAG, "load: "
+                    + "\n    - Listen for incoming connections: " + mListenForIncomingConnections
                     + "\n    - Enable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
                     + "\n    - Enable BLE peer discovery: " + mEnableBleDiscovery
                     + "\n    - Data amount in bytes: " + mDataAmountInBytes
@@ -99,6 +114,10 @@ public class Settings {
         } else {
             Log.v(TAG, "load: Already loaded");
         }
+    }
+
+    public void setConnectionManager(ConnectionManager connectionManager) {
+        mConnectionManager = connectionManager;
     }
 
     public void setDiscoveryManager(DiscoveryManager discoveryManager) {
@@ -178,6 +197,27 @@ public class Settings {
 
     public void setHandshakeRequired(boolean handshakeRequired) {
         mConnectionManagerSettings.setHandshakeRequired(handshakeRequired);
+    }
+
+    public boolean getListenForIncomingConnections() {
+        return mListenForIncomingConnections;
+    }
+
+    public void setListenForIncomingConnections(boolean listenForIncomingConnections) {
+        if (mListenForIncomingConnections != listenForIncomingConnections) {
+            Log.i(TAG, "setListenForIncomingConnections: " + listenForIncomingConnections);
+            mListenForIncomingConnections = listenForIncomingConnections;
+            mSharedPreferencesEditor.putBoolean(KEY_LISTEN_FOR_INCOMING_CONNECTIONS, mListenForIncomingConnections);
+            mSharedPreferencesEditor.apply();
+
+            if (mConnectionManager != null) {
+                if (mListenForIncomingConnections) {
+                    mConnectionManager.startListeningForIncomingConnections();
+                } else {
+                    mConnectionManager.stopListeningForIncomingConnections();
+                }
+            }
+        }
     }
 
     public boolean getEnableWifiDiscovery() {
