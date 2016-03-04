@@ -4,7 +4,6 @@
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
-
 import java.util.UUID;
 
 /**

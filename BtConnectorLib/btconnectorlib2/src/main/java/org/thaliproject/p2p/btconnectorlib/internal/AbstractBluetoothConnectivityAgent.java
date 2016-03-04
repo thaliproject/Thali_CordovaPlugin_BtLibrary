@@ -29,6 +29,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Constructor.
+     *
      * @param context The application context.
      */
     public AbstractBluetoothConnectivityAgent(Context context) {
@@ -50,6 +51,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     /**
      * Sets the peer name. Not mandatory - the functionality is 100 % even when not set.
      * The name is used in the identity string.
+     *
      * @param myPeerName Our peer name.
      */
     public void setPeerName(String myPeerName) {
@@ -127,6 +129,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Resolves the peer properties from the given identity string.
+     *
      * @param identityString The identity string.
      * @param peerProperties The peer properties to contain the resolved values.
      * @return True, if all the properties contain data (not validated though). False otherwise.
@@ -146,6 +149,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     /**
      * Verifies the validity of our identity string. If not yet created, will try to create it.
      * If the identity string already exists, it won't be recreated.
+     *
      * @return True, if the identity string is OK (i.e. not empty). False otherwise.
      */
     protected boolean verifyIdentityString() {
@@ -172,6 +176,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Creates an identity string based on the given arguments.
+     *
      * @param peerName The peer name.
      * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
      * @return An identity string or null in case of a failure.
@@ -198,6 +203,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Creates an identity string based on the given properties.
+     *
      * @param peerProperties The peer properties.
      * @return An identity string or null in case of a failure.
      * @throws JSONException
