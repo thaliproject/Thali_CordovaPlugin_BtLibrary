@@ -34,6 +34,7 @@ public class CommonUtils {
 
     /**
      * Checks whether the given permission is granted (by the user) for the given activity.
+     *
      * @param permission The permission to check.
      * @param activity The activity.
      * @return True, if granted. False otherwise.
@@ -74,29 +75,13 @@ public class CommonUtils {
     }
 
     /**
-     * Creates a handshake message for Thali Bluetooth client to send to the server.
+     * Creates a simple handshake message.
      *
-     * See http://thaliproject.org/PresenceProtocolBindings/#the-bluetooth-handshake-and-binding-tcpip-to-bluetooth
-     * for more details.
-     *
-     * @param hasNotification Should be true, if the client has a notifications for the server.
      * @return The newly created handshake message as a byte array.
      */
-    public static byte[] createClientHandshakeMessage(boolean hasNotification) {
+    public static byte[] createSimpleHandshakeMessage() {
         byte[] message = new byte[1];
-        message[0] = hasNotification ? (byte)0x1 : 0x0;
+        message[0] = (byte) 0x0;
         return message;
-    }
-
-    /**
-     * Creates a handshake message for Thali Bluetooth server to send to the client.
-     *
-     * See http://thaliproject.org/PresenceProtocolBindings/#the-bluetooth-handshake-and-binding-tcpip-to-bluetooth
-     * for more details.
-     *
-     * @return The newly created handshake message as a byte array.
-     */
-    public static byte[] createServerHandshakeMessage() {
-        return createClientHandshakeMessage(false);
     }
 }

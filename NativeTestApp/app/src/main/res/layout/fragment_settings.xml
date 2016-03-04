@@ -18,6 +18,11 @@
                       android:singleLine="true"
                       android:text="CONNECTION MANAGER"
                       android:textSize="@dimen/separator_title_text_size" />
+            <CheckBox android:id="@+id/listenForIncomingConnectionCheckbox"
+                      android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:text="Listen for incoming connections"
+                      android:textSize="@dimen/text_size_medium" />
             <LinearLayout android:layout_width="fill_parent"
                           android:layout_height="match_parent"
                           android:orientation="horizontal">

@@ -3,6 +3,8 @@
  */
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
 import java.util.UUID;
 
 /**
@@ -15,6 +17,7 @@ abstract class AbstractBluetoothThread extends Thread {
 
     /**
      * Constructor.
+     *
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
      * @param myIdentityString Our identity (possible name and the Bluetooth MAC address). Used for
      *                         handshake (if required).
@@ -37,4 +40,15 @@ abstract class AbstractBluetoothThread extends Thread {
     }
 
     abstract public void shutdown();
+
+    /**
+     * Creates a handshake message. Uses the identity string for the message, if the string is
+     * non-empty. Otherwise will return a simple, generic handshake message.
+     *
+     * @return The handshake message as a byte array.
+     */
+    protected byte[] getHandshakeMessage() {
+        return (CommonUtils.isNonEmptyString(mMyIdentityString)
+                ? mMyIdentityString.getBytes() : CommonUtils.createSimpleHandshakeMessage());
+    }
 }

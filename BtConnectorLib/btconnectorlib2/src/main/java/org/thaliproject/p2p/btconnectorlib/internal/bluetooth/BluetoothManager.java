@@ -24,6 +24,7 @@ public class BluetoothManager {
     public interface BluetoothManagerListener {
         /**
          * Called when the mode of the Bluetooth adapter changes.
+         *
          * @param mode The new mode.
          */
         void onBluetoothAdapterScanModeChanged(int mode);
@@ -49,6 +50,7 @@ public class BluetoothManager {
 
     /**
      * Getter for the singleton instance of this class.
+     *
      * @param context The application context.
      * @return The singleton instance of this class.
      */
@@ -62,6 +64,7 @@ public class BluetoothManager {
 
     /**
      * Constructor.
+     *
      * @param context The application context.
      */
     private BluetoothManager(Context context) {
@@ -87,7 +90,7 @@ public class BluetoothManager {
      * @return True, if bound successfully (or already bound). If false is returned, this could
      * indicate the lack of Bluetooth hardware support.
      */
-    public boolean bind(BluetoothManagerListener listener) {
+    public synchronized boolean bind(BluetoothManagerListener listener) {
         if (!mListeners.contains(listener)) {
             Log.i(TAG, "bind: Binding a new listener");
             mListeners.add(listener);
@@ -99,15 +102,19 @@ public class BluetoothManager {
     /**
      * Removes the given listener from the list of listeners. If, after this, the list of listeners
      * is empty, there is no reason to keep this instance "running" and we can de-initialize.
+     *
      * @param listener The listener to remove.
      */
-    public void release(BluetoothManagerListener listener) {
-        if (!mListeners.remove(listener)) {
-            Log.e(TAG, "release: The given listener does not exist in the list");
+    public synchronized void release(BluetoothManagerListener listener) {
+        if (!mListeners.remove(listener) && mListeners.size() > 0) {
+            Log.e(TAG, "release: The given listener does not exist in the list - probably already removed");
         }
 
         if (mListeners.size() == 0) {
-            Log.i(TAG, "release: No more listeners, de-initializing...");
+            if (mInitialized) {
+                Log.i(TAG, "release: No more listeners, de-initializing...");
+            }
+
             deinitialize();
         } else {
             Log.d(TAG, "release: " + mListeners.size() + " listener(s) left");
@@ -116,6 +123,7 @@ public class BluetoothManager {
 
     /**
      * Checks whether the device has Bluetooth support or not.
+     *
      * @return True, if the device supports Bluetooth. False otherwise.
      */
     public boolean isBluetoothSupported() {
@@ -190,6 +198,7 @@ public class BluetoothManager {
 
     /**
      * Enables/disables bluetooth.
+     *
      * @param enable If true, will enable. If false, will disable.
      */
     public void setBluetoothEnabled(boolean enable) {
@@ -228,11 +237,24 @@ public class BluetoothManager {
     }
 
     public BluetoothDevice getRemoteDevice(String address) {
-        return (mBluetoothAdapter == null ? null : mBluetoothAdapter.getRemoteDevice(address));
+        BluetoothDevice bluetoothDevice = null;
+
+        if (mBluetoothAdapter != null) {
+            try {
+                bluetoothDevice = mBluetoothAdapter.getRemoteDevice(address);
+            } catch (IllegalArgumentException e) {
+                Log.e(TAG, "getRemoteDevice: Failed to get the remote device: " + e.getMessage(), e);
+            }
+        } else {
+            Log.e(TAG, "getRemoteDevice: No Bluetooth adapter instance");
+        }
+
+        return bluetoothDevice;
     }
 
     /**
      * Registers the broadcast receiver to listen to Bluetooth scan mode changes.
+     *
      * @return True, if successfully initialized (even if that the initialization was done earlier).
      * If false is returned, this could indicate the lack of Bluetooth hardware support.
      */

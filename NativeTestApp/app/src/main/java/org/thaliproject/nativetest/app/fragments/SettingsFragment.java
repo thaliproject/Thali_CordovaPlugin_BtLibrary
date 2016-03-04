@@ -24,6 +24,7 @@ public class SettingsFragment extends Fragment {
     private EditText mConnectionTimeoutEditText = null;
     private EditText mPortNumberEditText = null;
     private CheckBox mHandshakeRequiredCheckbox = null;
+    private CheckBox mListenForIncomingConnectionsCheckbox = null;
     private CheckBox mEnableWifiCheckBox = null;
     private CheckBox mEnableBleCheckBox = null;
     private EditText mBufferSizeEditText = null;
@@ -89,6 +90,15 @@ public class SettingsFragment extends Fragment {
                         mPortNumberEditText.setText(String.valueOf(mSettings.getPortNumber()));
                     }
                 }
+            }
+        });
+
+        mListenForIncomingConnectionsCheckbox = (CheckBox) view.findViewById(R.id.listenForIncomingConnectionCheckbox);
+        mListenForIncomingConnectionsCheckbox.setChecked(mSettings.getListenForIncomingConnections());
+        mListenForIncomingConnectionsCheckbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                mSettings.setListenForIncomingConnections(b);
             }
         });
 

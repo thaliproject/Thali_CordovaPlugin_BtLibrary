@@ -147,7 +147,6 @@ public class DiscoveryManager
 
     private static final String TAG = DiscoveryManager.class.getName();
 
-    private final Context mContext;
     private final DiscoveryManagerListener mListener;
     private final UUID mBleServiceUuid;
     private final String mServiceType;
@@ -181,7 +180,6 @@ public class DiscoveryManager
     public DiscoveryManager(Context context, DiscoveryManagerListener listener, UUID bleServiceUuid, String serviceType) {
         super(context); // Gets the BluetoothManager instance
 
-        mContext = context;
         mListener = listener;
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
@@ -686,7 +684,7 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerDiscovered(PeerProperties peerProperties) {
-        //Log.d(TAG, "onPeerDiscovered: " + peerProperties.toString());
+        //Log.d(TAG, "onPeerDiscovered: " + peerProperties);
         mPeerModel.addOrUpdateDiscoveredPeer(peerProperties); // Will notify us, if added/updated
     }
 
@@ -888,6 +886,8 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerAdded(final PeerProperties peerProperties) {
+        //Log.v(TAG, "onPeerAdded: " + peerProperties);
+
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override

@@ -21,6 +21,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected static String TAG = AbstractBluetoothConnectivityAgent.class.getName();
     protected static final String JSON_ID_PEER_NAME = "name";
     protected static final String JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS = "address";
+    protected final Context mContext;
     protected final BluetoothManager mBluetoothManager;
     protected String mMyPeerName = PeerProperties.NO_PEER_NAME_STRING;
     protected String mMyIdentityString = "";
@@ -35,7 +36,8 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
             throw new NullPointerException("Context is null");
         }
 
-        mBluetoothManager = BluetoothManager.getInstance(context);
+        mContext = context;
+        mBluetoothManager = BluetoothManager.getInstance(mContext);
     }
 
     /**
@@ -54,6 +56,10 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         if (!mMyPeerName.equals(myPeerName)) {
             Log.i(TAG, "setPeerName: " + myPeerName);
             mMyPeerName = myPeerName;
+
+            // Recreate the identity string
+            mMyIdentityString = null;
+            verifyIdentityString();
         }
     }
 
@@ -66,7 +72,6 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      */
     public void dispose() {
         // No default implementation
-        Log.d(TAG, "dispose");
     }
 
     /**
@@ -89,7 +94,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      */
     public String getBluetoothMacAddress() {
         String bluetoothMacAddress = mEmulateMarshmallow ? null : mBluetoothManager.getBluetoothMacAddress();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
 
         if (settings != null) {
             if (bluetoothMacAddress == null) {
@@ -146,7 +151,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected boolean verifyIdentityString() {
         String bluetoothMacAddress = getBluetoothMacAddress();
 
-        if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
+        if (!CommonUtils.isNonEmptyString(mMyIdentityString)) {
             if (CommonUtils.isNonEmptyString(mMyPeerName)
                     && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
                 try {
@@ -167,24 +172,24 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Creates an identity string based on the given arguments.
-     * @param name The peer name.
+     * @param peerName The peer name.
      * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
      * @return An identity string or null in case of a failure.
      * @throws JSONException
      */
-    private String createIdentityString(String name, String bluetoothMacAddress)
+    private String createIdentityString(String peerName, String bluetoothMacAddress)
             throws JSONException {
 
         String identityString = null;
         JSONObject jsonObject = new JSONObject();
 
         try {
-            jsonObject.put(JSON_ID_PEER_NAME, name);
+            jsonObject.put(JSON_ID_PEER_NAME, peerName);
             jsonObject.put(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS, bluetoothMacAddress);
             identityString = jsonObject.toString();
         } catch (JSONException e) {
             Log.e(TAG, "createIdentityString: Failed to construct a JSON object (from data "
-                    + name + " " + bluetoothMacAddress + "): " + e.getMessage(), e);
+                    + peerName + " " + bluetoothMacAddress + "): " + e.getMessage(), e);
             throw e;
         }
 

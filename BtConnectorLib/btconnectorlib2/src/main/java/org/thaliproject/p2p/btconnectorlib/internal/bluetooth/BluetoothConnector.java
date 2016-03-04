@@ -29,6 +29,7 @@ public class BluetoothConnector
     public interface BluetoothConnectorListener {
         /**
          * Called when connecting to a Bluetooth device.
+         *
          * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
          * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
          */
@@ -36,6 +37,7 @@ public class BluetoothConnector
 
         /**
          * Called when connected to a Bluetooth device.
+         *
          * @param bluetoothSocket The Bluetooth socket.
          * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
          * @param peerProperties The properties of the peer connected to.
@@ -44,12 +46,14 @@ public class BluetoothConnector
 
         /**
          * Called when the connection attempt times out.
+         *
          * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
          */
         void onConnectionTimeout(PeerProperties peerProperties);
 
         /**
          * Called when a connection fails.
+         *
          * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
          * @param errorMessage The error message. Note: Can be null.
          */
@@ -69,11 +73,11 @@ public class BluetoothConnector
     private final BluetoothConnectorListener mListener;
     private final UUID mServiceRecordUuid;
     private final String mMyBluetoothName;
-    private final String mMyIdentityString;
     private final Handler mHandler;
     private final ConnectionManagerSettings mConnectionManagerSettings;
     private final BluetoothConnector mBluetoothConnectorInstance;
     private final Thread.UncaughtExceptionHandler mUncaughtExceptionHandler;
+    private String mMyIdentityString = null;
     private BluetoothServerThread mServerThread = null;
     private CopyOnWriteArrayList<BluetoothClientThread> mClientThreads = new CopyOnWriteArrayList<>();
     private CountDownTimer mConnectionTimeoutTimer = null;
@@ -87,12 +91,14 @@ public class BluetoothConnector
 
     /**
      * Constructor.
+     *
      * @param context The application context.
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
      * @param myBluetoothName Our Bluetooth name.
-     * @param myIdentityString Our identity.
+     * @param myIdentityString A string containing our identity.
+     *                         See AbstractBluetoothConnectivityAgent.createIdentityString()
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
@@ -105,7 +111,6 @@ public class BluetoothConnector
         mBluetoothAdapter = bluetoothAdapter;
         mServiceRecordUuid = serviceRecordUuid;
         mMyBluetoothName = myBluetoothName;
-        mMyIdentityString = myIdentityString;
         mHandler = new Handler(context.getMainLooper());
 
         mConnectionManagerSettings = ConnectionManagerSettings.getInstance(context);
@@ -129,7 +134,22 @@ public class BluetoothConnector
             }
         };
 
+        setIdentityString(myIdentityString);
+
         mBluetoothConnectorInstance = this;
+    }
+
+    /**
+     * Sets the identity string. Note that if the we are currently listening for incoming
+     * connections, the server thread will still operate using the previous identity string.
+     * The server thread must be restarted to use the new identity string.
+     *
+     * @param myIdentityString A string containing our identity.
+     *                         See AbstractBluetoothConnectivityAgent.createIdentityString()
+     */
+    public void setIdentityString(String myIdentityString) {
+        Log.d(TAG, "setIdentityString: " + myIdentityString);
+        mMyIdentityString = myIdentityString;
     }
 
     /**
@@ -137,66 +157,79 @@ public class BluetoothConnector
      * The timeout applies only to connections whose handshake hasn't succeeded. After a successful
      * handshake this class no longer manages the connection but the responsibility is that of the
      * listener.
+     *
      * @param connectionTimeoutInMilliseconds The connection timeout in milliseconds.
      */
     public void setConnectionTimeout(long connectionTimeoutInMilliseconds) {
-        Log.v(TAG, "setConnectionTimeout: "
-                + mConnectionTimeoutInMilliseconds + " -> " + connectionTimeoutInMilliseconds);
-        mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
+        if (mConnectionTimeoutInMilliseconds != connectionTimeoutInMilliseconds) {
+            Log.v(TAG, "setConnectionTimeout: "
+                    + mConnectionTimeoutInMilliseconds + " -> " + connectionTimeoutInMilliseconds);
+            mConnectionTimeoutInMilliseconds = connectionTimeoutInMilliseconds;
 
-        if (mConnectionTimeoutInMilliseconds > 0 && mClientThreads.size() > 0) {
-            createConnectionTimeoutTimer();
-        } else {
-            if (mConnectionTimeoutTimer != null) {
-                mConnectionTimeoutTimer.cancel();
-                mConnectionTimeoutTimer = null;
+            if (mConnectionTimeoutInMilliseconds > 0 && mClientThreads.size() > 0) {
+                createConnectionTimeoutTimer();
+            } else {
+                if (mConnectionTimeoutTimer != null) {
+                    mConnectionTimeoutTimer.cancel();
+                    mConnectionTimeoutTimer = null;
+                }
             }
         }
     }
 
     /**
      * Sets the preferred port to be used by the insecure RFCOMM socket of the client thread.
+     *
      * @param insecureRfcommSocketPort The port to use.
      */
     public void setInsecureRfcommSocketPort(int insecureRfcommSocketPort) {
-        Log.v(TAG, "setInsecureRfcommSocketPort: " + mInsecureRfcommSocketPort + " -> " + insecureRfcommSocketPort);
-        mInsecureRfcommSocketPort = insecureRfcommSocketPort;
+        if (mInsecureRfcommSocketPort != insecureRfcommSocketPort) {
+            Log.v(TAG, "setInsecureRfcommSocketPort: " + mInsecureRfcommSocketPort + " -> " + insecureRfcommSocketPort);
+            mInsecureRfcommSocketPort = insecureRfcommSocketPort;
+        }
     }
 
     /**
      * Sets the maximum number of (outgoing) socket connection  attempt retries (0 means only one attempt).
+     *
      * @param maxNumberOfRetries The maximum number of socket connection attempt retries for outgoing connections.
      */
     public void setMaxNumberOfOutgoingConnectionAttemptRetries(int maxNumberOfRetries) {
-        Log.v(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: "
-                + mMaxNumberOfOutgoingConnectionAttemptRetries + " -> " + maxNumberOfRetries);
-        mMaxNumberOfOutgoingConnectionAttemptRetries = maxNumberOfRetries;
+        if (mMaxNumberOfOutgoingConnectionAttemptRetries != maxNumberOfRetries) {
+            Log.v(TAG, "setMaxNumberOfOutgoingConnectionAttemptRetries: "
+                    + mMaxNumberOfOutgoingConnectionAttemptRetries + " -> " + maxNumberOfRetries);
+            mMaxNumberOfOutgoingConnectionAttemptRetries = maxNumberOfRetries;
+        }
     }
 
     /**
      * Sets the value indicating whether we require a handshake protocol when establishing a connection or not.
      * Restarts the Bluetooth server thread, if it was running.
+     *
      * @param handshakeRequired True, if a handshake protocol should be applied when establishing a connection.
      */
     public void setHandshakeRequired(boolean handshakeRequired) {
-        Log.v(TAG, "setHandshakeRequired: " + mHandshakeRequired + " -> " + handshakeRequired);
-        mHandshakeRequired = handshakeRequired;
+        if (mHandshakeRequired != handshakeRequired) {
+            Log.v(TAG, "setHandshakeRequired: " + mHandshakeRequired + " -> " + handshakeRequired);
+            mHandshakeRequired = handshakeRequired;
 
-        if (mIsServerThreadAlive) {
-            stopListeningForIncomingConnections();
+            if (mIsServerThreadAlive) {
+                stopListeningForIncomingConnections();
 
-            // Stopping the server is asynchronous and may take a short while. Thus, we need to
-            // restart it with a small delay.
-            new Handler().postDelayed(new Runnable() {
-                public void run() {
-                    startListeningForIncomingConnections();
-                }
-            }, SERVER_RESTART_DELAY_IN_MILLISECONDS);
+                // Stopping the server is asynchronous and may take a short while. Thus, we need to
+                // restart it with a small delay.
+                new Handler().postDelayed(new Runnable() {
+                    public void run() {
+                        startListeningForIncomingConnections();
+                    }
+                }, SERVER_RESTART_DELAY_IN_MILLISECONDS);
+            }
         }
     }
 
     /**
      * Starts to listen for incoming connections.
+     *
      * @return True, if the connector was started successfully or was already running. False otherwise.
      */
     public synchronized boolean startListeningForIncomingConnections() {
@@ -223,7 +256,7 @@ public class BluetoothConnector
                 mIsServerThreadAlive = true;
             }
         } else {
-            Log.w(TAG, "startListeningForIncomingConnections: Already started");
+            Log.d(TAG, "startListeningForIncomingConnections: Already started");
         }
 
         return mIsServerThreadAlive;
@@ -248,7 +281,10 @@ public class BluetoothConnector
      * disposed of. To start using this class again one must create a new instance.
      */
     public synchronized void shutdown() {
-        Log.i(TAG, "Shutting down...");
+        if (!mIsShuttingDown) {
+            Log.i(TAG, "shutdown: Shutting down...");
+        }
+
         mIsShuttingDown = true;
 
         if (mConnectionTimeoutTimer != null) {
@@ -264,6 +300,7 @@ public class BluetoothConnector
      * Tries to connect to the given Bluetooth device.
      * Note that even if this method returns successfully, the connection is not yet established,
      * but the connection process is merely initiated.
+     *
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
      * @param peerProperties The properties of the peer to connect to.
      * @return True, if started trying to connect successfully. False otherwise.
@@ -299,8 +336,13 @@ public class BluetoothConnector
                 mClientThreads.add(bluetoothClientThread);
 
                 if (mConnectionTimeoutTimer == null) {
-                    createConnectionTimeoutTimer();
-                    mConnectionTimeoutTimer.start();
+                    try {
+                        createConnectionTimeoutTimer();
+                        mConnectionTimeoutTimer.start();
+                    } catch (RuntimeException e) {
+                        Log.e(TAG, "connect: Failed to create the connection timeout timer: " + e.getMessage(), e);
+                    }
+
                 }
 
                 bluetoothClientThread.start();
@@ -322,6 +364,7 @@ public class BluetoothConnector
 
     /**
      * Cancels a client thread containing the peer with the given properties.
+     *
      * @param peerProperties The properties of the peer whose connection attempt to cancel.
      * @return True, if a client thread associated with the given peer properties was found and
      * cancelled. False otherwise.
@@ -357,7 +400,35 @@ public class BluetoothConnector
     }
 
     /**
+     * Shuts down all client threads.
+     */
+    public synchronized void cancelAllConnectionAttempts() {
+        if (mConnectionTimeoutTimer != null) {
+            mConnectionTimeoutTimer.cancel();
+            mConnectionTimeoutTimer = null;
+        }
+
+        if (mClientThreads.size() > 0) {
+            for (BluetoothClientThread bluetoothClientThread : mClientThreads) {
+                final BluetoothClientThread finalBluetoothClientThread = bluetoothClientThread;
+
+                if (finalBluetoothClientThread != null) {
+                    new Thread() {
+                        @Override
+                        public void run() {
+                            finalBluetoothClientThread.shutdown();
+                        }
+                    }.start();
+                }
+            }
+
+            mClientThreads.clear();
+        }
+    }
+
+    /**
      * Forward the event to the listener.
+     *
      * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
      * @param peerProperties The peer properties.
      */
@@ -381,6 +452,7 @@ public class BluetoothConnector
 
     /**
      * Forward the event to the listener.
+     *
      * @param errorMessage The error message.
      */
     @Override
@@ -417,6 +489,7 @@ public class BluetoothConnector
 
     /**
      * Does nothing but logs the event.
+     *
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
      * @param peerProperties The peer properties.
      * @param who The Bluetooth client thread instance calling this callback.
@@ -433,6 +506,7 @@ public class BluetoothConnector
 
     /**
      * The connection is now established and validated by handshake protocol.
+     *
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
      * @param peerProperties The peer properties.
      * @param who The Bluetooth client thread instance calling this callback.
@@ -446,6 +520,7 @@ public class BluetoothConnector
 
     /**
      * Forward the event to the listener.
+     *
      * @param peerProperties The peer properties.
      * @param errorMessage The error message.
      * @param who The Bluetooth client thread instance calling this callback.
@@ -469,9 +544,10 @@ public class BluetoothConnector
     /**
      * Handles a successful Bluetooth client thread - one that has established a connection.
      * Notifies the listener that we are now fully connected.
-     * @param bluetoothClientThread
-     * @param bluetoothSocket
-     * @param peerProperties
+     *
+     * @param bluetoothClientThread The Bluetooth client thread instance.
+     * @param bluetoothSocket The Bluetooth socket.
+     * @param peerProperties The peer properties.
      */
     private synchronized void handleSuccessfulClientThread(
             final BluetoothClientThread bluetoothClientThread,
@@ -616,32 +692,5 @@ public class BluetoothConnector
         }
 
         return wasShutdownAndRemoved;
-    }
-
-    /**
-     * Shuts down all client threads.
-     */
-    private synchronized void cancelAllConnectionAttempts() {
-        if (mConnectionTimeoutTimer != null) {
-            mConnectionTimeoutTimer.cancel();
-            mConnectionTimeoutTimer = null;
-        }
-
-        if (mClientThreads.size() > 0) {
-            for (BluetoothClientThread bluetoothClientThread : mClientThreads) {
-                final BluetoothClientThread finalBluetoothClientThread = bluetoothClientThread;
-
-                if (finalBluetoothClientThread != null) {
-                    new Thread() {
-                        @Override
-                        public void run() {
-                            finalBluetoothClientThread.shutdown();
-                        }
-                    }.start();
-                }
-            }
-
-            mClientThreads.clear();
-        }
     }
 }
