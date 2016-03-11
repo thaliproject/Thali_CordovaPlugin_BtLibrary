@@ -11,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
@@ -43,6 +44,7 @@ public class ConnectionEngine implements
     protected static final String SERVICE_NAME = "Thali Test Sample App";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
+    protected static final long RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS = 10000;
     protected static final long NOTIFY_STATE_CHANGED_DELAY_IN_MILLISECONDS = 500;
     protected static int DURATION_OF_DEVICE_DISCOVERABLE_IN_SECONDS = 60;
     private static final int PERMISSION_REQUEST_ACCESS_COARSE_LOCATION = 1;
@@ -258,11 +260,32 @@ public class ConnectionEngine implements
             }
         }
     }
-    
+
+    /**
+     * If the connection manager stopped and we are not explicitly stopping, will try to restart
+     * the connection manager after a short delay.
+     *
+     * @param connectionManagerState The new state.
+     */
     @Override
     public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState connectionManagerState) {
         Log.v(TAG, "onConnectionManagerStateChanged: " + connectionManagerState);
         restartNotifyStateChangedTimer();
+
+        if (!mIsShuttingDown && connectionManagerState == ConnectionManager.ConnectionManagerState.NOT_STARTED) {
+            LogFragment.logError("Connection manager stopped - trying to restart in "
+                    + RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS + " milliseconds");
+
+            Handler handler = new Handler(mContext.getMainLooper());
+
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Log.d(TAG, "Trying to restart the connection manager");
+                    mConnectionManager.startListeningForIncomingConnections();
+                }
+            }, RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS);
+        }
     }
 
     /**
@@ -497,7 +520,10 @@ public class ConnectionEngine implements
                         mCheckConnectionsTimer.cancel();
                     }
 
-                    autoConnectIfEnabled(peerProperties);
+                    if (!mIsShuttingDown) {
+                        autoConnectIfEnabled(peerProperties);
+                    }
+
                     MainActivity.updateOptionsMenu();
                 }
             }.start();

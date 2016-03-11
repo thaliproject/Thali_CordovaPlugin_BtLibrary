@@ -421,9 +421,14 @@ class BlePeerDiscoveryUtils {
         int[] intArray = null;
 
         if (hexStringArray.length >= BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
-            intArray = new int[hexStringArray.length];
+            if (hexStringArray.length > BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+                Log.w(TAG, "bluetoothAddressToInt8Array: The given Bluetooth address (\""
+                        + bluetoothAddress + "\") might be invalid since it seems to have too many bytes. Will only use the first six bytes.");
+            }
 
-            for (int i = 0; i < hexStringArray.length; ++i) {
+            intArray = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
+
+            for (int i = 0; i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
                 try {
                     intArray[i] = Integer.parseInt(hexStringArray[i], 16);
                 } catch (NumberFormatException e) {

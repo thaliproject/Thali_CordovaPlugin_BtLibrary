@@ -62,6 +62,9 @@ class PeerAdvertisementFactory {
                 serviceDataAsByteArray[i + 1] = bluetoothMacAddressAsByteArray[i];
             }
 
+            Log.v(TAG, "createAdvertiseDataToServiceData: Service data (length is "
+                    + serviceDataAsByteArray.length + " bytes): " + new String(serviceDataAsByteArray));
+
             try {
                 builder.addServiceData(serviceUuidAsParcelUuid, serviceDataAsByteArray);
                 advertiseData = builder.build();

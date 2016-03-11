@@ -41,14 +41,23 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
          * Called when this thread has been shut down i.e. when the thread is about to exit.
          */
         void onServerStopped();
+
+        /**
+         * Called when the creation of the Bluetooth server socket fails consecutively too many times.
+         *
+         * @param failureCount The number of times the creation failed consecutively.
+         */
+        void onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(int failureCount);
     }
 
     private static final String TAG = BluetoothServerThread.class.getName();
+    private static final int BLUETOOTH_SERVER_SOCKET_CONSECUTIVE_CREATION_FAILURE_COUNT_LIMIT = 10;
     private final CopyOnWriteArrayList<BluetoothSocketIoThread> mSocketIoThreads = new CopyOnWriteArrayList<BluetoothSocketIoThread>();
     private final Listener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final String mBluetoothName;
     private BluetoothServerSocket mBluetoothServerSocket = null;
+    private static int mBluetoothServerSocketConsecutiveCreationFailureCount = 0;
     private boolean mStopThread = false;
 
     /**
@@ -91,8 +100,21 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                 mBluetoothServerSocket =
                         mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(
                                 mBluetoothName, mServiceRecordUuid);
+                resetBluetoothServerSocketConsecutiveCreationFailureCount();
             } catch (IOException e) {
                 Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
+                mBluetoothServerSocketConsecutiveCreationFailureCount++;
+                Log.d(TAG, "run: Bluetooth server socket consecutive creation failure count is now "
+                        + mBluetoothServerSocketConsecutiveCreationFailureCount);
+
+                if (mBluetoothServerSocketConsecutiveCreationFailureCount >=
+                        BLUETOOTH_SERVER_SOCKET_CONSECUTIVE_CREATION_FAILURE_COUNT_LIMIT) {
+                    final int failureCount = mBluetoothServerSocketConsecutiveCreationFailureCount;
+                    resetBluetoothServerSocketConsecutiveCreationFailureCount();
+                    mListener.onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(failureCount);
+                }
+
+                mStopThread = true;
             }
 
             if (mBluetoothServerSocket != null && !mStopThread) {
@@ -161,6 +183,10 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
         Log.d(TAG, "Exiting thread");
         mListener.onServerStopped();
+    }
+
+    public void resetBluetoothServerSocketConsecutiveCreationFailureCount() {
+        mBluetoothServerSocketConsecutiveCreationFailureCount = 0;
     }
 
     /**
