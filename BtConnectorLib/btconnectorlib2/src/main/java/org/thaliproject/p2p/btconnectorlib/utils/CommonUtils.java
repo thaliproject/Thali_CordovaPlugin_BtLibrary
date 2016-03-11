@@ -90,6 +90,7 @@ public class CommonUtils {
      * Converts the content of the given byte array to hex string.
      *
      * @param bytes The bytes to convert.
+     * @param addSpacesBetweenBytes If true, will add spaces between the bytes in the string.
      * @return The bytes as hex string.
      */
     public static String byteArrayToHexString(byte[] bytes, boolean addSpacesBetweenBytes) {
