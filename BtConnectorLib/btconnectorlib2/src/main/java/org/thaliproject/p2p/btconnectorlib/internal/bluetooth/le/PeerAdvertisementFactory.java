@@ -9,6 +9,8 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -63,7 +65,8 @@ class PeerAdvertisementFactory {
             }
 
             Log.v(TAG, "createAdvertiseDataToServiceData: Service data (length is "
-                    + serviceDataAsByteArray.length + " bytes): " + new String(serviceDataAsByteArray));
+                    + serviceDataAsByteArray.length + " bytes): "
+                    + CommonUtils.byteArrayToHexString(serviceDataAsByteArray, true));
 
             try {
                 builder.addServiceData(serviceUuidAsParcelUuid, serviceDataAsByteArray);

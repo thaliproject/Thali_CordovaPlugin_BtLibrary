@@ -16,6 +16,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
  */
 public class CommonUtils {
     private static final String TAG = CommonUtils.class.getName();
+    private static final char[] HEX_ARRAY = "0123456789ABCDEF".toCharArray();
 
     /**
      * @return True, if we are running on Lollipop (Android version 5.x, API level 21) or higher.
@@ -83,5 +84,44 @@ public class CommonUtils {
         byte[] message = new byte[1];
         message[0] = (byte) 0x0;
         return message;
+    }
+
+    /**
+     * Converts the content of the given byte array to hex string.
+     *
+     * @param bytes The bytes to convert.
+     * @return The bytes as hex string.
+     */
+    public static String byteArrayToHexString(byte[] bytes, boolean addSpacesBetweenBytes) {
+        String hexString = null;
+
+        if (bytes != null && bytes.length > 0) {
+            char[] hexCharArray = new char[bytes.length * 2];
+
+            for (int i = 0; i < bytes.length; i++) {
+                int v = bytes[i] & 0xFF;
+                hexCharArray[i * 2] = HEX_ARRAY[v >>> 4];
+                hexCharArray[i * 2 + 1] = HEX_ARRAY[v & 0x0F];
+            }
+
+            if (addSpacesBetweenBytes) {
+                StringBuilder stringBuilder = new StringBuilder();
+
+                for (int i = 0; i < hexCharArray.length; i += 2) {
+                    stringBuilder.append(hexCharArray[i]);
+                    stringBuilder.append(hexCharArray[i + 1]);
+
+                    if (i < hexCharArray.length - 2) {
+                        stringBuilder.append(" ");
+                    }
+
+                    hexString = stringBuilder.toString();
+                }
+            } else {
+                hexString = new String(hexCharArray);
+            }
+        }
+
+        return hexString;
     }
 }
