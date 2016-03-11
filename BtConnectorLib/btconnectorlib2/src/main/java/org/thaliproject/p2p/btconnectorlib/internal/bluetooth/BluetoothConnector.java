@@ -506,7 +506,6 @@ public class BluetoothConnector
     public void onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(int limit) {
         Log.e(TAG, "onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded: Failed " + limit + " times");
         stopListeningForIncomingConnections();
-
     }
 
     /**
