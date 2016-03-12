@@ -420,12 +420,7 @@ class BlePeerDiscoveryUtils {
         String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
         int[] intArray = null;
 
-        if (hexStringArray.length >= BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
-            if (hexStringArray.length > BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
-                Log.w(TAG, "bluetoothAddressToInt8Array: The given Bluetooth address (\""
-                        + bluetoothAddress + "\") might be invalid since it seems to have too many bytes. Will only use the first six bytes.");
-            }
-
+        if (hexStringArray.length == BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
             intArray = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
             for (int i = 0; i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
@@ -437,6 +432,9 @@ class BlePeerDiscoveryUtils {
                     break;
                 }
             }
+        } else {
+            Log.e(TAG, "bluetoothAddressToInt8Array: The byte count of the given address is invalid - got "
+                    + hexStringArray.length + ", but was expecting " + BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + " bytes");
         }
 
         return intArray;
