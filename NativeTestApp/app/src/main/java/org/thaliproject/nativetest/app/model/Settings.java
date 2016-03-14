@@ -5,9 +5,11 @@ package org.thaliproject.nativetest.app.model;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
+import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
@@ -23,6 +25,7 @@ public class Settings {
     private final SharedPreferences mSharedPreferences;
     private final SharedPreferences.Editor mSharedPreferencesEditor;
 
+    public static final String DEFAULT_PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
     private static final boolean DEFAULT_LISTEN_FOR_INCOMING_CONNECTIONS = true;
     private static final boolean DEFAULT_ENABLE_WIFI_DISCOVERY = false;
     private static final boolean DEFAULT_ENABLE_BLE_DISCOVERY = true;
@@ -32,6 +35,7 @@ public class Settings {
     private static final String KEY_LISTEN_FOR_INCOMING_CONNECTIONS = "listen_for_incoming_connections";
     private static final String KEY_ENABLE_WIFI_DISCOVERY = "enable_wifi_discovery";
     private static final String KEY_ENABLE_BLE_DISCOVERY = "enable_ble_discovery";
+    private static final String KEY_PEER_NAME = "peer_name";
     private static final String KEY_DATA_AMOUNT = "data_amount";
     private static final String KEY_BUFFER_SIZE = "buffer_size";
     private static final String KEY_AUTO_CONNECT = "auto_connect";
@@ -45,6 +49,7 @@ public class Settings {
     private boolean mListenForIncomingConnections = true;
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
+    private String mPeerName = DEFAULT_PEER_NAME;
     private long mDataAmountInBytes = Connection.DEFAULT_DATA_AMOUNT_IN_BYTES;
     private int mBufferSizeInBytes = Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES;
     private boolean mAutoConnect = false;
@@ -90,6 +95,7 @@ public class Settings {
             mEnableBleDiscovery = mSharedPreferences.getBoolean(
                     KEY_ENABLE_BLE_DISCOVERY, DEFAULT_ENABLE_BLE_DISCOVERY);
 
+            mPeerName = mSharedPreferences.getString(KEY_PEER_NAME, DEFAULT_PEER_NAME);
             mDataAmountInBytes = mSharedPreferences.getLong(KEY_DATA_AMOUNT, Connection.DEFAULT_DATA_AMOUNT_IN_BYTES);
             mBufferSizeInBytes = mSharedPreferences.getInt(
                     KEY_BUFFER_SIZE, Connection.DEFAULT_SOCKET_IO_THREAD_BUFFER_SIZE_IN_BYTES);
@@ -101,10 +107,14 @@ public class Settings {
                     + "\n    - Listen for incoming connections: " + mListenForIncomingConnections
                     + "\n    - Enable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
                     + "\n    - Enable BLE peer discovery: " + mEnableBleDiscovery
+                    + "\n    - Peer name: " + mPeerName
                     + "\n    - Data amount in bytes: " + mDataAmountInBytes
                     + "\n    - Buffer size in bytes: " + mBufferSizeInBytes
                     + "\n    - Auto connect enabled: " + mAutoConnect
                     + "\n    - Auto connect even when incoming connection established: " + mAutoConnectEvenWhenIncomingConnectionEstablished);
+
+            mConnectionManager.setPeerName(mPeerName);
+            mDiscoveryManager.setPeerName(mPeerName);
 
             DiscoveryManager.DiscoveryMode discoveryMode = getDesiredDiscoveryMode();
 
@@ -266,6 +276,19 @@ public class Settings {
 
     public void setScanMode(int scanMode) {
         mDiscoveryManagerSettings.setScanMode(scanMode);
+    }
+
+    public String getPeerName() {
+        return mPeerName;
+    }
+
+    public void setPeerName(String peerName) {
+        if (mPeerName != peerName) {
+            mPeerName = peerName;
+            mSharedPreferencesEditor.putString(KEY_PEER_NAME, mPeerName);
+            mSharedPreferencesEditor.apply();
+            mConnectionManager.setPeerName(mPeerName);
+        }
     }
 
     /**

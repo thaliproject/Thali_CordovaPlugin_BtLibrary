@@ -219,7 +219,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
 
         PeerProperties peerProperties =
-                BluetoothUtils.validateReceivedHandshakeMessage(bytes, bluetoothSocket);
+                BluetoothUtils.validateReceivedHandshakeMessage(bytes, size, bluetoothSocket);
 
         if (peerProperties != null) {
             Log.i(TAG, "Handshake succeeded with " + peerProperties.toString());

@@ -10,6 +10,8 @@ import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.UUID;
@@ -112,36 +114,54 @@ public class BluetoothUtils {
     /**
      * Checks the validity of the received handshake message.
      * @param handshakeMessage The received handshake message as a byte array.
+     * @param handshakeMessageLength The length of the handshake message.
      * @param bluetoothSocketOfSender The Bluetooth socket of the sender.
      * @return The resolved peer properties of the sender, if the handshake was valid. Null otherwise.
      */
     public static PeerProperties validateReceivedHandshakeMessage(
-            byte[] handshakeMessage, BluetoothSocket bluetoothSocketOfSender) {
-        String identityString = new String(handshakeMessage);
-        PeerProperties peerProperties = new PeerProperties();
+            byte[] handshakeMessage, int handshakeMessageLength, BluetoothSocket bluetoothSocketOfSender) {
+        String handshakeMessageAsString = new String(handshakeMessage);
+        PeerProperties peerProperties = null;
         boolean receivedHandshakeMessageValidated = false;
 
-        if (!identityString.isEmpty()) {
-            try {
-                receivedHandshakeMessageValidated =
-                        AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
-                                identityString, peerProperties);
-            } catch (JSONException e) {
-                Log.e(TAG, "validateReceivedHandshakeMessage: Failed to resolve peer properties: "
-                        + e.getMessage(), e);
-            }
+        if (!handshakeMessageAsString.isEmpty()) {
+            if (handshakeMessageLength == 1) {
+                // This must be the simple handshake message
+                if (handshakeMessage[0] == CommonUtils.createSimpleHandshakeMessage()[0]) {
+                    String bluetoothMacAddress =
+                            BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
 
-            if (receivedHandshakeMessageValidated) {
-                String bluetoothMacAddress =
-                        BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
+                    if (isValidBluetoothMacAddress(bluetoothMacAddress)) {
+                        receivedHandshakeMessageValidated = true;
+                        peerProperties = new PeerProperties(
+                                BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender));
+                    }
+                }
+            } else {
+                // Long handshake message with peer name and Bluetooth MAC address
+                peerProperties = new PeerProperties();
 
-                if (bluetoothMacAddress == null
-                        || !bluetoothMacAddress.equals(peerProperties.getBluetoothMacAddress())) {
-                    Log.e(TAG, "validateReceivedHandshakeMessage: Bluetooth MAC address mismatch: Got \""
-                            + peerProperties.getBluetoothMacAddress()
-                            + "\", but was expecting \"" + bluetoothMacAddress + "\"");
+                try {
+                    receivedHandshakeMessageValidated =
+                            AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                                    handshakeMessageAsString, peerProperties);
+                } catch (JSONException e) {
+                    Log.e(TAG, "validateReceivedHandshakeMessage: Failed to resolve peer properties: "
+                            + e.getMessage(), e);
+                }
 
-                    receivedHandshakeMessageValidated = false;
+                if (receivedHandshakeMessageValidated) {
+                    String bluetoothMacAddress =
+                            BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
+
+                    if (bluetoothMacAddress == null
+                            || !bluetoothMacAddress.equals(peerProperties.getBluetoothMacAddress())) {
+                        Log.e(TAG, "validateReceivedHandshakeMessage: Bluetooth MAC address mismatch: Got \""
+                                + peerProperties.getBluetoothMacAddress()
+                                + "\", but was expecting \"" + bluetoothMacAddress + "\"");
+
+                        receivedHandshakeMessageValidated = false;
+                    }
                 }
             }
         }

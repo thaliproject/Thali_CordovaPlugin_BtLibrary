@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.model.Settings;
 
@@ -27,6 +28,7 @@ public class SettingsFragment extends Fragment {
     private CheckBox mListenForIncomingConnectionsCheckbox = null;
     private CheckBox mEnableWifiCheckBox = null;
     private CheckBox mEnableBleCheckBox = null;
+    private EditText mPeerNameEditText = null;
     private EditText mBufferSizeEditText = null;
     private EditText mDataAmountEditText = null;
     private CheckBox mEnableAutoConnectCheckBox = null;
@@ -177,6 +179,32 @@ public class SettingsFragment extends Fragment {
 
             @Override
             public void onNothingSelected(AdapterView<?> adapterView) {
+            }
+        });
+
+        mPeerNameEditText = (EditText) view.findViewById(R.id.peerNameEditText);
+        mPeerNameEditText.setText(mSettings.getPeerName());
+        mPeerNameEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                mSettings.setPeerName(editable.toString());
+            }
+        });
+
+        Button resetDefaultPeerNameButton = (Button) view.findViewById(R.id.resetDefaultPeerNameButton);
+        resetDefaultPeerNameButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mSettings.setPeerName(Settings.DEFAULT_PEER_NAME);
+                mPeerNameEditText.setText(mSettings.getPeerName());
             }
         });
 

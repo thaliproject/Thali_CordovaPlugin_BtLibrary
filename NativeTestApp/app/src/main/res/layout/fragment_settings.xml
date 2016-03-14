@@ -139,6 +139,28 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:singleLine="true"
+                        android:text="Peer name"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="text"
+                        android:ems="10"
+                        android:id="@+id/peerNameEditText"/>
+            </LinearLayout>
+            <Button android:id="@+id/resetDefaultPeerNameButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="@dimen/default_padding"
+                    android:text="@string/reset_default" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
                         android:text="Buffer size (bytes)"
                         android:textSize="@dimen/text_size_medium" />
                 <EditText

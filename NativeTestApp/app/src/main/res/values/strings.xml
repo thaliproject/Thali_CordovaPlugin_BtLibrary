@@ -28,5 +28,7 @@
         <item>SCAN_MODE_LOW_LATENCY</item>
     </string-array>
 
+    <string name="reset_default">Reset default</string>
+
     <string name="run_test">Run test</string>
 </resources>
