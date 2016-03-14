@@ -39,7 +39,7 @@ public class ConnectionEngine implements
     // The app will only connect to peers with the matching values.
     protected static final String SERVICE_TYPE = "ThaliTestSampleApp._tcp";
     protected static final String SERVICE_UUID_AS_STRING = "b6a44ad1-d319-4b3a-815d-8b805a47fb51";
-    protected static final String SERVICE_NAME = "Thali Test Sample App";
+    protected static final String SERVICE_NAME = "Thali_Bluetooth";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
     protected static final long RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS = 10000;

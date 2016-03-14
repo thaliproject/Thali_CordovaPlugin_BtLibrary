@@ -10,10 +10,9 @@ import android.util.Log;
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
-import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -25,6 +24,9 @@ public class BluetoothUtils {
     public static final int BLUETOOTH_ADDRESS_BYTE_COUNT = 6;
     public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MIN = 11; // E.g. "0:0:0:0:0:0"
     public static final int BLUETOOTH_MAC_ADDRESS_STRING_LENGTH_MAX = 17; // E.g. "01:23:45:67:89:AB"
+    public static final String SIMPLE_HANDSHAKE_MESSAGE_AS_STRING = "thali_handshake";
+    public static final byte[] SIMPLE_HANDSHAKE_MESSAGE_AS_BYTE_ARRAY =
+            SIMPLE_HANDSHAKE_MESSAGE_AS_STRING.getBytes(StandardCharsets.UTF_8);
     private static final String MARSHMALLOW_FAKE_MAC_ADDRESS = "02:00:00:00:00:00";
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
@@ -120,14 +122,20 @@ public class BluetoothUtils {
      */
     public static PeerProperties validateReceivedHandshakeMessage(
             byte[] handshakeMessage, int handshakeMessageLength, BluetoothSocket bluetoothSocketOfSender) {
-        String handshakeMessageAsString = new String(handshakeMessage);
+        String handshakeMessageAsString = new String(handshakeMessage, StandardCharsets.UTF_8);
         PeerProperties peerProperties = null;
         boolean receivedHandshakeMessageValidated = false;
 
         if (!handshakeMessageAsString.isEmpty()) {
-            if (handshakeMessageLength == 1) {
+            if (handshakeMessageLength == SIMPLE_HANDSHAKE_MESSAGE_AS_BYTE_ARRAY.length) {
                 // This must be the simple handshake message
-                if (handshakeMessage[0] == CommonUtils.createSimpleHandshakeMessage()[0]) {
+                try {
+                    handshakeMessageAsString = handshakeMessageAsString.substring(0, SIMPLE_HANDSHAKE_MESSAGE_AS_STRING.length());
+                } catch (IndexOutOfBoundsException e) {
+                    Log.e(TAG, "validateReceivedHandshakeMessage: " + e.getMessage(), e);
+                }
+
+                if (handshakeMessageAsString.equals(SIMPLE_HANDSHAKE_MESSAGE_AS_STRING)) {
                     String bluetoothMacAddress =
                             BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
 

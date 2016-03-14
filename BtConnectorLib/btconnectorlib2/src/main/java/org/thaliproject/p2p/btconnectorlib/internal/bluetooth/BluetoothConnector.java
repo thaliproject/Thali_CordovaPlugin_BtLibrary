@@ -113,6 +113,8 @@ public class BluetoothConnector
             throw new NullPointerException("Listener, Bluetooth adapter instance or service record UUID is null");
         }
 
+        Log.d(TAG, "BluetoothConnector: Bluetooth name: " + myBluetoothName + ", service record UUID: " + serviceRecordUuid.toString());
+
         mListener = listener;
         mBluetoothAdapter = bluetoothAdapter;
         mServiceRecordUuid = serviceRecordUuid;
