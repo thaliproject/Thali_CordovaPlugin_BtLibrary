@@ -70,18 +70,6 @@ public class DiscoveryManager
         boolean onPermissionCheckRequired(String permission);
 
         /**
-         * Called when Wi-Fi is enabled/disabled.
-         * @param isEnabled True, if enabled. False, if disabled.
-         */
-        void onWifiEnabledChanged(boolean isEnabled);
-
-        /**
-         * Called when Bluetooth is enabled/disabled.
-         * @param isEnabled True, if enabled. False, if disabled.
-         */
-        void onBluetoothEnabledChanged(boolean isEnabled);
-
-        /**
          * Called when the state of this instance is changed.
          * @param state The new state.
          * @param isDiscovering True, if peer discovery is active. False otherwise.
@@ -594,13 +582,6 @@ public class DiscoveryManager
                 }
             }
         }
-
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mListener.onBluetoothEnabledChanged(isBluetoothEnabled);
-            }
-        });
     }
 
     /**
@@ -637,13 +618,6 @@ public class DiscoveryManager
                 }
             }
         }
-
-        mHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                mListener.onWifiEnabledChanged(isWifiEnabled);
-            }
-        });
     }
 
     /**
