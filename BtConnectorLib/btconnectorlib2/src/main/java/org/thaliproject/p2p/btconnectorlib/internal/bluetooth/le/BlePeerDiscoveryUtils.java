@@ -8,8 +8,6 @@ import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
-import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
