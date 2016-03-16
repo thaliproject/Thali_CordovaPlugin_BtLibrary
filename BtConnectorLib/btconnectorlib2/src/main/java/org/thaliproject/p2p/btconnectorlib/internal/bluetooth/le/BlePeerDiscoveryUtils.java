@@ -138,7 +138,8 @@ class BlePeerDiscoveryUtils {
      * Parses the given manufacturer data.
      * @param manufacturerData The manufacturer data.
      * @return A newly created ParsedAdvertisement instance containing at least the UUID given that
-     * the manufacturer data is valid. Note that other members of the instance can be null.
+     * the manufacturer data is valid. Note that other members of the instance can be null. Will
+     * return null if fails to parse the data.
      */
     public static ParsedAdvertisement parseManufacturerData(byte[] manufacturerData) {
         byte[] adLengthAndType = null;
@@ -169,14 +170,29 @@ class BlePeerDiscoveryUtils {
             } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
+        } else {
+            Log.e(TAG, "parseManufacturerData: " + ((manufacturerData != null)
+                    ? ("Manufacturer data length is too short (" + manufacturerData.length + ") - the minimum length is " + ADVERTISEMENT_BYTE_COUNT)
+                    : "Manufacturer data is null"));
         }
 
         ParsedAdvertisement parsedAdvertisement = null;
 
         if (bytesExtracted) {
-            parsedAdvertisement = new ParsedAdvertisement();
-            parsedAdvertisement.uuid = byteArrayToUuid(serviceUuidAsByteArray);
-            parsedAdvertisement.bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+            UUID serviceUuid = byteArrayToUuid(serviceUuidAsByteArray);
+            String bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+
+            if (serviceUuid != null && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+                parsedAdvertisement = new ParsedAdvertisement();
+                parsedAdvertisement.uuid = serviceUuid;
+                parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+            } else {
+                if (serviceUuid == null) {
+                    Log.e(TAG, "parseManufacturerData: Failed to parse the service UUID");
+                } else {
+                    Log.e(TAG, "parseManufacturerData: The Bluetooth MAC address is invalid");
+                }
+            }
         }
 
         return parsedAdvertisement;
@@ -193,8 +209,11 @@ class BlePeerDiscoveryUtils {
 
         if (serviceUuid != null) {
             parsedAdvertisement = parseManufacturerData(manufacturerData);
-            parsedAdvertisement.provideBluetoothMacAddressRequestId =
-                    checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
+
+            if (parsedAdvertisement != null) {
+                parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                        checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
+            }
         }
 
         return parsedAdvertisement;
