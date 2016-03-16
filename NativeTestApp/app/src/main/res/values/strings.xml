@@ -9,6 +9,10 @@
     <string name="action_start_bluetooth_device_discovery">Start Bluetooth device discovery</string>
     <string name="action_make_device_discoverable">Make device discoverable</string>
 
+    <string name="advertisement_data_type">Advertisement data type</string>
+    <string name="service">service</string>
+    <string name="manufacturer">manufacturer</string>
+
     <string-array name="advertise_mode_string_array">
         <item>ADVERTISE_MODE_LOW_POWER</item>
         <item>ADVERTISE_MODE_BALANCED</item>

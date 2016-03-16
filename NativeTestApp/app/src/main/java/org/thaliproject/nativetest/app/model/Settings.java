@@ -14,6 +14,7 @@ import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 
 /**
  * Manages the application settings.
@@ -252,6 +253,14 @@ public class Settings {
         mSharedPreferencesEditor.putBoolean(KEY_ENABLE_BLE_DISCOVERY, mEnableBleDiscovery);
         mSharedPreferencesEditor.apply();
         setDesiredDiscoveryMode();
+    }
+
+    public BlePeerDiscoverer.AdvertisementDataType getAdvertisementDataType() {
+        return mDiscoveryManagerSettings.getAdvertisementDataType();
+    }
+
+    public void setAdvertisementDataType(BlePeerDiscoverer.AdvertisementDataType advertisementDataType) {
+        mDiscoveryManagerSettings.setAdvertisementDataType(advertisementDataType);
     }
 
     public int getAdvertiseMode() {

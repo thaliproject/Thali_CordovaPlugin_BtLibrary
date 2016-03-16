@@ -15,6 +15,7 @@ import android.widget.*;
 import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.model.Settings;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
 
 /**
  * A fragment for changing the application settings.
@@ -130,6 +131,30 @@ public class SettingsFragment extends Fragment {
                 mSettings.setEnableBleDiscovery(b);
             }
         });
+
+        RadioButton radioButton = (RadioButton) view.findViewById(R.id.serviceDataRadioButton);
+        radioButton.setOnClickListener(new AdapterView.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mSettings.setAdvertisementDataType(BlePeerDiscoverer.AdvertisementDataType.SERVICE_DATA);
+            }
+        });
+
+        if (mSettings.getAdvertisementDataType() == BlePeerDiscoverer.AdvertisementDataType.SERVICE_DATA) {
+            radioButton.setChecked(true);
+        }
+
+        radioButton = (RadioButton) view.findViewById(R.id.manufacturerDataRadioButton);
+        radioButton.setOnClickListener(new AdapterView.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mSettings.setAdvertisementDataType(BlePeerDiscoverer.AdvertisementDataType.MANUFACTURER_DATA);
+            }
+        });
+
+        if (mSettings.getAdvertisementDataType() == BlePeerDiscoverer.AdvertisementDataType.MANUFACTURER_DATA) {
+            radioButton.setChecked(true);
+        }
 
         Spinner spinner = (Spinner) view.findViewById(R.id.advertiseModeSpinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(

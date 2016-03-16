@@ -10,6 +10,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer.AdvertisementDataType;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -51,6 +52,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
+    public static final AdvertisementDataType DEFAULT_ADVERTISEMENT_DATA_TYPE = AdvertisementDataType.MANUFACTURER_DATA;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
     public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
@@ -63,6 +65,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";
     private static final String KEY_DISCOVERY_MODE = "discovery_mode";
     private static final String KEY_PEER_EXPIRATION = "peer_expiration";
+    private static final String KEY_ADVERTISEMENT_DATA_TYPE = "advertisement_data_type";
     private static final String KEY_ADVERTISE_MODE = "advertise_mode";
     private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
     private static final String KEY_SCAN_MODE = "scan_mode";
@@ -73,6 +76,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final int DISCOVERY_MODE_WIFI = 1;
     private static final int DISCOVERY_MODE_BLE_AND_WIFI = 2;
 
+    private static final int ADVERTISEMENT_DATA_TYPE_SERVICE = 0;
+    private static final int ADVERTISEMENT_DATA_TYPE_MANUFACTURER = 1;
+
     private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
@@ -81,6 +87,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
+    private AdvertisementDataType mAdvertisementDataType = DEFAULT_ADVERTISEMENT_DATA_TYPE;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
     private int mScanMode = DEFAULT_SCAN_MODE;
@@ -348,6 +355,18 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
     }
 
+    public AdvertisementDataType getAdvertisementDataType() {
+        return mAdvertisementDataType;
+    }
+
+    public void setAdvertisementDataType(AdvertisementDataType advertisementDataType) {
+        if (mAdvertisementDataType != advertisementDataType) {
+            mAdvertisementDataType = advertisementDataType;
+            mSharedPreferencesEditor.putInt(KEY_ADVERTISEMENT_DATA_TYPE, advertisementDataTypeToInt(mAdvertisementDataType));
+            mSharedPreferencesEditor.apply();
+        }
+    }
+
     /**
      * @return The Bluetooth LE advertise model.
      */
@@ -478,6 +497,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
             mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
                     KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+            int advertisementDataTypeAsInt = mSharedPreferences.getInt(
+                    KEY_ADVERTISEMENT_DATA_TYPE, advertisementDataTypeToInt(DEFAULT_ADVERTISEMENT_DATA_TYPE));
+            mAdvertisementDataType = intToAdvertisementDataType(advertisementDataTypeAsInt);
             mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DEFAULT_ADVERTISE_MODE);
             mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
                     KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
@@ -491,6 +513,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                     + "\n    - Bluetooth MAC address: " + mBluetoothMacAddress
                     + "\n    - Discovery mode: " + mDiscoveryMode
                     + "\n    - Peer expiration time in milliseconds: " + mPeerExpirationInMilliseconds
+                    + "\n    - Advertisement data type: " + mAdvertisementDataType
                     + "\n    - Advertise mode: " + mAdvertiseMode
                     + "\n    - Advertise TX power level: " + mAdvertiseTxPowerLevel
                     + "\n    - Scan mode: " + mScanMode
@@ -548,6 +571,30 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
 
         return DEFAULT_DISCOVERY_MODE;
+    }
+
+    private int advertisementDataTypeToInt(AdvertisementDataType advertisementDataType) {
+        switch (advertisementDataType) {
+            case SERVICE_DATA: return ADVERTISEMENT_DATA_TYPE_SERVICE;
+            case MANUFACTURER_DATA: return ADVERTISEMENT_DATA_TYPE_MANUFACTURER;
+            default:
+                Log.e(TAG, "advertisementDataTypeToInt: Unrecognized advertisement type: " + advertisementDataType);
+                break;
+        }
+
+        return ADVERTISEMENT_DATA_TYPE_SERVICE;
+    }
+
+    private AdvertisementDataType intToAdvertisementDataType(int advertisementDataTypeAsInt) {
+        switch (advertisementDataTypeAsInt) {
+            case ADVERTISEMENT_DATA_TYPE_SERVICE: return AdvertisementDataType.SERVICE_DATA;
+            case ADVERTISEMENT_DATA_TYPE_MANUFACTURER: return AdvertisementDataType.MANUFACTURER_DATA;
+            default:
+                Log.e(TAG, "intToAdvertisementDataType: Invalid argument: " + advertisementDataTypeAsInt);
+                break;
+        }
+
+        return AdvertisementDataType.SERVICE_DATA;
     }
 
     /**

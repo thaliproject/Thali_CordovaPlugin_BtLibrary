@@ -91,6 +91,27 @@
                       android:layout_height="wrap_content"
                       android:text="Enable Bluetooth LE"
                       android:textSize="@dimen/text_size_medium" />
+            <TextView android:layout_width="wrap_content"
+                      android:layout_height="wrap_content"
+                      android:paddingTop="@dimen/padding_small"
+                      android:singleLine="true"
+                      android:text="@string/advertisement_data_type"
+                      android:textSize="@dimen/text_size_medium" />
+            <RadioGroup xmlns:android="http://schemas.android.com/apk/res/android"
+                        android:layout_width="fill_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+                <RadioButton android:id="@+id/serviceDataRadioButton"
+                             android:layout_width="wrap_content"
+                             android:layout_height="wrap_content"
+                             android:text="@string/service"
+                             android:onClick="onRadioButtonClicked" />
+                <RadioButton android:id="@+id/manufacturerDataRadioButton"
+                             android:layout_width="wrap_content"
+                             android:layout_height="wrap_content"
+                             android:text="@string/manufacturer"
+                             android:onClick="onRadioButtonClicked" />
+            </RadioGroup>
             <LinearLayout android:layout_width="fill_parent"
                           android:layout_height="wrap_content"
                           android:paddingRight="@dimen/list_item_padding"

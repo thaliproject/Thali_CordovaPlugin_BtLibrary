@@ -173,11 +173,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         mBleScanner = new BleScanner(this, mBluetoothAdapter);
         ScanFilter scanFilter = null;
 
-        if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA) {
-            scanFilter = BlePeerDiscoveryUtils.createScanFilter(mServiceUuid, false);
-        } else {
+        //if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA) {
+        //    scanFilter = BlePeerDiscoveryUtils.createScanFilter(mServiceUuid, false);
+        //} else {
             scanFilter = BlePeerDiscoveryUtils.createScanFilter(null, true);
-        }
+        //}
 
         mBleScanner.addFilter(scanFilter);
     }
@@ -512,26 +512,29 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
 
         if (scanResult != null && scanResult.getScanRecord() != null) {
-            if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA) {
-                Map<ParcelUuid, byte[]> serviceData = scanResult.getScanRecord().getServiceData();
+            // Try service data first
+            Map<ParcelUuid, byte[]> serviceData = scanResult.getScanRecord().getServiceData();
 
-                if (serviceData != null && serviceData.size() > 0) {
-                    for (ParcelUuid uuid : serviceData.keySet()) {
-                        byte[] serviceDataContent = serviceData.get(uuid);
-                        //Log.v(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
-                        parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
+            if (serviceData != null && serviceData.size() > 0) {
+                for (ParcelUuid uuid : serviceData.keySet()) {
+                    byte[] serviceDataContent = serviceData.get(uuid);
+                    //Log.v(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
+                    parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
 
-                        if (parsedAdvertisement != null) {
-                            parsedAdvertisement.uuid = scanResult.getScanRecord().getServiceUuids().get(0).getUuid();
-                            parsedAdvertisement.provideBluetoothMacAddressRequestId =
-                                    BlePeerDiscoveryUtils.checkIfUuidContainsProvideBluetoothMacAddressRequestId(
-                                            parsedAdvertisement.uuid, mServiceUuid);
-                            break;
-                        }
+                    if (parsedAdvertisement != null) {
+                        parsedAdvertisement.uuid = scanResult.getScanRecord().getServiceUuids().get(0).getUuid();
+                        parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                                BlePeerDiscoveryUtils.checkIfUuidContainsProvideBluetoothMacAddressRequestId(
+                                        parsedAdvertisement.uuid, mServiceUuid);
+                        break;
                     }
                 }
-            } else {
+            }
+
+            if (parsedAdvertisement == null) {
                 // Check for manufacturer data
+                Log.v(TAG, "checkScanResult: Failed to parse the service data, trying manufacturer data");
+
                 byte[] manufacturerData = scanResult.getScanRecord().getManufacturerSpecificData(
                         PeerAdvertisementFactory.MANUFACTURER_ID);
 
