@@ -9,6 +9,8 @@ import android.os.ParcelUuid;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -61,6 +63,10 @@ class PeerAdvertisementFactory {
             for (int i = 0; i < bluetoothMacAddressAsByteArray.length; ++i) {
                 serviceDataAsByteArray[i + 1] = bluetoothMacAddressAsByteArray[i];
             }
+
+            Log.v(TAG, "createAdvertiseDataToServiceData: Service data (length is "
+                    + serviceDataAsByteArray.length + " bytes): "
+                    + CommonUtils.byteArrayToHexString(serviceDataAsByteArray, true));
 
             try {
                 builder.addServiceData(serviceUuidAsParcelUuid, serviceDataAsByteArray);

@@ -195,7 +195,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     }
 
     @Override
-    public void onDataChanged() {
+    public synchronized void onDataChanged() {
         Log.i(TAG, "onDataChanged");
         Handler handler = new Handler(mContext.getMainLooper());
 
@@ -208,7 +208,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     }
 
     @Override
-    public void onPeerRemoved(final PeerProperties peerProperties) {
+    public synchronized void onPeerRemoved(final PeerProperties peerProperties) {
         Log.i(TAG, "onPeerRemoved: " + peerProperties);
         final boolean peerRemovedWasSelected;
 

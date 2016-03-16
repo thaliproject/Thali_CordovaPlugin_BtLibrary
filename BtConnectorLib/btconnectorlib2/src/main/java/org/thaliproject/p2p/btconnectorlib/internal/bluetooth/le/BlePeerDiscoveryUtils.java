@@ -420,10 +420,10 @@ class BlePeerDiscoveryUtils {
         String[] hexStringArray = bluetoothAddress.split(BLUETOOTH_ADDRESS_SEPARATOR);
         int[] intArray = null;
 
-        if (hexStringArray.length >= BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
-            intArray = new int[hexStringArray.length];
+        if (hexStringArray.length == BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT) {
+            intArray = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
-            for (int i = 0; i < hexStringArray.length; ++i) {
+            for (int i = 0; i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT; ++i) {
                 try {
                     intArray[i] = Integer.parseInt(hexStringArray[i], 16);
                 } catch (NumberFormatException e) {
@@ -432,6 +432,9 @@ class BlePeerDiscoveryUtils {
                     break;
                 }
             }
+        } else {
+            Log.e(TAG, "bluetoothAddressToInt8Array: The byte count of the given address is invalid - got "
+                    + hexStringArray.length + ", but was expecting " + BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + " bytes");
         }
 
         return intArray;
@@ -444,16 +447,12 @@ class BlePeerDiscoveryUtils {
      * @return The parsed Bluetooth address.
      */
     private static String int8ArrayToBluetoothAddress(int[] bluetoothAddressAsInt8Array) {
-        StringBuilder stringBuilder = new StringBuilder();
-
-        for (int i = 0; i < bluetoothAddressAsInt8Array.length; ++i) {
-            stringBuilder.append(Integer.toHexString(bluetoothAddressAsInt8Array[i] & 0xff));
-
-            if (i < bluetoothAddressAsInt8Array.length - 1) {
-                stringBuilder.append(BLUETOOTH_ADDRESS_SEPARATOR);
-            }
-        }
-
-        return stringBuilder.toString().toUpperCase();
+        return String.format("%02X:%02X:%02X:%02X:%02X:%02X",
+                (bluetoothAddressAsInt8Array[0] & 0xff),
+                (bluetoothAddressAsInt8Array[1] & 0xff),
+                (bluetoothAddressAsInt8Array[2] & 0xff),
+                (bluetoothAddressAsInt8Array[3] & 0xff),
+                (bluetoothAddressAsInt8Array[4] & 0xff),
+                (bluetoothAddressAsInt8Array[5] & 0xff));
     }
 }
