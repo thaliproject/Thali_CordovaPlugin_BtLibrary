@@ -396,22 +396,6 @@ public class ConnectionEngine implements
     }
 
     /**
-     * @param isEnabled True, if enabled. False, if disabled.
-     */
-    @Override
-    public void onWifiEnabledChanged(boolean isEnabled) {
-        Log.d(TAG, "onWifiEnabledChanged: " + isEnabled);
-    }
-
-    /**
-     * @param isEnabled True, if enabled. False, if disabled.
-     */
-    @Override
-    public void onBluetoothEnabledChanged(boolean isEnabled) {
-        Log.d(TAG, "onBluetoothEnabledChanged: " + isEnabled);
-    }
-
-    /**
      * @param state The new state.
      * @param isDiscovering True, if peer discovery is active. False otherwise.
      * @param isAdvertising True, if advertising is active. False otherwise.

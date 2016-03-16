@@ -144,20 +144,22 @@ public class WifiDirectManager {
      * If false is returned, this could indicate the lack of Wi-Fi Direct hardware support.
      */
     private synchronized boolean initialize() {
-        if (!mInitialized && isWifiDirectSupported()) {
+        if (!mInitialized) {
             mWifiStateBroadcastReceiver = new WifiStateBroadcastReceiver();
             IntentFilter filter = new IntentFilter();
             filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
 
             try {
                 mContext.registerReceiver(mWifiStateBroadcastReceiver, filter);
+                mInitialized = true;
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "initialize: Failed to register the broadcast receiver: " + e.getMessage(), e);
                 mWifiStateBroadcastReceiver = null;
             }
 
-            mP2pChannel = mP2pManager.initialize(mContext, mContext.getMainLooper(), null);
-            mInitialized = true;
+            if (isWifiDirectSupported()) {
+                mP2pChannel = mP2pManager.initialize(mContext, mContext.getMainLooper(), null);
+            }
         }
 
         return mInitialized;

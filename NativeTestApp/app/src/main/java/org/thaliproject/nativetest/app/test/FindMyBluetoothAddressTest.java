@@ -93,16 +93,6 @@ public class FindMyBluetoothAddressTest
     }
 
     @Override
-    public void onWifiEnabledChanged(boolean isEnabled) {
-        // Not used
-    }
-
-    @Override
-    public void onBluetoothEnabledChanged(boolean isEnabled) {
-        // Not used
-    }
-
-    @Override
     public void onDiscoveryManagerStateChanged(
             DiscoveryManager.DiscoveryManagerState state,
             boolean isDiscovering, boolean isAdvertising) {
