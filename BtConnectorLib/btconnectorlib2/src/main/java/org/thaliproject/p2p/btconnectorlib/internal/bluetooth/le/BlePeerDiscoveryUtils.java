@@ -170,10 +170,6 @@ class BlePeerDiscoveryUtils {
             } catch (IndexOutOfBoundsException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
-        } else {
-            Log.e(TAG, "parseManufacturerData: " + ((manufacturerData != null)
-                    ? ("Manufacturer data length is too short (" + manufacturerData.length + ") - the minimum length is " + ADVERTISEMENT_BYTE_COUNT)
-                    : "Manufacturer data is null"));
         }
 
         ParsedAdvertisement parsedAdvertisement = null;

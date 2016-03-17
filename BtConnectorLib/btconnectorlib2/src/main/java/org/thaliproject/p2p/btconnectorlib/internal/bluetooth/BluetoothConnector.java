@@ -393,7 +393,7 @@ public class BluetoothConnector
             }
 
             if (bluetoothClientThread != null) {
-                isCancelling = shutdownAndRemoveClientThread(bluetoothClientThread);
+                isCancelling = removeAndShutdownBluetoothClientThread(bluetoothClientThread);
             }
         } else {
             if (peerProperties == null) {
@@ -559,7 +559,7 @@ public class BluetoothConnector
             }
         });
 
-        shutdownAndRemoveClientThread(who);
+        removeAndShutdownBluetoothClientThread(who);
     }
 
     /**
@@ -638,12 +638,7 @@ public class BluetoothConnector
                                     + bluetoothClientThread.getId() + ")");
                         }
 
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                bluetoothClientThread.shutdown(); // Try to cancel
-                            }
-                        }.start();
+                        shutdownBluetoothClientThread(bluetoothClientThread); // Try to cancel
 
                         mHandler.post(new Runnable() {
                             @Override
@@ -674,32 +669,25 @@ public class BluetoothConnector
      * @param bluetoothClientThread The Bluetooth client thread instance to shut down and remove.
      * @return True, if the thread was shut down and removed. False otherwise.
      */
-    private synchronized boolean shutdownAndRemoveClientThread(final BluetoothClientThread bluetoothClientThread) {
-        boolean wasShutdownAndRemoved = false;
+    private synchronized boolean removeAndShutdownBluetoothClientThread(final BluetoothClientThread bluetoothClientThread) {
+        boolean wasRemovedAndShutdown = false;
 
         if (bluetoothClientThread != null) {
             if (mClientThreads.size() > 0) {
                 for (BluetoothClientThread currentBluetoothClientThread : mClientThreads) {
                     if (currentBluetoothClientThread != null
                             && currentBluetoothClientThread.getId() == bluetoothClientThread.getId()) {
-                        Log.i(TAG, "shutdownAndRemoveClientThread: Shutting down thread with ID "
-                                + bluetoothClientThread.getId());
+                        Log.i(TAG, "removeAndShutdownBluetoothClientThread: Thread ID: " + bluetoothClientThread.getId());
 
                         mClientThreads.remove(currentBluetoothClientThread);
-
-                        new Thread() {
-                            @Override
-                            public void run() {
-                                bluetoothClientThread.shutdown();
-                            }
-                        }.start();
+                        shutdownBluetoothClientThread(currentBluetoothClientThread);
 
                         if (mConnectionTimeoutTimer != null && mClientThreads.size() == 0) {
                             mConnectionTimeoutTimer.cancel();
                             mConnectionTimeoutTimer = null;
                         }
 
-                        wasShutdownAndRemoved = true;
+                        wasRemovedAndShutdown = true;
                         break;
                     }
                 }
@@ -708,10 +696,28 @@ public class BluetoothConnector
             throw new NullPointerException("The given Bluetooth client thread instance is null");
         }
 
-        if (!wasShutdownAndRemoved) {
-            Log.w(TAG, "shutdownAndRemoveClientThread: Failed to find a thread with ID " + bluetoothClientThread.getId());
+        if (!wasRemovedAndShutdown) {
+            Log.w(TAG, "removeAndShutdownBluetoothClientThread: Failed to find a thread with ID " + bluetoothClientThread.getId());
         }
 
-        return wasShutdownAndRemoved;
+        return wasRemovedAndShutdown;
+    }
+
+    /**
+     * Tries to shutdown the given Bluetooth client thread.
+     *
+     * @param bluetoothClientThread The Bluetooth client thread to shutdown.
+     */
+    private synchronized void shutdownBluetoothClientThread(final BluetoothClientThread bluetoothClientThread) {
+        if (bluetoothClientThread != null) {
+            Log.d(TAG, "shutdownBluetoothClientThread: Thread ID: " + bluetoothClientThread.getId());
+
+            new Thread() {
+                @Override
+                public void run() {
+                    bluetoothClientThread.shutdown();
+                }
+            }.start();
+        }
     }
 }

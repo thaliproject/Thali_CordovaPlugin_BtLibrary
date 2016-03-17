@@ -197,7 +197,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     @Override
     public synchronized void shutdown() {
-        Log.d(TAG, "shutdown (thread ID: " + getId() + ")");
+        Log.d(TAG, "shutdown: Thread ID: " + getId());
         mIsShuttingDown = true;
         mListener = null;
         close();
@@ -297,9 +297,11 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         if (mBluetoothSocket != null) {
             try {
+                Log.d(TAG, "close: Trying to close the Bluetooth socket... (thread ID: " + getId() + ")");
                 mBluetoothSocket.close();
+                Log.d(TAG, "close: Bluetooth socket closed (thread ID: " + getId() + ")");
             } catch (IOException e) {
-                Log.w(TAG, "Failed to close the socket: " + e.getMessage());
+                Log.w(TAG, "close: Failed to close the socket (thread ID: " + getId() + "): " + e.getMessage());
             }
 
             mBluetoothSocket = null;
