@@ -157,6 +157,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
         if (!CommonUtils.isNonEmptyString(mMyIdentityString)) {
             if (CommonUtils.isNonEmptyString(mMyPeerName)
+                    && !mMyPeerName.equals(PeerProperties.NO_PEER_NAME_STRING)
                     && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
                 try {
                     mMyIdentityString = createIdentityString(mMyPeerName, bluetoothMacAddress);

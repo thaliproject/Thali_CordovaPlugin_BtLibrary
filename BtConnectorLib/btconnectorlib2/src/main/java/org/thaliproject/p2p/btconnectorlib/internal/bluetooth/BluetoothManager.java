@@ -111,7 +111,7 @@ public class BluetoothManager {
      */
     public synchronized void release(BluetoothManagerListener listener) {
         if (!mListeners.remove(listener) && mListeners.size() > 0) {
-            Log.e(TAG, "release: The given listener does not exist in the list - probably already removed");
+            Log.w(TAG, "release: The given listener does not exist in the list - probably already removed");
         }
 
         if (mListeners.size() == 0) {

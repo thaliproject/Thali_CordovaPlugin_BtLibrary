@@ -156,6 +156,18 @@ public class SettingsFragment extends Fragment {
             radioButton.setChecked(true);
         }
 
+        radioButton = (RadioButton) view.findViewById(R.id.doNotCareRadioButton);
+        radioButton.setOnClickListener(new AdapterView.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                mSettings.setAdvertisementDataType(BlePeerDiscoverer.AdvertisementDataType.DO_NOT_CARE);
+            }
+        });
+
+        if (mSettings.getAdvertisementDataType() == BlePeerDiscoverer.AdvertisementDataType.DO_NOT_CARE) {
+            radioButton.setChecked(true);
+        }
+
         Spinner spinner = (Spinner) view.findViewById(R.id.advertiseModeSpinner);
         ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
                 view.getContext(), R.array.advertise_mode_string_array, android.R.layout.simple_spinner_item);

@@ -66,9 +66,9 @@
             <TextView android:layout_width="fill_parent"
                       android:layout_height="wrap_content"
                       android:paddingBottom="@dimen/padding_medium"
-                      android:singleLine="true"
+                      android:singleLine="false"
                       android:layout_marginLeft="6dp"
-                      android:text="Use -1 to let the platform decide or 0 for rotating port number"
+                      android:text="@string/rfcomm_port_info"
                       android:textSize="@dimen/text_size_small" />
             <CheckBox android:id="@+id/handshakeRequiredCheckBox"
                       android:layout_width="wrap_content"
@@ -111,7 +111,19 @@
                              android:layout_height="wrap_content"
                              android:text="@string/manufacturer"
                              android:onClick="onRadioButtonClicked" />
+                <RadioButton android:id="@+id/doNotCareRadioButton"
+                             android:layout_width="wrap_content"
+                             android:layout_height="wrap_content"
+                             android:text="@string/do_not_care"
+                             android:onClick="onRadioButtonClicked" />
             </RadioGroup>
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:paddingBottom="@dimen/padding_medium"
+                      android:singleLine="false"
+                      android:layout_marginLeft="6dp"
+                      android:text="@string/do_not_care_info"
+                      android:textSize="@dimen/text_size_small" />
             <LinearLayout android:layout_width="fill_parent"
                           android:layout_height="wrap_content"
                           android:paddingRight="@dimen/list_item_padding"
@@ -175,6 +187,13 @@
                     android:layout_height="wrap_content"
                     android:padding="@dimen/default_padding"
                     android:text="@string/reset_default" />
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:paddingBottom="@dimen/padding_medium"
+                      android:singleLine="false"
+                      android:layout_marginLeft="6dp"
+                      android:text="@string/peer_name_info"
+                      android:textSize="@dimen/text_size_small" />
             <LinearLayout android:layout_width="fill_parent"
                           android:layout_height="match_parent"
                           android:orientation="horizontal">

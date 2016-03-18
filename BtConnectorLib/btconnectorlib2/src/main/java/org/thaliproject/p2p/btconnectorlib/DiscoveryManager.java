@@ -71,6 +71,7 @@ public class DiscoveryManager
 
         /**
          * Called when the state of this instance is changed.
+         *
          * @param state The new state.
          * @param isDiscovering True, if peer discovery is active. False otherwise.
          * @param isAdvertising True, if advertising is active. False otherwise.
@@ -80,6 +81,7 @@ public class DiscoveryManager
 
         /**
          * Called when a new peer is discovered.
+         *
          * @param peerProperties The properties of the new peer.
          */
         void onPeerDiscovered(PeerProperties peerProperties);
@@ -87,12 +89,14 @@ public class DiscoveryManager
         /**
          * Called when a peer data is updated (missing data is added). This callback is never
          * called, if data is lost.
+         *
          * @param peerProperties The updated properties of a discovered peer.
          */
         void onPeerUpdated(PeerProperties peerProperties);
 
         /**
          * Called when an existing peer is lost (i.e. not available anymore).
+         *
          * @param peerProperties The properties of the lost peer.
          */
         void onPeerLost(PeerProperties peerProperties);
@@ -158,6 +162,7 @@ public class DiscoveryManager
 
     /**
      * Constructor.
+     *
      * @param context The application context.
      * @param listener The listener.
      * @param bleServiceUuid Our BLE service UUID (both ours and requirement for the peer).
@@ -225,6 +230,7 @@ public class DiscoveryManager
 
     /**
      * Checks the current state and returns true, if running regardless of the discovery mode in use.
+     *
      * @return True, if running regardless of the mode. False otherwise.
      */
     public boolean isRunning() {
@@ -289,6 +295,7 @@ public class DiscoveryManager
 
     /**
      * Used to check, if some required permission has not been granted by the user.
+     *
      * @return The name of the missing permission or null, if none.
      */
     public String getMissingPermission() {
@@ -297,6 +304,7 @@ public class DiscoveryManager
 
     /**
      * Starts the peer discovery.
+     *
      * @param startDiscovery If true, will start the scanner/discovery.
      * @param startAdvertising If true, will start the advertiser.
      * @return True, if started successfully or was already running. False otherwise.
@@ -440,6 +448,7 @@ public class DiscoveryManager
 
     /**
      * Makes the device (Bluetooth) discoverable for the given duration.
+     *
      * @param durationInSeconds The duration in seconds. 0 means the device is always discoverable.
      *                          Any value below 0 or above 3600 is automatically set to 120 secs.
      */
@@ -471,6 +480,7 @@ public class DiscoveryManager
 
     /**
      * Constructs the BlePeerDiscoverer instance, if one does not already exist.
+     *
      * @return The BlePeerDiscoverer instance.
      */
     public BlePeerDiscoverer getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
@@ -481,8 +491,7 @@ public class DiscoveryManager
                     mBluetoothManager.getBluetoothAdapter(),
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
-                    getBluetoothMacAddress(),
-                    mSettings.getAdvertisementDataType());
+                    getBluetoothMacAddress(), mSettings.getAdvertisementDataType());
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
@@ -496,6 +505,7 @@ public class DiscoveryManager
 
     /**
      * From DiscoveryManagerSettings.Listener
+     *
      * @param discoveryMode The new discovery mode.
      * @param startIfNotRunning If true, will start even if the discovery wasn't running.
      */
@@ -511,6 +521,7 @@ public class DiscoveryManager
 
     /**
      * From DiscoveryManagerSettings.Listener
+     *
      * @param peerExpirationInMilliseconds The new peer expiration time in milliseconds.
      */
     @Override
@@ -520,36 +531,41 @@ public class DiscoveryManager
 
     /**
      * From DiscoveryManagerSettings.Listener
+     *
+     * @param advertisementDataType The new advertisement data type.
+     */
+    @Override
+    public void onAdvertisementDataTypeChanged(BlePeerDiscoverer.AdvertisementDataType advertisementDataType) {
+        applyBleAdvertiserSettingsWhichRequireRestart();
+    }
+
+    /**
+     * From DiscoveryManagerSettings.Listener
+     *
      * @param advertiseMode The new advertise mode.
      * @param advertiseTxPowerLevel The new advertise TX power level.
      */
     @Override
     public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
-        if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(
-                    advertiseMode, advertiseTxPowerLevel,
-                    mSettings.getScanMode(), mSettings.getScanReportDelay());
-        }
+        applyBleAdvertiserSettingsWhichRequireRestart();
     }
 
     /**
      * From DiscoveryManagerSettings.Listener
+     *
      * @param scanMode The new scan mode.
      * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
      */
     @Override
     public void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds) {
-        if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(
-                    mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(),
-                    scanMode, scanReportDelayInMilliseconds);
-        }
+        applyBleAdvertiserSettingsWhichRequireRestart();
     }
 
     /**
      * From BluetoothManager.BluetoothManagerListener
      *
      * Stops/restarts the BLE based peer discovery depending on the given mode and notifies the listener.
+     *
      * @param mode The new mode.
      */
     @Override
@@ -588,6 +604,7 @@ public class DiscoveryManager
      * From WifiDirectManager.WifiStateListener
      *
      * Stops/restarts the Wi-Fi Direct based peer discovery depending on the given state.
+     *
      * @param state The new state.
      */
     @Override
@@ -624,6 +641,7 @@ public class DiscoveryManager
      * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
      *
      * Stores the new state and notifies the listener.
+     *
      * @param state The new state.
      */
     @Override
@@ -639,6 +657,7 @@ public class DiscoveryManager
      * From BlePeerDiscoverer.BlePeerDiscoveryListener
      *
      * Stores the new state and notifies the listener.
+     *
      * @param state The new state.
      */
     @Override
@@ -654,6 +673,7 @@ public class DiscoveryManager
      * From both WifiPeerDiscoverer.WifiPeerDiscoveryListener and BlePeerDiscoverer.BlePeerDiscoveryListener
      *
      * Adds or updates the discovered peer.
+     *
      * @param peerProperties The properties of the discovered peer.
      */
     @Override
@@ -666,6 +686,7 @@ public class DiscoveryManager
      * From WifiPeerDiscoverer.WifiPeerDiscoveryListener
      *
      * Updates the discovered peers, which match the ones on the given list.
+     *
      * @param p2pDeviceList A list containing the discovered P2P devices.
      */
     @Override
@@ -784,6 +805,7 @@ public class DiscoveryManager
      * Part of Bro Mode.
      *
      * Stores and forwards the resolved Bluetooth MAC address to the listener.
+     *
      * @param bluetoothMacAddress Our Bluetooth MAC address.
      */
     @Override
@@ -810,6 +832,7 @@ public class DiscoveryManager
      * Part of Bro Mode.
      *
      * Changes the state based on the given argument.
+     *
      * @param isStarted If true, was started. If false, was stopped.
      */
     @Override
@@ -833,6 +856,7 @@ public class DiscoveryManager
      * Part of Bro Mode.
      *
      * Changes the state based on the given argument.
+     *
      * @param isStarted If true, was started. If false, was stopped.
      */
     @Override
@@ -856,6 +880,7 @@ public class DiscoveryManager
      * From PeerModel.Listener
      *
      * Forwards the event to the listener.
+     *
      * @param peerProperties The properties of the added peer.
      */
     @Override
@@ -876,6 +901,7 @@ public class DiscoveryManager
      * From PeerModel.Listener
      *
      * Forwards the event to the listener.
+     *
      * @param peerProperties The properties of the updated peer.
      */
     @Override
@@ -894,6 +920,7 @@ public class DiscoveryManager
      * From PeerModel.Listener
      *
      * Forwards the event to the listener.
+     *
      * @param peerProperties The properties of the expired and removed peer.
      */
     @Override
@@ -922,6 +949,7 @@ public class DiscoveryManager
 
     /**
      * Tries to start the BLE peer discoverer.
+     *
      * @param startScanner If true, will start the scanner.
      * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
@@ -967,6 +995,7 @@ public class DiscoveryManager
 
     /**
      * Stops the BLE peer discoverer.
+     *
      * @param updateState If true, will update the state.
      */
     private synchronized void stopBlePeerDiscoverer(boolean updateState) {
@@ -988,6 +1017,7 @@ public class DiscoveryManager
     /**
      * Tries to start the Wi-Fi Direct based peer discovery.
      * Note that this method does not validate the current state nor the identity string.
+     *
      * @param startDiscoverer If true, will start the discoverer.
      * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
@@ -1030,6 +1060,7 @@ public class DiscoveryManager
 
     /**
      * Stops the Wi-Fi Direct based peer discovery.
+     *
      * @param updateState If true, will update the state.
      */
     private synchronized void stopWifiPeerDiscovery(boolean updateState) {
@@ -1049,7 +1080,20 @@ public class DiscoveryManager
     }
 
     /**
+     * Applies the current BLE advertiser settings that require the BLE advertiser to restart when changed.
+     */
+    private void applyBleAdvertiserSettingsWhichRequireRestart() {
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(
+                    mSettings.getAdvertisementDataType(),
+                    mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(),
+                    mSettings.getScanMode(), mSettings.getScanReportDelay());
+        }
+    }
+
+    /**
      * Updates the state of this instance and notifies the listener.
+     *
      * @param state The new state.
      */
     private synchronized void updateState(final DiscoveryManagerState state) {
