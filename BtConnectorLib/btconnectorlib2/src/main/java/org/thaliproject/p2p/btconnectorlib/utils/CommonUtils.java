@@ -76,17 +76,6 @@ public class CommonUtils {
     }
 
     /**
-     * Creates a simple handshake message.
-     *
-     * @return The newly created handshake message as a byte array.
-     */
-    public static byte[] createSimpleHandshakeMessage() {
-        byte[] message = new byte[1];
-        message[0] = (byte) 0x0;
-        return message;
-    }
-
-    /**
      * Converts the content of the given byte array to hex string.
      *
      * @param bytes The bytes to convert.

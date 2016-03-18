@@ -482,7 +482,7 @@ public class DiscoveryManager
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
                     getBluetoothMacAddress(),
-                    BlePeerDiscoverer.AdvertisementDataType.SERVICE_DATA);
+                    mSettings.getAdvertisementDataType());
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
