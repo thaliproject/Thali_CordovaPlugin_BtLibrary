@@ -20,12 +20,14 @@ class BleAdvertiser extends AdvertiseCallback {
     public interface Listener {
         /**
          * Called when the Bluetooth LE advertiser fails to start.
+         *
          * @param errorCode The error code.
          */
         void onAdvertiserFailedToStart(int errorCode);
 
         /**
          * Called when this advertiser is started or stopped.
+         *
          * @param isStarted If true, the advertising was started. If false, the advertising was stopped.
          */
         void onIsAdvertiserStartedChanged(boolean isStarted);
@@ -46,6 +48,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Constructor.
+     *
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
@@ -77,6 +80,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Sets the advertise data. Restarts the instance, if it was started/running.
+     *
      * @param advertiseData The advertise data to set.
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
@@ -100,6 +104,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Sets the advertise settings. Note that the advertiser is not restarted automatically.
+     *
      * @param advertiseSettings The advertise settings to set.
      */
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
@@ -124,6 +129,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Tries to start advertising.
+     *
      * @return True, if starting. False in case of a failure.
      */
     public synchronized boolean start() {
@@ -131,6 +137,7 @@ class BleAdvertiser extends AdvertiseCallback {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
+                        Log.v(TAG, "start: Starting...");
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         setState(State.STARTING, true);
                     } catch (Exception e) {
@@ -151,6 +158,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Stops advertising.
+     *
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
@@ -168,6 +176,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Notifies the listener.
+     *
      * @param errorCode The error code.
      */
     @Override
@@ -211,6 +220,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     /**
      * Sets the state and notifies listener if required.
+     *
      * @param state The new state.
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */

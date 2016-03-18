@@ -4,6 +4,7 @@
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -48,6 +49,7 @@ abstract class AbstractBluetoothThread extends Thread {
      */
     protected byte[] getHandshakeMessage() {
         return (CommonUtils.isNonEmptyString(mMyIdentityString)
-                ? mMyIdentityString.getBytes() : CommonUtils.createSimpleHandshakeMessage());
+                ? mMyIdentityString.getBytes(StandardCharsets.UTF_8)
+                : BluetoothUtils.SIMPLE_HANDSHAKE_MESSAGE_AS_BYTE_ARRAY);
     }
 }

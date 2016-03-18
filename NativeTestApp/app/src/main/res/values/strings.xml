@@ -9,6 +9,13 @@
     <string name="action_start_bluetooth_device_discovery">Start Bluetooth device discovery</string>
     <string name="action_make_device_discoverable">Make device discoverable</string>
 
+    <string name="rfcomm_port_info">Use -1 to let the platform decide or 0 for rotating port number</string>
+    <string name="advertisement_data_type">Advertisement data type (BLE only)</string>
+    <string name="service">service</string>
+    <string name="manufacturer">manufacturer</string>
+    <string name="do_not_care">don\'t care</string>
+    <string name="do_not_care_info">In \"don\'t care\" mode, the data type to advertise will be \"service\", but \"manufacturer\" will be used as a fallback. The app will scan and parse both \"service\" and \"manufacturer\" data based advertisements.</string>
+
     <string-array name="advertise_mode_string_array">
         <item>ADVERTISE_MODE_LOW_POWER</item>
         <item>ADVERTISE_MODE_BALANCED</item>
@@ -27,6 +34,9 @@
         <item>SCAN_MODE_BALANCED</item>
         <item>SCAN_MODE_LOW_LATENCY</item>
     </string-array>
+
+    <string name="reset_default">Reset default</string>
+    <string name="peer_name_info">After changing the peer name restarting the app is required for the setting to take effect.</string>
 
     <string name="run_test">Run test</string>
 </resources>
