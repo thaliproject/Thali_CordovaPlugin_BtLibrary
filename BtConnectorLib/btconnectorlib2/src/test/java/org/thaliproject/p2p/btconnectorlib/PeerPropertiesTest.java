@@ -217,8 +217,31 @@ public class PeerPropertiesTest {
     }
 
     @Test
-    public void testCopyMissingValuesFromOldPeer() throws Exception {
+    public void testCopyMissingValuesFromOldPeer() {
+        PeerProperties pp1 = new PeerProperties();
+        PeerProperties pp2 = new PeerProperties();
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(false));
+        assertThat(pp2.hasMoreInformation(pp1),is(false));
 
+        pp1.setName("name1");
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
+
+        pp1.setBluetoothMacAddress("00:11:22:33:44:55");
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
+
+        pp1.setDeviceName("device1");
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
+
+        pp1.setDeviceAddress("127.0.0.1");
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
+
+        pp1.setServiceType("type1");
+        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
     }
 
     @Test
@@ -233,7 +256,6 @@ public class PeerPropertiesTest {
         assertThat(pp1.equals(pp3), is(false));
         pp3.setBluetoothMacAddress(mac);
         assertThat(pp1.equals(pp3), is(true));
-
     }
 
     @Test
