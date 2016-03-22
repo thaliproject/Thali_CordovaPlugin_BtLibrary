@@ -20,12 +20,19 @@ public abstract class AbstractSettings {
      * Constructor.
      */
     protected AbstractSettings(Context context) {
+        this(context, PreferenceManager.getDefaultSharedPreferences(mContext));
+    }
+
+    /**
+     * Constructor.
+     */
+    protected AbstractSettings(Context context, SharedPreferences sharedPreferences) {
         if (context == null) {
             throw new NullPointerException("Context is null");
         }
 
         mContext = context;
-        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mSharedPreferences = sharedPreferences;
         mSharedPreferencesEditor = mSharedPreferences.edit();
     }
 

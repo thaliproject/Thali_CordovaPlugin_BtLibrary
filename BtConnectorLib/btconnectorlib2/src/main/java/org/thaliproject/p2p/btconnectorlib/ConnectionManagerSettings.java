@@ -4,6 +4,7 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
@@ -53,11 +54,26 @@ public class ConnectionManagerSettings extends AbstractSettings {
         return mInstance;
     }
 
+    public static ConnectionManagerSettings getInstance(Context context, SharedPreferences preferences) {
+        if (mInstance == null) {
+            mInstance = new ConnectionManagerSettings(context, preferences);
+        }
+
+        return mInstance;
+    }
+
     /**
      * Private constructor.
      */
     private ConnectionManagerSettings(Context context) {
         super(context); // Will create Shared preferences (and editor) instance
+    }
+
+    /**
+     * Private constructor.
+     */
+    private ConnectionManagerSettings(Context context, SharedPreferences preferences) {
+        super(context, preferences); // Will create Shared preferences (and editor) instance
     }
 
     /**
