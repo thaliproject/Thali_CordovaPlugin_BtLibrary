@@ -20,7 +20,7 @@ public abstract class AbstractSettings {
      * Constructor.
      */
     protected AbstractSettings(Context context) {
-        this(context, PreferenceManager.getDefaultSharedPreferences(mContext));
+        this(context, PreferenceManager.getDefaultSharedPreferences(context));
     }
 
     /**
