@@ -1,13 +1,21 @@
 package org.thaliproject.p2p.btconnectorlib;
 
-import static org.junit.Assert.*;
+import android.content.Context;
+import android.test.mock.MockContext;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.junit.Assert.assertThat;
 
 public class ConnectionManagerTest {
 
-    @org.junit.Before
-    public void setUp() throws Exception {
+    Context context;
 
+    @org.junit.Before
+    public void setUp() {
+        context = new MockContext();
+        assertThat(context, is(notNullValue()));
     }
 
     @org.junit.After

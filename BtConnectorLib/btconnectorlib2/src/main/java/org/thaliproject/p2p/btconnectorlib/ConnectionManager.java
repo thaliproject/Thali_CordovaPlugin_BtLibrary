@@ -7,10 +7,13 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+
 import java.util.UUID;
 
 /**
@@ -97,6 +100,40 @@ public class ConnectionManager
         mHandler = new Handler(mContext.getMainLooper());
 
         verifyIdentityString(); // Creates the identity string
+
+        mBluetoothConnector = new BluetoothConnector(
+                mContext, this, mBluetoothManager.getBluetoothAdapter(),
+                mMyUuid, mMyName, mMyIdentityString);
+        mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param context The application context.
+     * @param listener The listener.
+     * @param myUuid Our (service record) UUID. Note that his has to match the one of the peers we
+     *               are trying to connect to, otherwise any connection attempt will fail.
+     * @param myName Our name.
+     * @param bluetoothManager The bluetooth manager
+     */
+    public ConnectionManager(
+            Context context, ConnectionManagerListener listener,
+            UUID myUuid, String myName, BluetoothManager bluetoothManager,
+            SharedPreferences preferences) {
+        super(context, bluetoothManager); // Gets the BluetoothManager instance
+
+        mListener = listener;
+        mMyUuid = myUuid;
+        mMyName = myName;
+
+        mSettings = ConnectionManagerSettings.getInstance(mContext, preferences);
+        mSettings.load();
+        mSettings.addListener(this);
+
+        mHandler = new Handler(mContext.getMainLooper());
+
+        verifyIdentityString(preferences); // Creates the identity string
 
         mBluetoothConnector = new BluetoothConnector(
                 mContext, this, mBluetoothManager.getBluetoothAdapter(),

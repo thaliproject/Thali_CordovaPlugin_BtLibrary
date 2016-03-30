@@ -54,6 +54,11 @@ public class ConnectionManagerSettings extends AbstractSettings {
         return mInstance;
     }
 
+    /**
+     * @param context The application context for the shared preferences.
+     * @param preferences The shared preferences.
+     * @return The singleton instance of this class.
+     */
     public static ConnectionManagerSettings getInstance(Context context, SharedPreferences preferences) {
         if (mInstance == null) {
             mInstance = new ConnectionManagerSettings(context, preferences);
