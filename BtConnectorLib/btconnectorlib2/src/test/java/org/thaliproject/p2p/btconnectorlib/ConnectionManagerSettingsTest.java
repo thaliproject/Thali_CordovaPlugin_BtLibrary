@@ -1,12 +1,15 @@
 package org.thaliproject.p2p.btconnectorlib;
 
+import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
 
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -45,18 +48,17 @@ public class ConnectionManagerSettingsTest {
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
 
-    ConnectionManagerSettings mConnectionManagerSettings;
+    private ConnectionManagerSettings mConnectionManagerSettings;
 
-    ConnectionManager mListener;
+    private static Map<String, Object> mSharedPreferencesMap;
+    private static int applyCnt;
 
-    static Map<String, Object> mSharedPreferencesMap;
-    static int applyCnt;
-
+    @SuppressLint("CommitPrefEdits")
     @Before
     public void setUp() {
         applyCnt = 0;
         MockitoAnnotations.initMocks(this);
-        mSharedPreferencesMap = new HashMap<> ();
+        mSharedPreferencesMap = new HashMap<>();
         when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("01:02:03:04:05:06");
         when(mMockBluetoothManager.getBluetoothAdapter()).thenReturn(mMockBluetoothAdapter);
         when(mMockSharedPreferences.edit()).thenReturn(new SharedPreferences.Editor() {
@@ -64,10 +66,12 @@ public class ConnectionManagerSettingsTest {
             public SharedPreferences.Editor putString(String key, String value) {
                 return null;
             }
+
             @Override
             public SharedPreferences.Editor putStringSet(String key, Set<String> values) {
                 return null;
             }
+
             @Override
             public SharedPreferences.Editor putInt(String key, int value) {
                 mSharedPreferencesMap.put(key, value);
@@ -116,25 +120,6 @@ public class ConnectionManagerSettingsTest {
             }
         });
 
-        mListener = new ConnectionManager(mMockContext,
-                new ConnectionManager.ConnectionManagerListener() {
-                    @Override
-                    public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState state) {
-                    }
-                    @Override
-                    public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming,
-                                            PeerProperties peerProperties) {
-                    }
-                    @Override
-                    public void onConnectionTimeout(PeerProperties peerProperties) {
-                    }
-                    @Override
-                    public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
-                    }
-                },
-                new UUID(1,1), "test Name", mMockBluetoothManager,
-                mMockSharedPreferences);
-
         mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
 
@@ -147,14 +132,11 @@ public class ConnectionManagerSettingsTest {
         assertThat(mConnectionManagerSettings, is(notNullValue()));
     }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void testAddListener() throws Exception {
-
-        mConnectionManagerSettings.addListener(mListener);
-    }
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    public void testRemoveListener() throws Exception {
+    public void testListener() throws Exception {
         ConnectionManager listener = new ConnectionManager(mMockContext,
                 new ConnectionManager.ConnectionManagerListener() {
                     @Override
@@ -179,13 +161,15 @@ public class ConnectionManagerSettingsTest {
                     }
                 }
                 ,
-                new UUID(1,1), "test Name", mMockBluetoothManager,
+                new UUID(1, 1), "test Name", mMockBluetoothManager,
                 mMockSharedPreferences);
 
         mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
 
         mConnectionManagerSettings.removeListener(listener);
+        mConnectionManagerSettings.addListener(listener);
+        thrown.expect(IllegalArgumentException.class);
         mConnectionManagerSettings.addListener(listener);
     }
 
@@ -318,10 +302,14 @@ public class ConnectionManagerSettingsTest {
 
         mConnectionManagerSettings.load();
 
-        verify(mMockSharedPreferences, atLeast(1)).getBoolean(contains("require_handshake"), anyBoolean());
-        verify(mMockSharedPreferences, atLeast(1)).getLong(contains("connection_timeout"), anyInt());
-        verify(mMockSharedPreferences, atLeast(1)).getInt(contains("port_number"), anyInt());
-        verify(mMockSharedPreferences, atLeast(1)).getInt(contains("max_number_of_connection_attempt_retries"), anyInt());
+        verify(mMockSharedPreferences, atLeast(1))
+                .getBoolean(contains("require_handshake"), anyBoolean());
+        verify(mMockSharedPreferences, atLeast(1))
+                .getLong(contains("connection_timeout"), anyInt());
+        verify(mMockSharedPreferences, atLeast(1))
+                .getInt(contains("port_number"), anyInt());
+        verify(mMockSharedPreferences, atLeast(1))
+                .getInt(contains("max_number_of_connection_attempt_retries"), anyInt());
     }
 
     @Test
