@@ -6,45 +6,37 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
 
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Matchers;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.anyBoolean;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Matchers.contains;
 import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.atMost;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ConnectionManagerTest {
-
-
 
     @Mock
     Context mMockContext;
@@ -57,6 +49,9 @@ public class ConnectionManagerTest {
 
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
+
+    @Mock
+    SharedPreferences.Editor mMockEditor;
 
     @Mock
     BluetoothDevice mBluetoothDevice;
@@ -76,81 +71,37 @@ public class ConnectionManagerTest {
     @Mock
     BluetoothDevice mMockBluetoothDevice;
 
+    @Mock
+    Handler mHander;
 
-    private static Map<String, Object> mSharedPreferencesMap;
-    private static int applyCnt;
+    @Mock
+    BluetoothSocket bluetoothSocket;
+
+    ConnectionManager connectionManager;
 
     @SuppressLint("CommitPrefEdits")
     @Before
-    public void setUp() {
-        applyCnt = 0;
+    public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        mSharedPreferencesMap = new HashMap<>();
         when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("01:02:03:04:05:06");
         when(mMockBluetoothManager.getBluetoothAdapter()).thenReturn(mMockBluetoothAdapter);
-        when(mMockSharedPreferences.edit()).thenReturn(new SharedPreferences.Editor() {
-            @Override
-            public SharedPreferences.Editor putString(String key, String value) {
-                return null;
-            }
+        when(mMockSharedPreferences.edit()).thenReturn(mMockEditor);
 
-            @Override
-            public SharedPreferences.Editor putStringSet(String key, Set<String> values) {
-                return null;
-            }
+        connectionManager = new ConnectionManager(
+                mMockContext,
+                mMockManagerListener,
+                new UUID(1, 1), "testConnection", mMockBluetoothManager,
+                mMockSharedPreferences);
 
-            @Override
-            public SharedPreferences.Editor putInt(String key, int value) {
-                mSharedPreferencesMap.put(key, value);
-                return null;
-            }
+        assertThat(connectionManager, is(notNullValue()));
 
-            @Override
-            public SharedPreferences.Editor putLong(String key, long value) {
+        Field field = connectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        field.setAccessible(true);
+        Field modifiersField = Field.class.getDeclaredField("modifiers");
+        modifiersField.setAccessible(true);
+        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
 
-                mSharedPreferencesMap.put(key, value);
-
-                return null;
-            }
-
-            @Override
-            public SharedPreferences.Editor putFloat(String key, float value) {
-                mSharedPreferencesMap.put(key, value);
-                return null;
-            }
-
-            @Override
-            public SharedPreferences.Editor putBoolean(String key, boolean value) {
-                mSharedPreferencesMap.put(key, value);
-                return null;
-            }
-
-            @Override
-            public SharedPreferences.Editor remove(String key) {
-                return null;
-            }
-
-            @Override
-            public SharedPreferences.Editor clear() {
-                return null;
-            }
-
-            @Override
-            public boolean commit() {
-                return false;
-            }
-
-            @Override
-            public void apply() {
-                applyCnt++;
-
-            }
-        });
-
-    }
-
-    @After
-    public void tearDown() throws Exception {
+        field.set(connectionManager, mMockBluetoothConnector);
 
     }
 
@@ -158,58 +109,32 @@ public class ConnectionManagerTest {
     public void testConstructorThatTakesContextAndPrefs() throws Exception {
         ConnectionManager cm = new ConnectionManager(
                 mMockContext,
-                new ConnectionManager.ConnectionManagerListener() {
-                    @Override
-                    public void onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState state) {
-                    }
-                    @Override
-                    public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming,
-                                            PeerProperties peerProperties) {
-                    }
-                    @Override
-                    public void onConnectionTimeout(PeerProperties peerProperties) {
-                    }
-                    @Override
-                    public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
-                    }
-                },
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
+                mMockManagerListener,
+                new UUID(1, 1), "testConnection", mMockBluetoothManager,
                 mMockSharedPreferences);
 
         assertThat(cm, is(notNullValue()));
         assertThat(cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
-        //assertThat(pp.getName(), is(nullValue()));
+
     }
 
     @Test
     public void testGetState() throws Exception {
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
+        //default state
+        assertThat("Has a proper default state", connectionManager.getState(),
+                is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
 
-        assertThat(cm, is(notNullValue()));
-        assertThat(cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
-
-        when(mMockPeerProperties.toString()).thenReturn("mocked connection");
-        when(mMockPeerProperties.getBluetoothMacAddress()).thenReturn("01:02:03:04:05:06 ");
-        when(mMockBluetoothManager.getRemoteDevice(anyString())).thenReturn(mBluetoothDevice);
-        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(true);
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-
-        field.set(cm, mMockBluetoothConnector);
-
-        assertThat(cm.connect(mMockPeerProperties), is(true));
-
-        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(true);
-        assertThat(cm.connect(mMockPeerProperties), is(true));
-
+        Field stateField = connectionManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        assertThat("Has a proper state when waiting for bluetooth", connectionManager.getState(),
+                is(equalTo(ConnectionManager.ConnectionManagerState
+                        .WAITING_FOR_SERVICES_TO_BE_ENABLED)));
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.RUNNING);
+        assertThat("Has a proper state when running", connectionManager.getState(),
+                is(equalTo(ConnectionManager.ConnectionManagerState.RUNNING)));
     }
 
     @Test
@@ -217,7 +142,7 @@ public class ConnectionManagerTest {
         final ConnectionManager cm = new ConnectionManager(
                 mMockContext,
                 mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
+                new UUID(1, 1), "testConnection", mMockBluetoothManager,
                 mMockSharedPreferences);
 
         assertThat(cm, is(notNullValue()));
@@ -225,7 +150,8 @@ public class ConnectionManagerTest {
         when(mMockPeerProperties.toString()).thenReturn("mocked connection");
         when(mMockPeerProperties.getBluetoothMacAddress()).thenReturn("01:02:03:04:05:06 ");
         when(mMockBluetoothManager.getRemoteDevice(anyString())).thenReturn(mBluetoothDevice);
-        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(true);
+        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class),
+                isA(PeerProperties.class))).thenReturn(true);
         Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
         field.setAccessible(true);
         Field modifiersField = Field.class.getDeclaredField("modifiers");
@@ -234,39 +160,51 @@ public class ConnectionManagerTest {
         field.set(cm, mMockBluetoothConnector);
 
         //Bluetooth is not supported
-        when(mMockBluetoothManager.bind(isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(false);
+        when(mMockBluetoothManager.bind(
+                isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(false);
 
-        assertThat("should not start when failed to start bluetooth manager", cm.startListeningForIncomingConnections(), is(false));
-        assertThat("when Bluetooth is not supported", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
+        assertThat("should not start when failed to start bluetooth manager",
+                cm.startListeningForIncomingConnections(), is(false));
+        assertThat("when Bluetooth is not supported",
+                cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
 
         //Bluetooth is supported and disabled
-        when(mMockBluetoothManager.bind(isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(true);
+        when(mMockBluetoothManager.bind(
+                isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(true);
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
 
-        assertThat("should return false when Bluetooth is disabled", cm.startListeningForIncomingConnections(), is(false));
-        assertThat("when Bluetooth is disabled", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)));
+        assertThat("should return false when Bluetooth is disabled",
+                cm.startListeningForIncomingConnections(), is(false));
+        assertThat("when Bluetooth is disabled", cm.getState(),
+                is(equalTo(ConnectionManager.ConnectionManagerState
+                        .WAITING_FOR_SERVICES_TO_BE_ENABLED)));
 
         //Bluetooth is supported and enabled but failed to start bluetooth connector
-        when(mMockBluetoothManager.bind(isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(true);
+        when(mMockBluetoothManager.bind(
+                isA(BluetoothManager.BluetoothManagerListener.class))).thenReturn(true);
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
         when(mMockBluetoothConnector.startListeningForIncomingConnections()).thenReturn(false);
 
-        assertThat("should return false failed to start bluetooth connector", cm.startListeningForIncomingConnections(), is(false));
-        assertThat("when Bluetooth is disabled", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)));
-
-
+        assertThat("should return false failed to start bluetooth connector",
+                cm.startListeningForIncomingConnections(), is(false));
+        assertThat("when Bluetooth is disabled",
+                cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState
+                        .WAITING_FOR_SERVICES_TO_BE_ENABLED)));
 
         //Bluetooth is supported and enabled and started
-        when(mMockBluetoothConnector.startListeningForIncomingConnections()).thenAnswer(new Answer() {
-            public Object answer(InvocationOnMock invocation) {
-                //simulate onIsServerStartedChanged event
-                cm.onIsServerStartedChanged(true);
-                return true;
-            }
-        });
+        when(mMockBluetoothConnector.startListeningForIncomingConnections())
+                .thenAnswer(new Answer() {
+                    public Object answer(InvocationOnMock invocation) {
+                        //simulate onIsServerStartedChanged event
+                        cm.onIsServerStartedChanged(true);
+                        return true;
+                    }
+                });
 
-        assertThat("should return true if running", cm.startListeningForIncomingConnections(), is(true));
-        assertThat("should return proper state when running", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.RUNNING)));
+        assertThat("should return true if running",
+                cm.startListeningForIncomingConnections(), is(true));
+        assertThat("should return proper state when running",
+                cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.RUNNING)));
 
         verify(mMockBluetoothManager, atMost(4))
                 .bind(isA(BluetoothManager.BluetoothManagerListener.class));
@@ -274,8 +212,10 @@ public class ConnectionManagerTest {
         //Bluetooth is supported and enabled and already started
         when(mMockBluetoothConnector.startListeningForIncomingConnections()).thenReturn(true);
 
-        assertThat("should return true if running", cm.startListeningForIncomingConnections(), is(true));
-        assertThat("should return proper state when running", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.RUNNING)));
+        assertThat("should return true if running",
+                cm.startListeningForIncomingConnections(), is(true));
+        assertThat("should return proper state when running",
+                cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.RUNNING)));
 
         verify(mMockBluetoothManager, atMost(4))
                 .bind(isA(BluetoothManager.BluetoothManagerListener.class));
@@ -284,151 +224,78 @@ public class ConnectionManagerTest {
 
     @Test
     public void testStopListeningForIncomingConnections() throws Exception {
-        final ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
 
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
+        assertThat(connectionManager, is(notNullValue()));
 
-        assertThat(cm, is(notNullValue()));
-
-        cm.stopListeningForIncomingConnections();
+        connectionManager.stopListeningForIncomingConnections();
         verify(mMockBluetoothConnector, atLeastOnce())
                 .stopListeningForIncomingConnections();
         verify(mMockBluetoothManager, atLeastOnce())
                 .release(isA(BluetoothManager.BluetoothManagerListener.class));
 
         //checking if the state is changed manually when waiting for Bluetooth
-        Field stateField = cm.getClass().getDeclaredField("mState");
+        Field stateField = connectionManager.getClass().getDeclaredField("mState");
         stateField.setAccessible(true);
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        cm.stopListeningForIncomingConnections();
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState
+                .WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        connectionManager.stopListeningForIncomingConnections();
         verify(mMockBluetoothConnector, atLeastOnce())
                 .stopListeningForIncomingConnections();
         verify(mMockBluetoothManager, atLeastOnce())
                 .release(isA(BluetoothManager.BluetoothManagerListener.class));
-        assertThat("when waiting for Bluetooth the state is changed manually", cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
-
-
+        assertThat("when waiting for Bluetooth the state is changed manually",
+                connectionManager.getState(), is(equalTo(ConnectionManager.ConnectionManagerState
+                        .NOT_STARTED)));
     }
 
     @Test
     public void testConnect() throws Exception {
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        assertThat(cm, is(notNullValue()));
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-
-        field.set(cm, mMockBluetoothConnector);
-
         when(mMockBluetoothManager.getRemoteDevice(anyString())).thenReturn(mMockBluetoothDevice);
-        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(true);
+        when(mMockBluetoothConnector.connect(
+                isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(true);
+        assertThat("Returns true if connected",
+                connectionManager.connect(mMockPeerProperties), is(true));
+        when(mMockBluetoothConnector.connect(
+                isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(false);
+        assertThat("Returns false if cannot connect",
+                connectionManager.connect(mMockPeerProperties), is(false));
 
-        assertThat("Returns true if connected", cm.connect(mMockPeerProperties), is(true));
-
-        when(mMockBluetoothConnector.connect(isA(BluetoothDevice.class), isA(PeerProperties.class))).thenReturn(false);
-        assertThat("Returns false if cannot connect", cm.connect(mMockPeerProperties), is(false));
-
-        assertThat("Returns false if the peer to connect to is null", cm.connect(null), is(false));
-
+        assertThat("Returns false if the peer to connect to is null",
+                connectionManager.connect(null), is(false));
     }
 
     @Test
     public void testCancelConnectionAttempt() throws Exception {
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        assertThat(cm, is(notNullValue()));
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
-
-        when(mMockBluetoothConnector.cancelConnectionAttempt(isA(PeerProperties.class))).thenReturn(true);
-        assertThat("Returns true if cancelled successfully", cm.cancelConnectionAttempt(mMockPeerProperties), is(true));
-        when(mMockBluetoothConnector.cancelConnectionAttempt(isA(PeerProperties.class))).thenReturn(false);
-        assertThat("Returns false if cancel failed", cm.cancelConnectionAttempt(mMockPeerProperties), is(false));
-
+        when(mMockBluetoothConnector.cancelConnectionAttempt(
+                isA(PeerProperties.class))).thenReturn(true);
+        assertThat("Returns true if cancelled successfully",
+                connectionManager.cancelConnectionAttempt(mMockPeerProperties), is(true));
+        when(mMockBluetoothConnector.cancelConnectionAttempt(
+                isA(PeerProperties.class))).thenReturn(false);
+        assertThat("Returns false if cancel failed",
+                connectionManager.cancelConnectionAttempt(mMockPeerProperties), is(false));
     }
 
     @Test
     public void testCancelAllConnectionAttempts() throws Exception {
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        assertThat(cm, is(notNullValue()));
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
-
-        cm.cancelAllConnectionAttempts();
-
+        connectionManager.cancelAllConnectionAttempts();
         verify(mMockBluetoothConnector, atLeastOnce())
                 .cancelAllConnectionAttempts();
-
     }
-
-    @Test
-    public void testSetPeerName() throws Exception {
-
-    }
-
 
     @Test
     public void testDispose() throws Exception {
 
-        final ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
-
-        Field settingsField = cm.getClass().getDeclaredField("mSettings");
+        Field settingsField = connectionManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
-        settingsField.set(cm, mMockConnectionManagerSettings);
+        settingsField.set(connectionManager, mMockConnectionManagerSettings);
 
-        assertThat(cm, is(notNullValue()));
+        assertThat(connectionManager, is(notNullValue()));
 
-        cm.dispose();
+        connectionManager.dispose();
         verify(mMockBluetoothConnector, atLeastOnce())
                 .stopListeningForIncomingConnections();
         verify(mMockBluetoothManager, atLeastOnce())
@@ -437,36 +304,20 @@ public class ConnectionManagerTest {
                 .shutdown();
         verify(mMockConnectionManagerSettings, atLeastOnce())
                 .removeListener(isA(ConnectionManager.class));
-
     }
 
     @Test
     public void testOnConnectionManagerSettingsChanged() throws Exception {
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        assertThat(cm, is(notNullValue()));
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
-
-        Field settingsField = cm.getClass().getDeclaredField("mSettings");
+        Field settingsField = connectionManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
-        settingsField.set(cm, mMockConnectionManagerSettings);
+        settingsField.set(connectionManager, mMockConnectionManagerSettings);
 
         when(mMockConnectionManagerSettings.getConnectionTimeout()).thenReturn(100L);
         when(mMockConnectionManagerSettings.getInsecureRfcommSocketPortNumber()).thenReturn(1);
         when(mMockConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries()).thenReturn(10);
 
-        cm.onConnectionManagerSettingsChanged();
+        connectionManager.onConnectionManagerSettingsChanged();
         verify(mMockBluetoothConnector, atLeastOnce())
                 .setConnectionTimeout(100L);
 
@@ -475,7 +326,6 @@ public class ConnectionManagerTest {
 
         verify(mMockBluetoothConnector, atLeastOnce())
                 .setMaxNumberOfOutgoingConnectionAttemptRetries(10);
-
     }
 
     @Test
@@ -483,34 +333,19 @@ public class ConnectionManagerTest {
 
         // TODO: 02/04/16 check what is the parameter needed for
 
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
-
-        assertThat(cm, is(notNullValue()));
-
-        Field field = cm.getClass().getDeclaredField("mBluetoothConnector");
-        field.setAccessible(true);
-        Field modifiersField = Field.class.getDeclaredField("modifiers");
-        modifiersField.setAccessible(true);
-        modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
-        field.set(cm, mMockBluetoothConnector);
-
-        Field settingsField = cm.getClass().getDeclaredField("mSettings");
+        Field settingsField = connectionManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
-        settingsField.set(cm, mMockConnectionManagerSettings);
+        settingsField.set(connectionManager, mMockConnectionManagerSettings);
 
         when(mMockConnectionManagerSettings.getHandshakeRequired()).thenReturn(true);
 
-        cm.onHandshakeRequiredSettingChanged(true);
+        connectionManager.onHandshakeRequiredSettingChanged(true);
         verify(mMockBluetoothConnector, atLeastOnce())
                 .setHandshakeRequired(true);
 
         when(mMockConnectionManagerSettings.getHandshakeRequired()).thenReturn(false);
 
-        cm.onHandshakeRequiredSettingChanged(true);
+        connectionManager.onHandshakeRequiredSettingChanged(true);
         verify(mMockBluetoothConnector, atLeastOnce())
                 .setHandshakeRequired(false);
     }
@@ -518,75 +353,167 @@ public class ConnectionManagerTest {
     @Test
     public void testOnBluetoothAdapterScanModeChanged() throws Exception {
 
+        Field stateField = connectionManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // connection paused
+        int mode = BluetoothAdapter.SCAN_MODE_NONE;
+
+        // default state - not started
+        connectionManager.onBluetoothAdapterScanModeChanged(mode);
+        verify(mMockBluetoothConnector, times(1)).stopListeningForIncomingConnections();
+        assertThat(connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        // running
+        reset(mMockBluetoothConnector);
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.RUNNING);
+
+        connectionManager.onBluetoothAdapterScanModeChanged(mode);
+        // connection paused
+        verify(mMockBluetoothConnector, times(1)).stopListeningForIncomingConnections();
+        assertThat(connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        // waiting for bluetooth
+        reset(mMockBluetoothConnector);
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+
+        connectionManager.onBluetoothAdapterScanModeChanged(mode);
+        // connection paused
+        verify(mMockBluetoothConnector, never()).stopListeningForIncomingConnections();
+        assertThat(connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        // connection enabled
+        mode = BluetoothAdapter.SCAN_MODE_CONNECTABLE;
+        // state - not started
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.NOT_STARTED);
+
+        ConnectionManager connectionManagerSpy = spy(connectionManager);
+        connectionManagerSpy.onBluetoothAdapterScanModeChanged(mode);
+
+        verify(connectionManagerSpy, never()).startListeningForIncomingConnections();
+
+        // state - running, bt not enabled
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.RUNNING);
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
+        connectionManagerSpy = spy(connectionManager);
+        connectionManagerSpy.onBluetoothAdapterScanModeChanged(mode);
+
+        verify(connectionManagerSpy, never()).startListeningForIncomingConnections();
+
+        // state - running, bt enabled
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.RUNNING);
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        connectionManagerSpy = spy(connectionManager);
+        connectionManagerSpy.onBluetoothAdapterScanModeChanged(mode);
+
+        verify(connectionManagerSpy, never()).startListeningForIncomingConnections();
+
+
+        // state - waiting, bt disabled
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
+        connectionManagerSpy = spy(connectionManager);
+        connectionManagerSpy.onBluetoothAdapterScanModeChanged(mode);
+
+        verify(connectionManagerSpy, never()).startListeningForIncomingConnections();
+
+        // state - waiting, bt enabled
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        connectionManagerSpy = spy(connectionManager);
+        connectionManagerSpy.onBluetoothAdapterScanModeChanged(mode);
+
+        verify(connectionManagerSpy, times(1)).startListeningForIncomingConnections();
     }
 
     @Test
     public void testOnIsServerStartedChanged() throws Exception {
-        ConnectionManager cm = new ConnectionManager(
-                mMockContext,
-                mMockManagerListener,
-                new UUID(1,1), "testConnection", mMockBluetoothManager,
-                mMockSharedPreferences);
 
-        assertThat(cm, is(notNullValue()));
         //checking if the state is changed  when waiting for Bluetooth
-        Field stateField = cm.getClass().getDeclaredField("mState");
+        Field stateField = connectionManager.getClass().getDeclaredField("mState");
         stateField.setAccessible(true);
 
+        connectionManager.onIsServerStartedChanged(true);
+        assertThat(connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.RUNNING));
 
-        cm.onIsServerStartedChanged(true);
-        assertThat(cm.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
-
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        cm.onIsServerStartedChanged(true);
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        connectionManager.onIsServerStartedChanged(true);
         assertThat("state changed to running if waiting for Bluetooth to be enabled",
-                cm.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+                connectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
 
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.NOT_STARTED);
-        cm.onIsServerStartedChanged(true);
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.NOT_STARTED);
+        connectionManager.onIsServerStartedChanged(true);
         assertThat("state changed to started if not started",
-                cm.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+                connectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
 
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.RUNNING);
-        cm.onIsServerStartedChanged(true);
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.RUNNING);
+        connectionManager.onIsServerStartedChanged(true);
         assertThat("state remains running if running",
-                cm.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+                connectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
 
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        stateField.set(connectionManager,
+                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
 
-        cm.onIsServerStartedChanged(false);
-        assertThat("state not changed if waiting for Bluetooth to be enabled", cm.getState(),
+        connectionManager.onIsServerStartedChanged(false);
+        assertThat("state not changed if waiting for Bluetooth to be enabled", connectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
 
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.RUNNING);
-        cm.onIsServerStartedChanged(false);
-        assertThat("state changed if running", cm.getState(),
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.RUNNING);
+        connectionManager.onIsServerStartedChanged(false);
+        assertThat("state changed if running", connectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
 
-        stateField.set(cm, ConnectionManager.ConnectionManagerState.NOT_STARTED);
-        cm.onIsServerStartedChanged(false);
-        assertThat("state still not started if not started", cm.getState(),
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.NOT_STARTED);
+        connectionManager.onIsServerStartedChanged(false);
+        assertThat("state still not started if not started", connectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
-
-    }
-
-    @Test
-    public void testOnConnecting() throws Exception {
-
     }
 
     @Test
     public void testOnConnected() throws Exception {
+        Field handlerField = connectionManager.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(connectionManager, mHander);
 
+        connectionManager.onConnected(bluetoothSocket, true, mMockPeerProperties);
+
+        verify(mHander, atLeastOnce())
+                .post(isA(Runnable.class));
     }
 
     @Test
     public void testOnConnectionTimeout() throws Exception {
+        Field handlerField = connectionManager.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(connectionManager, mHander);
 
+        connectionManager.onConnectionTimeout(mMockPeerProperties);
+
+        verify(mHander, atLeastOnce())
+                .post(isA(Runnable.class));
     }
 
     @Test
     public void testOnConnectionFailed() throws Exception {
+        Field handlerField = connectionManager.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(connectionManager, mHander);
 
+        connectionManager.onConnectionFailed(mMockPeerProperties, "message");
+
+        verify(mHander, atLeastOnce())
+                .post(isA(Runnable.class));
     }
 }
