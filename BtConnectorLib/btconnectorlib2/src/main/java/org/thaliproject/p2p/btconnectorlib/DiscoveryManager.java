@@ -7,6 +7,7 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
@@ -171,20 +172,61 @@ public class DiscoveryManager
         mListener = listener;
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
-
+        
         mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
                 context, mBluetoothManager.getBluetoothAdapter(), this,
                 mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid));
 
-        mSettings = DiscoveryManagerSettings.getInstance(mContext);
+        setupManager(context, null);
+
+        mHandler = new Handler(mContext.getMainLooper());
+    }
+
+    /**
+     * Constructor.
+     * @param context The application context.
+     * @param listener The listener.
+     * @param bleServiceUuid Our BLE service UUID (both ours and requirement for the peer).
+     *                       Required by BLE based peer discovery only.
+     * @param serviceType The service type (both ours and requirement for the peer).
+     *                    Required by Wi-Fi Direct based peer discovery only.
+     * @param bluetoothManager The bluetooth manager
+     */
+    public DiscoveryManager(Context context, DiscoveryManagerListener listener, UUID bleServiceUuid,
+                            String serviceType, BluetoothManager bluetoothManager, SharedPreferences preferences) {
+        super(context, bluetoothManager); // Gets the BluetoothManager instance
+
+        mListener = listener;
+        mBleServiceUuid = bleServiceUuid;
+        mServiceType = serviceType;
+
+        mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
+                context, mBluetoothManager.getBluetoothAdapter(), this,
+                mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid),
+                preferences);
+
+
+        setupManager(context, preferences);
+
+        mHandler = new Handler(mContext.getMainLooper());
+    }
+
+    private void setupManager(Context context, SharedPreferences preferences) {
+
+        if (preferences == null) {
+            mSettings = DiscoveryManagerSettings.getInstance(context);
+
+        } else {
+            mSettings = DiscoveryManagerSettings.getInstance(context, preferences);
+        }
+
         mSettings.load();
         mSettings.addListener(this);
 
         mPeerModel = new PeerModel(this, mSettings);
-
-        mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
     }
+
 
     /**
      * @return True, if the multi advertisement is supported by the chipset. Note that if Bluetooth
