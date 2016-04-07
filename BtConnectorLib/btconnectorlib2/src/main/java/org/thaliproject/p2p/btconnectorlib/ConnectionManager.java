@@ -384,9 +384,9 @@ public class ConnectionManager
     @Override
     public void onConnectionTimeout(final PeerProperties peerProperties) {
         if (peerProperties != null) {
-            Log.w(TAG, "onConnectionTimeout: Connection attempt with peer " + peerProperties + " timed out");
+            Log.e(TAG, "onConnectionTimeout: Connection attempt with peer " + peerProperties + " timed out");
         } else {
-            Log.w(TAG, "onConnectionTimeout");
+            Log.e(TAG, "onConnectionTimeout");
         }
 
         if (mListener != null) {

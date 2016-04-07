@@ -43,6 +43,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Creates a new scan filter based on the given arguments.
+     *
      * @param serviceUuid The service UUID for the scan filter. Use null to not set.
      * @param useManufacturerId If true, will add the manufacturer ID to the filter properties.
      * @return A newly created scan filter or null in case of a failure.
@@ -76,6 +77,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Parses the given service data.
+     *
      * @param serviceData The service data. Expected contain a "0" byte followed by the six bytes
      *                    consisting of the Bluetooth MAC address.
      * @return A newly created ParsedAdvertisement instance, containing at least the Bluetooth MAC
@@ -104,7 +106,33 @@ class BlePeerDiscoveryUtils {
     }
 
     /**
+     * Checks if the given UUID starts with the given service UUID i.e. their beginnings match.
+     *
+     * @param uuidToCheck The UUID to check.
+     * @param serviceUuid The expected service UUID to compare against.
+     * @return True, if the beginnings match. False otherwise.
+     */
+    public static boolean uuidStartsWithExpectedServiceUuid(UUID uuidToCheck, UUID serviceUuid) {
+        boolean startsWithExpectedServiceUuid = false;
+
+        if (uuidToCheck != null && serviceUuid != null) {
+            if (serviceUuid.compareTo(uuidToCheck) == 0) {
+                // The UUID is a match
+                // No need to do anything
+                startsWithExpectedServiceUuid = true;
+            } else {
+                // Get the beginning of the parsed UUID, leave out the last seven bytes (11 chars)
+                String beginningOfUuidToCheck = uuidToCheck.toString().substring(0, 22);
+                startsWithExpectedServiceUuid = serviceUuid.toString().startsWith(beginningOfUuidToCheck);
+            }
+        }
+
+        return startsWithExpectedServiceUuid;
+    }
+
+    /**
      * Checks the given UUID for "Provide Bluetooth MAC address" request ID.
+     *
      * @param uuidToCheck The UUID to check.
      * @param serviceUuid The expected service UUID to compare against.
      * @return The request ID or null if not found.
@@ -136,9 +164,11 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Parses the given manufacturer data.
+     *
      * @param manufacturerData The manufacturer data.
      * @return A newly created ParsedAdvertisement instance containing at least the UUID given that
-     * the manufacturer data is valid. Note that other members of the instance can be null.
+     * the manufacturer data is valid. Note that other members of the instance can be null. Will
+     * return null if fails to parse the data.
      */
     public static ParsedAdvertisement parseManufacturerData(byte[] manufacturerData) {
         byte[] adLengthAndType = null;
@@ -174,9 +204,20 @@ class BlePeerDiscoveryUtils {
         ParsedAdvertisement parsedAdvertisement = null;
 
         if (bytesExtracted) {
-            parsedAdvertisement = new ParsedAdvertisement();
-            parsedAdvertisement.uuid = byteArrayToUuid(serviceUuidAsByteArray);
-            parsedAdvertisement.bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+            UUID serviceUuid = byteArrayToUuid(serviceUuidAsByteArray);
+            String bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
+
+            if (serviceUuid != null && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+                parsedAdvertisement = new ParsedAdvertisement();
+                parsedAdvertisement.uuid = serviceUuid;
+                parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+            } else {
+                if (serviceUuid == null) {
+                    Log.e(TAG, "parseManufacturerData: Failed to parse the service UUID");
+                } else {
+                    Log.e(TAG, "parseManufacturerData: The Bluetooth MAC address is invalid");
+                }
+            }
         }
 
         return parsedAdvertisement;
@@ -184,6 +225,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Parses the given manufacturer data.
+     *
      * @param manufacturerData The manufacturer data.
      * @param serviceUuid The expected service UUID.
      * @return A newly created ParsedAdvertisement instance or null in case of UUID mismatch.
@@ -193,8 +235,16 @@ class BlePeerDiscoveryUtils {
 
         if (serviceUuid != null) {
             parsedAdvertisement = parseManufacturerData(manufacturerData);
-            parsedAdvertisement.provideBluetoothMacAddressRequestId =
-                    checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
+
+            if (parsedAdvertisement != null) {
+                if (uuidStartsWithExpectedServiceUuid(parsedAdvertisement.uuid, serviceUuid)) {
+                    parsedAdvertisement.provideBluetoothMacAddressRequestId =
+                            checkIfUuidContainsProvideBluetoothMacAddressRequestId(parsedAdvertisement.uuid, serviceUuid);
+                } else {
+                    // The beginning of the UUID does not match the given service UUID
+                    parsedAdvertisement = null;
+                }
+            }
         }
 
         return parsedAdvertisement;
@@ -202,6 +252,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Converts the given UUID into a byte array.
+     *
      * @param uuid The UUID to convert.
      * @return A newly created byte array or null in case of a failure.
      */
@@ -226,6 +277,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Converts the given byte array, which is expected to contain the UUID, into a UUID instance.
+     *
      * @param byteArray The byte array containing the UUID.
      * @return A newly created UUID instance or null in case of a failure.
      */
@@ -243,6 +295,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Converts the given Bluetooth MAC address into a byte array.
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address to convert.
      * @return A newly created byte array containing the Bluetooth MAC address or null in case of a failure.
      */
@@ -277,6 +330,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Converts the given byte array, which should contain the Bluetooth MAC address, into a string.
+     *
      * @param byteArray The byte array containing the Bluetooth MAC address.
      * @return A newly created string containing the Bluetooth MAC address or null in case of a failure.
      */
@@ -378,6 +432,7 @@ class BlePeerDiscoveryUtils {
     /**
      * Checks if the two UUIDs match, if we leave out the request ID part from the end
      * (6 bytes, 12 characters).
+     *
      * @param uuid1 UUID 1.
      * @param uuid2 UUID 2.
      * @return True, if the UUIDs match. False otherwise.
@@ -399,6 +454,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Generates a random byte and returns it as a hexadecimal string.
+     *
      * @return A random byte as hexadecimal string.
      */
     public static String generatedRandomByteAsHexString() {
@@ -413,6 +469,7 @@ class BlePeerDiscoveryUtils {
     /**
      * Converts the given Bluetooth address into an integer array.
      * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     *
      * @param bluetoothAddress The Bluetooth address to convert.
      * @return An integer array containing the Bluetooth address.
      */
@@ -443,6 +500,7 @@ class BlePeerDiscoveryUtils {
     /**
      * Tries to parse a Bluetooth address from the given integer array.
      * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     *
      * @param bluetoothAddressAsInt8Array The integer array containing the Bluetooth address.
      * @return The parsed Bluetooth address.
      */

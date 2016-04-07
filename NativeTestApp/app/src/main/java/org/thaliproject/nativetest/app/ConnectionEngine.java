@@ -9,7 +9,6 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
@@ -38,10 +37,9 @@ public class ConnectionEngine implements
 
     // Service type and UUID has to be application/service specific.
     // The app will only connect to peers with the matching values.
-    public static final String PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
     protected static final String SERVICE_TYPE = "ThaliTestSampleApp._tcp";
-    protected static final String SERVICE_UUID_AS_STRING = "9ab3c173-66d5-4da6-9e23-e8ce520b479b";
-    protected static final String SERVICE_NAME = "Thali Test Sample App";
+    protected static final String SERVICE_UUID_AS_STRING = "b6a44ad1-d319-4b3a-815d-8b805a47fb51";
+    protected static final String SERVICE_NAME = "Thali_Bluetooth";
     protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
     protected static final long RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS = 10000;
@@ -69,10 +67,7 @@ public class ConnectionEngine implements
         mModel = PeerAndConnectionModel.getInstance();
 
         mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
-        mConnectionManager.setPeerName(PEER_NAME);
-
         mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
-        mDiscoveryManager.setPeerName(PEER_NAME);
     }
 
     /**

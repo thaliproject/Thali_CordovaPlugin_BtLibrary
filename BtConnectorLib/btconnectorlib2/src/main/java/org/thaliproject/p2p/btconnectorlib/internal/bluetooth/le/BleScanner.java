@@ -55,6 +55,7 @@ class BleScanner extends ScanCallback {
 
     /**
      * Constructor.
+     *
      * @param listener The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
@@ -94,6 +95,7 @@ class BleScanner extends ScanCallback {
 
     /**
      * Tries to start the BLE scanning.
+     *
      * @return True, if starting. False in case of an error.
      */
     public synchronized boolean start() {
@@ -117,6 +119,7 @@ class BleScanner extends ScanCallback {
 
     /**
      * Stops the scanning.
+     *
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
@@ -151,9 +154,10 @@ class BleScanner extends ScanCallback {
 
     /**
      * Adds the given scan filter to the list of filters. If the scanning is running, it is restarted.
+     *
      * @param scanFilter The scan filter to add.
      */
-    public void addFilter(ScanFilter scanFilter) {
+    public void addScanFilter(ScanFilter scanFilter) {
         if (scanFilter != null) {
             boolean wasStarted = (mState != State.NOT_STARTED);
 
@@ -171,6 +175,7 @@ class BleScanner extends ScanCallback {
 
     /**
      * Sets the scan settings. If not set explicitly, default settings will be used.
+     *
      * @param scanSettings The new scan settings.
      */
     public void setScanSettings(ScanSettings scanSettings) {
@@ -263,6 +268,7 @@ class BleScanner extends ScanCallback {
 
     /**
      * Sets the state and notifies listener if required.
+     *
      * @param state The new state.
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */

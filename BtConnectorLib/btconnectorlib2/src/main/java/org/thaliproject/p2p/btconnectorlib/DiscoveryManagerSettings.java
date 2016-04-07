@@ -11,6 +11,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer.AdvertisementDataType;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -20,6 +21,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public interface Listener {
         /**
          * Called when the desired discovery mode is changed.
+         *
          * @param discoveryMode The new discovery mode.
          * @param startIfNotRunning If true, will start even if the discovery wasn't running.
          */
@@ -27,12 +29,21 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
         /**
          * Called when the peer expiration time is changed.
+         *
          * @param peerExpirationInMilliseconds The new peer expiration time in milliseconds.
          */
         void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
 
         /**
+         * Called when the advertisement data type is changed.
+         *
+         * @param advertisementDataType The new advertisement data type.
+         */
+        void onAdvertisementDataTypeChanged(AdvertisementDataType advertisementDataType);
+
+        /**
          * Called when the advertise settings are changed.
+         *
          * @param advertiseMode The new advertise mode.
          * @param advertiseTxPowerLevel The new advertise TX power level.
          */
@@ -40,6 +51,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
         /**
          * Called when either the scan mode or the scan report delay is changed.
+         *
          * @param scanMode The new scan mode.
          * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
          */
@@ -52,6 +64,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
+    public static final AdvertisementDataType DEFAULT_ADVERTISEMENT_DATA_TYPE = AdvertisementDataType.DO_NOT_CARE;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
     public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
@@ -64,6 +77,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";
     private static final String KEY_DISCOVERY_MODE = "discovery_mode";
     private static final String KEY_PEER_EXPIRATION = "peer_expiration";
+    private static final String KEY_ADVERTISEMENT_DATA_TYPE = "advertisement_data_type";
     private static final String KEY_ADVERTISE_MODE = "advertise_mode";
     private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
     private static final String KEY_SCAN_MODE = "scan_mode";
@@ -74,6 +88,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final int DISCOVERY_MODE_WIFI = 1;
     private static final int DISCOVERY_MODE_BLE_AND_WIFI = 2;
 
+    private static final int ADVERTISEMENT_DATA_TYPE_SERVICE = 0;
+    private static final int ADVERTISEMENT_DATA_TYPE_MANUFACTURER = 1;
+    private static final int ADVERTISEMENT_DATA_DO_NOT_CARE = 2;
+
     private static final String TAG = DiscoveryManagerSettings.class.getName();
 
     private static DiscoveryManagerSettings mInstance = null;
@@ -82,6 +100,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
+    private AdvertisementDataType mAdvertisementDataType = DEFAULT_ADVERTISEMENT_DATA_TYPE;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
     private int mScanMode = DEFAULT_SCAN_MODE;
@@ -89,8 +108,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private long mProvideBluetoothMacAddressTimeoutInMilliseconds = DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS;
 
     /**
-     * @return The singleton instance of this class.
      * @param context The application context for the shared preferences.
+     * @return The singleton instance of this class.
      */
     public static DiscoveryManagerSettings getInstance(Context context) {
         if (mInstance == null) {
@@ -151,6 +170,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Removes the given listener from the list.
+     *
      * @param discoveryManager The listener to remove.
      */
     /* Package */ void removeListener(DiscoveryManager discoveryManager) {
@@ -174,6 +194,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Enables/disables Bluetooth MAC address automation.
+     *
      * @param automate If true, Bluetooth MAC address resolution should be automated.
      */
     public void setAutomateBluetoothMacAddressResolution(boolean automate) {
@@ -195,6 +216,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the maximum duration of "Provide Bluetooth MAC address" in milliseconds.
+     *
      * @param provideBluetoothMacAddressTimeoutInMilliseconds The maximum duration of "Provide Bluetooth MAC address" in milliseconds.
      */
     public void setProvideBluetoothMacAddressTimeout(long provideBluetoothMacAddressTimeoutInMilliseconds) {
@@ -219,6 +241,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Stores the unique Bluetooth MAC address of this device.
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address.
      */
     public void setBluetoothMacAddress(String bluetoothMacAddress) {
@@ -251,6 +274,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the discovery mode.
+     *
      * @param discoveryMode The discovery mode to set.
      * @param startIfNotRunning If true, will start the discovery manager even if it wasn't running.
      * @return True, if the given mode is supported and set or was already set. False otherwise
@@ -335,6 +359,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Sets the discovery mode. Note that this method will fail, if the discovery is currently
      * running.
+     *
      * @param discoveryMode The discovery mode to set.
      * @return True, if the mode was set. False otherwise (likely because not supported).
      */
@@ -352,6 +377,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Sets the peer expiration time. If the given value is zero or less, peers will not expire.
      * Note that the new value is only applied to the peers we discover after setting it.
+     *
      * @param peerExpirationInMilliseconds The peer expiration time in milliseconds.
      */
     public void setPeerExpiration(long peerExpirationInMilliseconds) {
@@ -370,6 +396,32 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     /**
+     * @return The advertisement data type.
+     */
+    public AdvertisementDataType getAdvertisementDataType() {
+        return mAdvertisementDataType;
+    }
+
+    /**
+     * Sets the advertisement data type.
+     *
+     * @param advertisementDataType The advertisement data type to set.
+     */
+    public void setAdvertisementDataType(AdvertisementDataType advertisementDataType) {
+        if (mAdvertisementDataType != advertisementDataType) {
+            mAdvertisementDataType = advertisementDataType;
+            mSharedPreferencesEditor.putInt(KEY_ADVERTISEMENT_DATA_TYPE, advertisementDataTypeToInt(mAdvertisementDataType));
+            mSharedPreferencesEditor.apply();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertisementDataTypeChanged(mAdvertisementDataType);
+                }
+            }
+        }
+    }
+
+    /**
      * @return The Bluetooth LE advertise model.
      */
     public int getAdvertiseMode() {
@@ -378,6 +430,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the Bluetooth LE advertise mode.
+     *
      * @param advertiseMode The advertise mode to set.
      */
     public void setAdvertiseMode(int advertiseMode) {
@@ -408,6 +461,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the Bluetooth LE advertise TX power level.
+     *
      * @param advertiseTxPowerLevel The power level to set.
      */
     public void setAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
@@ -438,6 +492,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the Bluetooth LE scan mode.
+     *
      * @param scanMode The scan mode to set.
      */
     public void setScanMode(int scanMode) {
@@ -468,6 +523,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Sets the scan report delay.
+     *
      * @param scanReportDelayInMilliseconds The scan report delay in milliseconds.
      */
     public void setScanReportDelay(long scanReportDelayInMilliseconds) {
@@ -499,6 +555,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
             mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
                     KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+            int advertisementDataTypeAsInt = mSharedPreferences.getInt(
+                    KEY_ADVERTISEMENT_DATA_TYPE, advertisementDataTypeToInt(DEFAULT_ADVERTISEMENT_DATA_TYPE));
+            mAdvertisementDataType = intToAdvertisementDataType(advertisementDataTypeAsInt);
             mAdvertiseMode = mSharedPreferences.getInt(KEY_ADVERTISE_MODE, DEFAULT_ADVERTISE_MODE);
             mAdvertiseTxPowerLevel = mSharedPreferences.getInt(
                     KEY_ADVERTISE_TX_POWER_LEVEL, DEFAULT_ADVERTISE_TX_POWER_LEVEL);
@@ -512,6 +571,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                     + "\n    - Bluetooth MAC address: " + mBluetoothMacAddress
                     + "\n    - Discovery mode: " + mDiscoveryMode
                     + "\n    - Peer expiration time in milliseconds: " + mPeerExpirationInMilliseconds
+                    + "\n    - Advertisement data type: " + mAdvertisementDataType
                     + "\n    - Advertise mode: " + mAdvertiseMode
                     + "\n    - Advertise TX power level: " + mAdvertiseTxPowerLevel
                     + "\n    - Scan mode: " + mScanMode
@@ -537,6 +597,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Converts the given discovery mode to integer.
+     *
      * @param discoveryMode The discovery mode to convert.
      * @return The discovery mode as integer.
      */
@@ -555,6 +616,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Converts the given integer to DiscoveryMode.
+     *
      * @param discoveryModeAsInt The discovery mode as integer.
      * @return The discovery mode.
      */
@@ -572,7 +634,46 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     /**
+     * Converts the given advertisement data type to integer.
+     *
+     * @param advertisementDataType The advertisement data type.
+     * @return The advertisement data type as integer.
+     */
+    private int advertisementDataTypeToInt(AdvertisementDataType advertisementDataType) {
+        switch (advertisementDataType) {
+            case SERVICE_DATA: return ADVERTISEMENT_DATA_TYPE_SERVICE;
+            case MANUFACTURER_DATA: return ADVERTISEMENT_DATA_TYPE_MANUFACTURER;
+            case DO_NOT_CARE: return ADVERTISEMENT_DATA_DO_NOT_CARE;
+            default:
+                Log.e(TAG, "advertisementDataTypeToInt: Unrecognized advertisement type: " + advertisementDataType);
+                break;
+        }
+
+        return ADVERTISEMENT_DATA_TYPE_SERVICE;
+    }
+
+    /**
+     * Converts the given integer to AdvertisementDataTpe.
+     *
+     * @param advertisementDataTypeAsInt The advertisement data type as integer.
+     * @return The advertisement data type.
+     */
+    private AdvertisementDataType intToAdvertisementDataType(int advertisementDataTypeAsInt) {
+        switch (advertisementDataTypeAsInt) {
+            case ADVERTISEMENT_DATA_TYPE_SERVICE: return AdvertisementDataType.SERVICE_DATA;
+            case ADVERTISEMENT_DATA_TYPE_MANUFACTURER: return AdvertisementDataType.MANUFACTURER_DATA;
+            case ADVERTISEMENT_DATA_DO_NOT_CARE: return AdvertisementDataType.DO_NOT_CARE;
+            default:
+                Log.e(TAG, "intToAdvertisementDataType: Invalid argument: " + advertisementDataTypeAsInt);
+                break;
+        }
+
+        return AdvertisementDataType.SERVICE_DATA;
+    }
+
+    /**
      * Checks the validity of the given advertise mode.
+     *
      * @param advertiseMode The advertise mode to check.
      * @return True, if valid. False otherwise.
      */
@@ -587,6 +688,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
     /**
      * Checks the validity of the given power level.
+     *
      * @param advertiseTxPowerLevel The power level value to check.
      * @return True, if valid. False otherwise.
      */
@@ -603,6 +705,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
     /**
      * Checks the validity of the given scan mode.
+     *
      * @param scanMode The scan mode to check.
      * @return True, if valid. False otherwise.
      */
