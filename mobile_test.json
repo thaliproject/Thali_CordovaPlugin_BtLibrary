@@ -1,7 +1,7 @@
 {
   "build": "./build.sh",
   "binary_path": {
-    "android": "androidTest-unaligned.apk"
+    "android": "btconnectorlib2-release-androidTest-unsigned.apk"
   },
   "target": "android",
   "priority": "normal",
