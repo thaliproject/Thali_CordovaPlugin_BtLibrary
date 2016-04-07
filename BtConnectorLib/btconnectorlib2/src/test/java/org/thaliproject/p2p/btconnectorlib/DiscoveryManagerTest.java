@@ -947,6 +947,25 @@ public class DiscoveryManagerTest {
 
     @Test
     public void testDispose() throws Exception {
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_WIFI);
+
+        discoveryManager.dispose();
+
+        verify(mMockDiscoveryManagerSettings, atLeastOnce())
+                .removeListener(isA(DiscoveryManager.class));
+
+        assertThat("Should be NOT_STARTED when disposed ",
+                discoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
 
     }
 
