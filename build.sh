@@ -26,23 +26,6 @@ ERROR_ABORT() {
 }
 ### END - JXcore Test Server   --------
 
-# The build has sometimes failed with the default value of maximum open
-# files per process, which is 256. Doubling it here to 512 to workaround
-# that issue.
-ulimit -n 512;ERROR_ABORT
-
-PROJECT_ROOT=$(pwd)
-
-# A hack to workaround an issue where the install scripts assume that the
-# folder of the Thali Cordova BT Library plugin is called exactly Thali_CordovaPlugin_BtLibrary,
-# but this isn't always the case in the CI.
-THALI_BT_DIRECTORY="../Thali_CordovaPlugin_BtLibrary"
-if [ ! -d "$THALI_BT_DIRECTORY" ]
-then
-  cp -R . $THALI_BT_DIRECTORY;ERROR_ABORT
-  cd $THALI_BT_DIRECTORY;ERROR_ABORT
-fi
-
 RUN_IN_CI=$?
 
 cd BtConnectorLib
@@ -56,7 +39,7 @@ cd BtConnectorLib
 ./gradlew testRelease
 
 # Back to root
-cd $PROJECT_ROOT;ERROR_ABORT
+cd ..;ERROR_ABORT
 
 if [ $RUN_IN_CI == 0 ]
 then
