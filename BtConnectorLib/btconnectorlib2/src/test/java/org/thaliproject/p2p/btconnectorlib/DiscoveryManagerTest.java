@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
 
 import org.junit.Before;
@@ -39,6 +40,7 @@ import static org.mockito.Matchers.isA;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -168,7 +170,6 @@ public class DiscoveryManagerTest {
 
         assertThat("should be true if SUPPORTED",
                 discoveryManager.isBleMultipleAdvertisementSupported(), is(true));
-
 
     }
 
@@ -904,7 +905,8 @@ public class DiscoveryManagerTest {
     public void testStop() throws Exception {
 
         // mock mWifiDirectManager
-        Field wifiDirectManagerField = discoveryManager.getClass().getDeclaredField("mWifiDirectManager");
+        Field wifiDirectManagerField = discoveryManager.getClass()
+                .getDeclaredField("mWifiDirectManager");
         wifiDirectManagerField.setAccessible(true);
         wifiDirectManagerField.set(discoveryManager, mMockWifiDirectManager);
 
@@ -970,102 +972,78 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void testGetBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() throws Exception {
+    public void testOnWifiStateChanged_NonWifiMode() throws Exception {
 
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_BLE);
+
+        when(mMockDiscoveryManagerSettings.getDiscoveryMode())
+                .thenReturn(DiscoveryManager.DiscoveryMode.BLE);
+
+        discoveryManager.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+
+        assertThat("The state should not change ",
+                discoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
     }
 
     @Test
-    public void testOnDiscoveryModeChanged() throws Exception {
+    public void testOnWifiStateChanged_WifiMode() throws Exception {
+
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_BLE);
+
+        when(mMockDiscoveryManagerSettings.getDiscoveryMode())
+                .thenReturn(DiscoveryManager.DiscoveryMode.WIFI);
+
+
+        // mock mShouldBeAdvertising
+        Field mShouldBeAdvertisingField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeAdvertising");
+        mShouldBeAdvertisingField.setAccessible(true);
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, false);
+
+        // mock ShouldBeScanning
+        Field mShouldBeScanningField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeScanning");
+        mShouldBeScanningField.setAccessible(true);
+        mShouldBeScanningField.setBoolean(discoveryManager, false);
+
+
+        DiscoveryManager discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, true);
+        mShouldBeScanningField.setBoolean(discoveryManager, true);
+        discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+
+        verify(discoveryManagerSpy, atLeastOnce())
+                .start(anyBoolean(), anyBoolean());
+
+        // @TODO add missing cases
 
     }
 
-    @Test
-    public void testOnPeerExpirationSettingChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnAdvertiseSettingsChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnScanSettingsChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnBluetoothAdapterScanModeChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnWifiStateChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnWifiPeerDiscovererStateChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnBlePeerDiscovererStateChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnPeerDiscovered() throws Exception {
-
-    }
-
-    @Test
-    public void testOnP2pDeviceListChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnProvideBluetoothMacAddressRequest() throws Exception {
-
-    }
-
-    @Test
-    public void testOnPeerReadyToProvideBluetoothMacAddress() throws Exception {
-
-    }
-
-    @Test
-    public void testOnProvideBluetoothMacAddressResult() throws Exception {
-
-    }
-
-    @Test
-    public void testOnBluetoothMacAddressResolved() throws Exception {
-
-    }
-
-    @Test
-    public void testOnProvideBluetoothMacAddressModeStartedChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnReceiveBluetoothMacAddressModeStartedChanged() throws Exception {
-
-    }
-
-    @Test
-    public void testOnPeerAdded() throws Exception {
-
-    }
-
-    @Test
-    public void testOnPeerUpdated() throws Exception {
-
-    }
-
-    @Test
-    public void testOnPeerExpiredAndRemoved() throws Exception {
-
-    }
 }
