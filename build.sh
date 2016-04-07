@@ -63,5 +63,5 @@ then
   # A hack workround due to the fact that CI server doesn't allow relative paths outside
   # of the original parent folder as a path to the build output binaries.
   rm -rf btconnectorlib2-release-androidTest-unsigned.apk;ERROR_ABORT
-  cp -R ../Thali_CordovaPlugin_BtLibrary/BtConnectorLib/btconnectorlib2/build/outputs/apk/btconnectorlib2-release-androidTest-unsigned.apk btconnectorlib2-release-androidTest-unsigned.apk;ERROR_ABORT
+  cp -R BtConnectorLib/btconnectorlib2/build/outputs/apk/btconnectorlib2-release-androidTest-unsigned.apk btconnectorlib2-release-androidTest-unsigned.apk;ERROR_ABORT
 fi
