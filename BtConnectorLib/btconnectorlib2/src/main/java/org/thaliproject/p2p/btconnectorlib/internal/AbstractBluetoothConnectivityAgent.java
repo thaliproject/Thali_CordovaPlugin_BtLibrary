@@ -4,6 +4,8 @@
 package org.thaliproject.p2p.btconnectorlib.internal;
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -33,12 +35,22 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      * @param context The application context.
      */
     public AbstractBluetoothConnectivityAgent(Context context) {
+        this(context, BluetoothManager.getInstance(context));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param context The application context.
+     * @param bluetoothManager The bluetooth manager.
+     */
+    public AbstractBluetoothConnectivityAgent(Context context, BluetoothManager bluetoothManager) {
         if (context == null) {
             throw new NullPointerException("Context is null");
         }
 
         mContext = context;
-        mBluetoothManager = BluetoothManager.getInstance(mContext);
+        mBluetoothManager = bluetoothManager;
     }
 
     /**
@@ -95,9 +107,25 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      * @return The Bluetooth MAC address or null, if not available.
      */
     public String getBluetoothMacAddress() {
-        String bluetoothMacAddress = mEmulateMarshmallow ? null : mBluetoothManager.getBluetoothMacAddress();
         DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
 
+        return verifyBluetoothMacAddress(settings);
+    }
+
+    /**
+     * @param preferences The shared preferences.
+     * @return The Bluetooth MAC address or null, if not available.
+     */
+    public String getBluetoothMacAddress(SharedPreferences preferences) {
+
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext, preferences);
+
+        return verifyBluetoothMacAddress(settings);
+    }
+
+    @Nullable
+    private String verifyBluetoothMacAddress(DiscoveryManagerSettings settings) {
+        String bluetoothMacAddress = mEmulateMarshmallow ? null : mBluetoothManager.getBluetoothMacAddress();
         if (settings != null) {
             if (bluetoothMacAddress == null) {
                 bluetoothMacAddress = settings.getBluetoothMacAddress();
@@ -112,7 +140,6 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         if (!BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
             bluetoothMacAddress = null;
         }
-
         return bluetoothMacAddress;
     }
 
@@ -155,6 +182,23 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected boolean verifyIdentityString() {
         String bluetoothMacAddress = getBluetoothMacAddress();
 
+        return verifyIdentityStringImp(bluetoothMacAddress);
+    }
+
+    /**
+     * Verifies the validity of our identity string. If not yet created, will try to create it.
+     * If the identity string already exists, it won't be recreated.
+     *
+     * @param preferences The shared preferences.
+     * @return True, if the identity string is OK (i.e. not empty). False otherwise.
+     */
+    protected boolean verifyIdentityString(SharedPreferences preferences) {
+        String bluetoothMacAddress = getBluetoothMacAddress(preferences);
+
+        return verifyIdentityStringImp(bluetoothMacAddress);
+    }
+
+    private boolean verifyIdentityStringImp(String bluetoothMacAddress) {
         if (!CommonUtils.isNonEmptyString(mMyIdentityString)) {
             if (CommonUtils.isNonEmptyString(mMyPeerName)
                     && !mMyPeerName.equals(PeerProperties.NO_PEER_NAME_STRING)
