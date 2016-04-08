@@ -1175,4 +1175,216 @@ public class DiscoveryManagerTest {
 
     }
 
+   @Test
+    public void testOnBluetoothAdapterScanModeChanged_NonBLEMode() throws Exception {
+
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_WIFI);
+
+        when(mMockDiscoveryManagerSettings.getDiscoveryMode())
+                .thenReturn(DiscoveryManager.DiscoveryMode.WIFI);
+
+        discoveryManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.STATE_CONNECTED);
+
+        assertThat("The state should not change ",
+                discoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+    }
+
+    @Test
+    public void testOnBluetoothAdapterScanModeChanged_BLEMode() throws Exception {
+
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .WAITING_FOR_SERVICES_TO_BE_ENABLED);
+
+        when(mMockDiscoveryManagerSettings.getDiscoveryMode())
+                .thenReturn(DiscoveryManager.DiscoveryMode.BLE);
+
+
+        // mock mShouldBeAdvertising
+        Field mShouldBeAdvertisingField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeAdvertising");
+        mShouldBeAdvertisingField.setAccessible(true);
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, false);
+
+        // mock ShouldBeScanning
+        Field mShouldBeScanningField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeScanning");
+        mShouldBeScanningField.setAccessible(true);
+        mShouldBeScanningField.setBoolean(discoveryManager, false);
+
+
+        DiscoveryManager discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.STATE_CONNECTED);
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, true);
+        mShouldBeScanningField.setBoolean(discoveryManager, true);
+        discoveryManagerSpy = spy(discoveryManager);
+
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.STATE_CONNECTED);
+
+        verify(discoveryManagerSpy, atLeastOnce())
+                .start(anyBoolean(), anyBoolean());
+
+        reset(discoveryManagerSpy);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+
+        // WifiPeerDiscoverer not null
+        Field mBlePeerDiscovererField = discoveryManager.getClass()
+                .getDeclaredField("mBlePeerDiscoverer");
+        mBlePeerDiscovererField.setAccessible(true);
+        mBlePeerDiscovererField.set(discoveryManager, mMockBlePeerDiscoverer);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_WIFI);
+
+        discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
+
+        verify(mMockBlePeerDiscoverer, atLeastOnce()).stopScannerAndAdvertiser();
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+        assertThat("The state should change when BT state changed",
+                discoveryManagerSpy.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+    }
+
+    @Test
+    public void testOnBluetoothAdapterScanModeChanged__BLE_AND_WIFIMode() throws Exception {
+
+        Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+        settingsField.setAccessible(true);
+        settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .WAITING_FOR_SERVICES_TO_BE_ENABLED);
+
+        when(mMockDiscoveryManagerSettings.getDiscoveryMode())
+                .thenReturn(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+
+
+        // mock mShouldBeAdvertising
+        Field mShouldBeAdvertisingField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeAdvertising");
+        mShouldBeAdvertisingField.setAccessible(true);
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, false);
+
+        // mock ShouldBeScanning
+        Field mShouldBeScanningField = discoveryManager.getClass()
+                .getDeclaredField("mShouldBeScanning");
+        mShouldBeScanningField.setAccessible(true);
+        mShouldBeScanningField.setBoolean(discoveryManager, false);
+
+
+        DiscoveryManager discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.STATE_CONNECTED);
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+        mShouldBeAdvertisingField.setBoolean(discoveryManager, true);
+        mShouldBeScanningField.setBoolean(discoveryManager, true);
+        discoveryManagerSpy = spy(discoveryManager);
+
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.STATE_CONNECTED);
+
+        verify(discoveryManagerSpy, atLeastOnce())
+                .start(anyBoolean(), anyBoolean());
+
+        reset(discoveryManagerSpy);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+
+        // WifiPeerDiscoverer not null
+        Field mBlePeerDiscovererField = discoveryManager.getClass()
+                .getDeclaredField("mBlePeerDiscoverer");
+        mBlePeerDiscovererField.setAccessible(true);
+        mBlePeerDiscovererField.set(discoveryManager, mMockBlePeerDiscoverer);
+
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .RUNNING_WIFI);
+
+        discoveryManagerSpy = spy(discoveryManager);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
+
+        verify(mMockBlePeerDiscoverer, atLeastOnce()).stopScannerAndAdvertiser();
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+
+        assertThat("The state should change when BT state changed",
+                discoveryManagerSpy.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        // mock WifiDirectManager
+        Field mWifiDirectManagerField = discoveryManager.getClass()
+                .getDeclaredField("mWifiDirectManager");
+        mWifiDirectManagerField.setAccessible(true);
+        mWifiDirectManagerField.set(discoveryManager, mMockWifiDirectManager);
+
+        // and WiFi Enabled
+        discoveryManagerSpy = spy(discoveryManager);
+
+        doReturn(true).when(discoveryManagerSpy)
+                .isRunning();
+
+        when(mMockWifiDirectManager.isWifiEnabled()).thenReturn(true);
+
+        discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
+
+        verify(mMockBlePeerDiscoverer, atLeastOnce()).stopScannerAndAdvertiser();
+
+        verify(discoveryManagerSpy, never())
+                .start(anyBoolean(), anyBoolean());
+        assertThat("The state should change when BT state changed",
+                discoveryManagerSpy.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+
+    }
+
 }
