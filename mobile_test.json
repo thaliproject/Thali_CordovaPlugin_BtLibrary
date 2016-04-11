@@ -8,6 +8,5 @@
   "csname": {
     "android": "org.thaliproject.p2p.btconnectorlib.test"
   },
-  "junitTestRunner": "android.support.test.runner.AndroidJUnitRunner",
-  "timeout": 600
+  "instrumentationTestRunner": "android.support.test.runner.AndroidJUnitRunner"
 }
