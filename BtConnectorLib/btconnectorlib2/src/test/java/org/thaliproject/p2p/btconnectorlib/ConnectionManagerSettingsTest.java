@@ -283,7 +283,7 @@ public class ConnectionManagerSettingsTest {
     @Test
     public void testHandshakeRequired() throws Exception {
         // default value
-        assertThat("The edefault value of require a handshake protocol is set",
+        assertThat("The default value of require a handshake protocol is set",
                 mConnectionManagerSettings.getHandshakeRequired(),
                 is(ConnectionManagerSettings.DEFAULT_HANDSHAKE_REQUIRED));
 

@@ -61,11 +61,13 @@ public class DiscoveryManagerSettingsTest {
         when(mMockSharedPreferences.edit()).thenReturn(new SharedPreferences.Editor() {
             @Override
             public SharedPreferences.Editor putString(String key, String value) {
+                mSharedPreferencesMap.put(key, value);
                 return null;
             }
 
             @Override
             public SharedPreferences.Editor putStringSet(String key, Set<String> values) {
+                mSharedPreferencesMap.put(key, values);
                 return null;
             }
 
@@ -208,44 +210,82 @@ public class DiscoveryManagerSettingsTest {
     @Test
     public void testAutomateBluetoothMacAddressResolution() throws Exception {
 
-        DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(mMockContext,
-                mMockSharedPreferences);
-
         assertThat("The default value is set properly",
-                dmSettings.getAutomateBluetoothMacAddressResolution(),
+                mDiscoveryManagerSettings.getAutomateBluetoothMacAddressResolution(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION)));
 
-        dmSettings.setAutomateBluetoothMacAddressResolution(false);
+        mDiscoveryManagerSettings.setAutomateBluetoothMacAddressResolution(false);
 
         assertThat("The value of the AutomateBluetoothMacAddressResolution is updated",
-                dmSettings.getAutomateBluetoothMacAddressResolution(), is(equalTo(false)));
+                mDiscoveryManagerSettings.getAutomateBluetoothMacAddressResolution(), is(equalTo(false)));
         assertThat((Boolean) mSharedPreferencesMap.get("automate_bluetooth_mac_address_resolution"), is(equalTo(false)));
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
     }
 
     @Test
-    public void testGetProvideBluetoothMacAddressTimeout() throws Exception {
+    public void testProvideBluetoothMacAddressTimeout() throws Exception {
+
+
+        assertThat("Default provide BT MAC address timeout is properly set",
+                mDiscoveryManagerSettings.getProvideBluetoothMacAddressTimeout(),
+                is(equalTo(DiscoveryManagerSettings.DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS)));
+        mDiscoveryManagerSettings.setProvideBluetoothMacAddressTimeout(100L);
+        assertThat(mDiscoveryManagerSettings.getProvideBluetoothMacAddressTimeout(), is(equalTo(100L)));
+        assertThat((Long) mSharedPreferencesMap.get("provide_bluetooth_mac_address_timeout"), is(equalTo(100L)));
+        assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
+        mDiscoveryManagerSettings.setProvideBluetoothMacAddressTimeout(100L);
+        assertThat("The timeout should not change",
+                mDiscoveryManagerSettings.getProvideBluetoothMacAddressTimeout(), is(equalTo(100L)));
+        assertThat("Apply count should not be incremented", applyCnt, is(equalTo(1)));
 
     }
 
     @Test
-    public void testSetProvideBluetoothMacAddressTimeout() throws Exception {
+    public void testBluetoothMacAddress() throws Exception {
+        String btAddr = "01:02:03:04:05:06";
+        String btAddr2 = "01:02:03:04:05:07";
+        String wrongAddr = "00:01:02:03:04";
 
-    }
+        assertThat("Default BT MAC address is properly set",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(),
+                is(equalTo(null)));
 
-    @Test
-    public void testGetBluetoothMacAddress() throws Exception {
+        // set wrong value
+        mDiscoveryManagerSettings.setBluetoothMacAddress(wrongAddr);
+        assertThat("The address is not updated with wrong value",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(), is(equalTo(null)));
+        assertThat(mSharedPreferencesMap.get("bluetooth_mac_address"), is(equalTo(null)));
+        assertThat("Apply count should be not be incremented", applyCnt, is(equalTo(0)));
 
-    }
+        // set proper value
+        mDiscoveryManagerSettings.setBluetoothMacAddress(btAddr);
+        assertThat("The address is updated with proper value",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(), is(equalTo(btAddr)));
+        assertThat((String) mSharedPreferencesMap.get("bluetooth_mac_address"), is(equalTo(btAddr)));
+        assertThat("Apply count should be incremented", applyCnt, is(equalTo(1)));
 
-    @Test
-    public void testSetBluetoothMacAddress() throws Exception {
+        // repeat the same value
+        mDiscoveryManagerSettings.setBluetoothMacAddress(btAddr);
+        assertThat("The address is not updated with the same value",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(), is(equalTo(btAddr)));
+        assertThat((String) mSharedPreferencesMap.get("bluetooth_mac_address"), is(equalTo(btAddr)));
+        assertThat("Apply count should not be incremented", applyCnt, is(equalTo(1)));
 
-    }
+        // set proper value
+        mDiscoveryManagerSettings.setBluetoothMacAddress(btAddr2);
+        assertThat("The address is updated with proper value",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(), is(equalTo(btAddr2)));
+        assertThat((String) mSharedPreferencesMap.get("bluetooth_mac_address"), is(equalTo(btAddr2)));
+        assertThat("Apply count should be incremented", applyCnt, is(equalTo(2)));
 
-    @Test
-    public void testClearBluetoothMacAddress() throws Exception {
+
+        mDiscoveryManagerSettings.clearBluetoothMacAddress();
+        assertThat("The address is properly cleared",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(), is(equalTo(null)));
+        assertThat(mSharedPreferencesMap.get("bluetooth_mac_address"), is(equalTo(null)));
+        assertThat("Apply count should be incremented", applyCnt, is(equalTo(3)));
+
 
     }
 
