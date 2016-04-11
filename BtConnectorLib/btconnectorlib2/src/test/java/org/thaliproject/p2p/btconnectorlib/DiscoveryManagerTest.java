@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Matchers;
@@ -120,6 +121,15 @@ public class DiscoveryManagerTest {
                 mMockSharedPreferences);
     }
 
+    @After
+    public void tearDown() throws Exception {
+        // the code below is needed to reset the DiscoveryManagerSettings singleton
+        DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(mMockContext,
+                mMockSharedPreferences);
+        Field stateField = dmSettings.getClass().getDeclaredField("mInstance");
+        stateField.setAccessible(true);
+        stateField.set(dmSettings, null);
+    }
 
     @Test
     public void testConstructorThatTakesContextAndPrefs() throws Exception {
@@ -1172,6 +1182,40 @@ public class DiscoveryManagerTest {
         assertThat("The state should change when wifi state changed",
                 discoveryManagerSpy.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
+
+    }
+
+    @Test
+    public void testOnWifiPeerDiscovererStateChanged() throws Exception {
+        EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet> wifiStates
+                = EnumSet.of(WifiPeerDiscoverer.WifiPeerDiscovererStateSet.SCANNING);
+
+        Field mWifiPeerDiscovererStateSetField = discoveryManager.getClass()
+                .getDeclaredField("mWifiPeerDiscovererStateSet");
+        mWifiPeerDiscovererStateSetField.setAccessible(true);
+
+        Field mWifiPeerDiscovererField = discoveryManager.getClass()
+                .getDeclaredField("mWifiPeerDiscoverer");
+        mWifiPeerDiscovererField.setAccessible(true);
+
+        mWifiPeerDiscovererField.set(discoveryManager, mMockWifiPeerDiscoverer);
+
+        when(mMockWifiPeerDiscoverer.getState())
+                .thenReturn(wifiStates);
+
+        Field handlerField = discoveryManager.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(discoveryManager, mHander);
+
+        discoveryManager.onWifiPeerDiscovererStateChanged(wifiStates);
+
+        assertThat("The states should be updated ",
+                (EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet>) mWifiPeerDiscovererStateSetField.get(discoveryManager),
+                is(equalTo(wifiStates)));
+
+        verify(mHander, atLeastOnce())
+                .post(isA(Runnable.class));
+
 
     }
 

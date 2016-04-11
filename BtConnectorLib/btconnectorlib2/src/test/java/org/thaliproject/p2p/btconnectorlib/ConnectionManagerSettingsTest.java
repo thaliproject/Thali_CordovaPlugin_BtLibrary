@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -127,9 +129,9 @@ public class ConnectionManagerSettingsTest {
 
     @Test
     public void testGetInstance() throws Exception {
-        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
-        assertThat(mConnectionManagerSettings, is(notNullValue()));
+        assertThat(cmSettings, is(notNullValue()));
     }
 
     @Rule
@@ -164,13 +166,13 @@ public class ConnectionManagerSettingsTest {
                 new UUID(1, 1), "test Name", mMockBluetoothManager,
                 mMockSharedPreferences);
 
-        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
 
-        mConnectionManagerSettings.removeListener(listener);
-        mConnectionManagerSettings.addListener(listener);
+        cmSettings.removeListener(listener);
+        cmSettings.addListener(listener);
         thrown.expect(IllegalArgumentException.class);
-        mConnectionManagerSettings.addListener(listener);
+        cmSettings.addListener(listener);
     }
 
     @Test
