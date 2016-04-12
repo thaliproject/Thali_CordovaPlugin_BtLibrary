@@ -65,6 +65,10 @@ public class ConnectionManagerTest {
             mBluetoothAdapter.disable();
         }
         Thread.sleep(3000);
+        if (mBluetoothAdapter.isEnabled() != turnOn) {
+          // wait additional 7 seconds
+          Thread.sleep(7000);
+        }
         assertThat(mBluetoothAdapter.isEnabled(), is(turnOn));
     }
 
