@@ -53,18 +53,24 @@ public class ConnectionManagerTest {
     private ConnectionManager mConnectionManager = null;
     private TestConnectionManagerListener mConnectionManagerListener = null;
 
-    @BeforeClass
-    public static void setUpBeforeClass() throws Exception {
+    private static void toggleBluetooth(boolean turnOn) throws Exception {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         if (mBluetoothAdapter == null) {
             // Device does not support Bluetooth
             fail("No Bluetooth support!");
         }
-        if (!mBluetoothAdapter.isEnabled()) {
+        if (turnOn && !mBluetoothAdapter.isEnabled()) {
             mBluetoothAdapter.enable();
-            Thread.sleep(3000);
-            assertThat(mBluetoothAdapter.isEnabled(), is(true));
+        } else if (!turnOn && mBluetoothAdapter.isEnabled()) {
+            mBluetoothAdapter.disable();
         }
+        Thread.sleep(3000);
+        assertThat(mBluetoothAdapter.isEnabled(), is(turnOn));
+    }
+
+    @BeforeClass
+    public static void setUpBeforeClass() throws Exception {
+        toggleBluetooth(true);
     }
 
     @Before
@@ -96,7 +102,7 @@ public class ConnectionManagerTest {
 
     @Test
     public void testStartListeningBluetoothDisabled() throws Exception {
-        mBluetoothAdapter.disable();
+        toggleBluetooth(false);
 
         boolean isRunning = mConnectionManager.startListeningForIncomingConnections();
         assertThat(isRunning, is(false));
@@ -105,9 +111,7 @@ public class ConnectionManagerTest {
         assertThat(mConnectionManagerListener.getLastCall(), is("onConnectionManagerStateChanged"));
 
         // ensure bluetooth is enabled for other tests
-        mBluetoothAdapter.enable();
-        Thread.sleep(3000);
-        assertThat(mBluetoothAdapter.isEnabled(), is(true));
+        toggleBluetooth(true);
     }
 
     @Test
