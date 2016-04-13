@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
@@ -31,6 +32,7 @@ import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyLong;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -668,6 +670,63 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
                 .onScanSettingsChanged(anyInt(), anyLong());
+    }
+
+    @Test
+    public void testLoad() throws Exception {
+
+        mDiscoveryManagerSettings.load();
+        //Bluetooth MAC address automation is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getBoolean(Mockito.eq("automate_bluetooth_mac_address_resolution"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION));
+
+        //maximum duration of "Provide Bluetooth MAC address" is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getLong(Mockito.eq("provide_bluetooth_mac_address_timeout"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS));
+
+        //Bluetooth MAC address of this device is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getString(Mockito.eq("bluetooth_mac_address"), anyString());
+
+        //discovery mode is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getInt(Mockito.eq("discovery_mode"),
+                        Mockito.eq(0));
+
+
+        //peer expiration time in milliseconds is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getLong(Mockito.eq("peer_expiration"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS));
+
+
+        //Bluetooth LE advertise data type is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getInt(Mockito.eq("advertisement_data_type"),
+                        anyInt());
+
+        //Bluetooth LE advertise model is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getInt(Mockito.eq("advertise_mode"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE));
+
+        //Bluetooth LE advertise TX power level is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getInt(Mockito.eq("advertise_tx_power_level"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL));
+
+        //Bluetooth LE scan mode is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getInt(Mockito.eq("scan_mode"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_SCAN_MODE));
+
+        //scan report delay is set
+        verify(mMockSharedPreferences, Mockito.times(1))
+                .getLong(Mockito.eq("scan_report_delay"),
+                        Mockito.eq(DiscoveryManagerSettings.DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS));
+
 
     }
 
@@ -676,25 +735,31 @@ public class DiscoveryManagerSettingsTest {
 
         mDiscoveryManagerSettings.resetDefaults();
 
-        assertThat("Default Bluetooth MAC address automation is set", mDiscoveryManagerSettings.getAutomateBluetoothMacAddressResolution(),
+        assertThat("Default Bluetooth MAC address automation is set",
+                mDiscoveryManagerSettings.getAutomateBluetoothMacAddressResolution(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION)));
 
-        assertThat("Default maximum duration of \"Provide Bluetooth MAC address\" is set", mDiscoveryManagerSettings.getProvideBluetoothMacAddressTimeout(),
+        assertThat("Default maximum duration of \"Provide Bluetooth MAC address\" is set",
+                mDiscoveryManagerSettings.getProvideBluetoothMacAddressTimeout(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS)));
 
-        assertThat("Default Bluetooth MAC address of this device is set", mDiscoveryManagerSettings.getBluetoothMacAddress(),
+        assertThat("Default Bluetooth MAC address of this device is set",
+                mDiscoveryManagerSettings.getBluetoothMacAddress(),
                 is(equalTo(null)));
 
         assertThat("Default discovery mode is set", mDiscoveryManagerSettings.getDiscoveryMode(),
                 is(equalTo(DiscoveryManager.DiscoveryMode.BLE)));
 
-        assertThat("Default peer expiration time in milliseconds is set", mDiscoveryManagerSettings.getPeerExpiration(),
+        assertThat("Default peer expiration time in milliseconds is set",
+                mDiscoveryManagerSettings.getPeerExpiration(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS)));
 
-        assertThat("Default Bluetooth LE advertise model is set", mDiscoveryManagerSettings.getAdvertiseMode(),
+        assertThat("Default Bluetooth LE advertise model is set",
+                mDiscoveryManagerSettings.getAdvertiseMode(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_ADVERTISE_MODE)));
 
-        assertThat("Default Bluetooth LE advertise TX power level is set", mDiscoveryManagerSettings.getAdvertiseTxPowerLevel(),
+        assertThat("Default Bluetooth LE advertise TX power level is set",
+                mDiscoveryManagerSettings.getAdvertiseTxPowerLevel(),
                 is(equalTo(DiscoveryManagerSettings.DEFAULT_ADVERTISE_TX_POWER_LEVEL)));
 
         assertThat("Default Bluetooth LE scan mode is set", mDiscoveryManagerSettings.getScanMode(),
