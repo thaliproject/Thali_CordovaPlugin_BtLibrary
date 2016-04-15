@@ -1,5 +1,6 @@
 package org.thaliproject.p2p.btconnectorlib;
 
+import java.lang.reflect.Field;
 import java.util.UUID;
 
 import android.content.Context;
@@ -15,6 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 
 import static org.hamcrest.CoreMatchers.is;
 
@@ -73,6 +75,7 @@ public class ConnectionManagerTest {
 
     @After
     public void tearDown() throws Exception {
+        mConnectionManager.dispose();
     }
 
     @Test
@@ -203,12 +206,95 @@ public class ConnectionManagerTest {
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
-
     }
 
     @Test
     public void testOnHandshakeRequiredSettingChanged() throws Exception {
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
+        boolean currentHandshake = cmSettings.getHandshakeRequired();
 
+        // check the current handshake flag
+        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        bluetoothConnectorField.setAccessible(true);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        Field handshakeField = bluetoothConnector.getClass().getDeclaredField("mHandshakeRequired");
+        handshakeField.setAccessible(true);
+        boolean handshake = handshakeField.getBoolean(bluetoothConnector);
+        assertThat(handshake, is(currentHandshake));
+
+        // now change it and check if it really changed
+        cmSettings.setHandshakeRequired(!currentHandshake);  // calls onHandshakeRequiredSettingChanged
+        handshake = handshakeField.getBoolean(bluetoothConnector);
+        assertThat(handshake, is(!currentHandshake));
     }
 
+    @Test
+    public void testOnConnectionManagerSettingsChanged() throws Exception {
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
+        long currentConnectionTimeout = cmSettings.getConnectionTimeout();
+        int currentPortNumber = cmSettings.getInsecureRfcommSocketPortNumber();
+        int currentRetries = cmSettings.getMaxNumberOfConnectionAttemptRetries();
+
+        // now change the values and check if they really changed
+        cmSettings.setConnectionTimeout(currentConnectionTimeout + 1);
+        cmSettings.setInsecureRfcommSocketPortNumber(currentPortNumber + 1);
+        cmSettings.setMaxNumberOfConnectionAttemptRetries(currentRetries + 1);
+
+        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        bluetoothConnectorField.setAccessible(true);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+
+        Field timeoutField = bluetoothConnector.getClass().getDeclaredField("mConnectionTimeoutInMilliseconds");
+        timeoutField.setAccessible(true);
+        long timeout = timeoutField.getLong(bluetoothConnector);
+        assertThat(timeout, is(currentConnectionTimeout + 1));
+
+        Field portField = bluetoothConnector.getClass().getDeclaredField("mInsecureRfcommSocketPort");
+        portField.setAccessible(true);
+        int port = portField.getInt(bluetoothConnector);
+        assertThat(port, is(currentPortNumber + 1));
+
+        Field retriesField = bluetoothConnector.getClass().getDeclaredField("mMaxNumberOfOutgoingConnectionAttemptRetries");
+        retriesField.setAccessible(true);
+        int retries = retriesField.getInt(bluetoothConnector);
+        assertThat(retries, is(currentRetries + 1));
+    }
+
+    @Test
+     public void testDispose() throws Exception {
+        toggleBluetooth(false);
+        mConnectionManager.startListeningForIncomingConnections();
+        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        mConnectionManager.dispose();
+        waitForMainLooper();
+        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
+        cmSettings.addListener(mConnectionManager);  // shouldn't fail as dispose removes listener
+        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        bluetoothConnectorField.setAccessible(true);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        Field isShutdownField = bluetoothConnector.getClass().getDeclaredField("mIsShuttingDown");
+        isShutdownField.setAccessible(true);
+        assertThat(isShutdownField.getBoolean(bluetoothConnector), is(true));
+
+        toggleBluetooth(true);
+    }
+
+    @Test
+    public void testSetPeerName() throws Exception {
+        mConnectionManager.setPeerName("TEST_NAME");
+        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        bluetoothConnectorField.setAccessible(true);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        Field identityField = bluetoothConnector.getClass().getDeclaredField("mMyIdentityString");
+        identityField.setAccessible(true);
+        String expected = "{\"name\":\"TEST_NAME\",\"address\":\"" + mBluetoothAdapter.getAddress() + "\"}";
+        assertThat((String) identityField.get(bluetoothConnector), is(expected));
+    }
+
+    @Test
+    public void testStopListeningForIncomingConnections() throws Exception {
+        // tested with testDispose
+    }
 }
