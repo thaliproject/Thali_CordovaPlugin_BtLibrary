@@ -1,11 +1,8 @@
 package org.thaliproject.p2p.btconnectorlib;
 
-import java.util.UUID;
-
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.support.test.InstrumentationRegistry;
-import android.bluetooth.BluetoothSocket;
-import android.bluetooth.BluetoothAdapter;
 import android.support.test.runner.AndroidJUnit4;
 
 import org.junit.After;
@@ -16,46 +13,22 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.hamcrest.CoreMatchers.is;
+import java.util.UUID;
 
-import static org.junit.Assert.*;
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @RunWith(AndroidJUnit4.class)
-public class ConnectionManagerTest {
+public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
-    private static BluetoothAdapter mBluetoothAdapter = null;
     private ConnectionManager mConnectionManager = null;
     private Context mContext = null;
 
     @Mock
     ConnectionManager.ConnectionManagerListener mConnectionManagerListener;
-
-    private static void toggleBluetooth(boolean turnOn) throws Exception {
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        if (mBluetoothAdapter == null) {
-            // Device does not support Bluetooth
-            fail("No Bluetooth support!");
-        }
-        if (turnOn && !mBluetoothAdapter.isEnabled()) {
-            mBluetoothAdapter.enable();
-        } else if (!turnOn && mBluetoothAdapter.isEnabled()) {
-            mBluetoothAdapter.disable();
-        }
-        Thread.sleep(3000);
-        if (mBluetoothAdapter.isEnabled() != turnOn) {
-            // wait additional 15 seconds
-            Thread.sleep(15000);
-        }
-        assertThat(mBluetoothAdapter.isEnabled(), is(turnOn));
-    }
-
-    private void waitForMainLooper() throws java.lang.InterruptedException {
-        // In API level 23 we could use MessageQueue.isIdle to check if all is ready
-        // For now just use timeout
-        Thread.sleep(100);
-    }
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
