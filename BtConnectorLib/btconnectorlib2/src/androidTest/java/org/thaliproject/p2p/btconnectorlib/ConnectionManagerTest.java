@@ -1,7 +1,10 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.os.CountDownTimer;
+import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
 
@@ -35,6 +38,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
+        Looper.prepare();
         toggleBluetooth(true);
     }
 
@@ -279,5 +283,31 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStopListeningForIncomingConnections() throws Exception {
         // tested with testDispose
+    }
+
+    @Test
+    public void testConnect() throws Exception {
+        // no target device - connection initialization fails
+        assertThat(mConnectionManager.connect(null), is(false));
+
+        // incorrect MAC address of target device - connection initialization fails
+        PeerProperties peerProperties =  new PeerProperties("BAD MAC");
+        assertThat(mConnectionManager.connect(peerProperties), is(false));
+
+        // correct MAC address of target device - connection initialization starts
+        peerProperties =  new PeerProperties("02:00:00:00:00:00");
+        assertThat(mConnectionManager.connect(peerProperties), is(true));
+    }
+
+    @Test
+    public void testCancelConnectionAttempt() throws Exception {
+        PeerProperties peerProperties =  new PeerProperties("02:00:00:00:00:00");
+
+        // no connection initialization started - cannot cancel
+        assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(false));
+
+        // initialization started - we can cancel
+        mConnectionManager.connect(peerProperties);
+        assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(true));
     }
 }
