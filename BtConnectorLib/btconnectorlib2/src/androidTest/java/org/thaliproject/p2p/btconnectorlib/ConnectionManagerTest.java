@@ -13,6 +13,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
 import java.util.UUID;
 import java.lang.reflect.Field;
@@ -256,14 +257,22 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testSetPeerName() throws Exception {
-        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        String btAddress = "";
+        if (!CommonUtils.isMarshmallowOrHigher()) {
+            BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+            btAddress = btAdapter.getAddress();
+        } else {
+            btAddress = android.provider.Settings.Secure.getString(
+                    mContext.getContentResolver(), "bluetooth_address");
+        }
+        String expected = "{\"name\":\"TEST_NAME\",\"address\":\"" + btAddress + "\"}";
+
         mConnectionManager.setPeerName("TEST_NAME");
         Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
         BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
         Field identityField = bluetoothConnector.getClass().getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
-        String expected = "{\"name\":\"TEST_NAME\",\"address\":\"" + btAdapter.getAddress() + "\"}";
         assertThat((String) identityField.get(bluetoothConnector), is(expected));
     }
 
