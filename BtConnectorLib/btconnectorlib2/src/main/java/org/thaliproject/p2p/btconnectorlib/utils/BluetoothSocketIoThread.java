@@ -204,7 +204,6 @@ public class BluetoothSocketIoThread extends Thread {
                 }
             }
 
-
             if (mOutputStream != null) {
                 try {
                     mOutputStream.close();

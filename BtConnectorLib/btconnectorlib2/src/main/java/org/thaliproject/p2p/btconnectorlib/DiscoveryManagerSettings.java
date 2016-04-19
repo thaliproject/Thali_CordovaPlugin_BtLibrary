@@ -34,6 +34,18 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
 
         /**
+         * Called when one or more of the beacon ad components are changed. These changes may affect
+         * the scanner as well. For instance, if we filter the received ads based on the
+         * manufacturer ID, the filters need to be updated.
+         *
+         * @param manufacturerId The manufacturer ID.
+         * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
+         * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
+         */
+        void onAdvertisementDataComponentsChanged(
+                int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation);
+
+        /**
          * Called when the advertisement data type is changed.
          *
          * @param advertisementDataType The new advertisement data type.
@@ -63,6 +75,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
+    public static final int DEFAULT_MANUFACTURER_ID = 76;
+    public static final int DEFAULT_BEACON_AD_LENGTH_AND_TYPE = 0x0215;
+    public static final int DEFAULT_BEACON_AD_EXTRA_INFORMATION = PeerProperties.NO_EXTRA_INFORMATION; // Unsigned 8-bit integer extra information in beacon ad
     public static final AdvertisementDataType DEFAULT_ADVERTISEMENT_DATA_TYPE = AdvertisementDataType.DO_NOT_CARE;
     public static final int DEFAULT_ADVERTISE_MODE = AdvertiseSettings.ADVERTISE_MODE_BALANCED;
     public static final int DEFAULT_ADVERTISE_TX_POWER_LEVEL = AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM;
@@ -76,6 +91,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private static final String KEY_BLUETOOTH_MAC_ADDRESS = "bluetooth_mac_address";
     private static final String KEY_DISCOVERY_MODE = "discovery_mode";
     private static final String KEY_PEER_EXPIRATION = "peer_expiration";
+    private static final String KEY_MANUFACTURER_ID = "manufacturer_id";
+    private static final String KEY_BEACON_AD_LENGTH_AND_TYPE = "beacon_ad_length_and_type";
+    private static final String KEY_BEACON_AD_EXTRA_INFORMATION = "ad_extra_information";
     private static final String KEY_ADVERTISEMENT_DATA_TYPE = "advertisement_data_type";
     private static final String KEY_ADVERTISE_MODE = "advertise_mode";
     private static final String KEY_ADVERTISE_TX_POWER_LEVEL = "advertise_tx_power_level";
@@ -99,6 +117,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private String mBluetoothMacAddress = null;
     private DiscoveryMode mDiscoveryMode = DEFAULT_DISCOVERY_MODE;
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
+    private int mManufacturerId = DEFAULT_MANUFACTURER_ID;
+    private int mBeaconAdLengthAndType = DEFAULT_BEACON_AD_LENGTH_AND_TYPE;
+    private int mBeaconAdExtraInformation = DEFAULT_BEACON_AD_EXTRA_INFORMATION;
     private AdvertisementDataType mAdvertisementDataType = DEFAULT_ADVERTISEMENT_DATA_TYPE;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
@@ -375,6 +396,72 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     /**
+     * @return The manufacturer ID used in beacon ad.
+     */
+    public int getManufacturerId() {
+        return mManufacturerId;
+    }
+
+    /**
+     * Sets the manufacturer ID used in beacon ad.
+     *
+     * @param manufacturerId The manufacturer ID to set.
+     */
+    public void setManufacturerId(int manufacturerId) {
+        if (mManufacturerId != manufacturerId) {
+            Log.i(TAG, "setManufacturerId: " + mManufacturerId + " -> " + manufacturerId);
+            mManufacturerId = manufacturerId;
+            mSharedPreferencesEditor.putInt(KEY_MANUFACTURER_ID, mManufacturerId);
+            mSharedPreferencesEditor.apply();
+            notifyBeaconAdDataComponentsChanged();
+        }
+    }
+
+    /**
+     * @return The beacon ad length and type.
+     */
+    public int getBeaconAdLengthAndType() {
+        return mBeaconAdLengthAndType;
+    }
+
+    /**
+     * Sets the beacon ad length and type.
+     *
+     * @param beaconAdLengthAndType The ad length and type to set.
+     */
+    public void setBeaconAdLengthAndType(int beaconAdLengthAndType) {
+        if (mBeaconAdLengthAndType != beaconAdLengthAndType) {
+            Log.i(TAG, "setBeaconAdLengthAndType: " + mBeaconAdLengthAndType + " -> " + beaconAdLengthAndType);
+            mBeaconAdLengthAndType = beaconAdLengthAndType;
+            mSharedPreferencesEditor.putInt(KEY_BEACON_AD_LENGTH_AND_TYPE, mBeaconAdLengthAndType);
+            mSharedPreferencesEditor.apply();
+            notifyBeaconAdDataComponentsChanged();
+        }
+    }
+
+    /**
+     * @return The beacon ad extra information (unsigned 8-bit integer).
+     */
+    public int getBeaconAdExtraInformation() {
+        return mBeaconAdExtraInformation;
+    }
+
+    /**
+     * Sets the beacon ad extra information (unsigned 8-bit integer).
+     *
+     * @param beaconAdExtraInformation The extra information to set.
+     */
+    public void setBeaconAdExtraInformation(int beaconAdExtraInformation) {
+        if (mBeaconAdExtraInformation != beaconAdExtraInformation) {
+            Log.i(TAG, "setBeaconAdExtraInformation: " + mBeaconAdExtraInformation + " -> " + beaconAdExtraInformation);
+            mBeaconAdExtraInformation = beaconAdExtraInformation;
+            mSharedPreferencesEditor.putInt(KEY_BEACON_AD_EXTRA_INFORMATION, mBeaconAdExtraInformation);
+            mSharedPreferencesEditor.apply();
+            notifyBeaconAdDataComponentsChanged();
+        }
+    }
+
+    /**
      * @return The advertisement data type.
      */
     public AdvertisementDataType getAdvertisementDataType() {
@@ -534,6 +621,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mDiscoveryMode = intToDiscoveryMode(discoveryModeAsInt);
             mPeerExpirationInMilliseconds = mSharedPreferences.getLong(
                     KEY_PEER_EXPIRATION, DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+            mManufacturerId = mSharedPreferences.getInt(KEY_MANUFACTURER_ID, DEFAULT_MANUFACTURER_ID);
+            mBeaconAdLengthAndType = mSharedPreferences.getInt(KEY_BEACON_AD_LENGTH_AND_TYPE, DEFAULT_BEACON_AD_LENGTH_AND_TYPE);
+            mBeaconAdExtraInformation = mSharedPreferences.getInt(KEY_BEACON_AD_EXTRA_INFORMATION, DEFAULT_BEACON_AD_EXTRA_INFORMATION);
             int advertisementDataTypeAsInt = mSharedPreferences.getInt(
                     KEY_ADVERTISEMENT_DATA_TYPE, advertisementDataTypeToInt(DEFAULT_ADVERTISEMENT_DATA_TYPE));
             mAdvertisementDataType = intToAdvertisementDataType(advertisementDataTypeAsInt);
@@ -550,6 +640,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                     + "\n    - Bluetooth MAC address: " + mBluetoothMacAddress
                     + "\n    - Discovery mode: " + mDiscoveryMode
                     + "\n    - Peer expiration time in milliseconds: " + mPeerExpirationInMilliseconds
+                    + "\n    - Manufacturer ID: " + mManufacturerId
+                    + "\n    - Beacon ad length and type: " + mBeaconAdLengthAndType
+                    + "\n    - Beacon ad extra information: " + mBeaconAdExtraInformation
                     + "\n    - Advertisement data type: " + mAdvertisementDataType
                     + "\n    - Advertise mode: " + mAdvertiseMode
                     + "\n    - Advertise TX power level: " + mAdvertiseTxPowerLevel
@@ -568,6 +661,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         setBluetoothMacAddress(null);
         setDiscoveryMode(DEFAULT_DISCOVERY_MODE, true);
         setPeerExpiration(DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+        setManufacturerId(DEFAULT_MANUFACTURER_ID);
+        setBeaconAdLengthAndType(DEFAULT_BEACON_AD_LENGTH_AND_TYPE);
+        setBeaconAdExtraInformation(DEFAULT_BEACON_AD_EXTRA_INFORMATION);
         setAdvertiseMode(DEFAULT_ADVERTISE_MODE);
         setAdvertiseTxPowerLevel(DEFAULT_ADVERTISE_TX_POWER_LEVEL);
         setScanMode(DEFAULT_SCAN_MODE);
@@ -697,5 +793,17 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
 
         return false;
+    }
+
+    /**
+     * Notifies the listener that one or more of the beacon ad data components have changed.
+     */
+    private void notifyBeaconAdDataComponentsChanged() {
+        if (mListeners.size() > 0) {
+            for (Listener listener : mListeners) {
+                listener.onAdvertisementDataComponentsChanged(
+                        mManufacturerId, mBeaconAdLengthAndType, mBeaconAdExtraInformation);
+            }
+        }
     }
 }

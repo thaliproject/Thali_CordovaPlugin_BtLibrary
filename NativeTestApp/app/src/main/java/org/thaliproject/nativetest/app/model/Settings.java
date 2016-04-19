@@ -9,7 +9,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
@@ -253,6 +252,22 @@ public class Settings {
         mSharedPreferencesEditor.putBoolean(KEY_ENABLE_BLE_DISCOVERY, mEnableBleDiscovery);
         mSharedPreferencesEditor.apply();
         setDesiredDiscoveryMode();
+    }
+
+    public int getManufacturerId() {
+        return mDiscoveryManagerSettings.getManufacturerId();
+    }
+
+    public void setManufacturerId(int manufacturerId) {
+        mDiscoveryManagerSettings.setManufacturerId(manufacturerId);
+    }
+
+    public int getBeaconAdExtraInformation() {
+        return mDiscoveryManagerSettings.getBeaconAdExtraInformation();
+    }
+
+    public void setBeaconAdExtraInformation(int extraInformation) {
+        mDiscoveryManagerSettings.setBeaconAdExtraInformation(extraInformation);
     }
 
     public BlePeerDiscoverer.AdvertisementDataType getAdvertisementDataType() {

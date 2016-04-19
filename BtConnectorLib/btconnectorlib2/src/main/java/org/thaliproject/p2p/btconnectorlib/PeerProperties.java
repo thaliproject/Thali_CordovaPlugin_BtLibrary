@@ -10,11 +10,13 @@ package org.thaliproject.p2p.btconnectorlib;
 public class PeerProperties {
     public static final String NO_PEER_NAME_STRING = "<no peer name>";
     public static final String BLUETOOTH_MAC_ADDRESS_UNKNOWN = "0:0:0:0:0:0";
+    public static final int NO_EXTRA_INFORMATION = 0;
     private String mName; // The peer name
     private String mBluetoothMacAddress;
     private String mServiceType;
     private String mDeviceName;
     private String mDeviceAddress;
+    private int mExtraInformation;
 
     /**
      * Constructor.
@@ -33,6 +35,7 @@ public class PeerProperties {
         mServiceType = "";
         mDeviceName =  "";
         mDeviceAddress = "";
+        mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
     /**
@@ -46,6 +49,7 @@ public class PeerProperties {
         mServiceType = "";
         mDeviceName =  "";
         mDeviceAddress = "";
+        mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
     /**
@@ -64,6 +68,7 @@ public class PeerProperties {
         mServiceType = serviceType;
         mDeviceName =  deviceName;
         mDeviceAddress = deviceAddress;
+        mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
     /**
@@ -113,6 +118,14 @@ public class PeerProperties {
         mDeviceAddress = deviceAddress;
     }
 
+    public int getExtraInformation() {
+        return mExtraInformation;
+    }
+
+    public void setExtraInformation(int extraInformation) {
+        mExtraInformation = extraInformation;
+    }
+
     /**
      * Copies the content of the given source to this one.
      * @param sourcePeerProperties The source peer properties.
@@ -124,6 +137,7 @@ public class PeerProperties {
             mServiceType = sourcePeerProperties.mServiceType;
             mDeviceName = sourcePeerProperties.mDeviceName;
             mDeviceAddress = sourcePeerProperties.mDeviceAddress;
+            mExtraInformation = sourcePeerProperties.mExtraInformation;
         }
     }
 
@@ -187,6 +201,12 @@ public class PeerProperties {
                 newPeerProperties.mDeviceAddress = oldPeerProperties.mDeviceAddress;
                 dataWasCopied = true;
             }
+
+            if (oldPeerProperties.mExtraInformation != NO_EXTRA_INFORMATION
+                    && newPeerProperties.mExtraInformation == NO_EXTRA_INFORMATION) {
+                newPeerProperties.mExtraInformation = oldPeerProperties.mExtraInformation;
+                dataWasCopied = true;
+            }
         }
 
         return dataWasCopied;
@@ -206,7 +226,8 @@ public class PeerProperties {
 
     @Override
     public String toString() {
-        return "[" + mName + " " + mBluetoothMacAddress + "]";
+        return "[" + mName + " " + mBluetoothMacAddress
+                + ((mExtraInformation == NO_EXTRA_INFORMATION) ? "]" : (" " + mExtraInformation + "]"));
     }
 
     /**
@@ -232,6 +253,10 @@ public class PeerProperties {
         }
 
         if (!isNullOrEmpty(mDeviceAddress)) {
+            count++;
+        }
+
+        if (mExtraInformation != NO_EXTRA_INFORMATION) {
             count++;
         }
 
