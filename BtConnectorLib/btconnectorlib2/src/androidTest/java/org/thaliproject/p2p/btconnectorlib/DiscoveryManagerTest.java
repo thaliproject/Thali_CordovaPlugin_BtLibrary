@@ -46,8 +46,12 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     DiscoveryManager.DiscoveryManagerListener mMockManagerListener;
 
     @BeforeClass
-    public static void init()  throws Exception{
-        Looper.prepare();
+    public static void init()  throws Exception {
+        // call Looper.prepare in try/catch because it may be already called by other test
+        try {
+            Looper.prepare();
+        } catch (java.lang.RuntimeException ex) {
+        }
         defaultDiscoveryMode = getDiscoveryMode();
         defaultBTStatus = getBluetoothStatus();
         defaultWifiStatus = getWifiStatus();
