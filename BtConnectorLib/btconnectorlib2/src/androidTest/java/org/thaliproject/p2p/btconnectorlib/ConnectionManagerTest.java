@@ -38,7 +38,11 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        Looper.prepare();
+        // call Looper.prepare in try/catch because it may be already called by other test
+        try {
+            Looper.prepare();
+        } catch (java.lang.RuntimeException ex) {
+        }
         toggleBluetooth(true);
     }
 
