@@ -140,7 +140,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartDiscovery() throws Exception {
+    public void testStartListeningWifiEnabledStartDiscovery() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -151,7 +151,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartAdvertising() throws Exception {
+    public void testStartListeningWifiEnabledStartAdvertising() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -162,7 +162,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartDiscoveryAndAdvertising() throws Exception {
+    public void testStartListeningWifiEnabledStartDiscoveryAndAdvertising() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -196,7 +196,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartDiscoveryBW() throws Exception {
+    public void testStartListeningWifiEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -208,7 +208,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartAdvertisingBW() throws Exception {
+    public void testStartListeningWifiEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -220,7 +220,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
+    public void testStartListeningWifiEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -233,7 +233,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     // Both BT and WIFI enabled
     @Test
-    public void testStartListeningWifiBTEnabledEnabledStartDiscoveryBW() throws Exception {
+    public void testStartListeningWifiBTEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -245,7 +245,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiBTEnabledEnabledStartAdvertisingBW() throws Exception {
+    public void testStartListeningWifiBTEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -257,7 +257,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningWifiBTEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
+    public void testStartListeningWifiBTEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
@@ -270,7 +270,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     // BT enabled, Wifi disabled
     @Test
-    public void testStartListeningBTEnabledEnabledStartDiscoveryBW() throws Exception {
+    public void testStartListeningBTEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
@@ -282,7 +282,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningBTEnabledEnabledStartAdvertisingBW() throws Exception {
+    public void testStartListeningBTEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
@@ -294,7 +294,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testStartListeningBTEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
+    public void testStartListeningBTEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
