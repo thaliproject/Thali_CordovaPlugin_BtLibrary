@@ -11,7 +11,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
 import java.util.UUID;
@@ -21,7 +20,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @RunWith(AndroidJUnit4.class)
@@ -43,11 +41,12 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Mock
-    DiscoveryManager.DiscoveryManagerListener mMockManagerListener;
+    DiscoveryManager.DiscoveryManagerListener mMockDiscoveryManagerListener;
 
     @BeforeClass
     public static void init()  throws Exception{
         Looper.prepare();
+        // save the state
         defaultDiscoveryMode = getDiscoveryMode();
         defaultBTStatus = getBluetoothStatus();
         defaultWifiStatus = getWifiStatus();
@@ -60,7 +59,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleWifi(false);
 
         mDiscoveryManager = new DiscoveryManager(InstrumentationRegistry.getContext(),
-                mMockManagerListener,
+                mMockDiscoveryManagerListener,
                 UUID.randomUUID(), "MOCK_NAME");
     }
 
@@ -70,6 +69,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @AfterClass
     public static void cleanUp() throws Exception {
+        // restore the saved state
         setDiscoveryMode(defaultDiscoveryMode);
         toggleWifi(defaultWifiStatus);
         toggleBluetooth(defaultBTStatus);
@@ -103,7 +103,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     public void testStartListeningBluetoothEnabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         toggleBluetooth(true);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
@@ -113,7 +113,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     public void testStartListeningBluetoothEnabledStartDiscovery() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         toggleBluetooth(true);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
@@ -123,7 +123,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     public void testStartListeningWifiDisabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         toggleWifi(false);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
@@ -132,7 +132,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
@@ -142,7 +142,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartDiscovery() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, false);
@@ -153,7 +153,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartAdvertising() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(false, true);
@@ -164,33 +164,30 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartDiscoveryAndAdvertising() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-
     }
-
 
     @Test
     public void testStartListeningWifiDisabledBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         toggleWifi(false);
         toggleBluetooth(false);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     // WIFI enabled, BT disabled
-
     @Test
     public void testStartListeningWifiEnabledBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(false);
         boolean isRunning = mDiscoveryManager.start(false, false);
@@ -201,7 +198,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(false);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -213,7 +210,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(false);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -225,7 +222,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(false);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -238,7 +235,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiBTEnabledEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -250,7 +247,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiBTEnabledEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -262,21 +259,20 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningWifiBTEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(true);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-
     }
 
     // BT enabled, Wifi disabled
     @Test
     public void testStartListeningBTEnabledEnabledStartDiscoveryBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -288,7 +284,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningBTEnabledEnabledStartAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
@@ -300,14 +296,27 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testStartListeningBTEnabledEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        when(mMockManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         toggleWifi(false);
         toggleBluetooth(true);
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-
     }
 
+    @Test
+    public void testStopDiscovery() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        toggleWifi(true);
+        toggleBluetooth(false);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        boolean isRunning = mDiscoveryManager.start(true, true);
+        assertThat(isRunning, is(true));
+        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        mDiscoveryManager.stopDiscovery();
+        assertThat(mDiscoveryManager.isDiscovering(), is(false));
+        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+    }
 }
