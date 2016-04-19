@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -17,6 +18,7 @@ import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -125,11 +127,21 @@ public class ConnectionManagerSettingsTest {
 
     }
 
+    @After
+    public void tearDown() throws Exception {
+        // the code below is needed to reset the DiscoveryManagerSettings singleton
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
+                mMockSharedPreferences);
+        Field stateField = cmSettings.getClass().getDeclaredField("mInstance");
+        stateField.setAccessible(true);
+        stateField.set(cmSettings, null);
+    }
+
     @Test
     public void testGetInstance() throws Exception {
-        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
-        assertThat(mConnectionManagerSettings, is(notNullValue()));
+        assertThat(cmSettings, is(notNullValue()));
     }
 
     @Rule
@@ -164,19 +176,20 @@ public class ConnectionManagerSettingsTest {
                 new UUID(1, 1), "test Name", mMockBluetoothManager,
                 mMockSharedPreferences);
 
-        mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
 
-        mConnectionManagerSettings.removeListener(listener);
-        mConnectionManagerSettings.addListener(listener);
+        cmSettings.removeListener(listener);
+        cmSettings.addListener(listener);
         thrown.expect(IllegalArgumentException.class);
-        mConnectionManagerSettings.addListener(listener);
+        cmSettings.addListener(listener);
     }
 
     @Test
     public void testConnectionTimeout() throws Exception {
 
-        assertThat(mConnectionManagerSettings.getConnectionTimeout(), is(equalTo(0L)));
+        assertThat("Default connection timeout is set", mConnectionManagerSettings.getConnectionTimeout(),
+                is(equalTo(ConnectionManagerSettings.DEFAULT_CONNECTION_TIMEOUT_IN_MILLISECONDS)));
         mConnectionManagerSettings.setConnectionTimeout(100L);
         assertThat(mConnectionManagerSettings.getConnectionTimeout(), is(equalTo(100L)));
         assertThat((Long) mSharedPreferencesMap.get("connection_timeout"), is(equalTo(100L)));
@@ -190,8 +203,9 @@ public class ConnectionManagerSettingsTest {
     @Test
     public void testInsecureRfcommSocketPortNumber() throws Exception {
         // default value
-        assertThat("The Rotating port number if port not set",
-                mConnectionManagerSettings.getInsecureRfcommSocketPortNumber(), is(equalTo(0)));
+        assertThat("The default Rotating port number is properly set",
+                mConnectionManagerSettings.getInsecureRfcommSocketPortNumber(),
+                is(equalTo(ConnectionManagerSettings.DEFAULT_ALTERNATIVE_INSECURE_RFCOMM_SOCKET_PORT)));
 
         // the lower limit value
         assertThat("Set port number -1 is possible ",
@@ -245,8 +259,9 @@ public class ConnectionManagerSettingsTest {
     @Test
     public void testMaxNumberOfConnectionAttemptRetries() throws Exception {
         // default value
-        assertThat("Max number of connection attempt retries number is 0 if not set",
-                mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries(), is(equalTo(0)));
+        assertThat("The default max number of connection attempt retries number is set",
+                mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries(),
+                is(equalTo(ConnectionManagerSettings.DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES)));
 
         // set Max number of connection attempt retries number
         mConnectionManagerSettings.setMaxNumberOfConnectionAttemptRetries(1);
@@ -268,8 +283,18 @@ public class ConnectionManagerSettingsTest {
     @Test
     public void testHandshakeRequired() throws Exception {
         // default value
-        assertThat("The require a handshake protocol is false if not set",
+        assertThat("The default value of require a handshake protocol is set",
+                mConnectionManagerSettings.getHandshakeRequired(),
+                is(ConnectionManagerSettings.DEFAULT_HANDSHAKE_REQUIRED));
+
+        // set require a handshake protocol to false
+        mConnectionManagerSettings.setHandshakeRequired(false);
+        assertThat("Require a handshake protocol is properly set (false)",
                 mConnectionManagerSettings.getHandshakeRequired(), is(false));
+        assertThat((Boolean) mSharedPreferencesMap.get("require_handshake"),
+                is(false));
+
+        assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         // set require a handshake protocol to true
         mConnectionManagerSettings.setHandshakeRequired(true);
@@ -278,22 +303,15 @@ public class ConnectionManagerSettingsTest {
                 mConnectionManagerSettings.getHandshakeRequired(), is(true));
         assertThat((Boolean) mSharedPreferencesMap.get("require_handshake"),
                 is(true));
-        assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
-        // set require a handshake protocol to false
-        mConnectionManagerSettings.setHandshakeRequired(false);
-        assertThat("Require a handshake protocol is properly set (false)",
-                mConnectionManagerSettings.getHandshakeRequired(), is(false));
-        assertThat((Boolean) mSharedPreferencesMap.get("require_handshake"),
-                is(false));
         assertThat("Apply count is incremented", applyCnt, is(equalTo(2)));
 
         // set require a handshake protocol second time
-        mConnectionManagerSettings.setHandshakeRequired(false);
+        mConnectionManagerSettings.setHandshakeRequired(true);
         assertThat("Set the same value is not possible",
-                mConnectionManagerSettings.getHandshakeRequired(), is(false));
+                mConnectionManagerSettings.getHandshakeRequired(), is(true));
         assertThat((Boolean) mSharedPreferencesMap.get("require_handshake"),
-                is(false));
+                is(true));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(2)));
     }
 
@@ -324,7 +342,8 @@ public class ConnectionManagerSettingsTest {
                 is(equalTo(BluetoothConnector.SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT)));
 
         assertThat("Default max number of connection attempt retries number",
-                mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries(), is(equalTo(0)));
+                mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries(),
+                is(equalTo(ConnectionManagerSettings.DEFAULT_MAX_NUMBER_OF_CONNECTION_ATTEMPT_RETRIES)));
 
         assertThat("Require a handshake protocol is properly set to default",
                 mConnectionManagerSettings.getHandshakeRequired(),
