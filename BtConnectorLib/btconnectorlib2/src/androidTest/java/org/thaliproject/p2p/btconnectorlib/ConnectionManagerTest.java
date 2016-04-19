@@ -1,9 +1,7 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.content.Context;
-import android.os.CountDownTimer;
 import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
@@ -11,19 +9,20 @@ import android.support.test.runner.AndroidJUnit4;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
-import java.util.UUID;
 import java.lang.reflect.Field;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -42,6 +41,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         try {
             Looper.prepare();
         } catch (java.lang.RuntimeException ex) {
+            // can throw exception if current thread already has a looper
         }
         toggleBluetooth(true);
     }
@@ -60,18 +60,21 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mConnectionManager.dispose();
     }
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+
+
     @Test
     public void testAfterConstruction() throws Exception {
         // check state
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
 
         // check if connection manager is added as listener
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
-        try {
-            cmSettings.addListener(mConnectionManager);
-            fail();
-        } catch (java.lang.IllegalArgumentException exc) {
-        }
+
+        thrown.expect(IllegalArgumentException.class);
+        cmSettings.addListener(mConnectionManager);
     }
 
     @Test
@@ -80,10 +83,12 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
         boolean isRunning = mConnectionManager.startListeningForIncomingConnections();
         assertThat(isRunning, is(false));
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
-                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .onConnectionManagerStateChanged(
+                        ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
 
         // ensure bluetooth is enabled for other tests
         toggleBluetooth(true);
@@ -122,13 +127,15 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testOnIsServerStartedChanged() throws Exception {
         mConnectionManager.onIsServerStartedChanged(true);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.RUNNING));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
 
         mConnectionManager.onIsServerStartedChanged(false);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.NOT_STARTED);
@@ -140,7 +147,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
         mConnectionManager.startListeningForIncomingConnections();
         mConnectionManager.onIsServerStartedChanged(false);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
 
         // ensure bluetooth is enabled for other tests
         toggleBluetooth(true);
@@ -149,17 +157,21 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testOnBluetoothAdapterScanModeChangedScanModeNone() throws Exception {
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
-                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .onConnectionManagerStateChanged(
+                        ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
 
         // call again to check that state is not changed
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
-                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .onConnectionManagerStateChanged(
+                        ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
     }
 
     @Test
@@ -169,22 +181,26 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
         waitForMainLooper();
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_CONNECTABLE);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
-                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .onConnectionManagerStateChanged(
+                        ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
         toggleBluetooth(true);
 
         // now call again with bluetooth enabled
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_CONNECTABLE);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.RUNNING));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
 
         // call again in state RUNNING
         mConnectionManager.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_CONNECTABLE);
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.RUNNING));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.RUNNING));
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
@@ -196,16 +212,18 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         boolean currentHandshake = cmSettings.getHandshakeRequired();
 
         // check the current handshake flag
-        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        Field bluetoothConnectorField = mConnectionManager.getClass()
+                .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
-        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField
+                .get(mConnectionManager);
         Field handshakeField = bluetoothConnector.getClass().getDeclaredField("mHandshakeRequired");
         handshakeField.setAccessible(true);
         boolean handshake = handshakeField.getBoolean(bluetoothConnector);
         assertThat(handshake, is(currentHandshake));
 
         // now change it and check if it really changed
-        cmSettings.setHandshakeRequired(!currentHandshake);  // calls onHandshakeRequiredSettingChanged
+        cmSettings.setHandshakeRequired(!currentHandshake); // calls onHandshakeRequiredSettingChanged
         handshake = handshakeField.getBoolean(bluetoothConnector);
         assertThat(handshake, is(!currentHandshake));
     }
@@ -222,11 +240,14 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         cmSettings.setInsecureRfcommSocketPortNumber(currentPortNumber + 1);
         cmSettings.setMaxNumberOfConnectionAttemptRetries(currentRetries + 1);
 
-        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        Field bluetoothConnectorField = mConnectionManager.getClass()
+                .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
-        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField
+                .get(mConnectionManager);
 
-        Field timeoutField = bluetoothConnector.getClass().getDeclaredField("mConnectionTimeoutInMilliseconds");
+        Field timeoutField = bluetoothConnector.getClass()
+                .getDeclaredField("mConnectionTimeoutInMilliseconds");
         timeoutField.setAccessible(true);
         long timeout = timeoutField.getLong(bluetoothConnector);
         assertThat(timeout, is(currentConnectionTimeout + 1));
@@ -236,7 +257,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         int port = portField.getInt(bluetoothConnector);
         assertThat(port, is(currentPortNumber + 1));
 
-        Field retriesField = bluetoothConnector.getClass().getDeclaredField("mMaxNumberOfOutgoingConnectionAttemptRetries");
+        Field retriesField = bluetoothConnector.getClass()
+                .getDeclaredField("mMaxNumberOfOutgoingConnectionAttemptRetries");
         retriesField.setAccessible(true);
         int retries = retriesField.getInt(bluetoothConnector);
         assertThat(retries, is(currentRetries + 1));
@@ -246,16 +268,20 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
      public void testDispose() throws Exception {
         toggleBluetooth(false);
         mConnectionManager.startListeningForIncomingConnections();
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
 
         mConnectionManager.dispose();
         waitForMainLooper();
-        assertThat(mConnectionManager.getState(), is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
+        assertThat(mConnectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
         cmSettings.addListener(mConnectionManager);  // shouldn't fail as dispose removes listener
-        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        Field bluetoothConnectorField = mConnectionManager.getClass()
+                .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
-        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField
+                .get(mConnectionManager);
         Field isShutdownField = bluetoothConnector.getClass().getDeclaredField("mIsShuttingDown");
         isShutdownField.setAccessible(true);
         assertThat(isShutdownField.getBoolean(bluetoothConnector), is(true));
@@ -265,7 +291,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testSetPeerName() throws Exception {
-        String btAddress = "";
+        String btAddress;
         if (!CommonUtils.isMarshmallowOrHigher()) {
             BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
             btAddress = btAdapter.getAddress();
@@ -276,9 +302,11 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         String expected = "{\"name\":\"TEST_NAME\",\"address\":\"" + btAddress + "\"}";
 
         mConnectionManager.setPeerName("TEST_NAME");
-        Field bluetoothConnectorField = mConnectionManager.getClass().getDeclaredField("mBluetoothConnector");
+        Field bluetoothConnectorField = mConnectionManager.getClass()
+                .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
-        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField.get(mConnectionManager);
+        BluetoothConnector bluetoothConnector = (BluetoothConnector) bluetoothConnectorField
+                .get(mConnectionManager);
         Field identityField = bluetoothConnector.getClass().getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
         assertThat((String) identityField.get(bluetoothConnector), is(expected));

@@ -8,7 +8,9 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -18,7 +20,6 @@ import java.util.UUID;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -31,12 +32,14 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     private static boolean defaultWifiStatus;
 
     private static void setDiscoveryMode(DiscoveryManager.DiscoveryMode mode) {
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings
+                .getInstance(InstrumentationRegistry.getContext());
         settings.setDiscoveryMode(mode);
     }
 
     private static DiscoveryManager.DiscoveryMode getDiscoveryMode() {
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings
+                .getInstance(InstrumentationRegistry.getContext());
         return settings.getDiscoveryMode();
     }
 
@@ -49,6 +52,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         try {
             Looper.prepare();
         } catch (java.lang.RuntimeException ex) {
+            // can throw exception if current thread already has a looper
         }
         // save the state
         defaultDiscoveryMode = getDiscoveryMode();
@@ -79,6 +83,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(defaultBTStatus);
     }
 
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testAfterConstruction() throws Exception {
@@ -86,12 +92,10 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertEquals(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, mDiscoveryManager.getState());
 
         // check if discovery manager is added as listener
-        DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
-        try {
-            dmSettings.addListener(mDiscoveryManager);
-            fail();
-        } catch (IllegalArgumentException exc) {
-        }
+        DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings
+                .getInstance(InstrumentationRegistry.getContext());
+        thrown.expect(IllegalArgumentException.class);
+        dmSettings.addListener(mDiscoveryManager);
     }
 
     @Test
@@ -100,7 +104,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     @Test
@@ -110,7 +115,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     @Test
@@ -120,7 +126,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
     }
 
     @Test
@@ -130,7 +137,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     @Test
@@ -140,7 +148,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleWifi(true);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     @Test
@@ -151,7 +160,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     @Test
@@ -162,7 +172,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     @Test
@@ -173,7 +184,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     @Test
@@ -184,7 +196,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     // WIFI enabled, BT disabled
@@ -196,7 +209,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
     }
 
     @Test
@@ -208,7 +222,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     @Test
@@ -220,7 +235,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     @Test
@@ -232,7 +248,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 
     // Both BT and WIFI enabled
@@ -245,7 +262,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
     }
 
     @Test
@@ -257,7 +275,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
     }
 
     @Test
@@ -269,7 +288,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
     }
 
     // BT enabled, Wifi disabled
@@ -282,7 +302,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
     }
 
     @Test
@@ -294,7 +315,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
     }
 
     @Test
@@ -306,7 +328,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
     }
 
     @Test
@@ -318,9 +341,11 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         mDiscoveryManager.setPeerName("TestPeerName");
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.isDiscovering(), is(false));
-        assertThat(mDiscoveryManager.getState(), is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
+        assertThat(mDiscoveryManager.getState(),
+                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
     }
 }
