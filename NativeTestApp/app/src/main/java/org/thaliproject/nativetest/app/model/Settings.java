@@ -26,12 +26,14 @@ public class Settings {
     private final SharedPreferences.Editor mSharedPreferencesEditor;
 
     public static final String DEFAULT_PEER_NAME = Build.MANUFACTURER + "_" + Build.MODEL; // Use manufacturer and device model name as the peer name
+    private static final int DEFAULT_MANUFACTURER_ID = 7413;
     private static final boolean DEFAULT_LISTEN_FOR_INCOMING_CONNECTIONS = true;
     private static final boolean DEFAULT_ENABLE_WIFI_DISCOVERY = false;
     private static final boolean DEFAULT_ENABLE_BLE_DISCOVERY = true;
     private static final boolean DEFAULT_AUTO_CONNECT = false;
     private static final boolean DEFAULT_AUTO_CONNECT_WHEN_INCOMING = false;
 
+    private static final String KEY_MANUFACTURER_ID = "app_manufacturer_id";
     private static final String KEY_LISTEN_FOR_INCOMING_CONNECTIONS = "listen_for_incoming_connections";
     private static final String KEY_ENABLE_WIFI_DISCOVERY = "enable_wifi_discovery";
     private static final String KEY_ENABLE_BLE_DISCOVERY = "enable_ble_discovery";
@@ -46,6 +48,7 @@ public class Settings {
     private DiscoveryManager mDiscoveryManager = null;
     private DiscoveryManagerSettings mDiscoveryManagerSettings = null;
     private ConnectionManagerSettings mConnectionManagerSettings = null;
+    private int mManufacturerId = DEFAULT_MANUFACTURER_ID; // Overrides library
     private boolean mListenForIncomingConnections = true;
     private boolean mEnableWifiDiscovery = true;
     private boolean mEnableBleDiscovery = true;
@@ -87,6 +90,7 @@ public class Settings {
     public void load() {
         if (!mLoaded) {
             mLoaded = true;
+            mManufacturerId = mSharedPreferences.getInt(KEY_MANUFACTURER_ID, DEFAULT_MANUFACTURER_ID);
             mListenForIncomingConnections = mSharedPreferences.getBoolean(
                     KEY_LISTEN_FOR_INCOMING_CONNECTIONS, DEFAULT_LISTEN_FOR_INCOMING_CONNECTIONS);
 
@@ -104,6 +108,7 @@ public class Settings {
                     KEY_AUTO_CONNECT_WHEN_INCOMING, DEFAULT_AUTO_CONNECT_WHEN_INCOMING);
 
             Log.i(TAG, "load: "
+                    + "\n    - Manufacturer ID: " + mManufacturerId
                     + "\n    - Listen for incoming connections: " + mListenForIncomingConnections
                     + "\n    - Enable Wi-Fi Direct peer discovery: " + mEnableWifiDiscovery
                     + "\n    - Enable BLE peer discovery: " + mEnableBleDiscovery
@@ -121,6 +126,8 @@ public class Settings {
             if (discoveryMode != null) {
                 mDiscoveryManagerSettings.setDiscoveryMode(getDesiredDiscoveryMode());
             }
+
+            mDiscoveryManagerSettings.setManufacturerId(mManufacturerId);
         } else {
             Log.v(TAG, "load: Already loaded");
         }
@@ -259,7 +266,12 @@ public class Settings {
     }
 
     public void setManufacturerId(int manufacturerId) {
-        mDiscoveryManagerSettings.setManufacturerId(manufacturerId);
+        if (mManufacturerId != manufacturerId) {
+            mManufacturerId = manufacturerId;
+            mSharedPreferencesEditor.putInt(KEY_MANUFACTURER_ID, mManufacturerId);
+            mSharedPreferencesEditor.apply();
+            mDiscoveryManagerSettings.setManufacturerId(mManufacturerId);
+        }
     }
 
     public int getBeaconAdExtraInformation() {

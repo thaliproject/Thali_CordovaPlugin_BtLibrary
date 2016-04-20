@@ -202,11 +202,7 @@ public class PeerProperties {
                 dataWasCopied = true;
             }
 
-            if (oldPeerProperties.mExtraInformation != NO_EXTRA_INFORMATION
-                    && newPeerProperties.mExtraInformation == NO_EXTRA_INFORMATION) {
-                newPeerProperties.mExtraInformation = oldPeerProperties.mExtraInformation;
-                dataWasCopied = true;
-            }
+            // Extra information is never copied, since it is OK for it to change
         }
 
         return dataWasCopied;
