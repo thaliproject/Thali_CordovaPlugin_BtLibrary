@@ -12,6 +12,7 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.lang.reflect.Field;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -45,6 +46,9 @@ public class PeerModelTest {
 
     @Mock
     PeerProperties mMockPeerProperties;
+
+    @Mock
+    PeerProperties mMockPeerProperties2;
 
     PeerModel mPeerModel;
 
@@ -279,19 +283,15 @@ public class PeerModelTest {
     public void testAddOrUpdateDiscoveredPeer_Update() throws Exception {
         // prepare a peer's list
         HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
-
         mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(1000L));
 
         Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         mDiscoveredPeersField.setAccessible(true);
         mDiscoveredPeersField.set(mPeerModel, mDiscoveredPeers);
 
-
         doNothing().when(mMockListener).onPeerUpdated(isA(PeerProperties.class));
         when(mMockDiscoveryManagerSettings.getPeerExpiration()).thenReturn(500L);
-
         when(mMockPeerProperties.hasMoreInformation(isA(PeerProperties.class))).thenReturn(true);
-
 
         mPeerModel.addOrUpdateDiscoveredPeer(mMockPeerProperties);
 
@@ -312,19 +312,15 @@ public class PeerModelTest {
     public void testAddOrUpdateDiscoveredPeer_Update2() throws Exception {
         // prepare a peer's list
         HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
-
         mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(1000L));
 
         Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         mDiscoveredPeersField.setAccessible(true);
         mDiscoveredPeersField.set(mPeerModel, mDiscoveredPeers);
 
-
         doNothing().when(mMockListener).onPeerUpdated(isA(PeerProperties.class));
         when(mMockDiscoveryManagerSettings.getPeerExpiration()).thenReturn(500L);
-
         when(mMockPeerProperties.hasMoreInformation(isA(PeerProperties.class))).thenReturn(false);
-
 
         mPeerModel.addOrUpdateDiscoveredPeer(mMockPeerProperties);
 
@@ -343,6 +339,28 @@ public class PeerModelTest {
 
     @Test
     public void testCheckListForExpiredPeers() throws Exception {
+        HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
+        long hourBefore = new Date().getTime() - 3600 * 1000;
+        long dayBefore = new Date().getTime() - 24 * 3600 * 1000;
+        long halfDay = 12 * 3600 * 1000;
 
+        when(mMockDiscoveryManagerSettings.getPeerExpiration()).thenReturn(halfDay);
+
+        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(hourBefore));
+        mDiscoveredPeers.put(mMockPeerProperties2, new Timestamp(dayBefore));
+
+        Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
+        mDiscoveredPeersField.setAccessible(true);
+        mDiscoveredPeersField.set(mPeerModel, mDiscoveredPeers);
+
+        mPeerModel.checkListForExpiredPeers();
+
+        @SuppressWarnings("unchecked")
+        HashMap<PeerProperties, Timestamp> peers
+                = (HashMap<PeerProperties, Timestamp>) mDiscoveredPeersField.get(mPeerModel);
+
+        assertThat("The expired peer is removed", peers.size(), is(1));
+
+        verify(mMockListener, times(1)).onPeerExpiredAndRemoved(isA(PeerProperties.class));
     }
 }
