@@ -417,7 +417,11 @@ public class BluetoothConnector
             mConnectionTimeoutTimer = null;
         }
 
-        if (mClientThreads.size() > 0) {
+        final int numberOfClientThreadsToShutdown = mClientThreads.size();
+
+        if (numberOfClientThreadsToShutdown > 0) {
+            Log.d(TAG, "cancelAllConnectionAttempts: Shutting down " + numberOfClientThreadsToShutdown + " client threads");
+
             for (BluetoothClientThread bluetoothClientThread : mClientThreads) {
                 final BluetoothClientThread finalBluetoothClientThread = bluetoothClientThread;
 
