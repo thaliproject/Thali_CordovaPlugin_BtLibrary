@@ -13,16 +13,6 @@ import static org.junit.Assert.assertThat;
 
 public class CommonUtilsTest {
 
-    @Before
-    public void setUp() throws Exception {
-        MockitoAnnotations.initMocks(this);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-
-    }
-
     @Test
     public void testIsNonEmptyString() throws Exception {
 
