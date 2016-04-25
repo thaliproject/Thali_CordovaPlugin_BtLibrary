@@ -34,39 +34,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds);
 
         /**
-         * Called when one or more of the beacon ad components are changed. These changes may affect
-         * the scanner as well. For instance, if we filter the received ads based on the
-         * manufacturer ID, the filters need to be updated.
-         *
-         * @param manufacturerId The manufacturer ID.
-         * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
-         * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
+         * Called when any of the advertise/scan settings is changed.
          */
-        void onAdvertisementDataComponentsChanged(
-                int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation);
-
-        /**
-         * Called when the advertisement data type is changed.
-         *
-         * @param advertisementDataType The new advertisement data type.
-         */
-        void onAdvertisementDataTypeChanged(AdvertisementDataType advertisementDataType);
-
-        /**
-         * Called when the advertise settings are changed.
-         *
-         * @param advertiseMode The new advertise mode.
-         * @param advertiseTxPowerLevel The new advertise TX power level.
-         */
-        void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel);
-
-        /**
-         * Called when either the scan mode or the scan report delay is changed.
-         *
-         * @param scanMode The new scan mode.
-         * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
-         */
-        void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds);
+        void onAdvertiseScanSettingsChanged();
     }
 
     // Default settings
@@ -413,7 +383,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mManufacturerId = manufacturerId;
             mSharedPreferencesEditor.putInt(KEY_MANUFACTURER_ID, mManufacturerId);
             mSharedPreferencesEditor.apply();
-            notifyBeaconAdDataComponentsChanged();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseScanSettingsChanged();
+                }
+            }
         }
     }
 
@@ -435,7 +410,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mBeaconAdLengthAndType = beaconAdLengthAndType;
             mSharedPreferencesEditor.putInt(KEY_BEACON_AD_LENGTH_AND_TYPE, mBeaconAdLengthAndType);
             mSharedPreferencesEditor.apply();
-            notifyBeaconAdDataComponentsChanged();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseScanSettingsChanged();
+                }
+            }
         }
     }
 
@@ -457,7 +437,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mBeaconAdExtraInformation = beaconAdExtraInformation;
             mSharedPreferencesEditor.putInt(KEY_BEACON_AD_EXTRA_INFORMATION, mBeaconAdExtraInformation);
             mSharedPreferencesEditor.apply();
-            notifyBeaconAdDataComponentsChanged();
+
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseScanSettingsChanged();
+                }
+            }
         }
     }
 
@@ -481,7 +466,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onAdvertisementDataTypeChanged(mAdvertisementDataType);
+                    listener.onAdvertiseScanSettingsChanged();
                 }
             }
         }
@@ -512,7 +497,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+                    listener.onAdvertiseScanSettingsChanged();
                 }
             }
         }
@@ -543,7 +528,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onAdvertiseSettingsChanged(mAdvertiseMode, mAdvertiseTxPowerLevel);
+                    listener.onAdvertiseScanSettingsChanged();
                 }
             }
         }
@@ -574,7 +559,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onScanSettingsChanged(mScanMode, mScanReportDelayInMilliseconds);
+                    listener.onAdvertiseScanSettingsChanged();
                 }
             }
         }
@@ -602,7 +587,62 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
             if (mListeners.size() > 0) {
                 for (Listener listener : mListeners) {
-                    listener.onScanSettingsChanged(mScanMode, mScanReportDelayInMilliseconds);
+                    listener.onAdvertiseScanSettingsChanged();
+                }
+            }
+        }
+    }
+
+    /**
+     * For convenience, when one wants to do a batch change for advertise and scan settings.
+     *
+     * @param advertiseMode The advertise mode to set.
+     * @param advertiseTxPowerLevel The power level to set.
+     * @param scanMode The scan mode to set.
+     */
+    public void setAdvertiseScanModeAndTxPowerLevel(int advertiseMode, int advertiseTxPowerLevel, int scanMode) {
+        if (!isValidAdvertiseMode(advertiseMode)) {
+            throw new IllegalArgumentException("Invalid advertise mode: " + advertiseMode);
+        }
+
+        if (!isValidAdvertiseTxPowerLevel(advertiseTxPowerLevel)) {
+            throw new IllegalArgumentException("Invalid power level: " + advertiseTxPowerLevel);
+        }
+
+        if (!isValidScanMode(scanMode)) {
+            throw new IllegalArgumentException("Invalid scan mode: " + scanMode);
+        }
+
+        boolean valueChanged = false;
+
+        if (mAdvertiseMode != advertiseMode) {
+            Log.i(TAG, "setAdvertiseScanModeAndTxPowerLevel: Advertise mode: " + mAdvertiseMode + " -> " + advertiseMode);
+            mAdvertiseMode = advertiseMode;
+            mSharedPreferencesEditor.putInt(KEY_ADVERTISE_MODE, mAdvertiseMode);
+            mSharedPreferencesEditor.apply();
+            valueChanged = true;
+        }
+
+        if (mAdvertiseTxPowerLevel != advertiseTxPowerLevel) {
+            Log.i(TAG, "setAdvertiseScanModeAndTxPowerLevel: Advertise TX power level: " + mAdvertiseTxPowerLevel + " -> " + advertiseTxPowerLevel);
+            mAdvertiseTxPowerLevel = advertiseTxPowerLevel;
+            mSharedPreferencesEditor.putInt(KEY_ADVERTISE_TX_POWER_LEVEL, mAdvertiseTxPowerLevel);
+            mSharedPreferencesEditor.apply();
+            valueChanged = true;
+        }
+
+        if (mScanMode != scanMode) {
+            Log.i(TAG, "setAdvertiseScanModeAndTxPowerLevel: Scan mode: " + mScanMode + " -> " + scanMode);
+            mScanMode = scanMode;
+            mSharedPreferencesEditor.putInt(KEY_SCAN_MODE, mScanMode);
+            mSharedPreferencesEditor.apply();
+            valueChanged = true;
+        }
+
+        if (valueChanged) {
+            if (mListeners.size() > 0) {
+                for (Listener listener : mListeners) {
+                    listener.onAdvertiseScanSettingsChanged();
                 }
             }
         }
@@ -664,6 +704,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         setManufacturerId(DEFAULT_MANUFACTURER_ID);
         setBeaconAdLengthAndType(DEFAULT_BEACON_AD_LENGTH_AND_TYPE);
         setBeaconAdExtraInformation(DEFAULT_BEACON_AD_EXTRA_INFORMATION);
+        setAdvertisementDataType(DEFAULT_ADVERTISEMENT_DATA_TYPE);
         setAdvertiseMode(DEFAULT_ADVERTISE_MODE);
         setAdvertiseTxPowerLevel(DEFAULT_ADVERTISE_TX_POWER_LEVEL);
         setScanMode(DEFAULT_SCAN_MODE);
@@ -793,17 +834,5 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
 
         return false;
-    }
-
-    /**
-     * Notifies the listener that one or more of the beacon ad data components have changed.
-     */
-    private void notifyBeaconAdDataComponentsChanged() {
-        if (mListeners.size() > 0) {
-            for (Listener listener : mListeners) {
-                listener.onAdvertisementDataComponentsChanged(
-                        mManufacturerId, mBeaconAdLengthAndType, mBeaconAdExtraInformation);
-            }
-        }
     }
 }
