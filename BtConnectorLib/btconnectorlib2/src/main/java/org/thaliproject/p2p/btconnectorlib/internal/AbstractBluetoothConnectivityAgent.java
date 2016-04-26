@@ -67,6 +67,9 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      * @param myPeerName Our peer name.
      */
     public void setPeerName(String myPeerName) {
+        if (myPeerName == null) {
+            throw new NullPointerException("Peer name is null");
+        }
         if (!mMyPeerName.equals(myPeerName)) {
             Log.i(TAG, "setPeerName: " + myPeerName);
             mMyPeerName = myPeerName;
