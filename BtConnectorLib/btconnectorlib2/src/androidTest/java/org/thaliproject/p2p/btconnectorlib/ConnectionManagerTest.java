@@ -15,7 +15,9 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
 import java.lang.reflect.Field;
@@ -43,11 +45,11 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         } catch (java.lang.RuntimeException ex) {
             // can throw exception if current thread already has a looper
         }
-        toggleBluetooth(true);
     }
 
     @Before
     public void setUp() throws Exception {
+        toggleBluetooth(true);
         MockitoAnnotations.initMocks(this);
         mContext = InstrumentationRegistry.getContext();
         mConnectionManager = new ConnectionManager(mContext,
@@ -72,9 +74,12 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
         // check if connection manager is added as listener
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
-
         thrown.expect(IllegalArgumentException.class);
         cmSettings.addListener(mConnectionManager);
+
+        // check that bluetooth manager is created
+        BluetoothManager btManager = BluetoothManager.getInstance(mContext);
+        assertThat(mConnectionManager.getBluetoothManager(), is(btManager));
     }
 
     @Test
@@ -89,9 +94,6 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         verify(mConnectionManagerListener, times(1))
                 .onConnectionManagerStateChanged(
                         ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-
-        // ensure bluetooth is enabled for other tests
-        toggleBluetooth(true);
     }
 
     @Test
@@ -149,9 +151,6 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mConnectionManager.onIsServerStartedChanged(false);
         assertThat(mConnectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
-
-        // ensure bluetooth is enabled for other tests
-        toggleBluetooth(true);
     }
 
     @Test
@@ -285,8 +284,6 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         Field isShutdownField = bluetoothConnector.getClass().getDeclaredField("mIsShuttingDown");
         isShutdownField.setAccessible(true);
         assertThat(isShutdownField.getBoolean(bluetoothConnector), is(true));
-
-        toggleBluetooth(true);
     }
 
     @Test
@@ -341,5 +338,17 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         // initialization started - we can cancel
         mConnectionManager.connect(peerProperties);
         assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(true));
+    }
+
+    @Test
+    public void testSetEmulateMarshmallow() throws Exception {
+        mConnectionManager.setEmulateMarshmallow(true);
+        Field emulateMarshmallowField = mConnectionManager.getClass().getSuperclass()
+                .getDeclaredField("mEmulateMarshmallow");
+        emulateMarshmallowField.setAccessible(true);
+        assertThat(emulateMarshmallowField.getBoolean(mConnectionManager), is(true));
+
+        mConnectionManager.setEmulateMarshmallow(false);
+        assertThat(emulateMarshmallowField.getBoolean(mConnectionManager), is(false));
     }
 }
