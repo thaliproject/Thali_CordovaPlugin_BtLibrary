@@ -324,56 +324,6 @@ public class DiscoveryManagerSettingsTest {
     }
 
     @Test
-    public void testDiscoveryModeWIFI() throws Exception {
-        Field field = mDiscoveryManagerSettings.getClass().getDeclaredField("mDiscoveryMode");
-        field.setAccessible(true);
-
-        // No listeners registered
-        assertThat("Should return true if no listeners are registered",
-                mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI),
-                is(equalTo(true)));
-
-        // change discovery mode to check if it is updated
-        field.set(mDiscoveryManagerSettings, DiscoveryManagerSettings.DEFAULT_DISCOVERY_MODE);
-
-        mDiscoveryManagerSettings.addListener(mMockDiscoveryManager);
-
-        // Listeners registered
-        assertThat("Should return false if isWifiDirectSupported is false",
-                mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI),
-                is(equalTo(false)));
-
-        when(mMockDiscoveryManager.isWifiDirectSupported()).thenReturn(true);
-        assertThat("Should return true if isWifiDirectSupported is true",
-                mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI),
-                is(equalTo(true)));
-
-        verify(mMockDiscoveryManager, atLeast(1))
-                .onDiscoveryModeChanged(DiscoveryManager.DiscoveryMode.WIFI, false);
-
-        assertThat("Should return proper discovery mode",
-                mDiscoveryManagerSettings.getDiscoveryMode(),
-                is(equalTo(DiscoveryManager.DiscoveryMode.WIFI)));
-
-        assertThat((Integer) mSharedPreferencesMap.get("discovery_mode"),
-                is(equalTo(DiscoveryManager.DiscoveryMode.WIFI.ordinal())));
-        assertThat("Apply count should be incremented", applyCnt, is(equalTo(2)));
-
-        // The same mode repeated
-        assertThat("Should return true if isWifiDirectSupported is true",
-                mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI),
-                is(equalTo(true)));
-
-        assertThat("Should return proper discovery mode",
-                mDiscoveryManagerSettings.getDiscoveryMode(),
-                is(equalTo(DiscoveryManager.DiscoveryMode.WIFI)));
-
-        assertThat((Integer) mSharedPreferencesMap.get("discovery_mode"),
-                is(equalTo(DiscoveryManager.DiscoveryMode.WIFI.ordinal())));
-        assertThat("Apply count should not be incremented when mode repeated", applyCnt, is(equalTo(2)));
-    }
-
-    @Test
     public void testDiscoveryModeBLE_AND_WIFI() throws Exception {
         Field field = mDiscoveryManagerSettings.getClass().getDeclaredField("mDiscoveryMode");
         field.setAccessible(true);
