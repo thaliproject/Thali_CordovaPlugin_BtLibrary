@@ -136,13 +136,11 @@ public class BluetoothUtils {
                 }
 
                 if (handshakeMessageAsString.equals(SIMPLE_HANDSHAKE_MESSAGE_AS_STRING)) {
-                    String bluetoothMacAddress =
-                            BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
+                    String bluetoothMacAddress = getBluetoothMacAddressFromSocket(bluetoothSocketOfSender);
 
                     if (isValidBluetoothMacAddress(bluetoothMacAddress)) {
                         receivedHandshakeMessageValidated = true;
-                        peerProperties = new PeerProperties(
-                                BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocketOfSender));
+                        peerProperties = new PeerProperties(bluetoothMacAddress);
                     }
                 }
             } else {
