@@ -469,7 +469,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         verify(mMockDiscoveryManager, atLeast(1))
-                .onAdvertisementDataTypeChanged(BlePeerDiscoverer.AdvertisementDataType.MANUFACTURER_DATA);
+                .onAdvertiseScanSettingsChanged();
 
         reset(mMockDiscoveryManager);
 
@@ -482,7 +482,7 @@ public class DiscoveryManagerSettingsTest {
                 is(equalTo(1)));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
-                .onAdvertisementDataTypeChanged(BlePeerDiscoverer.AdvertisementDataType.MANUFACTURER_DATA);
+                .onAdvertiseScanSettingsChanged();
     }
 
     @Test
@@ -504,7 +504,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         verify(mMockDiscoveryManager, atLeast(1))
-                .onAdvertiseSettingsChanged(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY, AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM);
+                .onAdvertiseScanSettingsChanged();
 
         reset(mMockDiscoveryManager);
 
@@ -517,7 +517,7 @@ public class DiscoveryManagerSettingsTest {
                 is(equalTo(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
-                .onAdvertiseSettingsChanged(anyInt(), anyInt());
+                .onAdvertiseScanSettingsChanged();
     }
 
     @Test
@@ -539,7 +539,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         verify(mMockDiscoveryManager, atLeast(1))
-                .onAdvertiseSettingsChanged(AdvertiseSettings.ADVERTISE_MODE_BALANCED, AdvertiseSettings.ADVERTISE_TX_POWER_HIGH);
+                .onAdvertiseScanSettingsChanged();
 
         reset(mMockDiscoveryManager);
 
@@ -552,7 +552,7 @@ public class DiscoveryManagerSettingsTest {
                 is(equalTo(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
-                .onAdvertiseSettingsChanged(anyInt(), anyInt());
+                .onAdvertiseScanSettingsChanged();
     }
 
     @Test
@@ -574,7 +574,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         verify(mMockDiscoveryManager, atLeast(1))
-                .onScanSettingsChanged(ScanSettings.SCAN_MODE_LOW_LATENCY, DiscoveryManagerSettings.DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS);
+                .onAdvertiseScanSettingsChanged();
 
         reset(mMockDiscoveryManager);
 
@@ -586,7 +586,7 @@ public class DiscoveryManagerSettingsTest {
                 is(equalTo(ScanSettings.SCAN_MODE_LOW_LATENCY)));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
-                .onScanSettingsChanged(anyInt(), anyLong());
+                .onAdvertiseScanSettingsChanged();
     }
 
     @Test
@@ -607,7 +607,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count is incremented", applyCnt, is(equalTo(1)));
 
         verify(mMockDiscoveryManager, atLeast(1))
-                .onScanSettingsChanged(DiscoveryManagerSettings.DEFAULT_SCAN_MODE, 1L);
+                .onAdvertiseScanSettingsChanged();
 
         reset(mMockDiscoveryManager);
 
@@ -619,7 +619,7 @@ public class DiscoveryManagerSettingsTest {
                 is(equalTo(1L)));
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(1)));
         verify(mMockDiscoveryManager, never())
-                .onScanSettingsChanged(anyInt(), anyLong());
+                .onAdvertiseScanSettingsChanged();
     }
 
     @Test
