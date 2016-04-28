@@ -2,6 +2,7 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
+import android.os.CountDownTimer;
 import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
@@ -15,7 +16,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
-import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
@@ -27,9 +27,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
-import static org.mockito.Matchers.isNull;
+import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 @RunWith(AndroidJUnit4.class)
 public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
@@ -83,6 +85,20 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         // check that bluetooth manager is created
         BluetoothManager btManager = BluetoothManager.getInstance(mContext);
         assertThat(mConnectionManager.getBluetoothManager(), is(btManager));
+    }
+
+    @Test
+    public void testIllegalArgumentsConstruction() throws Exception {
+        // connection manager listener may be null - correct call
+        new ConnectionManager(mContext, null, UUID.randomUUID(), "DUMMY_NAME");
+
+        // context must be given
+        thrown.expect(NullPointerException.class);
+        new ConnectionManager(null, mConnectionManagerListener, UUID.randomUUID(), "DUMMY_NAME");
+
+        // UUID must be given
+        thrown.expect(NullPointerException.class);
+        new ConnectionManager(mContext, mConnectionManagerListener, null, "DUMMY_NAME");
     }
 
     @Test
@@ -331,9 +347,70 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         PeerProperties peerProperties =  new PeerProperties("BAD MAC");
         assertThat(mConnectionManager.connect(peerProperties), is(false));
 
-        // correct MAC address of target device - connection initialization starts
-        peerProperties =  new PeerProperties("02:00:00:00:00:00");
-        assertThat(mConnectionManager.connect(peerProperties), is(true));
+        // correct MAC address of target device
+        // helper class to test connection with timeout
+        class ConnectionThread extends Thread {
+
+            private ConnectionManager testConnectionManager;
+            private PeerProperties testPeerProperties;
+            private long testTimeout;
+
+            public ConnectionThread(ConnectionManager connectionManager,
+                                    PeerProperties peerProperties,
+                                    long timeout) {
+                testConnectionManager = connectionManager;
+                testPeerProperties = peerProperties;
+                testTimeout = timeout;
+            }
+
+            public void run() {
+                Looper.prepare();
+                new CountDownTimer(testTimeout + 3000, testTimeout + 3000) {
+                    public void onTick(long millisUntilFinished) {
+                        // not used
+                    }
+                    public void onFinish() {
+                        Looper.myLooper().quitSafely();
+                    }
+                }.start();
+                // connection initialization starts
+                assertThat(testConnectionManager.connect(testPeerProperties), is(true));
+                Looper.loop();
+            }
+        }
+
+
+        peerProperties = new PeerProperties("02:00:00:00:00:00");
+        long timeout = 5000;
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
+        cmSettings.setConnectionTimeout(timeout);
+        mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
+                                                   UUID.randomUUID(), "MOCK_NAME");
+        (new ConnectionThread(
+                mConnectionManager,
+                peerProperties,
+                timeout)).start();
+
+        // let's wait for connection timeout (additional time to ensure no other handler is called)
+        Thread.sleep(timeout + 20000);
+        verify(mConnectionManagerListener, times(1)).onConnectionTimeout(peerProperties);
+        verifyNoMoreInteractions(mConnectionManagerListener);
+
+        // now set longer timeout to get connection failed
+        timeout = 30000;
+        cmSettings.setConnectionTimeout(timeout);
+        mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
+                                                   UUID.randomUUID(), "MOCK_NAME");
+        (new ConnectionThread(
+                mConnectionManager,
+                peerProperties,
+                timeout)).start();
+
+        // let's wait for connection failure (additional time to ensure no other handler is called)
+        Thread.sleep(timeout + 10000);
+        verify(mConnectionManagerListener, times(1))
+                .onConnectionFailed((PeerProperties) anyObject(), anyString());
+        verifyNoMoreInteractions(mConnectionManagerListener);
     }
 
     @Test

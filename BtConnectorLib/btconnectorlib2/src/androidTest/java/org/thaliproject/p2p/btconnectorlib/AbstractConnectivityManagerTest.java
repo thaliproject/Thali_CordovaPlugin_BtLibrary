@@ -23,7 +23,7 @@ public class AbstractConnectivityManagerTest {
         }
         Thread.sleep(3000);
         if (btAdapter.isEnabled() != turnOn) {
-            // wait additional 7 seconds
+            // wait additional 15 seconds
             Thread.sleep(15000);
         }
         assertThat(btAdapter.isEnabled(), is(turnOn));
@@ -48,6 +48,10 @@ public class AbstractConnectivityManagerTest {
             wifiManager.setWifiEnabled(false);
         }
         Thread.sleep(3000);
+        if (wifiManager.isWifiEnabled() != turnOn) {
+            // wait additional 15 seconds
+            Thread.sleep(15000);
+        }
         assertThat(wifiManager.isWifiEnabled(), is(turnOn));
     }
 
