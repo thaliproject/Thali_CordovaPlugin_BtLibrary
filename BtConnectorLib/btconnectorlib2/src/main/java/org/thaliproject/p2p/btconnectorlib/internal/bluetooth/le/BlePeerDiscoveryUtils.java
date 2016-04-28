@@ -7,6 +7,7 @@ import android.annotation.TargetApi;
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -30,6 +31,7 @@ class BlePeerDiscoveryUtils {
         UUID uuid = null;
         String provideBluetoothMacAddressRequestId = null;
         String bluetoothMacAddress = null;
+        int extraInformation = PeerProperties.NO_EXTRA_INFORMATION;
     }
 
     private static final String TAG = BlePeerDiscoveryUtils.class.getName();
@@ -45,10 +47,11 @@ class BlePeerDiscoveryUtils {
      * Creates a new scan filter based on the given arguments.
      *
      * @param serviceUuid The service UUID for the scan filter. Use null to not set.
+     * @param manufacturerId The manufacturer ID. Ignored, if useManufacturerId is false.
      * @param useManufacturerId If true, will add the manufacturer ID to the filter properties.
      * @return A newly created scan filter or null in case of a failure.
      */
-    public static ScanFilter createScanFilter(UUID serviceUuid, boolean useManufacturerId) {
+    public static ScanFilter createScanFilter(UUID serviceUuid, int manufacturerId, boolean useManufacturerId) {
         Log.d(TAG, "createScanFilter: "
                 + ((serviceUuid != null) ? "Service UUID: \"" + serviceUuid.toString() + "\"" : "No service UUID")
                 + ", use manufacturer ID: " + useManufacturerId);
@@ -58,7 +61,7 @@ class BlePeerDiscoveryUtils {
 
         try {
             if (useManufacturerId) {
-                builder.setManufacturerData(PeerAdvertisementFactory.MANUFACTURER_ID, null);
+                builder.setManufacturerData(manufacturerId, null);
             }
 
             if (serviceUuid != null) {
@@ -78,16 +81,17 @@ class BlePeerDiscoveryUtils {
     /**
      * Parses the given service data.
      *
-     * @param serviceData The service data. Expected contain a "0" byte followed by the six bytes
-     *                    consisting of the Bluetooth MAC address.
+     * @param serviceData The service data. Expected contain a byte, containing extra information as
+     *                    8-bit integer, followed by the six bytes consisting of the Bluetooth MAC
+     *                    address.
      * @return A newly created ParsedAdvertisement instance, containing at least the Bluetooth MAC
      * address, or null in case the parsing failed.
      */
     public static ParsedAdvertisement parseServiceData(byte[] serviceData) {
         ParsedAdvertisement parsedAdvertisement = null;
 
-        if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)
-                && serviceData[0] == 0x0) {
+        if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)) {
+            int extraInformation = byteToUint8(serviceData[0]);
             byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
             for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
@@ -99,6 +103,7 @@ class BlePeerDiscoveryUtils {
             if (bluetoothMacAddress != null) {
                 parsedAdvertisement = new ParsedAdvertisement();
                 parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+                parsedAdvertisement.extraInformation = extraInformation;
             }
         }
 
@@ -174,6 +179,7 @@ class BlePeerDiscoveryUtils {
         byte[] adLengthAndType = null;
         byte[] serviceUuidAsByteArray = null;
         int[] bluetoothAddressAsInt8Array = null;
+        int extraInformation = 0;
         boolean bytesExtracted = false;
 
         if (manufacturerData != null && manufacturerData.length >= ADVERTISEMENT_BYTE_COUNT) {
@@ -186,6 +192,10 @@ class BlePeerDiscoveryUtils {
 
                 serviceUuidAsByteArray = new byte[16];
                 dataInputStream.read(serviceUuidAsByteArray);
+
+                byte[] extraInformationAsByte = new byte[1];
+                dataInputStream.read(extraInformationAsByte);
+                extraInformation = byteToUint8(extraInformationAsByte[0]);
 
                 bluetoothAddressAsInt8Array = new int[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
 
@@ -211,6 +221,7 @@ class BlePeerDiscoveryUtils {
                 parsedAdvertisement = new ParsedAdvertisement();
                 parsedAdvertisement.uuid = serviceUuid;
                 parsedAdvertisement.bluetoothMacAddress = bluetoothMacAddress;
+                parsedAdvertisement.extraInformation = extraInformation;
             } else {
                 if (serviceUuid == null) {
                     Log.e(TAG, "parseManufacturerData: Failed to parse the service UUID");
@@ -467,8 +478,34 @@ class BlePeerDiscoveryUtils {
     }
 
     /**
+     * Converts the given (8-bit) integer into a byte.
+     *
+     * @param int8 An 8-bit integer.
+     * @return The given 8-bit integer as byte.
+     */
+    public static byte int8ToByte(int int8) {
+        return (byte)int8;
+    }
+
+    /**
+     * Converts the given byte to unsigned 8-bit integer.
+     *
+     * @param int8AsByte A byte containing an unsigned 8-bit integer.
+     * @return The given byte as unsigned 8-bit integer.
+     */
+    public static int byteToUint8(byte int8AsByte) {
+        int int8 = (int)int8AsByte;
+
+        if (int8 < 0) {
+            int8 += 256;
+        }
+
+        return int8;
+    }
+
+    /**
      * Converts the given Bluetooth address into an integer array.
-     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     * Since Java does not have unsigned bytes we have to use signed 8-bit integers.
      *
      * @param bluetoothAddress The Bluetooth address to convert.
      * @return An integer array containing the Bluetooth address.
@@ -499,7 +536,7 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Tries to parse a Bluetooth address from the given integer array.
-     * Since Java does not have unsigned bytes we have to use signed 8 bit integers.
+     * Since Java does not have unsigned bytes we have to use signed 8-bit integers.
      *
      * @param bluetoothAddressAsInt8Array The integer array containing the Bluetooth address.
      * @return The parsed Bluetooth address.

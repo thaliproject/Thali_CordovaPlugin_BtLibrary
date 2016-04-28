@@ -10,7 +10,6 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
-
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -22,8 +21,6 @@ import java.util.UUID;
 @TargetApi(21)
 class PeerAdvertisementFactory {
     private static final String TAG = PeerAdvertisementFactory.class.getName();
-    public static final int MANUFACTURER_ID = 76;
-    private static final int BEACON_AD_LENGTH_AND_TYPE = 0x0215;
 
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
@@ -37,10 +34,12 @@ class PeerAdvertisementFactory {
      *  setIncludeTxPowerLevel() - Must be set to false. We need the space.
      *
      * @param serviceUuid The service UUID.
+     * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
      * @param bluetoothMacAddress The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
-    public static AdvertiseData createAdvertiseDataToServiceData(UUID serviceUuid, String bluetoothMacAddress) {
+    public static AdvertiseData createAdvertiseDataToServiceData(
+            UUID serviceUuid, int beaconAdExtraInformation, String bluetoothMacAddress) {
         Log.i(TAG, "createAdvertiseDataToServiceData: Service UUID: \"" + serviceUuid
                 + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
 
@@ -58,7 +57,7 @@ class PeerAdvertisementFactory {
             builder.setIncludeTxPowerLevel(false);
 
             byte[] serviceDataAsByteArray = new byte[bluetoothMacAddressAsByteArray.length + 1];
-            serviceDataAsByteArray[0] = 0x0;
+            serviceDataAsByteArray[0] = BlePeerDiscoveryUtils.int8ToByte(beaconAdExtraInformation);
 
             for (int i = 0; i < bluetoothMacAddressAsByteArray.length; ++i) {
                 serviceDataAsByteArray[i + 1] = bluetoothMacAddressAsByteArray[i];
@@ -82,11 +81,17 @@ class PeerAdvertisementFactory {
 
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
+     *
+     * @param manufacturerId The manufacturer ID.
+     * @param beaconAdLengthAndType The beacon ad length and type.
      * @param serviceUuid The service UUID.
+     * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
      * @param bluetoothMacAddress The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
-    public static AdvertiseData createAdvertiseDataToManufacturerData(UUID serviceUuid, String bluetoothMacAddress) {
+    public static AdvertiseData createAdvertiseDataToManufacturerData(
+            int manufacturerId, int beaconAdLengthAndType, UUID serviceUuid,
+            int beaconAdExtraInformation, String bluetoothMacAddress) {
         Log.i(TAG, "createAdvertiseDataToManufacturerData: Service UUID: \"" + serviceUuid
                 + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
 
@@ -101,7 +106,7 @@ class PeerAdvertisementFactory {
 
         try {
             // For beacons the first two bytes consist of advertisement length and type
-            dataOutputStream.writeShort(BEACON_AD_LENGTH_AND_TYPE);
+            dataOutputStream.writeShort(beaconAdLengthAndType);
 
             // Use the first two bytes for truncated peer name
             //byte[] peerNameAsTwoBytes = peerNameAsTwoByteArray(peerName);
@@ -118,6 +123,8 @@ class PeerAdvertisementFactory {
             //dataOutputStream.writeShort(0x0002); // ID 3
             //dataOutputStream.writeByte(0xb5); // RSSI
             //dataOutputStream.writeByte(0xff); // Manufacturer reserved byte
+
+            dataOutputStream.write(BlePeerDiscoveryUtils.int8ToByte(beaconAdExtraInformation));
 
             // Insert the Bluetooth address after the UUID (six bytes)
             int[] bluetoothMacAddressAsInt8Array = BlePeerDiscoveryUtils.bluetoothAddressToInt8Array(bluetoothMacAddress);
@@ -138,7 +145,7 @@ class PeerAdvertisementFactory {
             ok = false;
 
             try {
-                builder.addManufacturerData(MANUFACTURER_ID, byteArrayOutputStream.toByteArray());
+                builder.addManufacturerData(manufacturerId, byteArrayOutputStream.toByteArray());
                 ok = true;
             } catch (IllegalArgumentException e) {
                 Log.e(TAG, "createAdvertiseDataToManufacturerData: " + e.getMessage(), e);
@@ -157,6 +164,7 @@ class PeerAdvertisementFactory {
 
     /**
      * Creates a new PeerProperties instance based on the given parsed advertisement.
+     *
      * @param parsedAdvertisement The parsed advertisement.
      * @return A newly created PeerProperties instance or null, if the advertisement does not
      * contain a Bluetooth MAC address.
@@ -168,6 +176,7 @@ class PeerAdvertisementFactory {
         if (parsedAdvertisement != null) {
             if (parsedAdvertisement.bluetoothMacAddress != null) {
                 peerProperties = new PeerProperties(parsedAdvertisement.bluetoothMacAddress);
+                peerProperties.setExtraInformation(parsedAdvertisement.extraInformation);
             } else {
                 Log.e(TAG, "parsedAdvertisementToPeerProperties: No Bluetooth MAC address");
             }
@@ -178,6 +187,7 @@ class PeerAdvertisementFactory {
 
     /**
      * Parses peer properties from the given manufacturer data byte array.
+     *
      * @param manufacturerData The manufacturer data.
      * @param serviceUuid The service UUID. Will return peer properties, if and only if this UUID
      *                    matches the one provided in manufacturer data. If this is null, no
@@ -192,6 +202,7 @@ class PeerAdvertisementFactory {
 
     /**
      * Creates a "Provide Bluetooth MAC address" UUID based on the given service UUID and request ID.
+     *
      * @param serviceUuid The service UUID to be used as a basis for the new UUID.
      * @param requestId The request ID that will be used to replace the ending of the service UUID.
      * @return A newly created UUID.
@@ -217,6 +228,7 @@ class PeerAdvertisementFactory {
     /**
      * Generates a unique UUID for "Provide Bluetooth MAC address" request: The last six bytes of
      * the given service UUID are changed, but the beginning of the UUID remains the same.
+     *
      * @param serviceUuid The service UUID to be used as a basis for the new UUID.
      * @return A newly created unique UUID.
      */
@@ -246,6 +258,7 @@ class PeerAdvertisementFactory {
 
     /**
      * Parses the request ID (as hex string) from the given UUID (the last six bytes, 12 chars).
+     *
      * @param provideBluetoothMacAddressRequestUuid A "Provide Bluetooth MAC address" request UUID.
      * @return The parsed request ID (as hex string) or null in case of a failure.
      */

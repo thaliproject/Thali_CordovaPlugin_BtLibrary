@@ -10,6 +10,9 @@
     <string name="action_make_device_discoverable">Make device discoverable</string>
 
     <string name="rfcomm_port_info">Use -1 to let the platform decide or 0 for rotating port number</string>
+    <string name="manufacturer_id">Manufacturer ID</string>
+    <string name="beacon_ad_extra_information">Extra information</string>
+    <string name="beacon_ad_extra_information_description">Extra unsigned 8-bit integer for beacon advertisement data. Use 0 for no extra information.</string>
     <string name="advertisement_data_type">Advertisement data type (BLE only)</string>
     <string name="service">service</string>
     <string name="manufacturer">manufacturer</string>

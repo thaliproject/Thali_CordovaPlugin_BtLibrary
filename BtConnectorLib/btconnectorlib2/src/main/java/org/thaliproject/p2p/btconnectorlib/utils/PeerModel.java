@@ -186,11 +186,18 @@ public class PeerModel {
 
                 if (oldPeerProperties != null) {
                     // This one was already in the list
+
+                    // Check if the extra info differs before copying the data
+                    boolean extraInformationDiffers =
+                            (peerPropertiesToAddOrUpdate.getExtraInformation()
+                                    != oldPeerProperties.getExtraInformation());
+
                     // Make sure we don't lose any data when updating
                     PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
 
-                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)) {
-                        // The new discovery result has more information than the old one
+                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)
+                            || extraInformationDiffers) {
+                        // The new discovery result has new/more information than the old one
                         for (Listener listener : mListeners) {
                             listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
                         }
