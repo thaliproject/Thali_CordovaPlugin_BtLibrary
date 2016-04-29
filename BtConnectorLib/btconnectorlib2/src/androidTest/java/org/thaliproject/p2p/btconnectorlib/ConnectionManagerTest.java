@@ -339,6 +339,43 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
+    public void testStartStopListening() throws Exception {
+        boolean isRunning = mConnectionManager.startListeningForIncomingConnections();
+        assertThat(isRunning, is(true));
+        waitForMainLooper();
+        verify(mConnectionManagerListener, times(1))
+                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
+
+        // call start again - no action expected
+        isRunning = mConnectionManager.startListeningForIncomingConnections();
+        assertThat(isRunning, is(true));
+        waitForMainLooper();
+        verifyNoMoreInteractions(mConnectionManagerListener);
+
+        // call stop now
+        mConnectionManager.stopListeningForIncomingConnections();
+        waitForMainLooper();
+        verify(mConnectionManagerListener, times(1))
+                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.NOT_STARTED);
+
+        // call stop again
+        mConnectionManager.stopListeningForIncomingConnections();
+        waitForMainLooper();
+        verifyNoMoreInteractions(mConnectionManagerListener);
+
+        // now start and stop again
+        isRunning = mConnectionManager.startListeningForIncomingConnections();
+        assertThat(isRunning, is(true));
+        waitForMainLooper();
+        verify(mConnectionManagerListener, times(2))
+                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
+        mConnectionManager.stopListeningForIncomingConnections();
+        waitForMainLooper();
+        verify(mConnectionManagerListener, times(2))
+                .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.NOT_STARTED);
+    }
+
+    @Test
     public void testConnect() throws Exception {
         // no target device - connection initialization fails
         assertThat(mConnectionManager.connect(null), is(false));
