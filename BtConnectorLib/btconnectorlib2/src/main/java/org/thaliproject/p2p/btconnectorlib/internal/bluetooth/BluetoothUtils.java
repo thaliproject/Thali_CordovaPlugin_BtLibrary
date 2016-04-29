@@ -187,7 +187,8 @@ public class BluetoothUtils {
      * @param channelOrPort The next alternative RFCOMM channel or L2CAP psm to use.
      */
     public static void setNextAlternativeChannelOrPort(int channelOrPort) {
-        if (channelOrPort >= 0 && channelOrPort < MAX_ALTERNATIVE_CHANNEL) {
+        if (channelOrPort >= 1 && channelOrPort < MAX_ALTERNATIVE_CHANNEL) {
+            // Just before the next time mAlternativeChannel is used it is incremented by one
             mAlternativeChannel = channelOrPort - 1;
         }
     }
