@@ -7,8 +7,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -109,6 +111,27 @@ public class BluetoothConnector
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
             UUID serviceRecordUuid, String myBluetoothName, String myIdentityString) {
+        this(context, listener, bluetoothAdapter, serviceRecordUuid, myBluetoothName,
+                myIdentityString, PreferenceManager.getDefaultSharedPreferences(context));
+    }
+
+    /**
+     * Constructor used in unit tests. It allows to provide initialized
+     * shared preferences.
+     *
+     * @param context The application context.
+     * @param listener The listener.
+     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
+     * @param myBluetoothName Our Bluetooth name.
+     * @param myIdentityString A string containing our identity.
+     *                         See AbstractBluetoothConnectivityAgent.createIdentityString()
+     * @param preferences The shared preferences.
+     */
+    public BluetoothConnector(
+            Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
+            UUID serviceRecordUuid, String myBluetoothName, String myIdentityString,
+            SharedPreferences preferences) {
         if (listener == null || bluetoothAdapter == null || serviceRecordUuid == null) {
             throw new NullPointerException("Listener, Bluetooth adapter instance or service record UUID is null");
         }
@@ -121,10 +144,12 @@ public class BluetoothConnector
         mMyBluetoothName = myBluetoothName;
         mHandler = new Handler(context.getMainLooper());
 
-        ConnectionManagerSettings mConnectionManagerSettings = ConnectionManagerSettings.getInstance(context);
+        ConnectionManagerSettings mConnectionManagerSettings
+                = ConnectionManagerSettings.getInstance(context, preferences);
         mConnectionTimeoutInMilliseconds = mConnectionManagerSettings.getConnectionTimeout();
         mInsecureRfcommSocketPort = mConnectionManagerSettings.getInsecureRfcommSocketPortNumber();
-        mMaxNumberOfOutgoingConnectionAttemptRetries = mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries();
+        mMaxNumberOfOutgoingConnectionAttemptRetries
+                = mConnectionManagerSettings.getMaxNumberOfConnectionAttemptRetries();
         mHandshakeRequired = mConnectionManagerSettings.getHandshakeRequired();
 
         mUncaughtExceptionHandler = new Thread.UncaughtExceptionHandler() {
