@@ -111,12 +111,13 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         mTimeStarted = new Date().getTime();
         boolean socketConnectSucceeded = tryToConnect();
+        final BluetoothSocket bluetoothSocket = mBluetoothSocket;
 
-        if (mHandshakeRequired && socketConnectSucceeded && !mIsShuttingDown) {
+        if (mHandshakeRequired && socketConnectSucceeded && bluetoothSocket != null && !mIsShuttingDown) {
             String errorMessage = "";
 
             try {
-                mHandshakeThread = new BluetoothSocketIoThread(mBluetoothSocket, this);
+                mHandshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
                 mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
                 mHandshakeThread.setExitThreadAfterRead(true);
                 mHandshakeThread.start();
@@ -196,10 +197,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * is called.
      */
     @Override
-    public synchronized void shutdown() {
+    public void shutdown() {
         Log.d(TAG, "shutdown: Thread ID: " + getId());
         mIsShuttingDown = true;
-        mListener = null;
         close();
     }
 
@@ -289,10 +289,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Closes the handshake thread, if one exists, and the Bluetooth socket.
      */
-    private synchronized void close() {
+    private void close() {
         if (mHandshakeThread != null) {
             mHandshakeThread.close(true, false);
-            mHandshakeThread = null;
         }
 
         if (mBluetoothSocket != null) {
@@ -300,12 +299,23 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
                 Log.d(TAG, "close: Trying to close the Bluetooth socket... (thread ID: " + getId() + ")");
                 mBluetoothSocket.close();
                 Log.d(TAG, "close: Bluetooth socket closed (thread ID: " + getId() + ")");
-            } catch (IOException e) {
+            } catch (IOException | NullPointerException e) {
                 Log.w(TAG, "close: Failed to close the socket (thread ID: " + getId() + "): " + e.getMessage());
             }
-
-            mBluetoothSocket = null;
         }
+
+        finalizeClose();
+    }
+
+    /**
+     * Since shutdown and close methods are not synchronized (so that they can be executed even when
+     * tryToConnect method is still being executed), they cannot set the members to null to avoid
+     * NullPointerExceptions. Thus, we do that here.
+     */
+    private synchronized void finalizeClose() {
+        mListener = null;
+        mHandshakeThread = null;
+        mBluetoothSocket = null;
     }
 
     /**
@@ -321,7 +331,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         if (mBluetoothSocket != null) {
             try {
                 mBluetoothSocket.close();
-            } catch (IOException e) {
+            } catch (IOException | NullPointerException e) {
             }
         }
 
@@ -347,14 +357,16 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
             exception = e;
         }
 
-        if (socketCreatedSuccessfully) {
+        final BluetoothSocket createdBluetoothSocket = mBluetoothSocket;
+
+        if (socketCreatedSuccessfully && createdBluetoothSocket != null) {
             try {
-                mBluetoothSocket.connect(); // Blocking call
+                createdBluetoothSocket.connect(); // Blocking call
             } catch (IOException e) {
                 exception = e;
 
                 try {
-                    mBluetoothSocket.close();
+                    createdBluetoothSocket.close();
                 } catch (IOException e2) {
                 }
             }
@@ -377,9 +389,11 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
             Exception socketException = createSocketAndConnect(mInsecureRfcommSocketPort);
 
             if (socketException == null) {
-                if (!mIsShuttingDown) {
+                final BluetoothSocket bluetoothSocket = mBluetoothSocket;
+
+                if (!mIsShuttingDown && bluetoothSocket != null) {
                     if (mListener != null) {
-                        mListener.onSocketConnected(mBluetoothSocket, mPeerProperties, this);
+                        mListener.onSocketConnected(bluetoothSocket, mPeerProperties, this);
                     }
 
                     socketConnectSucceeded = true;
@@ -407,9 +421,11 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
                 socketException = createSocketAndConnect(SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT);
 
                 if (socketException == null) {
-                    if (!mIsShuttingDown) {
+                    final BluetoothSocket bluetoothSocket = mBluetoothSocket;
+
+                    if (!mIsShuttingDown && bluetoothSocket != null) {
                         if (mListener != null) {
-                            mListener.onSocketConnected(mBluetoothSocket, mPeerProperties, this);
+                            mListener.onSocketConnected(bluetoothSocket, mPeerProperties, this);
                         }
 
                         socketConnectSucceeded = true;

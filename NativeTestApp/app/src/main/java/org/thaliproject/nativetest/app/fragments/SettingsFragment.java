@@ -25,6 +25,8 @@ public class SettingsFragment extends Fragment {
     private Settings mSettings = null;
     private EditText mConnectionTimeoutEditText = null;
     private EditText mPortNumberEditText = null;
+    private EditText mManufacturerIdEditText = null;
+    private EditText mExtraInformationEditText = null;
     private CheckBox mHandshakeRequiredCheckbox = null;
     private CheckBox mListenForIncomingConnectionsCheckbox = null;
     private CheckBox mEnableWifiCheckBox = null;
@@ -129,6 +131,54 @@ public class SettingsFragment extends Fragment {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
                 mSettings.setEnableBleDiscovery(b);
+            }
+        });
+
+        mManufacturerIdEditText = (EditText) view.findViewById(R.id.manufacturerIdEditText);
+        mManufacturerIdEditText.setText(String.valueOf(mSettings.getManufacturerId()));
+        mManufacturerIdEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if (editable.length() > 0 && !editable.toString().equals("-")) {
+                    try {
+                        mSettings.setManufacturerId(Integer.parseInt(editable.toString()));
+                    } catch (NumberFormatException e) {
+                        Log.e(TAG, e.getMessage(), e);
+                        mManufacturerIdEditText.setText(String.valueOf(mSettings.getManufacturerId()));
+                    }
+                }
+            }
+        });
+
+        mExtraInformationEditText = (EditText) view.findViewById(R.id.extraInformationEditText);
+        mExtraInformationEditText.setText(String.valueOf(mSettings.getBeaconAdExtraInformation()));
+        mExtraInformationEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                if (editable.length() > 0 && !editable.toString().equals("-")) {
+                    try {
+                        mSettings.setBeaconAdExtraInformation(Integer.parseInt(editable.toString()));
+                    } catch (NumberFormatException e) {
+                        Log.e(TAG, e.getMessage(), e);
+                        mExtraInformationEditText.setText(String.valueOf(mSettings.getBeaconAdExtraInformation()));
+                    }
+                }
             }
         });
 

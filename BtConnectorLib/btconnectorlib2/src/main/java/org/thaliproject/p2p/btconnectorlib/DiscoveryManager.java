@@ -491,7 +491,11 @@ public class DiscoveryManager
                     mBluetoothManager.getBluetoothAdapter(),
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
-                    getBluetoothMacAddress(), mSettings.getAdvertisementDataType());
+                    getBluetoothMacAddress(),
+                    mSettings.getManufacturerId(),
+                    mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(),
+                    mSettings.getAdvertisementDataType());
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
@@ -531,34 +535,20 @@ public class DiscoveryManager
 
     /**
      * From DiscoveryManagerSettings.Listener
-     *
-     * @param advertisementDataType The new advertisement data type.
      */
     @Override
-    public void onAdvertisementDataTypeChanged(BlePeerDiscoverer.AdvertisementDataType advertisementDataType) {
-        applyBleAdvertiserSettingsWhichRequireRestart();
-    }
-
-    /**
-     * From DiscoveryManagerSettings.Listener
-     *
-     * @param advertiseMode The new advertise mode.
-     * @param advertiseTxPowerLevel The new advertise TX power level.
-     */
-    @Override
-    public void onAdvertiseSettingsChanged(int advertiseMode, int advertiseTxPowerLevel) {
-        applyBleAdvertiserSettingsWhichRequireRestart();
-    }
-
-    /**
-     * From DiscoveryManagerSettings.Listener
-     *
-     * @param scanMode The new scan mode.
-     * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
-     */
-    @Override
-    public void onScanSettingsChanged(int scanMode, long scanReportDelayInMilliseconds) {
-        applyBleAdvertiserSettingsWhichRequireRestart();
+    public void onAdvertiseScanSettingsChanged() {
+        if (mBlePeerDiscoverer != null) {
+            mBlePeerDiscoverer.applySettings(
+                    mSettings.getManufacturerId(),
+                    mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(),
+                    mSettings.getAdvertisementDataType(),
+                    mSettings.getAdvertiseMode(),
+                    mSettings.getAdvertiseTxPowerLevel(),
+                    mSettings.getScanMode(),
+                    mSettings.getScanReportDelay());
+        }
     }
 
     /**
@@ -1076,18 +1066,6 @@ public class DiscoveryManager
                     updateState(DiscoveryManagerState.RUNNING_BLE);
                 }
             }
-        }
-    }
-
-    /**
-     * Applies the current BLE advertiser settings that require the BLE advertiser to restart when changed.
-     */
-    private void applyBleAdvertiserSettingsWhichRequireRestart() {
-        if (mBlePeerDiscoverer != null) {
-            mBlePeerDiscoverer.applySettings(
-                    mSettings.getAdvertisementDataType(),
-                    mSettings.getAdvertiseMode(), mSettings.getAdvertiseTxPowerLevel(),
-                    mSettings.getScanMode(), mSettings.getScanReportDelay());
         }
     }
 
