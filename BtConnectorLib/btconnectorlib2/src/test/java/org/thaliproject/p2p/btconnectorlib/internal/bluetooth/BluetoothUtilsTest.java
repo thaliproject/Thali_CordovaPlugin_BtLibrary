@@ -161,14 +161,14 @@ public class BluetoothUtilsTest {
 
         // can't set the number below the limit
         BluetoothUtils.setNextAlternativeChannelOrPort(-1);
-        assertThat("It returns 0 i the alternative RFCOMM channel is below 0 or not set",
+        assertThat("It returns 0 if the alternative RFCOMM channel is below 0 or not set",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(0));
 
-//        BluetoothUtils.setNextAlternativeChannelOrPort(0);
-//        assertThat("It returns 0 i the alternative RFCOMM channel is 0",
-//                BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
-//                is(-1));
+        BluetoothUtils.setNextAlternativeChannelOrPort(0);
+        assertThat("It returns 0 if the alternative RFCOMM channel is 0",
+                BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
+                is(0));
 
         BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL -1);
         assertThat("It returns proper alternative RFCOMM channel",
