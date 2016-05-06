@@ -357,10 +357,9 @@ public class BluetoothConnectorTest {
         assertThat("It is true as the listener was stopped",
                 (Boolean) stoppingServerField.get(mBluetoothConnector),
                 is(true));
-
     }
 
-    // tests also cancelAllConnectionAttempts
+    // This one checks also the cancelAllConnectionAttempts
     @Test
     public void testShutdown() throws Exception {
 
@@ -417,8 +416,49 @@ public class BluetoothConnectorTest {
     }
 
     @Test
-    public void testConnect() throws Exception {
+    public void testConnect_noDevice() throws Exception {
+        // No bluetooth device
+        assertThat("Is false as no bluetooth device is provided",
+                mBluetoothConnector.connect(null, mMockPeerProperties),
+                is(false));
+    }
 
+    @Test
+    public void testConnect() throws Exception {
+        String name = "my device name";
+        String address = "my device address";
+
+        Field handshakeRequiredField = mBluetoothConnector.getClass()
+                .getDeclaredField("mHandshakeRequired");
+        handshakeRequiredField.setAccessible(true);
+
+        Field clientThreadsField = mBluetoothConnector.getClass().getDeclaredField("mClientThreads");
+        clientThreadsField.setAccessible(true);
+        CopyOnWriteArrayList<BluetoothClientThread> myClientThreads = new CopyOnWriteArrayList<>();
+        clientThreadsField.set(mBluetoothConnector, myClientThreads);
+
+        when(mMockBluetoothDevice.getName()).thenReturn(name);
+        when(mMockBluetoothDevice.getAddress()).thenReturn(address);
+
+        assertThat("Is true as connection is properly started",
+                mBluetoothConnector.connect(mMockBluetoothDevice, mMockPeerProperties),
+                is(true));
+
+        assertThat("It is not empty as client thread is added",
+                myClientThreads.isEmpty(),
+                is(false));
+
+        BluetoothClientThread btcThread = myClientThreads.get(0);
+
+        assertThat("Client peer properties is properly set",
+                btcThread.getPeerProperties(),
+                is(mMockPeerProperties));
+
+        assertThat("Client handshake required is properly set",
+                btcThread.getHandshakeRequired(),
+                is((Boolean) handshakeRequiredField.get(mBluetoothConnector)));
+
+        verify(mMockListener, times(1)).onConnecting(name, address);
     }
 
     @Rule
@@ -676,7 +716,6 @@ public class BluetoothConnectorTest {
         Thread.sleep(500);
 
         verify(mMockListener, never()).onConnected(mMockBluetoothSocket, false, mMockPeerProperties);
-
     }
 
     @Test
@@ -728,16 +767,95 @@ public class BluetoothConnectorTest {
         Thread.sleep(500);
 
         verify(mMockListener, times(1)).onConnected(mMockBluetoothSocket, false, mMockPeerProperties);
-
     }
 
     @Test
     public void testOnHandshakeSucceeded() throws Exception {
+        Field connectionTimeoutTimerField = mBluetoothConnector.getClass()
+                .getDeclaredField("mConnectionTimeoutTimer");
+        connectionTimeoutTimerField.setAccessible(true);
+        connectionTimeoutTimerField.set(mBluetoothConnector, mMockConnectionTimeoutTimer);
 
+        Field handlerField = mBluetoothConnector.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(mBluetoothConnector, mMockHandler);
+
+        Field clientThreadsField = mBluetoothConnector.getClass().getDeclaredField("mClientThreads");
+        clientThreadsField.setAccessible(true);
+        CopyOnWriteArrayList<BluetoothClientThread> myClientThreads = new CopyOnWriteArrayList<>();
+
+        // With client threads added
+        myClientThreads.add(mMockBluetoothClientThread);
+        clientThreadsField.set(mBluetoothConnector, myClientThreads);
+
+        Field shuttingDownField = mBluetoothConnector.getClass()
+                .getDeclaredField("mIsShuttingDown");
+        shuttingDownField.setAccessible(true);
+        shuttingDownField.set(mBluetoothConnector, true);
+
+        when(mMockBluetoothSocket.isConnected()).thenReturn(true);
+
+        final ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+
+        // handshake required, notify the listener
+        // Add client threads
+
+        when(mMockBluetoothClientThread.getHandshakeRequired()).thenReturn(false);
+        shuttingDownField.set(mBluetoothConnector, false);
+
+        mBluetoothConnector.onHandshakeSucceeded(mMockBluetoothSocket, mMockPeerProperties,
+                mMockBluetoothClientThread);
+
+        verify(mMockConnectionTimeoutTimer, times(1)).cancel();
+        assertThat("No timeout is set If the client threads is list is empty",
+                connectionTimeoutTimerField.get(mBluetoothConnector),
+                is(nullValue()));
+        verify(mMockHandler, times(1)).post(captor.capture());
+
+        Thread thread = new Thread(captor.getValue());
+        thread.start();
+        // Wait for the other thread
+        Thread.sleep(500);
+
+        verify(mMockListener, times(1)).onConnected(mMockBluetoothSocket, false, mMockPeerProperties);
     }
 
     @Test
     public void testOnConnectionFailed() throws Exception {
+        Field connectionTimeoutTimerField = mBluetoothConnector.getClass()
+                .getDeclaredField("mConnectionTimeoutTimer");
+        connectionTimeoutTimerField.setAccessible(true);
+        connectionTimeoutTimerField.set(mBluetoothConnector, mMockConnectionTimeoutTimer);
 
+        Field handlerField = mBluetoothConnector.getClass().getDeclaredField("mHandler");
+        handlerField.setAccessible(true);
+        handlerField.set(mBluetoothConnector, mMockHandler);
+
+        Field clientThreadsField = mBluetoothConnector.getClass().getDeclaredField("mClientThreads");
+        clientThreadsField.setAccessible(true);
+        CopyOnWriteArrayList<BluetoothClientThread> myClientThreads = new CopyOnWriteArrayList<>();
+
+        // With client threads added
+        myClientThreads.add(mMockBluetoothClientThread);
+        clientThreadsField.set(mBluetoothConnector, myClientThreads);
+
+        final ArgumentCaptor<Runnable> captor = ArgumentCaptor.forClass(Runnable.class);
+        String msg = "error message";
+
+        mBluetoothConnector.onConnectionFailed(mMockPeerProperties, msg,
+                mMockBluetoothClientThread);
+
+        assertThat("It is empty as client thread is removed",
+                myClientThreads.isEmpty(),
+                is(true));
+
+        verify(mMockHandler, times(1)).post(captor.capture());
+
+        Thread thread = new Thread(captor.getValue());
+        thread.start();
+        // Wait for the other thread
+        Thread.sleep(500);
+
+        verify(mMockListener, times(1)).onConnectionFailed(mMockPeerProperties, msg);
     }
 }

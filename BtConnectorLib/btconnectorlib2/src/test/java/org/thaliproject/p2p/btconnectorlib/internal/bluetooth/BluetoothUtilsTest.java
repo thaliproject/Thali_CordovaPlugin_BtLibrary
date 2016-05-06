@@ -158,17 +158,19 @@ public class BluetoothUtilsTest {
     @Test
     public void testSetNextAlternativeChannelOrPort() throws Exception {
         int MAX_ALTERNATIVE_CHANNEL = 30;
+        int tmpChPort = BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort();
 
         // can't set the number below the limit
         BluetoothUtils.setNextAlternativeChannelOrPort(-1);
-        assertThat("It returns 0 if the alternative RFCOMM channel is below 0 or not set",
+        assertThat("It returns previous port if the alternative RFCOMM channel is below 0 or not set",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
-                is(0));
+                is(tmpChPort));
 
+        tmpChPort = BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort();
         BluetoothUtils.setNextAlternativeChannelOrPort(0);
-        assertThat("It returns 0 if the alternative RFCOMM channel is 0",
+        assertThat("It returns previous port if the alternative RFCOMM channel is 0",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
-                is(0));
+                is(tmpChPort));
 
         BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL -1);
         assertThat("It returns proper alternative RFCOMM channel",
@@ -179,7 +181,6 @@ public class BluetoothUtilsTest {
         assertThat("It returns proper alternative RFCOMM channel",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(MAX_ALTERNATIVE_CHANNEL - 2));
-
     }
 
     // The tests below does not work due to the fact that the class BluetoothSocket
