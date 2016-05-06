@@ -10,6 +10,10 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 public class AbstractConnectivityManagerTest {
+
+    private static long MAX_MEDIA_TIMEOUT = 20000;
+    private static long CHECK_MEDIA_INTERVAL = 500;
+
     protected static void toggleBluetooth(boolean turnOn) throws Exception {
         BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         if (btAdapter == null) {
@@ -21,12 +25,17 @@ public class AbstractConnectivityManagerTest {
         } else if (!turnOn && btAdapter.isEnabled()) {
             btAdapter.disable();
         }
-        Thread.sleep(3000);
-        if (btAdapter.isEnabled() != turnOn) {
-            // wait additional 15 seconds
-            Thread.sleep(15000);
+
+        long currentTimeout = 0;
+        while (currentTimeout < MAX_MEDIA_TIMEOUT) {
+            Thread.sleep(CHECK_MEDIA_INTERVAL);
+            currentTimeout += CHECK_MEDIA_INTERVAL;
+            if (btAdapter.isEnabled() != turnOn && currentTimeout < MAX_MEDIA_TIMEOUT) {
+                continue;
+            }
+            assertThat(btAdapter.isEnabled(), is(turnOn));
+            break;
         }
-        assertThat(btAdapter.isEnabled(), is(turnOn));
     }
 
     protected static boolean getBluetoothStatus() {
@@ -47,12 +56,17 @@ public class AbstractConnectivityManagerTest {
         } else if (!turnOn && wifiManager.isWifiEnabled()) {
             wifiManager.setWifiEnabled(false);
         }
-        Thread.sleep(3000);
-        if (wifiManager.isWifiEnabled() != turnOn) {
-            // wait additional 15 seconds
-            Thread.sleep(15000);
+
+        long currentTimeout = 0;
+        while (currentTimeout < MAX_MEDIA_TIMEOUT) {
+            Thread.sleep(CHECK_MEDIA_INTERVAL);
+            currentTimeout += CHECK_MEDIA_INTERVAL;
+            if (wifiManager.isWifiEnabled() != turnOn && currentTimeout < MAX_MEDIA_TIMEOUT) {
+                continue;
+            }
+            assertThat(wifiManager.isWifiEnabled(), is(turnOn));
+            break;
         }
-        assertThat(wifiManager.isWifiEnabled(), is(turnOn));
     }
 
     protected static boolean getWifiStatus() {
