@@ -120,9 +120,9 @@ public class DiscoveryManagerTest {
         // the code below is needed to reset the DiscoveryManagerSettings singleton
         DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
-        Field stateField = dmSettings.getClass().getDeclaredField("mInstance");
-        stateField.setAccessible(true);
-        stateField.set(dmSettings, null);
+        Field instanceField = dmSettings.getClass().getDeclaredField("mInstance");
+        instanceField.setAccessible(true);
+        instanceField.set(dmSettings, null);
     }
 
     @Test
