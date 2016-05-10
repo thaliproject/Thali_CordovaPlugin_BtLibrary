@@ -90,7 +90,7 @@ public class BluetoothConnectorTest {
     }
 
     @Test
-    public void testConstructorThatTakesContextAndPrefs() throws Exception {
+    public void testConstructor() throws Exception {
         String name = "";
         String identity = "";
 

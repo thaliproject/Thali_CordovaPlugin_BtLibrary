@@ -129,7 +129,7 @@ public class ConnectionManagerSettingsTest {
 
     @After
     public void tearDown() throws Exception {
-        // the code below is needed to reset the DiscoveryManagerSettings singleton
+        // the code below is needed to reset the ConnectionManagerSettings singleton
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
         Field stateField = cmSettings.getClass().getDeclaredField("mInstance");

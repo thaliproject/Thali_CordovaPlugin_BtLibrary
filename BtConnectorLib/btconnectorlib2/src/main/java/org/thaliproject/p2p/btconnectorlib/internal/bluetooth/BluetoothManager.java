@@ -74,14 +74,44 @@ public class BluetoothManager {
     }
 
     /**
+     * Getter for the singleton instance of this class.
+     *
+     * @param context The application context.
+     * @param bluetoothAdapter The bluetooth adapter.
+     * @param sharedPreferences The shared preferences.
+     * @return The singleton instance of this class.
+     */
+    public static BluetoothManager getInstance(Context context, BluetoothAdapter bluetoothAdapter,
+                                               SharedPreferences sharedPreferences) {
+        if (mInstance == null) {
+            mInstance = new BluetoothManager(context, bluetoothAdapter, sharedPreferences);
+        }
+
+        return mInstance;
+    }
+
+    /**
      * Constructor.
      *
      * @param context The application context.
      */
     private BluetoothManager(Context context) {
+        this(context, BluetoothAdapter.getDefaultAdapter(),
+                PreferenceManager.getDefaultSharedPreferences(context));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param context The application context.
+     * @param bluetoothAdapter The bluetooth adapter.
+     * @param sharedPreferences The shared preferences.
+     */
+    private BluetoothManager(Context context, BluetoothAdapter bluetoothAdapter,
+                             SharedPreferences sharedPreferences) {
         mContext = context;
-        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        mSharedPreferences = PreferenceManager.getDefaultSharedPreferences(mContext);
+        mBluetoothAdapter = bluetoothAdapter;
+        mSharedPreferences = sharedPreferences;
         mSharedPreferencesEditor = mSharedPreferences.edit();
 
         mBleMultipleAdvertisementSupportedStatus = intToFeatureSupportedStatus(
