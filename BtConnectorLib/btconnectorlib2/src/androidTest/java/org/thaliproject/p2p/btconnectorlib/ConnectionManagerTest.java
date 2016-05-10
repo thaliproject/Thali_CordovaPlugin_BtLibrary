@@ -65,6 +65,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @After
     public void tearDown() throws Exception {
         mConnectionManager.dispose();
+        mConnectionManager = null;
     }
 
     @Rule
@@ -416,9 +417,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
             }
         }
 
-
         peerProperties = new PeerProperties("02:00:00:00:00:00");
-        long timeout = 5000;
+        long timeout = 3000;
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
         cmSettings.setConnectionTimeout(timeout);
         mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
@@ -434,7 +434,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         verifyNoMoreInteractions(mConnectionManagerListener);
 
         // now set longer timeout to get connection failed
-        timeout = 30000;
+        timeout = 60000;
         cmSettings.setConnectionTimeout(timeout);
         mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
                                                    UUID.randomUUID(), "MOCK_NAME");

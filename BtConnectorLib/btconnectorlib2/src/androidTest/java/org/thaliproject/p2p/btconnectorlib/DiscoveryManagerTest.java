@@ -113,6 +113,10 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @After
     public void tearDown() throws Exception {
+        mDiscoveryManager.dispose();
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false);
+        mDiscoveryManager = null;
     }
 
     @AfterClass
@@ -580,8 +584,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, false, false);;
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);;
     }
 
     @Test
@@ -600,8 +604,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -619,8 +623,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -640,8 +644,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -661,8 +665,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -681,8 +685,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -703,8 +707,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -725,8 +729,8 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
     @Test
@@ -746,12 +750,11 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, false, false);
+                is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
+        checkAllStatesWithTimeout(false, false, false);
     }
 
-    // failing tests - on bt change race with start - inconsistent states + should scan, should advertise
-    // question: case of calling start(true, false) start(false, true)
+    // start called multiple times with different args and in different context
     // change mode (advertise/scanner/power) during work
     // ConnectionManager - turn off bluetooth during work
     // move timeout state check to connectionmanager
