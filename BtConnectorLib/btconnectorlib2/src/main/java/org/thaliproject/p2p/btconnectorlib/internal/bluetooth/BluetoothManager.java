@@ -32,6 +32,13 @@ public class BluetoothManager {
          * @param mode The new mode.
          */
         void onBluetoothAdapterScanModeChanged(int mode);
+
+        /**
+         * Called when the state of the Bluetooth adapter changes.
+         *
+         * @param state The new state.
+         */
+        void onBluetoothAdapterStateChanged(int state);
     }
 
     public enum FeatureSupportedStatus {
@@ -270,6 +277,7 @@ public class BluetoothManager {
                 mBluetoothBroadcastReceiver = new BluetoothModeBroadcastReceiver();
                 IntentFilter filter = new IntentFilter();
                 filter.addAction(BluetoothAdapter.ACTION_SCAN_MODE_CHANGED);
+                filter.addAction(BluetoothAdapter.ACTION_STATE_CHANGED);
 
                 try {
                     mContext.registerReceiver(mBluetoothBroadcastReceiver, filter);
@@ -347,6 +355,14 @@ public class BluetoothManager {
 
                 for (BluetoothManagerListener listener : mListeners) {
                     listener.onBluetoothAdapterScanModeChanged(mode);
+                }
+            }
+
+            if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
+                int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+
+                for (BluetoothManagerListener listener : mListeners) {
+                    listener.onBluetoothAdapterStateChanged(state);
                 }
             }
         }
