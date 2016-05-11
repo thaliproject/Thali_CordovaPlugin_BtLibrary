@@ -294,7 +294,7 @@ public class DiscoveryManager
     /**
      * @return True, if ble peer discovery is active. False otherwise.
      */
-    private boolean isBleDiscovering() {
+    public boolean isBleDiscovering() {
         return (mBlePeerDiscoverer != null
                 && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.SCANNING));
     }
@@ -302,7 +302,7 @@ public class DiscoveryManager
     /**
      * @return True, if wifi peer discovery is active. False otherwise.
      */
-    private boolean isWifiDiscovering() {
+    public boolean isWifiDiscovering() {
         return (mWifiPeerDiscoverer != null
                 && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.SCANNING));
     }
@@ -317,7 +317,7 @@ public class DiscoveryManager
     /**
      * @return True, if ble advertising is active. False otherwise.
      */
-    private boolean isBleAdvertising() {
+    public boolean isBleAdvertising() {
         return (mBlePeerDiscoverer != null
                 && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.ADVERTISING));
     }
@@ -325,7 +325,7 @@ public class DiscoveryManager
     /**
      * @return True, if wifi advertising is active. False otherwise.
      */
-    private boolean isWifiAdvertising() {
+    public boolean isWifiAdvertising() {
         return (mWifiPeerDiscoverer != null
                 && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.ADVERTISING));
     }
