@@ -409,7 +409,7 @@ public class BluetoothConnectorTest {
                 is(true));
 
         // Wait for the other thread
-        Thread.sleep(100);
+        Thread.sleep(500);
         verify(mMockBluetoothClientThread, times(1))
                 .shutdown();
 
@@ -501,7 +501,7 @@ public class BluetoothConnectorTest {
                 .cancel();
 
         // Wait for the other thread
-        Thread.sleep(100);
+        Thread.sleep(500);
         verify(mMockBluetoothClientThread, times(1))
                 .shutdown();
     }

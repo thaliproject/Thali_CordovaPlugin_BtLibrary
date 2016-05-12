@@ -122,7 +122,7 @@ public class BluetoothUtilsTest {
                         "WrongMessage".getBytes(), 15, mMockBluetoothSocket),
                 is(nullValue()));
 
-        assertThat("The received object is null if the message is wrong",
+        assertThat("The proper object is returned if the message is correct",
                 BluetoothUtils.validateReceivedHandshakeMessage(
                         BluetoothUtils.SIMPLE_HANDSHAKE_MESSAGE_AS_BYTE_ARRAY,
                         15, mMockBluetoothSocket).getBluetoothMacAddress(),

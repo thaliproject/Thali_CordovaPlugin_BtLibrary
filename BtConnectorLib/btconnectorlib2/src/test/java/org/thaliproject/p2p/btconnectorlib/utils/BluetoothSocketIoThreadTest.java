@@ -15,6 +15,7 @@ import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
@@ -22,6 +23,7 @@ import static org.junit.Assert.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyInt;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -125,13 +127,24 @@ public class BluetoothSocketIoThreadTest {
         mBluetoothSocketIoThread.setBufferSize(1);
         mBluetoothSocketIoThread.setExitThreadAfterRead(true);
         when(mMockInputStream.read(any(byte[].class))).thenReturn(1);
+        service.shutdown();
+
+        while (!service.awaitTermination(1L, TimeUnit.SECONDS)) {
+            System.out.println("Not yet. Still waiting for termination");
+        }
 
         service = Executors.newSingleThreadExecutor();
         service.execute(mBluetoothSocketIoThread);
 
         Thread.sleep(1000);
-        verify(mMockListener, times(1)).onBytesRead(any(byte[].class),
+        verify(mMockListener, atLeastOnce()).onBytesRead(any(byte[].class),
                 anyInt(), any(BluetoothSocketIoThread.class));
+        service.shutdown();
+
+        while (!service.awaitTermination(1L, TimeUnit.SECONDS)) {
+            System.out.println("Not yet. Still waiting for termination");
+        }
+
     }
 
     @Test
@@ -145,12 +158,16 @@ public class BluetoothSocketIoThreadTest {
 
         ExecutorService service = Executors.newSingleThreadExecutor();
         service.execute(mBluetoothSocketIoThread);
-
         Thread.sleep(1000);
         verify(mMockListener, never()).onBytesRead(any(byte[].class),
                 anyInt(), any(BluetoothSocketIoThread.class));
         verify(mMockListener, times(1)).onDisconnected(anyString(),
                 any(BluetoothSocketIoThread.class));
+        service.shutdown();
+
+        while (!service.awaitTermination(1L, TimeUnit.SECONDS)) {
+            System.out.println("Not yet. Still waiting for termination");
+        }
     }
 
     @Test
