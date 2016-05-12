@@ -693,7 +693,8 @@ public class DiscoveryManagerTest {
         doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
         doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
                 .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
-
+        mBlePeerDiscovererField.set(discoveryManagerSpy, mMockBlePeerDiscoverer);
+        doReturn(true).when(discoveryManagerSpy).isBleDiscovering();
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
         when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
         when(mMockBlePeerDiscoverer.startScanner()).thenReturn(true);
@@ -1164,8 +1165,9 @@ public class DiscoveryManagerTest {
 
         doReturn(true).when(discoveryManagerSpy)
                 .isRunning();
-
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        doReturn(true).when(discoveryManagerSpy)
+                .isBleDiscovering();
 
         discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
@@ -1302,7 +1304,9 @@ public class DiscoveryManagerTest {
 
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
-                .RUNNING_WIFI);
+                .RUNNING_BLE);
+
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
 
         discoveryManagerSpy = spy(discoveryManager);
 
@@ -1370,6 +1374,7 @@ public class DiscoveryManagerTest {
 
         reset(discoveryManagerSpy);
 
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
         discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);
 
         verify(discoveryManagerSpy, never())
@@ -1407,10 +1412,10 @@ public class DiscoveryManagerTest {
 
         // and WiFi Enabled
         discoveryManagerSpy = spy(discoveryManager);
-
         doReturn(true).when(discoveryManagerSpy)
                 .isRunning();
-
+        doReturn(true).when(discoveryManagerSpy)
+                .isWifiAdvertising();
         when(mMockWifiDirectManager.isWifiEnabled()).thenReturn(true);
 
         discoveryManagerSpy.onBluetoothAdapterScanModeChanged(BluetoothAdapter.SCAN_MODE_NONE);

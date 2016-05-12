@@ -27,6 +27,13 @@ public class WifiDirectManager {
          * @param state The new state.
          */
         void onWifiStateChanged(int state);
+
+        /**
+         * Called when the Wi-Fi P2P state on the device is changed (e.g. enabled or disabled).
+         *
+         * @param state The new state.
+         */
+        void onWifiP2PStateChanged(int state);
     }
 
     private static final String TAG = WifiDirectManager.class.getName();
@@ -148,6 +155,7 @@ public class WifiDirectManager {
             mWifiStateBroadcastReceiver = new WifiStateBroadcastReceiver();
             IntentFilter filter = new IntentFilter();
             filter.addAction(WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION);
+            filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
 
             try {
                 mContext.registerReceiver(mWifiStateBroadcastReceiver, filter);
@@ -194,6 +202,12 @@ public class WifiDirectManager {
 
             if (WifiP2pManager.WIFI_P2P_STATE_CHANGED_ACTION.equals(action)) {
                 int state = intent.getIntExtra(WifiP2pManager.EXTRA_WIFI_STATE, -1);
+
+                for (WifiStateListener listener : mListeners) {
+                    listener.onWifiP2PStateChanged(state);
+                }
+            } else if (WifiManager.WIFI_STATE_CHANGED_ACTION.equals(action)) {
+                int state = intent.getIntExtra(WifiManager.EXTRA_WIFI_STATE, -1);
 
                 for (WifiStateListener listener : mListeners) {
                     listener.onWifiStateChanged(state);

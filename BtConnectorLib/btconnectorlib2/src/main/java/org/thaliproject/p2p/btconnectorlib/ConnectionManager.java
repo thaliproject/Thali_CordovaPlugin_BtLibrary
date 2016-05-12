@@ -313,6 +313,30 @@ public class ConnectionManager
     }
 
     /**
+     * Restarts/pauses the incoming connection listener based on the given state.
+     *
+     * @param state The new state.
+     */
+    @Override
+    public void onBluetoothAdapterStateChanged(int state) {
+        Log.i(TAG, "onBluetoothAdapterStateChanged: State changed to " + state);
+
+        if (state == BluetoothAdapter.STATE_OFF) {
+            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+                Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing...");
+                mBluetoothConnector.stopListeningForIncomingConnections();
+                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+            }
+        } else {
+            if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
+                    && mBluetoothManager.isBluetoothEnabled()) {
+                Log.i(TAG, "onBluetoothAdapterStateChanged: Bluetooth enabled, restarting...");
+                startListeningForIncomingConnections();
+            }
+        }
+    }
+
+    /**
      * Sets the state based on the given argument.
      *
      * @param isStarted If true, the server thread is started. If false, the server thread is stopped.
