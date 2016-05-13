@@ -660,8 +660,8 @@ public class DiscoveryManager
                 if (isRunning()) {
                     Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing BLE based peer discovery...");
                     stopBlePeerDiscoverer();
-                    updateState();
                 }
+                updateState();
             } else {
                 if ((mShouldBeScanning || mShouldBeAdvertising)
                         && mBluetoothManager.isBluetoothEnabled()
@@ -691,9 +691,9 @@ public class DiscoveryManager
                 if (isRunning()) {
                     Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing BLE based peer discovery...");
                     stopBlePeerDiscoverer();
-                    updateState();
                 }
-            } else {
+                updateState();
+            } else if (state == BluetoothAdapter.STATE_ON) {
                 if ((mShouldBeScanning || mShouldBeAdvertising)
                         && mBluetoothManager.isBluetoothEnabled()
                         && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
@@ -722,8 +722,8 @@ public class DiscoveryManager
                 if (isRunning()) {
                     Log.w(TAG, "onWifiP2PStateChanged: Wi-Fi P2P disabled, pausing Wi-Fi Direct based peer discovery...");
                     stopWifiPeerDiscovery();
-                    updateState();
                 }
+                updateState();
             } else {
                 if (mShouldBeScanning || mShouldBeAdvertising) {
                     Log.i(TAG, "onWifiP2PStateChanged: Wi-Fi P2P enabled, trying to restart Wi-Fi Direct based peer discovery...");
@@ -751,9 +751,9 @@ public class DiscoveryManager
                 if (isRunning()) {
                     Log.w(TAG, "onWifiStateChanged: Wi-Fi disabled, pausing Wi-Fi Direct based peer discovery...");
                     stopWifiPeerDiscovery();
-                    updateState();
                 }
-            } else {
+                updateState();
+            } else if (state == WifiManager.WIFI_STATE_ENABLED) {
                 if (mShouldBeScanning || mShouldBeAdvertising) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
                     start();
