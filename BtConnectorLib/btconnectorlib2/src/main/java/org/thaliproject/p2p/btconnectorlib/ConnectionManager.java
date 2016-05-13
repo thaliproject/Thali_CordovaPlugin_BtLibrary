@@ -327,7 +327,7 @@ public class ConnectionManager
                 mBluetoothConnector.stopListeningForIncomingConnections();
                 setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
             }
-        } else {
+        } else if (state == BluetoothAdapter.STATE_ON) {
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterStateChanged: Bluetooth enabled, restarting...");
