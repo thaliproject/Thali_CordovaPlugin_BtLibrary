@@ -123,6 +123,7 @@ public class DiscoveryManagerTest {
         Field instanceField = dmSettings.getClass().getDeclaredField("mInstance");
         instanceField.setAccessible(true);
         instanceField.set(dmSettings, null);
+        discoveryManager.dispose();
     }
 
     @Test
