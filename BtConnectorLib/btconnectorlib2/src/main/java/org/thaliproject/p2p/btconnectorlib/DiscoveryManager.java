@@ -448,7 +448,7 @@ public class DiscoveryManager
                 || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
                 || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
             started = true;
-            if (bleDiscoveryStarted && !wifiDiscoveryStarted) {
+            if (bleDiscoveryStarted) {
                 if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
                     Log.i(TAG, "start: Our Bluetooth MAC address is not known");
                     if (mBlePeerDiscoverer != null) {
@@ -1224,14 +1224,14 @@ public class DiscoveryManager
         boolean bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
         boolean wifiEnabled = mWifiDirectManager.isWifiEnabled();
 
-        if (isBleWorking && isWifiWorking) {
-            updateStateInternal(DiscoveryManagerState.RUNNING_BLE_AND_WIFI, isDiscovering, isAdvertising);
-        } else if (isBleWorking) {
+        if (isBleWorking) {
             if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress()) &&
-                !mBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted()) {
+                    !mBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted()) {
                 updateStateInternal(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS, isDiscovering, isAdvertising);
             } else if (mBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted()) {
                 updateStateInternal(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS, isDiscovering, isAdvertising);
+            } else if (isWifiWorking) {
+                updateStateInternal(DiscoveryManagerState.RUNNING_BLE_AND_WIFI, isDiscovering, isAdvertising);
             } else {
                 updateStateInternal(DiscoveryManagerState.RUNNING_BLE, isDiscovering, isAdvertising);
             }
@@ -1240,9 +1240,9 @@ public class DiscoveryManager
         } else {
             // no discovery/advertisement running
             if ((mShouldBeAdvertising || mShouldBeScanning) &&
-                ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && !bluetoothEnabled && !wifiEnabled) ||
-                 (discoveryMode == DiscoveryMode.BLE && !bluetoothEnabled) ||
-                 (discoveryMode == DiscoveryMode.WIFI && !wifiEnabled))) {
+                    ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && !bluetoothEnabled && !wifiEnabled) ||
+                            (discoveryMode == DiscoveryMode.BLE && !bluetoothEnabled) ||
+                            (discoveryMode == DiscoveryMode.WIFI && !wifiEnabled))) {
                 updateStateInternal(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, isDiscovering, isAdvertising);
             } else {
                 updateStateInternal(DiscoveryManagerState.NOT_STARTED, isDiscovering, isAdvertising);
