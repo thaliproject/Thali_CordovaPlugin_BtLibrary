@@ -120,7 +120,7 @@ public class BleAdvertiserTest {
     }
 
     @Test
-    public void testSetAdvertiseData_norRestart() throws Exception {
+    public void testSetAdvertiseData_noRestart() throws Exception {
         Field advertiseDataField = mBleAdvertiser.getClass().getDeclaredField("mAdvertiseData");
         advertiseDataField.setAccessible(true);
 
@@ -203,7 +203,7 @@ public class BleAdvertiserTest {
 
         reset(mMockBluetoothLeAdvertiser);
 
-        // repeat starting
+        // repeat start
         assertThat("It should return true if advertising is already started",
                 mBleAdvertiser.start(), is(true));
 
@@ -264,13 +264,13 @@ public class BleAdvertiserTest {
     @Test
     public void testStop_noBTAdvertiser() throws Exception {
 
-        Field advertiseSettingsField = mBleAdvertiser.getClass().getDeclaredField("mBluetoothLeAdvertiser");
-        advertiseSettingsField.setAccessible(true);
+        Field advertiserField = mBleAdvertiser.getClass().getDeclaredField("mBluetoothLeAdvertiser");
+        advertiserField.setAccessible(true);
         mBleAdvertiser.setAdvertiseData(mMockAdvertiseData);
         mBleAdvertiser.start();
 
         // remove Advertiser
-        advertiseSettingsField.set(mBleAdvertiser, null);
+        advertiserField.set(mBleAdvertiser, null);
 
         mBleAdvertiser.stop(true);
 

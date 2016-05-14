@@ -60,11 +60,22 @@ class BleScanner extends ScanCallback {
      * @param bluetoothAdapter The Bluetooth adapter.
      */
     public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter) {
+        this(listener, bluetoothAdapter, new ScanSettings.Builder(),
+                DiscoveryManagerSettings.getInstance(null));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param listener The listener.
+     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param builder The builder for ScanSettings.
+     * @param settings The discovery manager settings.
+     */
+    public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter,
+                      ScanSettings.Builder builder, DiscoveryManagerSettings settings) {
         mListener = listener;
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
-
-        ScanSettings.Builder builder = new ScanSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
             if (settings != null) {
