@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -908,5 +909,29 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
         checkAllStatesWithTimeout(true, true, true, true, true);
+    }
+
+    @Test
+    public void testUnknownBluetoothMacAddress() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setEmulateMarshmallow(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        DiscoveryManagerSettings dmSettings =
+                DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
+        Field blMacAddressField = dmSettings.getClass().getDeclaredField("mBluetoothMacAddress");
+        blMacAddressField.setAccessible(true);
+        blMacAddressField.set(dmSettings, "");
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+        checkAllStatesWithTimeout(true, true, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+        checkAllStatesWithTimeout(true, true, false, true, true);
     }
 }
