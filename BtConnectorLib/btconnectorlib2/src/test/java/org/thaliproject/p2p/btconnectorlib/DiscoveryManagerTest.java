@@ -24,6 +24,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.EnumSet;
 import java.util.UUID;
 
@@ -80,7 +81,7 @@ public class DiscoveryManagerTest {
     WifiDirectManager mMockWifiDirectManager;
 
     @Mock
-    Handler mHander;
+    Handler mHandler;
 
     @Mock
     BluetoothSocket mMockBluetoothSocket;
@@ -276,6 +277,10 @@ public class DiscoveryManagerTest {
         // both are null
         assertThat("Should not be true when mBlePeerDiscoverer mWifiPeerDiscoverer are null",
                 discoveryManager.isDiscovering(), is(false));
+        assertThat("Should not be true when mBlePeerDiscoverer is null",
+                discoveryManager.isBleDiscovering(), is(false));
+        assertThat("Should not be true when mWifiPeerDiscoverer is null",
+                discoveryManager.isWifiDiscovering(), is(false));
     }
 
     @Test
@@ -306,6 +311,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when WifiPeerDiscoverer is scanning",
                 discoveryManager.isDiscovering(), is(true));
+        assertThat("Should be true when WifiPeerDiscoverer is scanning",
+                discoveryManager.isWifiDiscovering(), is(true));
+        assertThat("Should be false when BlePeerDiscoverer is not scanning",
+                discoveryManager.isBleDiscovering(), is(false));
 
         bleStates = EnumSet.of(BlePeerDiscoverer.BlePeerDiscovererStateSet.SCANNING);
         wifiStates = EnumSet.of(WifiPeerDiscoverer.WifiPeerDiscovererStateSet.NOT_STARTED);
@@ -316,9 +325,12 @@ public class DiscoveryManagerTest {
         when(mMockBlePeerDiscoverer.getState())
                 .thenReturn(bleStates);
 
-        assertThat("Should be true when BlePeerDiscovererStateSet is scanning",
+        assertThat("Should be true when BlePeerDiscoverer is scanning",
                 discoveryManager.isDiscovering(), is(true));
-
+        assertThat("Should be true when BlePeerDiscoverer is scanning",
+                discoveryManager.isBleDiscovering(), is(true));
+        assertThat("Should be false when BlePeerDiscoverer is not scanning",
+                discoveryManager.isWifiDiscovering(), is(false));
     }
 
     @Test
@@ -348,7 +360,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when scanning",
                 discoveryManager.isDiscovering(), is(true));
-
+        assertThat("Should be true when scanning",
+                discoveryManager.isBleDiscovering(), is(true));
+        assertThat("Should be true when scanning",
+                discoveryManager.isWifiDiscovering(), is(true));
     }
 
     @Test
@@ -368,6 +383,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when at least one is scanning",
                 discoveryManager.isDiscovering(), is(true));
+        assertThat("Should be true when ble is scanning",
+                discoveryManager.isBleDiscovering(), is(true));
+        assertThat("Should be false when wifi is not scanning",
+                discoveryManager.isWifiDiscovering(), is(false));
     }
 
     @Test
@@ -387,6 +406,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when at least one is scanning",
                 discoveryManager.isDiscovering(), is(true));
+        assertThat("Should be true when wifi is scanning",
+                discoveryManager.isWifiDiscovering(), is(true));
+        assertThat("Should be false when ble is not scanning",
+                discoveryManager.isBleDiscovering(), is(false));
     }
 
     @Test
@@ -395,6 +418,10 @@ public class DiscoveryManagerTest {
         // both are null
         assertThat("Should not be true when mBlePeerDiscoverer mWifiPeerDiscoverer are null",
                 discoveryManager.isAdvertising(), is(false));
+        assertThat("Should not be true when mBlePeerDiscoverer is null",
+                discoveryManager.isBleAdvertising(), is(false));
+        assertThat("Should not be true when mWifiPeerDiscoverer is null",
+                discoveryManager.isWifiAdvertising(), is(false));
     }
 
     @Test
@@ -425,6 +452,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when WifiPeerDiscoverer is advertising",
                 discoveryManager.isAdvertising(), is(true));
+        assertThat("Should be true when WifiPeerDiscoverer is advertising",
+                discoveryManager.isWifiAdvertising(), is(true));
+        assertThat("Should be false when BlePeerDiscoverer is not advertising",
+                discoveryManager.isBleAdvertising(), is(false));
 
         bleStates = EnumSet.of(BlePeerDiscoverer.BlePeerDiscovererStateSet.ADVERTISING);
         wifiStates = EnumSet.of(WifiPeerDiscoverer.WifiPeerDiscovererStateSet.NOT_STARTED);
@@ -437,7 +468,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when BlePeerDiscovererStateSet is advertising",
                 discoveryManager.isAdvertising(), is(true));
-
+        assertThat("Should be false when WifiPeerDiscoverer is not advertising",
+                discoveryManager.isWifiAdvertising(), is(false));
+        assertThat("Should be true when BlePeerDiscoverer is advertising",
+                discoveryManager.isBleAdvertising(), is(true));
     }
 
     @Test
@@ -467,7 +501,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when advertising",
                 discoveryManager.isAdvertising(), is(true));
-
+        assertThat("Should be true when WifiPeerDiscoverer is advertising",
+                discoveryManager.isWifiAdvertising(), is(true));
+        assertThat("Should be true when BlePeerDiscoverer is advertising",
+                discoveryManager.isBleAdvertising(), is(true));
     }
 
     @Test
@@ -487,6 +524,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when at least one is advertising",
                 discoveryManager.isAdvertising(), is(true));
+        assertThat("Should be false when WifiPeerDiscoverer is not advertising",
+                discoveryManager.isWifiAdvertising(), is(false));
+        assertThat("Should be true when BlePeerDiscoverer is advertising",
+                discoveryManager.isBleAdvertising(), is(true));
     }
 
     @Test
@@ -506,6 +547,10 @@ public class DiscoveryManagerTest {
 
         assertThat("Should be true when at least one is advertising",
                 discoveryManager.isAdvertising(), is(true));
+        assertThat("Should be true when WifiPeerDiscoverer is advertising",
+                discoveryManager.isWifiAdvertising(), is(true));
+        assertThat("Should be false when BlePeerDiscoverer is not advertising",
+                discoveryManager.isBleAdvertising(), is(false));
     }
 
     @Test
@@ -593,10 +638,14 @@ public class DiscoveryManagerTest {
                 .thenReturn(bleStates);
 
         when(mMockDiscoveryManagerSettings.getDiscoveryMode()).thenReturn(null);
+        Field mDiscoveryManagerSettingsField = discoveryManager.getClass()
+                .getDeclaredField("mSettings");
+        mDiscoveryManagerSettingsField.setAccessible(true);
+        mDiscoveryManagerSettingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
         discoveryManagerSpy = spy(discoveryManager);
 
         assertThat("Should not start if not proper DiscoveryMode ",
-                discoveryManagerSpy.start(false, false), is(false));
+                discoveryManagerSpy.start(true, true), is(false));
 
         assertThat("Should update the state to NOT_STARTED ",
                 discoveryManagerSpy.getState(),
@@ -645,40 +694,40 @@ public class DiscoveryManagerTest {
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.BLE);
 
+        doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
+                .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
-        assertThat("Should not start if BT is not enabled ",
-                discoveryManagerSpy.start(false, false), is(false));
-        assertThat("Should update the state to NOT_STARTED ",
+
+        assertThat("Should wait if BT is not enabled ",
+                discoveryManagerSpy.start(true, true), is(false));
+        assertThat("Should update the state to WAITING_FOR_SERVICES_TO_BE_ENABLED ",
                 discoveryManagerSpy.getState(),
-                is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
+                is(equalTo(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)));
 
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        doReturn(false).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .PROVIDING_BLUETOOTH_MAC_ADDRESS);
         assertThat("Should not start if BLE multi advertisement not supported",
-                discoveryManagerSpy.start(false, false), is(false));
+                discoveryManagerSpy.start(true, true), is(false));
         assertThat("Should update the state to NOT_STARTED ",
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
 
-        //supported BleMultipleAdvertisement but bleDiscoveryStarted not started
+        //supported BleMultipleAdvertisement but scanner not created
         doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
-
-        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-
-        assertThat("Should not start if BLE multi advertisement not supported",
-                discoveryManagerSpy.start(false, false), is(false));
+        assertThat("Should not start if scanner not started",
+                discoveryManagerSpy.start(true, true), is(false));
         assertThat("Should update the state to NOT_STARTED ",
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
 
         // 2.1 discovery mode = DiscoveryMode.BLE, startScanner = false, startAdvertising = false
 
-        //supported BleMultipleAdvertisement but bleDiscoveryStarted started
+        //supported BleMultipleAdvertisement but bleDiscoveryStarted not started
         doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
-        doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
-                .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
-
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-
         when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
 
         assertThat("Should not start in BLE multi advertisement when startScanner and startAdvertising are false",
@@ -819,27 +868,27 @@ public class DiscoveryManagerTest {
                 .thenReturn(DiscoveryManager.DiscoveryMode.WIFI);
 
         when(mMockWifiDirectManager.isWifiEnabled()).thenReturn(false);
-        assertThat("Should not start if WIFI is not enabled ",
-                discoveryManagerSpy.start(false, false), is(false));
-        assertThat("Should update the state to NOT_STARTED ",
+        assertThat("Should wait if WIFI is not enabled ",
+                discoveryManagerSpy.start(true, true), is(false));
+        assertThat("Should update the state to WAITING_FOR_SERVICES_TO_BE_ENABLED ",
                 discoveryManagerSpy.getState(),
-                is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
+                is(equalTo(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)));
 
         when(mMockWifiDirectManager.isWifiEnabled()).thenReturn(true);
         assertThat("Should not start if Identity string is invalid",
-                discoveryManagerSpy.start(false, false), is(false));
+                discoveryManagerSpy.start(true, true), is(false));
         assertThat("Should update the state to NOT_STARTED ",
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
 
-        // @TODO check how to mock verifyIdentityString and perform the rest of tests
-
+        // since verifyIdentityString is using JSON, the successful discovery start
+        // need to be tested it in instrumentation tests
     }
 
     @Test
     public void testStartDiscoveryModeBLE_AND_WIFI() throws Exception {
-        // @TODO check how to mock verifyIdentityString and perform the rest of tests
-
+        // since verifyIdentityString is using JSON, the successful discovery start
+        // need to be tested it in instrumentation tests
     }
 
     @Test
@@ -910,6 +959,12 @@ public class DiscoveryManagerTest {
     @Test
     public void testStop() throws Exception {
 
+        Field stateField = discoveryManager.getClass().getDeclaredField("mState");
+        stateField.setAccessible(true);
+        // set the state to check if it has changed
+        stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
+                .PROVIDING_BLUETOOTH_MAC_ADDRESS);
+
         // mock mWifiDirectManager
         Field wifiDirectManagerField = discoveryManager.getClass()
                 .getDeclaredField("mWifiDirectManager");
@@ -949,11 +1004,6 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void testMakeDeviceDiscoverable() throws Exception {
-
-    }
-
-    @Test
     public void testDispose() throws Exception {
         Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
@@ -978,7 +1028,7 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void testOnWifiStateChanged_NonWifiMode() throws Exception {
+    public void testOnWifiP2PStateChanged_NonWifiMode() throws Exception {
 
         Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
@@ -994,7 +1044,7 @@ public class DiscoveryManagerTest {
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.BLE);
 
-        discoveryManager.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+        discoveryManager.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
         assertThat("The state should not change ",
                 discoveryManager.getState(),
@@ -1002,7 +1052,7 @@ public class DiscoveryManagerTest {
     }
 
     @Test
-    public void testOnWifiStateChanged_WifiMode() throws Exception {
+    public void testOnWifiP2PStateChanged_WifiMode() throws Exception {
 
         Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
@@ -1013,11 +1063,10 @@ public class DiscoveryManagerTest {
 
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
-                .RUNNING_BLE);
+                .NOT_STARTED);
 
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.WIFI);
-
 
         // mock mShouldBeAdvertising
         Field mShouldBeAdvertisingField = discoveryManager.getClass()
@@ -1031,10 +1080,18 @@ public class DiscoveryManagerTest {
         mShouldBeScanningField.setAccessible(true);
         mShouldBeScanningField.setBoolean(discoveryManager, false);
 
+        // WifiPeerDiscoverer not null
+        EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet> wifiStates
+                = EnumSet.of(WifiPeerDiscoverer.WifiPeerDiscovererStateSet.NOT_STARTED);
+        when(mMockWifiPeerDiscoverer.getState()).thenReturn(wifiStates);
+        Field mWifiPeerDiscovererField = discoveryManager.getClass()
+                .getDeclaredField("mWifiPeerDiscoverer");
+        mWifiPeerDiscovererField.setAccessible(true);
+        mWifiPeerDiscovererField.set(discoveryManager, mMockWifiPeerDiscoverer);
 
         DiscoveryManager discoveryManagerSpy = spy(discoveryManager);
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
 
         verify(discoveryManagerSpy, never())
                 .start(anyBoolean(), anyBoolean());
@@ -1043,14 +1100,14 @@ public class DiscoveryManagerTest {
         mShouldBeScanningField.setBoolean(discoveryManager, true);
         discoveryManagerSpy = spy(discoveryManager);
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
 
         verify(discoveryManagerSpy, atLeastOnce())
                 .start(anyBoolean(), anyBoolean());
 
-        // WifiPeerDiscoverer null
         reset(discoveryManagerSpy);
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+        doReturn(true).when(discoveryManagerSpy).isRunning();
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
         verify(discoveryManagerSpy, never())
                 .start(anyBoolean(), anyBoolean());
@@ -1058,30 +1115,10 @@ public class DiscoveryManagerTest {
         assertThat("The state should change when wifi state changed",
                 discoveryManagerSpy.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
-
-        // WifiPeerDiscoverer not null
-        Field mWifiPeerDiscovererField = discoveryManager.getClass()
-                .getDeclaredField("mWifiPeerDiscoverer");
-        mWifiPeerDiscovererField.setAccessible(true);
-        mWifiPeerDiscovererField.set(discoveryManager, mMockWifiPeerDiscoverer);
-
-        discoveryManagerSpy = spy(discoveryManager);
-
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
-
-        verify(mMockWifiPeerDiscoverer, atLeastOnce()).stopDiscovererAndAdvertiser();
-
-        verify(discoveryManagerSpy, never())
-                .start(anyBoolean(), anyBoolean());
-
-        assertThat("The state should change when wifi state changed",
-                discoveryManagerSpy.getState(),
-                is(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
-
     }
 
     @Test
-    public void testOnWifiStateChanged_BLE_AND_WIFIMode() throws Exception {
+    public void testOnWifiP2PStateChanged_BLE_AND_WIFIMode() throws Exception {
 
         Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
@@ -1092,7 +1129,7 @@ public class DiscoveryManagerTest {
 
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
-                .RUNNING_BLE);
+                .NOT_STARTED);
 
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -1113,7 +1150,7 @@ public class DiscoveryManagerTest {
 
         DiscoveryManager discoveryManagerSpy = spy(discoveryManager);
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
 
         verify(discoveryManagerSpy, never())
                 .start(anyBoolean(), anyBoolean());
@@ -1122,14 +1159,14 @@ public class DiscoveryManagerTest {
         mShouldBeScanningField.setBoolean(discoveryManager, true);
         discoveryManagerSpy = spy(discoveryManager);
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_ENABLED);
 
         verify(discoveryManagerSpy, atLeastOnce())
                 .start(anyBoolean(), anyBoolean());
 
         // WifiPeerDiscoverer null
         reset(discoveryManagerSpy);
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
         verify(discoveryManagerSpy, never())
                 .start(anyBoolean(), anyBoolean());
@@ -1146,10 +1183,9 @@ public class DiscoveryManagerTest {
 
         discoveryManagerSpy = spy(discoveryManager);
 
-        doReturn(true).when(discoveryManagerSpy)
-                .isRunning();
+        doReturn(true).when(discoveryManagerSpy).isRunning();
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
         verify(mMockWifiPeerDiscoverer, atLeastOnce()).stopDiscovererAndAdvertiser();
 
@@ -1163,13 +1199,11 @@ public class DiscoveryManagerTest {
         // WifiPeerDiscoverer not null and BluetoothEnabled
         discoveryManagerSpy = spy(discoveryManager);
 
-        doReturn(true).when(discoveryManagerSpy)
-                .isRunning();
+        doReturn(true).when(discoveryManagerSpy).isRunning();
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-        doReturn(true).when(discoveryManagerSpy)
-                .isBleDiscovering();
+        doReturn(true).when(discoveryManagerSpy).isBleDiscovering();
 
-        discoveryManagerSpy.onWifiStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
+        discoveryManagerSpy.onWifiP2PStateChanged(WifiP2pManager.WIFI_P2P_STATE_DISABLED);
 
         verify(mMockWifiPeerDiscoverer, atLeastOnce()).stopDiscovererAndAdvertiser();
 
@@ -1201,7 +1235,7 @@ public class DiscoveryManagerTest {
 
         Field handlerField = discoveryManager.getClass().getDeclaredField("mHandler");
         handlerField.setAccessible(true);
-        handlerField.set(discoveryManager, mHander);
+        handlerField.set(discoveryManager, mHandler);
 
         discoveryManager.onWifiPeerDiscovererStateChanged(wifiStates);
 
@@ -1209,10 +1243,8 @@ public class DiscoveryManagerTest {
                 (EnumSet<WifiPeerDiscoverer.WifiPeerDiscovererStateSet>) mWifiPeerDiscovererStateSetField.get(discoveryManager),
                 is(equalTo(wifiStates)));
 
-        verify(mHander, atLeastOnce())
+        verify(mHandler, atLeastOnce())
                 .post(isA(Runnable.class));
-
-
     }
 
    @Test
@@ -1251,7 +1283,7 @@ public class DiscoveryManagerTest {
 
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
-                .WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .NOT_STARTED);
 
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.BLE);
@@ -1335,7 +1367,7 @@ public class DiscoveryManagerTest {
 
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
-                .WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                .NOT_STARTED);
 
         when(mMockDiscoveryManagerSettings.getDiscoveryMode())
                 .thenReturn(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -1427,7 +1459,379 @@ public class DiscoveryManagerTest {
         assertThat("The state should change when BT state changed",
                 discoveryManagerSpy.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-
     }
 
+    @Test
+    public void testUpdateState() throws Exception {
+
+        class UpdateStateChecker {
+
+            DiscoveryManager discoveryManagerSpy;
+            Field mShouldBeScanningField;
+            Field mShouldBeAdvertisingField;
+
+            UpdateStateChecker() throws Exception {
+                Field settingsField = discoveryManager.getClass().getDeclaredField("mSettings");
+                settingsField.setAccessible(true);
+                settingsField.set(discoveryManager, mMockDiscoveryManagerSettings);
+
+                Field mBluetoothMacAddressResolutionHelperField = discoveryManager.getClass()
+                        .getDeclaredField("mBluetoothMacAddressResolutionHelper");
+                mBluetoothMacAddressResolutionHelperField.setAccessible(true);
+                mBluetoothMacAddressResolutionHelperField.set(discoveryManager, mMockBluetoothMacAddressResolutionHelper);
+
+                Field mWifiDirectManagerField = discoveryManager.getClass().getDeclaredField("mWifiDirectManager");
+                mWifiDirectManagerField.setAccessible(true);
+                mWifiDirectManagerField.set(discoveryManager, mMockWifiDirectManager);
+
+                mShouldBeScanningField = discoveryManager.getClass().getDeclaredField("mShouldBeScanning");
+                mShouldBeScanningField.setAccessible(true);
+                mShouldBeAdvertisingField = discoveryManager.getClass().getDeclaredField("mShouldBeAdvertising");
+                mShouldBeAdvertisingField.setAccessible(true);
+
+                discoveryManagerSpy = spy(discoveryManager);
+            }
+
+            void prepareCheck(DiscoveryManager.DiscoveryMode discoveryMode,
+                              boolean shouldDiscover, boolean shouldAdvertise,
+                              boolean blEnabled, boolean wifiEnabled,
+                              boolean bleDiscovering, boolean bleAdvertising,
+                              boolean wifiDiscovering, boolean wifiAdvertising,
+                              boolean blMACUnknown, boolean blProvidingMACStarted) throws Exception {
+
+                when(mMockDiscoveryManagerSettings.getDiscoveryMode()).thenReturn(discoveryMode);
+
+                mShouldBeScanningField.setBoolean(discoveryManagerSpy, shouldDiscover);
+                mShouldBeAdvertisingField.setBoolean(discoveryManagerSpy, shouldAdvertise);
+
+                when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(blEnabled);
+                when(mMockWifiDirectManager.isWifiEnabled()).thenReturn(wifiEnabled);
+
+                doReturn(bleDiscovering).when(discoveryManagerSpy).isBleDiscovering();
+                doReturn(bleAdvertising).when(discoveryManagerSpy).isBleAdvertising();
+                doReturn(wifiDiscovering).when(discoveryManagerSpy).isWifiDiscovering();
+                doReturn(wifiAdvertising).when(discoveryManagerSpy).isWifiAdvertising();
+
+                if (blMACUnknown) {
+                    when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("02:00:00:00:00:00");
+                } else {
+                    when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("01:02:03:04:05:06");
+                }
+                when(mMockBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted())
+                        .thenReturn(blProvidingMACStarted);
+            }
+
+            void check(DiscoveryManager.DiscoveryManagerState expectedState,
+                       boolean expectedDiscovering, boolean expectedAdvertising) throws Exception {
+                Method updateStateMethod = discoveryManager.getClass().getDeclaredMethod("updateState");
+                updateStateMethod.setAccessible(true);
+                updateStateMethod.invoke(discoveryManagerSpy);
+
+                Field isDiscoveringField = discoveryManager.getClass().getDeclaredField("mIsDiscovering");
+                isDiscoveringField.setAccessible(true);
+                boolean isDiscovering = isDiscoveringField.getBoolean(discoveryManagerSpy);
+                Field isAdvertisingField = discoveryManager.getClass().getDeclaredField("mIsAdvertising");
+                isAdvertisingField.setAccessible(true);
+                boolean isAdvertising = isAdvertisingField.getBoolean(discoveryManagerSpy);
+
+                assertThat(discoveryManagerSpy.getState(), is(expectedState));
+                assertThat(isDiscovering, is(expectedDiscovering));
+                assertThat(isAdvertising, is(expectedAdvertising));
+            }
+        }
+
+        UpdateStateChecker checker = new UpdateStateChecker();
+
+        // BLE mode
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           true,           false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, false, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                true, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                false, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, true, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, false, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                false, false, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                true, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, true, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, false, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                true, true, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                true, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                true, true, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                true, true);
+        checker.check(DiscoveryManager.DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS, true, true);
+
+
+        // WIFI mode
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, true, true,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, false, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, true, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                false, true, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, true,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, false, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                false, false, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, true, false,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, false, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                false, false, false, true,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, false, true);
+
+        // BLE_AND_WIFI mode
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                true, true, true, true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                true, true, true, true,
+                // blMacUnknown, blProvidingMacStarted
+                false, false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           false,           true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           false,          true,            false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   false,          true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          true,           false,           true,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI, false, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   false,          false,           true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            false,     true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.NOT_STARTED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            false,     false,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          false,           false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, false, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           false,          true,            false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI, true, false);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           true,           false,            false,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          false,          true,            true,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   false,          true,           false,           true,
+                // blMacUnknown, blProvidingMacStarted
+                   false,        false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI, false, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           true,           true,            true,
+                // blMacUnknown, blProvidingMacStarted
+                   true,         false);
+        checker.check(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS, true, true);
+
+        checker.prepareCheck(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI,
+                // shouldDiscover, shouldAdvertise, blEnabled, wifiEnabled,
+                   true,           true,            true,      true,
+                // bleDiscovering, bleAdvertising, wifiDiscovering, wifiAdvertising,
+                   true,           true,           true,            true,
+                // blMacUnknown, blProvidingMacStarted
+                   true,         true);
+        checker.check(DiscoveryManager.DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS, true, true);
+    }
 }

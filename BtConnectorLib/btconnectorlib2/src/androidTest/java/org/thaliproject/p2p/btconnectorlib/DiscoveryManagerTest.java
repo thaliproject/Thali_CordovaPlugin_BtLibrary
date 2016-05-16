@@ -756,6 +756,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     // start called multiple times with different args and in different context
     // change mode (advertise/scanner/power) during work
+    // test for makeDeviceDiscoverable
     // ConnectionManager - turn off bluetooth during work
     // move timeout state check to connectionmanager
 }
