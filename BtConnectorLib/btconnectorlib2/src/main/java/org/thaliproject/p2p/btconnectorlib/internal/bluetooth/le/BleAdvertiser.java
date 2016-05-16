@@ -53,11 +53,22 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param bluetoothAdapter The Bluetooth adapter.
      */
     public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter) {
+        this(listener, bluetoothAdapter, new AdvertiseSettings.Builder(),
+                DiscoveryManagerSettings.getInstance(null));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param listener The listener.
+     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param builder The builder for AdvertiseSettings.
+     * @param settings The discovery manager settings.
+     */
+    public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter,
+                         AdvertiseSettings.Builder builder, DiscoveryManagerSettings settings) {
         mListener = listener;
         mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
-
-        AdvertiseSettings.Builder builder = new AdvertiseSettings.Builder();
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
 
         try {
             if (settings != null) {

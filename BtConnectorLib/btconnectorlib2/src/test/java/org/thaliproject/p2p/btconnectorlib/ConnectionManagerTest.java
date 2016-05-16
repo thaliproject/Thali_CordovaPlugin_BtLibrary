@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -103,6 +104,11 @@ public class ConnectionManagerTest {
 
         field.set(connectionManager, mMockBluetoothConnector);
 
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        connectionManager.dispose();
     }
 
     @Test
