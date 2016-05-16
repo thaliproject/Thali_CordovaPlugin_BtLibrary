@@ -760,9 +760,153 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    // start called multiple times with different args and in different context
-    // change mode (advertise/scanner/power) during work
-    // test for makeDeviceDiscoverable
-    // ConnectionManager - turn off bluetooth during work
-    // move timeout state check to connectionmanager
+    @Test
+    public void testMultipleStartBluetooth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        toggleBluetooth(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, false, false, false);
+
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, false, true, false, false);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testMultipleStartWifi() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, false);
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, false, true);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testMultipleStartBoth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, false, true, false);
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, false, true, false, true);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeBluetooth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        toggleBluetooth(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeWifi() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeBoth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+    }
 }

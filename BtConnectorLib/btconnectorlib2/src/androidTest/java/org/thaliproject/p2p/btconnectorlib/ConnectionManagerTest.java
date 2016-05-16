@@ -574,4 +574,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mConnectionManager.clearIdentityString();
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
     }
+
+    // ConnectionManager - turn off bluetooth during work
+    // do timeout state check similar like in DiscoveryManger tests
 }
