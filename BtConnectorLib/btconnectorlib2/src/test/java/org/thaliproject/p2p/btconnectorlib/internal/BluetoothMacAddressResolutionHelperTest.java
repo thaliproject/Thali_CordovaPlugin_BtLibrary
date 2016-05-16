@@ -8,8 +8,10 @@ import android.os.CountDownTimer;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -37,41 +39,30 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BluetoothMacAddressResolutionHelperTest {
-
     @Mock
     Context mMockContext;
-
     @Mock
     SharedPreferences mMockSharedPreferences;
-
     @Mock
     BluetoothManager mMockBluetoothManager;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     DiscoveryManager mMockDiscoveryManager;
-
     @Mock
     BlePeerDiscoverer mMockBlePeerDiscoverer;
-
     @Mock
     BluetoothDeviceDiscoverer mMockBluetoothDeviceDiscoverer;
-
     @Mock
     CountDownTimer mMockCountDownTimer;
-
     @Mock
     BluetoothGattManager mMockBluetoothGattManager;
-
     @Mock
     DiscoveryManagerSettings mMockDiscoveryManagerSettings;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
-
 
     BluetoothMacAddressResolutionHelper mBluetoothMacAddressResolutionHelper;
 
@@ -85,7 +76,6 @@ public class BluetoothMacAddressResolutionHelperTest {
         mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
                 mMockContext, mMockBluetoothAdapter, mMockDiscoveryManager, new UUID(1, 1),
                 new UUID(1, 1), mMockSharedPreferences);
-
     }
 
     @Test
@@ -661,7 +651,6 @@ public class BluetoothMacAddressResolutionHelperTest {
         verify(mMockBluetoothDevice, times(1)).getAddress();
         verify(mMockBluetoothGattManager, times(1))
                 .provideBluetoothMacAddressToDevice((BluetoothDevice) anyObject(), anyString());
-
     }
 
     @Test

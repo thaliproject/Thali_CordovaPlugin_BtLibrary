@@ -7,9 +7,11 @@ import android.content.IntentFilter;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Matchers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -22,17 +24,15 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BluetoothDeviceDiscovererTest {
 
     @Mock
     Context mMockContext;
-
     @Mock
     BluetoothDeviceDiscoverer.BluetoothDeviceDiscovererListener mMockListener;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     PeerProperties mMockPeerProperties;
 

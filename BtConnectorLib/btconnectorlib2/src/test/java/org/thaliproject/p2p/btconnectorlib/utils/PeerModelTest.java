@@ -153,6 +153,7 @@ public class PeerModelTest {
                 mCheckExpiredPeersTimerField.get(mPeerModel), is(nullValue()));
 
     }
+
     @Test
     public void testOnPeerExpirationTimeChanged_expTimeSetToNonZero() throws Exception {
         Field mCheckExpiredPeersTimerField = mPeerModel.getClass().getDeclaredField("mCheckExpiredPeersTimer");
@@ -212,6 +213,7 @@ public class PeerModelTest {
                 pp, is(nullValue()));
 
     }
+
     @Test
     public void testGetDiscoveredPeerByDeviceAddress_PeerFound() throws Exception {
         String testDeviceAddress = "testDeviceAddress";

@@ -5,9 +5,11 @@ import android.os.ParcelUuid;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
@@ -31,6 +33,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class PeerAdvertisementFactoryTest {
 
     @Mock
@@ -254,7 +257,7 @@ public class PeerAdvertisementFactoryTest {
         mMockParsedAdvertisement.bluetoothMacAddress = "00:11:22:33:44:55";
         mMockParsedAdvertisement.extraInformation = 1;
         PeerProperties pp = PeerAdvertisementFactory
-               .parsedAdvertisementToPeerProperties(mMockParsedAdvertisement);
+                .parsedAdvertisementToPeerProperties(mMockParsedAdvertisement);
 
         assertThat("The PeerProperties is properly prepared",
                 pp, is(notNullValue()));
@@ -269,7 +272,7 @@ public class PeerAdvertisementFactoryTest {
     @Test
     public void testParsedAdvertisementToPeerProperties_noBTAddress() throws Exception {
         PeerProperties pp = PeerAdvertisementFactory
-               .parsedAdvertisementToPeerProperties(mMockParsedAdvertisement);
+                .parsedAdvertisementToPeerProperties(mMockParsedAdvertisement);
 
         assertThat("The PeerProperties is null when no BT address provided",
                 pp, is(nullValue()));
@@ -278,7 +281,7 @@ public class PeerAdvertisementFactoryTest {
     @Test
     public void testParsedAdvertisementToPeerProperties_null() throws Exception {
         PeerProperties pp = PeerAdvertisementFactory
-               .parsedAdvertisementToPeerProperties(null);
+                .parsedAdvertisementToPeerProperties(null);
 
         assertThat("The PeerProperties is null when null parsedAdvertisement provided",
                 pp, is(nullValue()));

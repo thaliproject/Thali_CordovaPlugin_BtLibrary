@@ -38,22 +38,19 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class ConnectionManagerSettingsTest {
 
-    @Mock
-    Context mMockContext;
-
-    @Mock
-    SharedPreferences mMockSharedPreferences;
-
-    @Mock
-    BluetoothManager mMockBluetoothManager;
-
-    @Mock
-    BluetoothAdapter mMockBluetoothAdapter;
-
-    private ConnectionManagerSettings mConnectionManagerSettings;
-
     private static Map<String, Object> mSharedPreferencesMap;
     private static int applyCnt;
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+    @Mock
+    Context mMockContext;
+    @Mock
+    SharedPreferences mMockSharedPreferences;
+    @Mock
+    BluetoothManager mMockBluetoothManager;
+    @Mock
+    BluetoothAdapter mMockBluetoothAdapter;
+    private ConnectionManagerSettings mConnectionManagerSettings;
 
     @SuppressLint("CommitPrefEdits")
     @Before
@@ -124,7 +121,6 @@ public class ConnectionManagerSettingsTest {
 
         mConnectionManagerSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
-
     }
 
     @After
@@ -143,9 +139,6 @@ public class ConnectionManagerSettingsTest {
                 mMockSharedPreferences);
         assertThat(cmSettings, is(notNullValue()));
     }
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testListener() throws Exception {
@@ -348,6 +341,5 @@ public class ConnectionManagerSettingsTest {
         assertThat("Require a handshake protocol is properly set to default",
                 mConnectionManagerSettings.getHandshakeRequired(),
                 is(BluetoothConnector.DEFAULT_HANDSHAKE_REQUIRED));
-
     }
 }

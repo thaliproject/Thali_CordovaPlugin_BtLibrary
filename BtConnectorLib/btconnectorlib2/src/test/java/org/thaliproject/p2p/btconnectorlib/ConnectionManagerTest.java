@@ -41,40 +41,28 @@ public class ConnectionManagerTest {
 
     @Mock
     Context mMockContext;
-
     @Mock
     SharedPreferences mMockSharedPreferences;
-
     @Mock
     BluetoothManager mMockBluetoothManager;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     SharedPreferences.Editor mMockEditor;
-
     @Mock
     BluetoothDevice mBluetoothDevice;
-
     @Mock
     PeerProperties mMockPeerProperties;
-
     @Mock
     BluetoothConnector mMockBluetoothConnector;
-
     @Mock
     ConnectionManagerSettings mMockConnectionManagerSettings;
-
     @Mock
     ConnectionManager.ConnectionManagerListener mMockManagerListener;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
-
     @Mock
     Handler mHander;
-
     @Mock
     BluetoothSocket bluetoothSocket;
 
@@ -103,7 +91,6 @@ public class ConnectionManagerTest {
         modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
 
         field.set(connectionManager, mMockBluetoothConnector);
-
     }
 
     @After
@@ -121,7 +108,6 @@ public class ConnectionManagerTest {
 
         assertThat(cm, is(notNullValue()));
         assertThat(cm.getState(), is(equalTo(ConnectionManager.ConnectionManagerState.NOT_STARTED)));
-
     }
 
     @Test
@@ -225,7 +211,6 @@ public class ConnectionManagerTest {
 
         verify(mMockBluetoothManager, atMost(4))
                 .bind(isA(BluetoothManager.BluetoothManagerListener.class));
-
     }
 
     @Test

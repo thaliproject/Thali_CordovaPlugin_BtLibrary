@@ -6,8 +6,10 @@ import android.bluetooth.BluetoothSocket;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -16,14 +18,13 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BluetoothUtilsTest {
 
     @Mock
     BluetoothSocket mMockBluetoothSocket;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
-
     @Mock
     PeerProperties mMockPeerProperties;
 
@@ -79,7 +80,6 @@ public class BluetoothUtilsTest {
 
         assertThat("The BT MAC is valid if six colon separated groups of two hexadecimal digits used",
                 BluetoothUtils.isValidBluetoothMacAddress("0A:1B:2C:3D:4E:5F"), is(true));
-
     }
 
     @Test
@@ -146,7 +146,6 @@ public class BluetoothUtilsTest {
                 BluetoothUtils.validateReceivedHandshakeMessage(
                         jsonObject.toString().getBytes(), 20, mMockBluetoothSocket),
                 is(notNullValue()));
-
     }
 
     @Test
@@ -172,7 +171,7 @@ public class BluetoothUtilsTest {
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(tmpChPort));
 
-        BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL -1);
+        BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL - 1);
         assertThat("It returns proper alternative RFCOMM channel",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(MAX_ALTERNATIVE_CHANNEL - 2));

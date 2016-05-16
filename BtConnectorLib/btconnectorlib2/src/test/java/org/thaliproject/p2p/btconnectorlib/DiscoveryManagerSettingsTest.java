@@ -42,28 +42,23 @@ import static org.mockito.Mockito.when;
 @RunWith(MockitoJUnitRunner.class)
 public class DiscoveryManagerSettingsTest {
 
-    @Mock
-    Context mMockContext;
-
-    @Mock
-    SharedPreferences mMockSharedPreferences;
-
-    @Mock
-    BluetoothManager mMockBluetoothManager;
-
-    @Mock
-    BluetoothAdapter mMockBluetoothAdapter;
-
-    @Mock
-    DiscoveryManager mMockDiscoveryManager;
-
-    @Mock
-    DiscoveryManager.DiscoveryManagerListener mMockListener;
-
-    private DiscoveryManagerSettings mDiscoveryManagerSettings;
-
     private static Map<String, Object> mSharedPreferencesMap;
     private static int applyCnt;
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
+    @Mock
+    Context mMockContext;
+    @Mock
+    SharedPreferences mMockSharedPreferences;
+    @Mock
+    BluetoothManager mMockBluetoothManager;
+    @Mock
+    BluetoothAdapter mMockBluetoothAdapter;
+    @Mock
+    DiscoveryManager mMockDiscoveryManager;
+    @Mock
+    DiscoveryManager.DiscoveryManagerListener mMockListener;
+    private DiscoveryManagerSettings mDiscoveryManagerSettings;
 
     @SuppressLint("CommitPrefEdits")
     @Before
@@ -161,9 +156,6 @@ public class DiscoveryManagerSettingsTest {
                 mMockSharedPreferences);
         assertThat(dmSettings, is(notNullValue()));
     }
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testListener() throws Exception {
