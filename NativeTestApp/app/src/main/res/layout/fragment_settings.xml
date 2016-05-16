@@ -91,6 +91,47 @@
                       android:layout_height="wrap_content"
                       android:text="Enable Bluetooth LE"
                       android:textSize="@dimen/text_size_medium" />
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="@string/manufacturer_id"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:id="@+id/manufacturerIdEditText" />
+            </LinearLayout>
+            <LinearLayout android:layout_width="fill_parent"
+                          android:layout_height="match_parent"
+                          android:orientation="horizontal">
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:singleLine="true"
+                        android:text="@string/beacon_ad_extra_information"
+                        android:textSize="@dimen/text_size_medium" />
+                <EditText
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingLeft="@dimen/padding_large"
+                        android:inputType="number"
+                        android:ems="10"
+                        android:id="@+id/extraInformationEditText" />
+            </LinearLayout>
+            <TextView android:layout_width="fill_parent"
+                      android:layout_height="wrap_content"
+                      android:paddingBottom="@dimen/padding_medium"
+                      android:singleLine="false"
+                      android:layout_marginLeft="6dp"
+                      android:text="@string/beacon_ad_extra_information_description"
+                      android:textSize="@dimen/text_size_small" />
             <TextView android:layout_width="wrap_content"
                       android:layout_height="wrap_content"
                       android:paddingTop="@dimen/padding_small"

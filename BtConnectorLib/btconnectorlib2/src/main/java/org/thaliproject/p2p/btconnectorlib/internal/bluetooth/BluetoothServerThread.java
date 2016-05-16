@@ -124,7 +124,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                 try {
                     bluetoothSocket = mBluetoothServerSocket.accept(); // Blocking call
                     Log.i(TAG, "Incoming connection accepted");
-                } catch (IOException e) {
+                } catch (IOException | NullPointerException e) {
                     if (!mStopThread) {
                         Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
                         mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
@@ -190,7 +190,15 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     public synchronized void shutdown() {
         Log.d(TAG, "shutdown");
         mStopThread = true;
-        closeBluetoothServerSocket();
+        final BluetoothServerSocket bluetoothServerSocket = mBluetoothServerSocket;
+
+        if (bluetoothServerSocket != null) {
+            try {
+                bluetoothServerSocket.close();
+            } catch (IOException | NullPointerException e) {
+                Log.e(TAG, "shutdown: Failed to close the Bluetooth server socket: " + e.getMessage(), e);
+            }
+        }
 
         for (BluetoothSocketIoThread thread : mSocketIoThreads) {
             if (thread != null) {

@@ -246,6 +246,7 @@ public class ConnectionManager
      * @return True, if cancelled successfully. False otherwise.
      */
     public synchronized boolean cancelConnectionAttempt(PeerProperties peerConnectingTo) {
+        Log.i(TAG, "cancelConnectionAttempt: " + peerConnectingTo);
         return mBluetoothConnector.cancelConnectionAttempt(peerConnectingTo);
     }
 
@@ -253,6 +254,7 @@ public class ConnectionManager
      * Cancels all connection attempts.
      */
     public synchronized void cancelAllConnectionAttempts() {
+        Log.i(TAG, "cancelAllConnectionAttempts");
         mBluetoothConnector.cancelAllConnectionAttempts();
     }
 
