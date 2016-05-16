@@ -1220,7 +1220,7 @@ public class DiscoveryManager
         boolean isBleWorking = isBleAdvertising || isBleDiscovering;
         boolean isWifiWorking = isWifiAdvertising || isWifiDiscovering;
         boolean isAdvertising = isBleAdvertising || isWifiAdvertising;
-        boolean isDiscovering = isBleAdvertising || isBleDiscovering;
+        boolean isDiscovering = isBleDiscovering || isWifiDiscovering;
         boolean bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
         boolean wifiEnabled = mWifiDirectManager.isWifiEnabled();
 

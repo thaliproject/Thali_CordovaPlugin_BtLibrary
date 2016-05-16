@@ -15,6 +15,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import java.lang.reflect.Field;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -30,7 +31,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     private static DiscoveryManager.DiscoveryMode defaultDiscoveryMode;
     private static boolean defaultBTStatus;
     private static boolean defaultWifiStatus;
-    private final long MAX_TIMEOUT = 10000;
+    private final long MAX_TIMEOUT = 20000;
     private final long CHECK_INTERVAL = 500;
 
     private static void setDiscoveryMode(DiscoveryManager.DiscoveryMode mode) {
@@ -64,7 +65,9 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     // helper to check discovery manager state, discovering state and advertisement state
-    private void checkAllStatesWithTimeout(boolean isRunning, boolean isDiscovering, boolean isAdvertising)
+    private void checkAllStatesWithTimeout(boolean isRunning,
+                                           boolean isBleDiscovering, boolean isBleAdvertising,
+                                           boolean isWifiDiscovering, boolean isWifiAdvertising)
             throws java.lang.InterruptedException {
         long currentTimeout = 0;
         while (currentTimeout < MAX_TIMEOUT) {
@@ -72,8 +75,12 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
             currentTimeout += CHECK_INTERVAL;
             try {
                 assertThat(mDiscoveryManager.isRunning(), is(isRunning));
-                assertThat(mDiscoveryManager.isDiscovering(), is(isDiscovering));
-                assertThat(mDiscoveryManager.isAdvertising(), is(isAdvertising));
+                assertThat(mDiscoveryManager.isBleDiscovering(), is(isBleDiscovering));
+                assertThat(mDiscoveryManager.isBleAdvertising(), is(isBleAdvertising));
+                assertThat(mDiscoveryManager.isWifiDiscovering(), is(isWifiDiscovering));
+                assertThat(mDiscoveryManager.isWifiAdvertising(), is(isWifiAdvertising));
+                assertThat(mDiscoveryManager.isDiscovering(), is(isBleDiscovering || isWifiDiscovering));
+                assertThat(mDiscoveryManager.isAdvertising(), is(isBleAdvertising || isWifiAdvertising));
                 break;
             } catch (java.lang.AssertionError assertionError) {
                 if (currentTimeout >= MAX_TIMEOUT) {
@@ -115,7 +122,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     public void tearDown() throws Exception {
         mDiscoveryManager.dispose();
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         mDiscoveryManager = null;
     }
 
@@ -149,7 +156,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -160,7 +167,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -171,7 +178,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
     @Test
@@ -182,7 +189,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -193,7 +200,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -205,7 +212,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
     @Test
@@ -217,7 +224,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
     @Test
@@ -229,7 +236,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
     @Test
@@ -241,7 +248,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     // WIFI enabled, BT disabled
@@ -254,7 +261,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, false);
         assertThat(isRunning, is(false));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -267,7 +274,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
     @Test
@@ -280,7 +287,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
     @Test
@@ -293,7 +300,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
     // Both BT and WIFI enabled
@@ -307,7 +314,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
     }
 
     @Test
@@ -320,7 +327,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
     }
 
     @Test
@@ -333,7 +340,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, true, true);
     }
 
     // BT enabled, Wifi disabled
@@ -347,7 +354,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, false);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
     @Test
@@ -360,7 +367,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(false, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
     }
 
     @Test
@@ -373,7 +380,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         boolean isRunning = mDiscoveryManager.start(true, true);
         assertThat(isRunning, is(true));
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, false, false);
     }
 
     @Test
@@ -384,13 +391,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
     @Test
@@ -401,13 +408,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
     }
 
     @Test
@@ -418,13 +425,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, false, false);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, false, false);
     }
 
     @Test
@@ -436,13 +443,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
     @Test
@@ -454,13 +461,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
     @Test
@@ -472,13 +479,13 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
     @Test
@@ -491,23 +498,23 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
         toggleBluetooth(false);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -520,23 +527,23 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         toggleBluetooth(false);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -549,23 +556,23 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, true, true);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, false, false);
         toggleWifi(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, true, true);
         toggleBluetooth(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
         toggleBluetooth(true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, true, true);
         toggleBluetooth(false);
         toggleWifi(false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -576,16 +583,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
         // stopping advertising does nothing
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, false, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);;
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -596,16 +603,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
         // stopping discovery does nothing
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -616,15 +623,15 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, false, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, false);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -636,16 +643,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
         // stopping advertising does nothing
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, false, false, true, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -657,16 +664,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
         // stopping discovery does nothing
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -678,15 +685,15 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, false, false, true, true);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, false, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -699,16 +706,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, false);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
         // stopping advertising does nothing
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, true, false);
+        checkAllStatesWithTimeout(true, true, false, true, false);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -721,16 +728,16 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(false, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         // stopping discovery does nothing
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
     @Test
@@ -743,19 +750,188 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-        checkAllStatesWithTimeout(true, true, true);
+        checkAllStatesWithTimeout(true, true, true, true, true);
         mDiscoveryManager.stopDiscovery();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI));
-        checkAllStatesWithTimeout(true, false, true);
+        checkAllStatesWithTimeout(true, false, true, false, true);
         mDiscoveryManager.stopAdvertising();
         assertThat(mDiscoveryManager.getState(),
                 is(DiscoveryManager.DiscoveryManagerState.NOT_STARTED));
-        checkAllStatesWithTimeout(false, false, false);
+        checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    // start called multiple times with different args and in different context
-    // change mode (advertise/scanner/power) during work
-    // ConnectionManager - turn off bluetooth during work
-    // move timeout state check to connectionmanager
+    @Test
+    public void testMultipleStartBluetooth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        toggleBluetooth(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, false, false, false);
+
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, false, true, false, false);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testMultipleStartWifi() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, false);
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, false, true);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testMultipleStartBoth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+
+        mDiscoveryManager.start(true, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, false, true, false);
+        mDiscoveryManager.start(false, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, false, true, false, true);
+
+        mDiscoveryManager.start(false, false);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeBluetooth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        toggleBluetooth(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeWifi() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        checkAllStatesWithTimeout(false, false, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+    }
+
+    @Test
+    public void testDiscoveryModeChangeBoth() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE);
+        checkAllStatesWithTimeout(true, true, true, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_WIFI);
+        checkAllStatesWithTimeout(true, false, false, true, true);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
+        checkAllStatesWithTimeout(true, true, true, true, true);
+    }
+
+    @Test
+    public void testUnknownBluetoothMacAddress() throws Exception {
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+        when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
+        mDiscoveryManager.setEmulateMarshmallow(true);
+        mDiscoveryManager.setPeerName("TestPeerName");
+        toggleBluetooth(true);
+        toggleWifi(true);
+
+        DiscoveryManagerSettings dmSettings =
+                DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
+        Field blMacAddressField = dmSettings.getClass().getDeclaredField("mBluetoothMacAddress");
+        blMacAddressField.setAccessible(true);
+        blMacAddressField.set(dmSettings, "");
+
+        mDiscoveryManager.start(true, true);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+        checkAllStatesWithTimeout(true, true, false, false, false);
+
+        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
+        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
+        checkAllStatesWithTimeout(true, true, false, true, true);
+    }
 }
