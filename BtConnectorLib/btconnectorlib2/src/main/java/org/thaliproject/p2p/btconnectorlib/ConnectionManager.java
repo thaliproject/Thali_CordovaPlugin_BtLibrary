@@ -75,6 +75,8 @@ public class ConnectionManager
     private UUID mMyUuid = null;
     private String mMyName = null;
     private ConnectionManagerSettings mSettings = null;
+    private boolean mIsServerStarted = false;
+    private boolean mShouldBeStarted = false;
 
     /**
      * Constructor.
@@ -148,6 +150,7 @@ public class ConnectionManager
             case NOT_STARTED:
             case WAITING_FOR_SERVICES_TO_BE_ENABLED:
                 if (mBluetoothManager.bind(this)) {
+                    mShouldBeStarted = true;
                     if (mBluetoothManager.isBluetoothEnabled()) {
                         mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
 
@@ -158,7 +161,7 @@ public class ConnectionManager
                         }
                     } else {
                         Log.i(TAG, "startListeningForIncomingConnections: Bluetooth disabled, waiting for it to be enabled...");
-                        setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                        updateState();
                     }
                 } else {
                     Log.e(TAG, "startListeningForIncomingConnections: Failed to start, this may indicate that Bluetooth is not supported on this device");
@@ -187,14 +190,11 @@ public class ConnectionManager
             Log.i(TAG, "stopListeningForIncomingConnections");
         }
 
+        mShouldBeStarted = false;
         mBluetoothConnector.stopListeningForIncomingConnections();
         mBluetoothManager.release(this);
 
-        if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-            // We won't get the onIsServerStartedChanged event, when we are waiting for Bluetooth to
-            // be enabled. Thus, we need to change the state here.
-            setState(ConnectionManagerState.NOT_STARTED);
-        }
+        updateState();
     }
 
     /**
@@ -301,7 +301,7 @@ public class ConnectionManager
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing...");
                 mBluetoothConnector.stopListeningForIncomingConnections();
-                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                updateState();
             }
         } else {
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
@@ -325,7 +325,7 @@ public class ConnectionManager
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing...");
                 mBluetoothConnector.stopListeningForIncomingConnections();
-                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                updateState();
             }
         } else if (state == BluetoothAdapter.STATE_ON) {
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
@@ -345,14 +345,8 @@ public class ConnectionManager
     public void onIsServerStartedChanged(boolean isStarted) {
         Log.d(TAG, "onIsServerStartedChanged: " + isStarted);
 
-        if (isStarted) {
-            setState(ConnectionManagerState.RUNNING);
-        } else {
-            // We don't want to change the state, if we are waiting for Bluetooth to be enabled
-            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-                setState(ConnectionManagerState.NOT_STARTED);
-            }
-        }
+        mIsServerStarted = isStarted;
+        updateState();
     }
 
     /**
@@ -454,6 +448,19 @@ public class ConnectionManager
                     }
                 });
             }
+        }
+    }
+
+    /**
+     * Updates the state of this instance and notifies the listener.
+     */
+    private synchronized void updateState() {
+        if (mShouldBeStarted && mIsServerStarted) {
+            setState(ConnectionManagerState.RUNNING);
+        } else if (mShouldBeStarted && !mBluetoothManager.isBluetoothEnabled()) {
+            setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        } else {
+            setState(ConnectionManagerState.NOT_STARTED);
         }
     }
 }
