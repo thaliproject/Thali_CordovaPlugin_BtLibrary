@@ -176,6 +176,34 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             String myBluetoothMacAddress,
             int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
             AdvertisementDataType advertisementDataType) {
+
+        this(listener, bluetoothAdapter, serviceUuid, provideBluetoothMacAddressRequestUuid,
+                myBluetoothMacAddress, manufacturerId, beaconAdLengthAndType, beaconAdExtraInformation,
+                advertisementDataType, null, null);
+    }
+
+    /**
+     * Constructor.
+     * The constructor used for testing purposes allowing to use mocked bleAdvertiser and bleScanner.
+     *
+     * @param listener The listener.
+     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param serviceUuid The BLE service UUID.
+     * @param provideBluetoothMacAddressRequestUuid UUID for "Provide Bluetooth MAC address" mode.
+     * @param myBluetoothMacAddress Our Bluetooth MAC address for advertisement.
+     * @param manufacturerId The manufacturer ID.
+     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param bleAdvertiser The instance of the general BLE advertiser.
+     * @param bleScanner The instance of the general BLE scanner.
+     */
+    public BlePeerDiscoverer(
+            BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
+            UUID serviceUuid, UUID provideBluetoothMacAddressRequestUuid,
+            String myBluetoothMacAddress,
+            int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
+            AdvertisementDataType advertisementDataType,
+            BleAdvertiser bleAdvertiser, BleScanner bleScanner) {
         mListener = listener;
 
         if (mListener == null) {
@@ -187,7 +215,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
         mMyBluetoothMacAddress = myBluetoothMacAddress;
 
-        mBleAdvertiser = new BleAdvertiser(this, mBluetoothAdapter);
+        mBleAdvertiser = bleAdvertiser != null ? bleAdvertiser : new BleAdvertiser(this, mBluetoothAdapter);
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mMyBluetoothMacAddress)) {
             // Request UUID and ID are only needed in case we don't know our own Bluetooth MAC
@@ -196,7 +224,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             Log.i(TAG, "BlePeerDiscoverer: Provide Bluetooth MAC address request ID is " + mOurRequestId);
         }
 
-        mBleScanner = new BleScanner(this, mBluetoothAdapter);
+        mBleScanner = bleScanner != null ? bleScanner : new BleScanner(this, mBluetoothAdapter);
 
         mManufacturerId = manufacturerId;
         mBeaconAdLengthAndType = beaconAdLengthAndType;
@@ -259,8 +287,36 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     public boolean applySettings(
             int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
-            AdvertisementDataType advertisementDataType, int advertiseMode, int advertiseTxPowerLevel,
-            int scanMode, long scanReportDelayInMilliseconds) {
+            AdvertisementDataType advertisementDataType, int advertiseMode,
+            int advertiseTxPowerLevel, int scanMode, long scanReportDelayInMilliseconds) {
+
+        return this.applySettings(manufacturerId, beaconAdLengthAndType,
+                beaconAdExtraInformation, advertisementDataType, advertiseMode,
+                advertiseTxPowerLevel, scanMode, scanReportDelayInMilliseconds,
+                new AdvertiseSettings.Builder(), new ScanSettings.Builder());
+    }
+
+    /**
+     * Sets the settings for both the BLE advertiser and the scanner.
+     *
+     * @param manufacturerId The manufacturer ID.
+     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param advertisementDataType The advertisement data type.
+     * @param advertiseMode The advertise mode for the BLE advertiser.
+     * @param advertiseTxPowerLevel The advertise TX power level for the BLE advertiser.
+     * @param scanMode The scan mode for the BLE scanner.
+     * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
+     * @param advertiseSettingsBuilder The Builder for AdvertiseSettings.
+     * @param scanSettingsBuilder The Builder for ScanSettings.
+     * @return True, if all the settings were applied successfully. False, if at least one of
+     * settings failed to be applied.
+     */
+    public boolean applySettings(
+            int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
+            AdvertisementDataType advertisementDataType, int advertiseMode,
+            int advertiseTxPowerLevel, int scanMode, long scanReportDelayInMilliseconds,
+            AdvertiseSettings.Builder advertiseSettingsBuilder, ScanSettings.Builder scanSettingsBuilder) {
         Log.i(TAG, "applySettings:"
                 + "\n    - Manufacturer ID: " + manufacturerId
                 + "\n    - Beacon ad length and type: " + beaconAdLengthAndType
@@ -279,8 +335,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         mBeaconAdLengthAndType = beaconAdLengthAndType;
         mBeaconAdExtraInformation = beaconAdExtraInformation;
         mAdvertisementDataType = advertisementDataType;
-
-        AdvertiseSettings.Builder advertiseSettingsBuilder = new AdvertiseSettings.Builder();
 
         try {
             advertiseSettingsBuilder.setAdvertiseMode(advertiseMode);
@@ -313,7 +367,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         boolean scannerSettingsWereSet = false;
-        ScanSettings.Builder scanSettingsBuilder = new ScanSettings.Builder();
 
         try {
             scanSettingsBuilder.setScanMode(scanMode);
