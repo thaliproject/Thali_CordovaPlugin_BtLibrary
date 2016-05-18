@@ -13,8 +13,10 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 
 import java.lang.reflect.Field;
@@ -33,7 +35,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BleScannerTest {
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
     @Mock

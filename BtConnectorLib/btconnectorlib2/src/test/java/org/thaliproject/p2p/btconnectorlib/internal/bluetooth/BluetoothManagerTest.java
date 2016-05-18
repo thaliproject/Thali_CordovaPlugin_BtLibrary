@@ -36,19 +36,14 @@ public class BluetoothManagerTest {
 
     @Mock
     Context mMockContext;
-
     @Mock
     SharedPreferences mMockSharedPreferences;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     BluetoothManager.BluetoothManagerListener mMockBluetoothManagerListener;
-
     @Mock
     PackageManager mMockPackageManager;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
 
@@ -60,7 +55,6 @@ public class BluetoothManagerTest {
 
         mBluetoothManager = BluetoothManager.getInstance(mMockContext,
                 mMockBluetoothAdapter, mMockSharedPreferences);
-
     }
 
     @After
@@ -76,8 +70,8 @@ public class BluetoothManagerTest {
         BluetoothManager bluetoothManager = BluetoothManager.getInstance(mMockContext,
                 mMockBluetoothAdapter, mMockSharedPreferences);
         assertThat(bluetoothManager, is(notNullValue()));
-
     }
+
     @Test
     synchronized public void testBind_failure() throws Exception {
 
@@ -229,6 +223,7 @@ public class BluetoothManagerTest {
         assertThat("should be false as the device doesn't have Bluetooth support",
                 mBluetoothManager.isBluetoothEnabled(), is(false));
     }
+
     @Test
     public void testIsBluetoothEnabled() throws Exception {
         when(mMockBluetoothAdapter.isEnabled()).thenReturn(false);

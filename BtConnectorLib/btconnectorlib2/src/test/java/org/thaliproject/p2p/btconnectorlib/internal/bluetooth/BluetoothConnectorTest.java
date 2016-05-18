@@ -13,9 +13,11 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.lang.reflect.Field;
@@ -35,46 +37,37 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BluetoothConnectorTest {
+
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
     @Mock
     Context mMockContext;
-
     @Mock
     BluetoothConnector.BluetoothConnectorListener mMockListener;
-
     @Mock
     BluetoothManager mMockBluetoothManager;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     SharedPreferences mMockSharedPreferences;
-
     @Mock
     SharedPreferences.Editor mMockEditor;
-
     @Mock
     BluetoothSocket mMockBluetoothSocket;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
-
     @Mock
     PeerProperties mMockPeerProperties;
-
     @Mock
     CountDownTimer mMockConnectionTimeoutTimer;
-
     @Mock
     BluetoothClientThread mMockBluetoothClientThread;
-
     @Mock
     BluetoothServerThread mMockServerThread;
-
     @Mock
     Handler mMockHandler;
-
     BluetoothConnector mBluetoothConnector;
 
     @SuppressLint("CommitPrefEdits")
@@ -86,7 +79,7 @@ public class BluetoothConnectorTest {
         when(mMockSharedPreferences.edit()).thenReturn(mMockEditor);
 
         mBluetoothConnector = new BluetoothConnector(mMockContext, mMockListener, mMockBluetoothAdapter,
-                new UUID(1,1), "name", "identity", mMockSharedPreferences );
+                new UUID(1, 1), "name", "identity", mMockSharedPreferences);
     }
 
     @Test
@@ -95,7 +88,7 @@ public class BluetoothConnectorTest {
         String identity = "";
 
         BluetoothConnector btc = new BluetoothConnector(mMockContext, mMockListener,
-                mMockBluetoothAdapter, new UUID(1,1), name, identity, mMockSharedPreferences );
+                mMockBluetoothAdapter, new UUID(1, 1), name, identity, mMockSharedPreferences);
 
         assertThat(btc, is(notNullValue()));
     }
@@ -108,7 +101,7 @@ public class BluetoothConnectorTest {
         Field identityField = mBluetoothConnector.getClass().getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
 
-        assertThat("Has a proper identity", (String)identityField.get(mBluetoothConnector),
+        assertThat("Has a proper identity", (String) identityField.get(mBluetoothConnector),
                 is(identity));
     }
 
@@ -412,7 +405,6 @@ public class BluetoothConnectorTest {
         Thread.sleep(500);
         verify(mMockBluetoothClientThread, times(1))
                 .shutdown();
-
     }
 
     @Test
@@ -460,9 +452,6 @@ public class BluetoothConnectorTest {
 
         verify(mMockListener, times(1)).onConnecting(name, address);
     }
-
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testCancelConnectionAttempt_exception() throws Exception {

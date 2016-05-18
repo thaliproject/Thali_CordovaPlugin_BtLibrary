@@ -6,8 +6,10 @@ import android.bluetooth.BluetoothSocket;
 import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -16,14 +18,21 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
+/*
+ Methods validateReceivedHandshakeMessage(), createBluetoothSocketToServiceRecord(),
+ createBluetoothSocketToServiceRecordWithNextPort(), createBluetoothSocket()
+ and createBluetoothSocketWithNextChannel() can't be unit tested because are using
+ BluetoothSocket and JSONObject. Both classes are part of the android SDK.
+ That means that are not available for unit testing by default.
+ They have to be tested by instrumented tests
+*/
 public class BluetoothUtilsTest {
 
     @Mock
     BluetoothSocket mMockBluetoothSocket;
-
     @Mock
     BluetoothDevice mMockBluetoothDevice;
-
     @Mock
     PeerProperties mMockPeerProperties;
 
@@ -79,7 +88,6 @@ public class BluetoothUtilsTest {
 
         assertThat("The BT MAC is valid if six colon separated groups of two hexadecimal digits used",
                 BluetoothUtils.isValidBluetoothMacAddress("0A:1B:2C:3D:4E:5F"), is(true));
-
     }
 
     @Test
@@ -129,26 +137,6 @@ public class BluetoothUtilsTest {
                 is(macAddress));
     }
 
-    // The test below does not work due to the fact that the class JSONObject
-    // is part of the android SDK. That means that is not available for unit testing by default.
-    // It has to be tested by instrumented tests
-    public void testValidateReceivedHandshakeMessage_LongHandshake() throws Exception {
-
-        String macAddress = "0A:1B:2C:3D:4E:5F";
-        when(mMockBluetoothDevice.getAddress()).thenReturn(macAddress);
-        when(mMockPeerProperties.isValid()).thenReturn(true);
-        JSONObject jsonObject = new JSONObject();
-
-        jsonObject.put("name", "myName");
-        jsonObject.put("address", macAddress);
-
-        assertThat("The received object is null if handshakeMessageLength is wrong",
-                BluetoothUtils.validateReceivedHandshakeMessage(
-                        jsonObject.toString().getBytes(), 20, mMockBluetoothSocket),
-                is(notNullValue()));
-
-    }
-
     @Test
     public void testPreviouslyUsedAlternativeChannelOrPort() throws Exception {
         // get default port
@@ -172,7 +160,7 @@ public class BluetoothUtilsTest {
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(tmpChPort));
 
-        BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL -1);
+        BluetoothUtils.setNextAlternativeChannelOrPort(MAX_ALTERNATIVE_CHANNEL - 1);
         assertThat("It returns proper alternative RFCOMM channel",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(MAX_ALTERNATIVE_CHANNEL - 2));
@@ -181,23 +169,5 @@ public class BluetoothUtilsTest {
         assertThat("It returns proper alternative RFCOMM channel",
                 BluetoothUtils.getPreviouslyUsedAlternativeChannelOrPort(),
                 is(MAX_ALTERNATIVE_CHANNEL - 2));
-    }
-
-    // The tests below does not work due to the fact that the class BluetoothSocket
-    // is part of the android SDK. That means that is not available for unit testing by default.
-    // It has to be tested by instrumented tests
-    public void testCreateBluetoothSocketToServiceRecord() throws Exception {
-    }
-
-    public void testCreateBluetoothSocketToServiceRecordWithNextPort() throws Exception {
-
-    }
-
-    public void testCreateBluetoothSocket() throws Exception {
-
-    }
-
-    public void testCreateBluetoothSocketWithNextChannel() throws Exception {
-
     }
 }

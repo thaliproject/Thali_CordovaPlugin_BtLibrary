@@ -5,6 +5,8 @@ import android.test.suitebuilder.annotation.SmallTest;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.runners.MockitoJUnitRunner;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -12,6 +14,7 @@ import static org.hamcrest.CoreMatchers.nullValue;
 import static org.junit.Assert.assertThat;
 
 @SmallTest
+@RunWith(MockitoJUnitRunner.class)
 public class PeerPropertiesTest {
 
     private PeerProperties mPeerProperties;
@@ -172,8 +175,8 @@ public class PeerPropertiesTest {
     public void testHasMoreInformation() {
         PeerProperties pp1 = new PeerProperties();
         PeerProperties pp2 = new PeerProperties();
-        assertThat(pp1.hasMoreInformation(pp2),is(false));
-        assertThat(pp2.hasMoreInformation(pp1),is(false));
+        assertThat(pp1.hasMoreInformation(pp2), is(false));
+        assertThat(pp2.hasMoreInformation(pp1), is(false));
 
         pp1.setName(PeerProperties.NO_PEER_NAME_STRING);
         assertThat(pp1.hasMoreInformation(pp2), is(false));
@@ -221,7 +224,7 @@ public class PeerPropertiesTest {
         PeerProperties pp1 = new PeerProperties();
         PeerProperties pp2 = new PeerProperties();
         assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(false));
-        assertThat(pp2.hasMoreInformation(pp1),is(false));
+        assertThat(pp2.hasMoreInformation(pp1), is(false));
 
         pp1.setName("name1");
         assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));

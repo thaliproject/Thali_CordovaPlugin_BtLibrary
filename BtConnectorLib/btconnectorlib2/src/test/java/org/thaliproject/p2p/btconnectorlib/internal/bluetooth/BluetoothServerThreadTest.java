@@ -10,10 +10,12 @@ import android.content.SharedPreferences;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
@@ -37,39 +39,31 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+@RunWith(MockitoJUnitRunner.class)
 public class BluetoothServerThreadTest {
-    private String myIdentityId = "IdentityId";
-    private UUID myUUID = new UUID(1,1);
-    private String myServerName = "serverName";
-    private Field mStopThreadField;
-
     @Mock
     Context mMockContext;
-
     @Mock
     SharedPreferences mMockSharedPreferences;
-
     @Mock
     BluetoothAdapter mMockBluetoothAdapter;
-
     @Mock
     BluetoothServerThread.Listener mMockListener;
-
     @Mock
     BluetoothServerSocket mMockBluetoothServerSocket;
-
     @Mock
     BluetoothSocket mMockBluetoothSocket;
-
-    @Mock BluetoothDevice mMockBluetoothDevice;
-
+    @Mock
+    BluetoothDevice mMockBluetoothDevice;
     @Mock
     BluetoothSocketIoThread mMockBluetoothSocketIoThread;
-
     @Mock
     InputStream mMockInputStream;
-
     BluetoothServerThread mBluetoothServerThread;
+    private String myIdentityId = "IdentityId";
+    private UUID myUUID = new UUID(1, 1);
+    private String myServerName = "serverName";
+    private Field mStopThreadField;
 
     @Before
     public void setUp() throws Exception {
@@ -124,8 +118,7 @@ public class BluetoothServerThreadTest {
         });
 
         // Actual test
-        Thread service = new Thread(new Runnable()
-        {
+        Thread service = new Thread(new Runnable() {
             @Override
             public void run() {
                 mBluetoothServerThread.run();
@@ -171,8 +164,7 @@ public class BluetoothServerThreadTest {
         when(mMockBluetoothDevice.getAddress()).thenReturn(macAddress);
 
         // Actual test
-        Thread service = new Thread(new Runnable()
-        {
+        Thread service = new Thread(new Runnable() {
             @Override
             public void run() {
                 mBluetoothServerThread.run();
@@ -246,8 +238,7 @@ public class BluetoothServerThreadTest {
         when(mMockBluetoothServerSocket.accept()).thenThrow(IOException.class);
 
         // Actual test
-        Thread service = new Thread(new Runnable()
-        {
+        Thread service = new Thread(new Runnable() {
             @Override
             public void run() {
                 mBluetoothServerThread.run();
