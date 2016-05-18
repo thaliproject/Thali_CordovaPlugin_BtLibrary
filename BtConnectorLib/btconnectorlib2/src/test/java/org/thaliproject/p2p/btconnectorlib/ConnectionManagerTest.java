@@ -19,6 +19,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.UUID;
 
@@ -336,9 +337,6 @@ public class ConnectionManagerTest {
 
     @Test
     public void testOnHandshakeRequiredSettingChanged() throws Exception {
-
-        // TODO: 02/04/16 check what is the parameter needed for
-
         Field settingsField = connectionManager.getClass().getDeclaredField("mSettings");
         settingsField.setAccessible(true);
         settingsField.set(connectionManager, mMockConnectionManagerSettings);
@@ -361,13 +359,22 @@ public class ConnectionManagerTest {
 
         Field stateField = connectionManager.getClass().getDeclaredField("mState");
         stateField.setAccessible(true);
+        Field shouldBeStartedField = connectionManager.getClass().getDeclaredField("mShouldBeStarted");
+        shouldBeStartedField.setAccessible(true);
+        shouldBeStartedField.setBoolean(connectionManager, true);
 
         // connection paused
         int mode = BluetoothAdapter.SCAN_MODE_NONE;
+        int state = BluetoothAdapter.STATE_OFF;
 
         // default state - not started
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
         connectionManager.onBluetoothAdapterScanModeChanged(mode);
         verify(mMockBluetoothConnector, times(1)).stopListeningForIncomingConnections();
+        assertThat(connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(false);
+        connectionManager.onBluetoothAdapterStateChanged(state);
         assertThat(connectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
 
@@ -384,9 +391,6 @@ public class ConnectionManagerTest {
 
         // waiting for bluetooth
         reset(mMockBluetoothConnector);
-        stateField.set(connectionManager,
-                ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-
         connectionManager.onBluetoothAdapterScanModeChanged(mode);
         // connection paused
         verify(mMockBluetoothConnector, never()).stopListeningForIncomingConnections();
@@ -448,6 +452,9 @@ public class ConnectionManagerTest {
         //checking if the state is changed  when waiting for Bluetooth
         Field stateField = connectionManager.getClass().getDeclaredField("mState");
         stateField.setAccessible(true);
+        Field shouldBeStartedField = connectionManager.getClass().getDeclaredField("mShouldBeStarted");
+        shouldBeStartedField.setAccessible(true);
+        shouldBeStartedField.setBoolean(connectionManager, true);
 
         connectionManager.onIsServerStartedChanged(true);
         assertThat(connectionManager.getState(),
@@ -477,6 +484,12 @@ public class ConnectionManagerTest {
                 is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
 
         stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.RUNNING);
+        connectionManager.onIsServerStartedChanged(false);
+        assertThat("state changed if running", connectionManager.getState(),
+                is(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
+
+        stateField.set(connectionManager, ConnectionManager.ConnectionManagerState.RUNNING);
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
         connectionManager.onIsServerStartedChanged(false);
         assertThat("state changed if running", connectionManager.getState(),
                 is(ConnectionManager.ConnectionManagerState.NOT_STARTED));
@@ -521,5 +534,58 @@ public class ConnectionManagerTest {
 
         verify(mHander, atLeastOnce())
                 .post(isA(Runnable.class));
+    }
+
+    @Test
+    public void testUpdateState() throws Exception {
+
+        class UpdateStateChecker {
+
+            Field mShouldBeStartedField;
+            Field mIsServerStartedField;
+            Method updateStateMethod;
+
+            UpdateStateChecker() throws Exception {
+                mShouldBeStartedField = connectionManager.getClass().getDeclaredField("mShouldBeStarted");
+                mShouldBeStartedField.setAccessible(true);
+                mIsServerStartedField = connectionManager.getClass().getDeclaredField("mIsServerStarted");
+                mIsServerStartedField.setAccessible(true);
+                updateStateMethod = connectionManager.getClass().getDeclaredMethod("updateState");
+                updateStateMethod.setAccessible(true);
+            }
+
+            void prepareCheck(boolean bluetoothEnabled, boolean shouldBeStarted, boolean isStarted) throws Exception {
+                when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(bluetoothEnabled);
+                mShouldBeStartedField.setBoolean(connectionManager, shouldBeStarted);
+                mIsServerStartedField.setBoolean(connectionManager, isStarted);
+            }
+
+            void check(ConnectionManager.ConnectionManagerState expectedState) throws Exception {
+                updateStateMethod.invoke(connectionManager);
+                assertThat(connectionManager.getState(), is(expectedState));
+            }
+        }
+
+        UpdateStateChecker checker = new UpdateStateChecker();
+
+        // bluetooth disabled, not started, not running
+        checker.prepareCheck(false, false, false);
+        checker.check(ConnectionManager.ConnectionManagerState.NOT_STARTED);
+
+        // bluetooth disabled, started, not running
+        checker.prepareCheck(false, true, false);
+        checker.check(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+
+        // bluetooth enabled, not started, not running
+        checker.prepareCheck(true, false, false);
+        checker.check(ConnectionManager.ConnectionManagerState.NOT_STARTED);
+
+        // bluetooth enabled, started, not running
+        checker.prepareCheck(true, true, false);
+        checker.check(ConnectionManager.ConnectionManagerState.NOT_STARTED);
+
+        // bluetooth enabled, started, running
+        checker.prepareCheck(true, true, true);
+        checker.check(ConnectionManager.ConnectionManagerState.RUNNING);
     }
 }
