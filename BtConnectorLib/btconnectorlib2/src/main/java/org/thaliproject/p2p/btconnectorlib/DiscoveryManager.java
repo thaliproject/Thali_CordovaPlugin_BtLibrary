@@ -139,6 +139,68 @@ public class DiscoveryManager
         void onBluetoothMacAddressResolved(String bluetoothMacAddress);
     }
 
+    /**
+     * Helper class for checking features support
+     */
+    private abstract class FeatureSupportChecker {
+
+        protected abstract String getFeatureName();
+
+        public boolean isSupported() {
+            BluetoothManager.FeatureSupportedStatus featureSupportedStatus = isFeatureSupported();
+            if (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED
+                    && mBluetoothManager.isBleSupported()) {
+                Log.w(TAG, "Bluetooth is not enabled so we could not check whether or not Bluetooth "
+                        + "LE " + getFeatureName() + " is supported. However, Bluetooth LE is supported "
+                        + "so we just *assume* this feature is supported too (which may not "
+                        + "always be the case).");
+                return true;
+            }
+            return featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.SUPPORTED;
+        }
+
+        protected abstract BluetoothManager.FeatureSupportedStatus isFeatureSupported();
+    }
+
+    private class MultipleAdvertisementSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "multiple advertisement";
+        }
+
+        @Override
+        protected BluetoothManager.FeatureSupportedStatus isFeatureSupported() {
+            return mBluetoothManager.isBleMultipleAdvertisementSupported();
+        }
+    }
+
+    private class ScanBatchingSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "offloaded scan batching";
+        }
+
+        @Override
+        protected BluetoothManager.FeatureSupportedStatus isFeatureSupported() {
+            return mBluetoothManager.isBleOffloadedScanBatchingSupported();
+        }
+    }
+
+    private class FilteringSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "offloaded filtering";
+        }
+
+        @Override
+        protected BluetoothManager.FeatureSupportedStatus isFeatureSupported() {
+            return mBluetoothManager.isBleOffloadedFilteringSupported();
+        }
+    }
+
     private static final String TAG = DiscoveryManager.class.getName();
 
     private final DiscoveryManagerListener mListener;
@@ -233,28 +295,34 @@ public class DiscoveryManager
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
     }
 
-
     /**
      * @return True, if the multi advertisement is supported by the chipset. Note that if Bluetooth
      * is not enabled on the device (and we haven't resolved if supported before), this method will
      * only check whether or not Bluetooth LE is supported.
      */
     public boolean isBleMultipleAdvertisementSupported() {
-        BluetoothManager.FeatureSupportedStatus featureSupportedStatus =
-                mBluetoothManager.isBleMultipleAdvertisementSupported();
-        boolean isSupported = (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.SUPPORTED);
+        FeatureSupportChecker checker = new MultipleAdvertisementSupportChecker();
+        return checker.isSupported();
+    }
 
-        if (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED
-                && mBluetoothManager.isBleSupported()) {
-            Log.w(TAG, "isBleMultipleAdvertisementSupported: "
-                    + "Bluetooth is not enabled so we could not check whether or not Bluetooth"
-                    + "LE multi advertisement is supported. However, Bluetooth LE is supported "
-                    + "so we just *assume* multi advertisement is supported too (which may not "
-                    + "always be the case).");
-            isSupported = true;
-        }
+    /**
+     * @return True, if the scan batching is supported by the chipset. Note that if Bluetooth
+     * is not enabled on the device (and we haven't resolved if supported before), this method will
+     * only check whether or not Bluetooth LE is supported.
+     */
+    public boolean isBleOffloadedScanBatchingSupported() {
+        FeatureSupportChecker checker = new ScanBatchingSupportChecker();
+        return checker.isSupported();
+    }
 
-        return isSupported;
+    /**
+     * @return True, if the filtering is supported by the chipset. Note that if Bluetooth
+     * is not enabled on the device (and we haven't resolved if supported before), this method will
+     * only check whether or not Bluetooth LE is supported.
+     */
+    public boolean isBleOffloadedFilteringSupported() {
+        FeatureSupportChecker checker = new FilteringSupportChecker();
+        return checker.isSupported();
     }
 
     /**
@@ -416,10 +484,10 @@ public class DiscoveryManager
                 // Try to start BLE based discovery
                 mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
 
-                if (isBleMultipleAdvertisementSupported()) {
+                if (mBluetoothManager.isBleSupported()) {
                     bleDiscoveryStarted = startBlePeerDiscoverer();
                 } else {
-                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because the device does not support Bluetooth LE multi advertisement");
+                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because the device does not support Bluetooth LE");
                 }
             } else {
                 Log.e(TAG, "start: Cannot start BLE based peer discovery, because Bluetooth is not enabled on the device");
@@ -1093,11 +1161,16 @@ public class DiscoveryManager
                 getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
-                    if (mShouldBeScanning && mShouldBeAdvertising) {
+                    if (mShouldBeScanning && mShouldBeAdvertising &&
+                            isBleOffloadedFilteringSupported() &&
+                            isBleOffloadedScanBatchingSupported() &&
+                            isBleMultipleAdvertisementSupported()) {
                         started = mBlePeerDiscoverer.startScannerAndAdvertiser();
-                    } else if (mShouldBeScanning) {
+                    } else if (mShouldBeScanning  &&
+                            isBleOffloadedFilteringSupported() &&
+                            isBleOffloadedScanBatchingSupported()) {
                         started = mBlePeerDiscoverer.startScanner();
-                    } else if (mShouldBeAdvertising) {
+                    } else if (mShouldBeAdvertising && isBleMultipleAdvertisementSupported()) {
                         started = mBlePeerDiscoverer.startAdvertiser();
                     }
                 } else {
