@@ -7,10 +7,14 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+
 import java.util.UUID;
 
 /**
@@ -71,6 +75,8 @@ public class ConnectionManager
     private UUID mMyUuid = null;
     private String mMyName = null;
     private ConnectionManagerSettings mSettings = null;
+    private boolean mIsServerStarted = false;
+    private boolean mShouldBeStarted = false;
 
     /**
      * Constructor.
@@ -84,19 +90,39 @@ public class ConnectionManager
     public ConnectionManager(
             Context context, ConnectionManagerListener listener,
             UUID myUuid, String myName) {
-        super(context); // Gets the BluetoothManager instance
+        this(context, listener, myUuid, myName, BluetoothManager.getInstance(context),
+                PreferenceManager.getDefaultSharedPreferences(context));
+    }
+
+    /**
+     * Constructor used in unit tests. It allows to provide initialized
+     * bluetooth manager and shared preferences.
+     *
+     * @param context The application context.
+     * @param listener The listener.
+     * @param myUuid Our (service record) UUID. Note that his has to match the one of the peers we
+     *               are trying to connect to, otherwise any connection attempt will fail.
+     * @param myName Our name.
+     * @param bluetoothManager The bluetooth manager.
+     * @param preferences The shared preferences.
+     */
+    public ConnectionManager(
+            Context context, ConnectionManagerListener listener,
+            UUID myUuid, String myName, BluetoothManager bluetoothManager,
+            SharedPreferences preferences) {
+        super(context, bluetoothManager); // Gets the BluetoothManager instance
 
         mListener = listener;
         mMyUuid = myUuid;
         mMyName = myName;
 
-        mSettings = ConnectionManagerSettings.getInstance(mContext);
+        mSettings = ConnectionManagerSettings.getInstance(mContext, preferences);
         mSettings.load();
         mSettings.addListener(this);
 
         mHandler = new Handler(mContext.getMainLooper());
 
-        verifyIdentityString(); // Creates the identity string
+        verifyIdentityString(preferences); // Creates the identity string
 
         mBluetoothConnector = new BluetoothConnector(
                 mContext, this, mBluetoothManager.getBluetoothAdapter(),
@@ -124,6 +150,7 @@ public class ConnectionManager
             case NOT_STARTED:
             case WAITING_FOR_SERVICES_TO_BE_ENABLED:
                 if (mBluetoothManager.bind(this)) {
+                    mShouldBeStarted = true;
                     if (mBluetoothManager.isBluetoothEnabled()) {
                         mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
 
@@ -134,7 +161,7 @@ public class ConnectionManager
                         }
                     } else {
                         Log.i(TAG, "startListeningForIncomingConnections: Bluetooth disabled, waiting for it to be enabled...");
-                        setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                        updateState();
                     }
                 } else {
                     Log.e(TAG, "startListeningForIncomingConnections: Failed to start, this may indicate that Bluetooth is not supported on this device");
@@ -163,14 +190,11 @@ public class ConnectionManager
             Log.i(TAG, "stopListeningForIncomingConnections");
         }
 
+        mShouldBeStarted = false;
         mBluetoothConnector.stopListeningForIncomingConnections();
         mBluetoothManager.release(this);
 
-        if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-            // We won't get the onIsServerStartedChanged event, when we are waiting for Bluetooth to
-            // be enabled. Thus, we need to change the state here.
-            setState(ConnectionManagerState.NOT_STARTED);
-        }
+        updateState();
     }
 
     /**
@@ -277,12 +301,36 @@ public class ConnectionManager
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing...");
                 mBluetoothConnector.stopListeningForIncomingConnections();
-                setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+                updateState();
             }
         } else {
             if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
                     && mBluetoothManager.isBluetoothEnabled()) {
                 Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting...");
+                startListeningForIncomingConnections();
+            }
+        }
+    }
+
+    /**
+     * Restarts/pauses the incoming connection listener based on the given state.
+     *
+     * @param state The new state.
+     */
+    @Override
+    public void onBluetoothAdapterStateChanged(int state) {
+        Log.i(TAG, "onBluetoothAdapterStateChanged: State changed to " + state);
+
+        if (state == BluetoothAdapter.STATE_OFF) {
+            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+                Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing...");
+                mBluetoothConnector.stopListeningForIncomingConnections();
+                updateState();
+            }
+        } else if (state == BluetoothAdapter.STATE_ON) {
+            if (mState == ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED
+                    && mBluetoothManager.isBluetoothEnabled()) {
+                Log.i(TAG, "onBluetoothAdapterStateChanged: Bluetooth enabled, restarting...");
                 startListeningForIncomingConnections();
             }
         }
@@ -297,14 +345,8 @@ public class ConnectionManager
     public void onIsServerStartedChanged(boolean isStarted) {
         Log.d(TAG, "onIsServerStartedChanged: " + isStarted);
 
-        if (isStarted) {
-            setState(ConnectionManagerState.RUNNING);
-        } else {
-            // We don't want to change the state, if we are waiting for Bluetooth to be enabled
-            if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
-                setState(ConnectionManagerState.NOT_STARTED);
-            }
-        }
+        mIsServerStarted = isStarted;
+        updateState();
     }
 
     /**
@@ -406,6 +448,19 @@ public class ConnectionManager
                     }
                 });
             }
+        }
+    }
+
+    /**
+     * Updates the state of this instance and notifies the listener.
+     */
+    private synchronized void updateState() {
+        if (mShouldBeStarted && mIsServerStarted) {
+            setState(ConnectionManagerState.RUNNING);
+        } else if (mShouldBeStarted && !mBluetoothManager.isBluetoothEnabled()) {
+            setState(ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
+        } else {
+            setState(ConnectionManagerState.NOT_STARTED);
         }
     }
 }

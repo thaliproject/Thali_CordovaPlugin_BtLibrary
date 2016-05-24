@@ -6,6 +6,7 @@ package org.thaliproject.p2p.btconnectorlib.internal;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.os.CountDownTimer;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
@@ -62,11 +63,32 @@ public class BluetoothMacAddressResolutionHelper
     public BluetoothMacAddressResolutionHelper(
             Context context, BluetoothAdapter bluetoothAdapter, DiscoveryManager discoveryManager,
             UUID bleServiceUuid, UUID provideBluetoothMacAddressRequestUuid) {
+        this(context, bluetoothAdapter, discoveryManager, bleServiceUuid, provideBluetoothMacAddressRequestUuid, null);
+    }
+
+    /**
+     * Constructor.
+     * @param context The application context.
+     * @param bluetoothAdapter The Bluetooth adapter instance.
+     * @param discoveryManager The discovery manager instance.
+     * @param bleServiceUuid Our BLE service UUID for the Bluetooth GATT manager.
+     * @param provideBluetoothMacAddressRequestUuid The UUID for "Provide Bluetooth MAC address" request.
+     * @param preferences The shared preferences.
+     */
+    public BluetoothMacAddressResolutionHelper(
+            Context context, BluetoothAdapter bluetoothAdapter, DiscoveryManager discoveryManager,
+            UUID bleServiceUuid, UUID provideBluetoothMacAddressRequestUuid, SharedPreferences preferences) {
+
         mContext = context;
         mBluetoothAdapter = bluetoothAdapter;
         mDiscoveryManager = discoveryManager;
         mBluetoothGattManager = new BluetoothGattManager(this, context, bleServiceUuid);
-        mSettings = DiscoveryManagerSettings.getInstance(context);
+
+        if (preferences == null) {
+            mSettings = DiscoveryManagerSettings.getInstance(context);
+        } else {
+            mSettings = DiscoveryManagerSettings.getInstance(context, preferences);
+        }
         mProvideBluetoothMacAddressRequestUuid = provideBluetoothMacAddressRequestUuid;
     }
 

@@ -7,6 +7,8 @@ import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.net.wifi.WifiManager;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.net.wifi.p2p.WifiP2pManager;
 import android.os.Handler;
@@ -176,20 +178,61 @@ public class DiscoveryManager
         mListener = listener;
         mBleServiceUuid = bleServiceUuid;
         mServiceType = serviceType;
-
+        
         mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
                 context, mBluetoothManager.getBluetoothAdapter(), this,
                 mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid));
 
-        mSettings = DiscoveryManagerSettings.getInstance(mContext);
+        setupManager(context, null);
+
+        mHandler = new Handler(mContext.getMainLooper());
+    }
+
+    /**
+     * Constructor.
+     * @param context The application context.
+     * @param listener The listener.
+     * @param bleServiceUuid Our BLE service UUID (both ours and requirement for the peer).
+     *                       Required by BLE based peer discovery only.
+     * @param serviceType The service type (both ours and requirement for the peer).
+     *                    Required by Wi-Fi Direct based peer discovery only.
+     * @param bluetoothManager The bluetooth manager
+     */
+    public DiscoveryManager(Context context, DiscoveryManagerListener listener, UUID bleServiceUuid,
+                            String serviceType, BluetoothManager bluetoothManager, SharedPreferences preferences) {
+        super(context, bluetoothManager); // Gets the BluetoothManager instance
+
+        mListener = listener;
+        mBleServiceUuid = bleServiceUuid;
+        mServiceType = serviceType;
+
+        mBluetoothMacAddressResolutionHelper = new BluetoothMacAddressResolutionHelper(
+                context, mBluetoothManager.getBluetoothAdapter(), this,
+                mBleServiceUuid, BlePeerDiscoverer.generateNewProvideBluetoothMacAddressRequestUuid(mBleServiceUuid),
+                preferences);
+
+
+        setupManager(context, preferences);
+
+        mHandler = new Handler(mContext.getMainLooper());
+    }
+
+    private void setupManager(Context context, SharedPreferences preferences) {
+
+        if (preferences == null) {
+            mSettings = DiscoveryManagerSettings.getInstance(context);
+
+        } else {
+            mSettings = DiscoveryManagerSettings.getInstance(context, preferences);
+        }
+
         mSettings.load();
         mSettings.addListener(this);
 
         mPeerModel = new PeerModel(this, mSettings);
-
-        mHandler = new Handler(mContext.getMainLooper());
         mWifiDirectManager = WifiDirectManager.getInstance(mContext);
     }
+
 
     /**
      * @return True, if the multi advertisement is supported by the chipset. Note that if Bluetooth
@@ -245,28 +288,46 @@ public class DiscoveryManager
      * @return True, if peer discovery is active. False otherwise.
      */
     public boolean isDiscovering() {
-        boolean isBleScannerRunning =
-                (mBlePeerDiscoverer != null
-                        && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.SCANNING));
-        boolean isWifiDiscovering =
-                (mWifiPeerDiscoverer != null
-                        && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.SCANNING));
+        return (isBleDiscovering() || isWifiDiscovering());
+    }
 
-        return (isBleScannerRunning || isWifiDiscovering);
+    /**
+     * @return True, if ble peer discovery is active. False otherwise.
+     */
+    public boolean isBleDiscovering() {
+        return (mBlePeerDiscoverer != null
+                && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.SCANNING));
+    }
+
+    /**
+     * @return True, if wifi peer discovery is active. False otherwise.
+     */
+    public boolean isWifiDiscovering() {
+        return (mWifiPeerDiscoverer != null
+                && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.SCANNING));
     }
 
     /**
      * @return True, if advertising is active. False otherwise.
      */
     public boolean isAdvertising() {
-        boolean isBleAdvertiserRunning =
-                (mBlePeerDiscoverer != null
-                        && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.ADVERTISING));
-        boolean isWifiAdvertiserRunning =
-                (mWifiPeerDiscoverer != null
-                        && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.ADVERTISING));
+        return (isBleAdvertising() || isWifiAdvertising());
+    }
 
-        return (isBleAdvertiserRunning || isWifiAdvertiserRunning);
+    /**
+     * @return True, if ble advertising is active. False otherwise.
+     */
+    public boolean isBleAdvertising() {
+        return (mBlePeerDiscoverer != null
+                && mBlePeerDiscoverer.getState().contains(BlePeerDiscovererStateSet.ADVERTISING));
+    }
+
+    /**
+     * @return True, if wifi advertising is active. False otherwise.
+     */
+    public boolean isWifiAdvertising() {
+        return (mWifiPeerDiscoverer != null
+                && mWifiPeerDiscoverer.getState().contains(WifiPeerDiscovererStateSet.ADVERTISING));
     }
 
     /**
@@ -303,6 +364,15 @@ public class DiscoveryManager
     }
 
     /**
+     * Starts the peer discovery with current settings.
+     *
+     * @return True, if started successfully or was already running. False otherwise.
+     */
+    public synchronized boolean start() {
+        return start(mShouldBeScanning, mShouldBeAdvertising);
+    }
+
+    /**
      * Starts the peer discovery.
      *
      * @param startDiscovery If true, will start the scanner/discovery.
@@ -311,6 +381,7 @@ public class DiscoveryManager
      */
     public synchronized boolean start(boolean startDiscovery, boolean startAdvertising) {
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+        boolean started = false;
 
         Log.i(TAG, "start: Discovery mode: " + discoveryMode
                 + ", start discovery: " + startDiscovery
@@ -318,19 +389,35 @@ public class DiscoveryManager
 
         mShouldBeScanning = startDiscovery;
         mShouldBeAdvertising = startAdvertising;
+
+        if (!mShouldBeScanning && !mShouldBeAdvertising) {
+            if (mState != DiscoveryManagerState.NOT_STARTED) {
+                stop();
+            }
+            return started;
+        } else if (!mShouldBeScanning && isDiscovering()) {
+            stopDiscovery();
+        } else if (!mShouldBeAdvertising && isAdvertising()) {
+            stopAdvertising();
+        }
+
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
         boolean bleDiscoveryStarted = false;
         boolean wifiDiscoveryStarted = false;
 
+        boolean bluetoothEnabled = false;
+        boolean wifiEnabled = false;
+
         if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-            if (mBluetoothManager.isBluetoothEnabled()) {
+            bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
+            if (bluetoothEnabled) {
                 // Try to start BLE based discovery
                 mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
 
                 if (isBleMultipleAdvertisementSupported()) {
-                    bleDiscoveryStarted = startBlePeerDiscoverer(mShouldBeScanning, mShouldBeAdvertising);
+                    bleDiscoveryStarted = startBlePeerDiscoverer();
                 } else {
                     Log.e(TAG, "start: Cannot start BLE based peer discovery, because the device does not support Bluetooth LE multi advertisement");
                 }
@@ -340,10 +427,11 @@ public class DiscoveryManager
         }
 
         if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-            if (mWifiDirectManager.isWifiEnabled()) {
+            wifiEnabled = mWifiDirectManager.isWifiEnabled();
+            if (wifiEnabled) {
                 if (verifyIdentityString()) {
                     // Try to start Wi-Fi Direct based discovery
-                    wifiDiscoveryStarted = startWifiPeerDiscovery(mShouldBeScanning, mShouldBeAdvertising);
+                    wifiDiscoveryStarted = startWifiPeerDiscovery();
                 } else {
                     if (mMyIdentityString == null || mMyIdentityString.length() == 0) {
                         Log.e(TAG, "start: Identity string is null or empty");
@@ -359,40 +447,37 @@ public class DiscoveryManager
         if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && (bleDiscoveryStarted || wifiDiscoveryStarted))
                 || (discoveryMode == DiscoveryMode.BLE && bleDiscoveryStarted)
                 || (discoveryMode == DiscoveryMode.WIFI && wifiDiscoveryStarted)) {
-            if (bleDiscoveryStarted && wifiDiscoveryStarted) {
-                updateState(DiscoveryManagerState.RUNNING_BLE_AND_WIFI);
-            } else if (bleDiscoveryStarted) {
+            started = true;
+            if (bleDiscoveryStarted) {
                 if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress())) {
                     Log.i(TAG, "start: Our Bluetooth MAC address is not known");
-
                     if (mBlePeerDiscoverer != null) {
                         mBluetoothMacAddressResolutionHelper.startBluetoothMacAddressGattServer(
                                 mBlePeerDiscoverer.getProvideBluetoothMacAddressRequestId());
                     }
-
-                    updateState(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
-                } else {
-                    updateState(DiscoveryManagerState.RUNNING_BLE);
                 }
-            } else if (wifiDiscoveryStarted) {
-                updateState(DiscoveryManagerState.RUNNING_WIFI);
             }
-
             Log.i(TAG, "start: OK");
+        } else if ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && !bluetoothEnabled && !wifiEnabled) ||
+                   (discoveryMode == DiscoveryMode.BLE && !bluetoothEnabled) ||
+                   (discoveryMode == DiscoveryMode.WIFI && !wifiEnabled)) {
+            // required services not started - just waiting for enabling
+            started = false;
         } else {
-            updateState(DiscoveryManagerState.NOT_STARTED);
+            // couldn't start - ensure to do the cleanup
+            stop();
+            started = false;
         }
+        updateState();
 
-        return isRunning();
+        return started;
     }
 
     /**
-     * Stops discovery. Call start() with startDiscovery argument as 'true' to restart.
+     * Stops discovery.
      */
     public synchronized void stopDiscovery() {
-        if (mShouldBeScanning) {
-            Log.i(TAG, "stopDiscovery");
-        }
+        Log.i(TAG, "stopDiscovery");
 
         mShouldBeScanning = false;
 
@@ -403,15 +488,17 @@ public class DiscoveryManager
         if (mWifiPeerDiscoverer != null) {
             mWifiPeerDiscoverer.stopDiscoverer();
         }
+
+        if (mState != DiscoveryManagerState.NOT_STARTED && !mShouldBeAdvertising) {
+            stop();
+        }
     }
 
     /**
-     * Stops advertising. Call start() with startAdvertising argument as 'true' to restart.
+     * Stops advertising.
      */
     public synchronized void stopAdvertising() {
-        if (mShouldBeAdvertising) {
-            Log.i(TAG, "stopAdvertising");
-        }
+        Log.i(TAG, "stopAdvertising");
 
         mShouldBeAdvertising = false;
 
@@ -421,6 +508,10 @@ public class DiscoveryManager
 
         if (mWifiPeerDiscoverer != null) {
             mWifiPeerDiscoverer.stopAdvertiser();
+        }
+
+        if (mState != DiscoveryManagerState.NOT_STARTED && !mShouldBeScanning) {
+            stop();
         }
     }
 
@@ -443,7 +534,7 @@ public class DiscoveryManager
 
         mPeerModel.clear();
 
-        updateState(DiscoveryManagerState.NOT_STARTED);
+        updateState();
     }
 
     /**
@@ -517,7 +608,7 @@ public class DiscoveryManager
     public void onDiscoveryModeChanged(final DiscoveryMode discoveryMode, boolean startIfNotRunning) {
         if (mState != DiscoveryManagerState.NOT_STARTED) {
             stopForRestart();
-            start(mShouldBeScanning, mShouldBeAdvertising);
+            start();
         } else if (startIfNotRunning) {
             start(true, true);
         }
@@ -554,37 +645,89 @@ public class DiscoveryManager
     /**
      * From BluetoothManager.BluetoothManagerListener
      *
-     * Stops/restarts the BLE based peer discovery depending on the given mode and notifies the listener.
+     * Stops/restarts the BLE based peer discovery depending on the given mode.
      *
      * @param mode The new mode.
      */
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
-        final boolean isBluetoothEnabled = (mode != BluetoothAdapter.SCAN_MODE_NONE);
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
 
         if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             Log.i(TAG, "onBluetoothAdapterScanModeChanged: Mode changed to " + mode);
 
             if (mode == BluetoothAdapter.SCAN_MODE_NONE) {
-                if (mState != DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+                if (isRunning()) {
                     Log.w(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth disabled, pausing BLE based peer discovery...");
-                    stopBlePeerDiscoverer(false);
-
-                    if (discoveryMode == DiscoveryMode.BLE ||
-                            (discoveryMode == DiscoveryMode.BLE_AND_WIFI &&
-                                    !mWifiDirectManager.isWifiEnabled())) {
-                        updateState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                        updateState(DiscoveryManagerState.RUNNING_WIFI);
-                    }
+                    stopBlePeerDiscoverer();
                 }
+                updateState();
             } else {
                 if ((mShouldBeScanning || mShouldBeAdvertising)
                         && mBluetoothManager.isBluetoothEnabled()
                         && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
                     Log.i(TAG, "onBluetoothAdapterScanModeChanged: Bluetooth enabled, restarting BLE based peer discovery...");
-                    start(mShouldBeScanning, mShouldBeAdvertising);
+                    start();
+                }
+            }
+        }
+    }
+
+    /**
+     * From BluetoothManager.BluetoothManagerListener
+     *
+     * Stops/restarts the BLE based peer discovery depending on the given state.
+     *
+     * @param state The new state.
+     */
+    @Override
+    public void onBluetoothAdapterStateChanged(int state) {
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+
+        if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+            Log.i(TAG, "onBluetoothAdapterStateChanged: State changed to " + state);
+
+            if (state == BluetoothAdapter.STATE_OFF) {
+                if (isRunning()) {
+                    Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing BLE based peer discovery...");
+                    stopBlePeerDiscoverer();
+                }
+                updateState();
+            } else if (state == BluetoothAdapter.STATE_ON) {
+                if ((mShouldBeScanning || mShouldBeAdvertising)
+                        && mBluetoothManager.isBluetoothEnabled()
+                        && !mBluetoothMacAddressResolutionHelper.getIsBluetoothMacAddressGattServerStarted()) {
+                    Log.i(TAG, "onBluetoothAdapterStateChanged: Bluetooth enabled, restarting BLE based peer discovery...");
+                    start();
+                }
+            }
+        }
+    }
+
+    /**
+     * From WifiDirectManager.WifiStateListener
+     *
+     * Stops/restarts the Wi-Fi Direct based peer discovery depending on the given P2P state.
+     *
+     * @param state The new state.
+     */
+    @Override
+    public void onWifiP2PStateChanged(int state) {
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+
+        if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
+            Log.i(TAG, "onWifiP2PStateChanged: State changed to " + state);
+
+            if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
+                if (isRunning()) {
+                    Log.w(TAG, "onWifiP2PStateChanged: Wi-Fi P2P disabled, pausing Wi-Fi Direct based peer discovery...");
+                    stopWifiPeerDiscovery();
+                }
+                updateState();
+            } else {
+                if (mShouldBeScanning || mShouldBeAdvertising) {
+                    Log.i(TAG, "onWifiP2PStateChanged: Wi-Fi P2P enabled, trying to restart Wi-Fi Direct based peer discovery...");
+                    start();
                 }
             }
         }
@@ -599,29 +742,21 @@ public class DiscoveryManager
      */
     @Override
     public void onWifiStateChanged(int state) {
-        final boolean isWifiEnabled = (state == WifiP2pManager.WIFI_P2P_STATE_ENABLED);
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
 
         if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             Log.i(TAG, "onWifiStateChanged: State changed to " + state);
 
-            if (state == WifiP2pManager.WIFI_P2P_STATE_DISABLED) {
-                if (mState != DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
+            if (state == WifiManager.WIFI_STATE_DISABLED) {
+                if (isRunning()) {
                     Log.w(TAG, "onWifiStateChanged: Wi-Fi disabled, pausing Wi-Fi Direct based peer discovery...");
-                    stopWifiPeerDiscovery(false);
-
-                    if (discoveryMode == DiscoveryMode.WIFI
-                            || (discoveryMode == DiscoveryMode.BLE_AND_WIFI
-                                && !mBluetoothManager.isBluetoothEnabled())) {
-                        updateState(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
-                    } else if (isRunning() && discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
-                        updateState(DiscoveryManagerState.RUNNING_BLE);
-                    }
+                    stopWifiPeerDiscovery();
                 }
-            } else {
+                updateState();
+            } else if (state == WifiManager.WIFI_STATE_ENABLED) {
                 if (mShouldBeScanning || mShouldBeAdvertising) {
                     Log.i(TAG, "onWifiStateChanged: Wi-Fi enabled, trying to restart Wi-Fi Direct based peer discovery...");
-                    start(mShouldBeScanning, mShouldBeAdvertising);
+                    start();
                 }
             }
         }
@@ -639,7 +774,7 @@ public class DiscoveryManager
         if (!mWifiPeerDiscovererStateSet.equals(state)) {
             Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + mWifiPeerDiscovererStateSet + " -> " + state);
             mWifiPeerDiscovererStateSet = state;
-            updateState(mState); // Notify the listener
+            updateState();
         }
     }
 
@@ -655,7 +790,7 @@ public class DiscoveryManager
         if (!mBlePeerDiscovererStateSet.equals(state)) {
             Log.i(TAG, "onBlePeerDiscovererStateChanged: " + mBlePeerDiscovererStateSet + " -> " + state);
             mBlePeerDiscovererStateSet = state;
-            updateState(mState); // Notify listener
+            updateState();
         }
     }
 
@@ -784,7 +919,7 @@ public class DiscoveryManager
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                start(mShouldBeScanning, mShouldBeAdvertising);
+                start();
             }
         });
     }
@@ -810,7 +945,7 @@ public class DiscoveryManager
                 public void run() {
                     mListener.onBluetoothMacAddressResolved(bluetoothMacAddress);
                     mBluetoothMacAddressResolutionHelper.stopReceiveBluetoothMacAddressMode();
-                    start(mShouldBeScanning, mShouldBeAdvertising);
+                    start();
                 }
             });
         }
@@ -831,10 +966,10 @@ public class DiscoveryManager
             @Override
             public void run() {
                 if (isStarted) {
-                    updateState(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS);
+                    updateState();
                 } else {
-                    stopBlePeerDiscoverer(false);
-                    start(mShouldBeScanning, mShouldBeAdvertising);
+                    stopBlePeerDiscoverer();
+                    start();
                 }
             }
         });
@@ -860,7 +995,7 @@ public class DiscoveryManager
                         mBlePeerDiscoverer.stopScanner();
                     }
                 } else {
-                    start(mShouldBeScanning, mShouldBeAdvertising);
+                    start();
                 }
             }
         });
@@ -932,19 +1067,17 @@ public class DiscoveryManager
         if (mState != DiscoveryManagerState.NOT_STARTED) {
             Log.d(TAG, "stopForRestart");
             mBluetoothMacAddressResolutionHelper.stopAllBluetoothMacAddressResolutionOperations();
-            stopBlePeerDiscoverer(false);
-            stopWifiPeerDiscovery(false);
+            stopBlePeerDiscoverer();
+            stopWifiPeerDiscovery();
         }
     }
 
     /**
      * Tries to start the BLE peer discoverer.
      *
-     * @param startScanner If true, will start the scanner.
-     * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startBlePeerDiscoverer(boolean startScanner, boolean startAdvertising) {
+    private synchronized boolean startBlePeerDiscoverer() {
         boolean started = false;
         boolean permissionsGranted = false;
 
@@ -960,11 +1093,11 @@ public class DiscoveryManager
                 getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
-                    if (startScanner && startAdvertising) {
+                    if (mShouldBeScanning && mShouldBeAdvertising) {
                         started = mBlePeerDiscoverer.startScannerAndAdvertiser();
-                    } else if (startScanner) {
+                    } else if (mShouldBeScanning) {
                         started = mBlePeerDiscoverer.startScanner();
-                    } else if (startAdvertising) {
+                    } else if (mShouldBeAdvertising) {
                         started = mBlePeerDiscoverer.startAdvertiser();
                     }
                 } else {
@@ -985,22 +1118,12 @@ public class DiscoveryManager
 
     /**
      * Stops the BLE peer discoverer.
-     *
-     * @param updateState If true, will update the state.
      */
-    private synchronized void stopBlePeerDiscoverer(boolean updateState) {
+    private synchronized void stopBlePeerDiscoverer() {
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.stopScannerAndAdvertiser();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
-
-            if (updateState) {
-                if (mState == DiscoveryManagerState.RUNNING_BLE) {
-                    updateState(DiscoveryManagerState.NOT_STARTED);
-                } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
-                    updateState(DiscoveryManagerState.RUNNING_WIFI);
-                }
-            }
         }
     }
 
@@ -1008,11 +1131,9 @@ public class DiscoveryManager
      * Tries to start the Wi-Fi Direct based peer discovery.
      * Note that this method does not validate the current state nor the identity string.
      *
-     * @param startDiscoverer If true, will start the discoverer.
-     * @param startAdvertising If true, will start the advertiser.
      * @return True, if started (or already running). False otherwise.
      */
-    private synchronized boolean startWifiPeerDiscovery(boolean startDiscoverer, boolean startAdvertising) {
+    private synchronized boolean startWifiPeerDiscovery() {
         boolean started = false;
 
         if (mWifiDirectManager.bind(this)) {
@@ -1029,11 +1150,11 @@ public class DiscoveryManager
             }
 
             if (mWifiPeerDiscoverer != null) {
-                if (startDiscoverer && startAdvertising) {
+                if (mShouldBeScanning && mShouldBeAdvertising) {
                     started = mWifiPeerDiscoverer.startDiscovererAndAdvertiser();
-                } else if (startDiscoverer) {
+                } else if (mShouldBeScanning) {
                     started = mWifiPeerDiscoverer.startDiscoverer();
-                } else if (startAdvertising) {
+                } else if (mShouldBeAdvertising) {
                     started = mWifiPeerDiscoverer.startAdvertiser();
                 }
 
@@ -1050,22 +1171,12 @@ public class DiscoveryManager
 
     /**
      * Stops the Wi-Fi Direct based peer discovery.
-     *
-     * @param updateState If true, will update the state.
      */
-    private synchronized void stopWifiPeerDiscovery(boolean updateState) {
+    private synchronized void stopWifiPeerDiscovery() {
         if (mWifiPeerDiscoverer != null) {
             mWifiPeerDiscoverer.stopDiscovererAndAdvertiser();
             mWifiPeerDiscoverer = null;
             Log.i(TAG, "stopWifiPeerDiscovery: Stopped");
-
-            if (updateState) {
-                if (mState == DiscoveryManagerState.RUNNING_WIFI) {
-                    updateState(DiscoveryManagerState.NOT_STARTED);
-                } else if (mState == DiscoveryManagerState.RUNNING_BLE_AND_WIFI) {
-                    updateState(DiscoveryManagerState.RUNNING_BLE);
-                }
-            }
         }
     }
 
@@ -1073,11 +1184,10 @@ public class DiscoveryManager
      * Updates the state of this instance and notifies the listener.
      *
      * @param state The new state.
+     * @param isDiscovering The new status of discovering
+     * @param isAdvertising The new status of advertising
      */
-    private synchronized void updateState(final DiscoveryManagerState state) {
-        final boolean isDiscovering = isDiscovering();
-        final boolean isAdvertising = isAdvertising();
-
+    private synchronized void updateStateInternal(final DiscoveryManagerState state, final boolean isDiscovering, final boolean isAdvertising) {
         if (mState != state || mIsDiscovering != isDiscovering || mIsAdvertising != isAdvertising) {
             mState = state;
             mIsDiscovering = isDiscovering;
@@ -1094,6 +1204,48 @@ public class DiscoveryManager
                         mListener.onDiscoveryManagerStateChanged(state, isDiscovering, isAdvertising);
                     }
                 });
+            }
+        }
+    }
+
+    /**
+     * Updates the state of this instance and notifies the listener.
+     */
+    private synchronized void updateState() {
+        DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+        boolean isBleAdvertising = isBleAdvertising();
+        boolean isBleDiscovering = isBleDiscovering();
+        boolean isWifiAdvertising = isWifiAdvertising();
+        boolean isWifiDiscovering = isWifiDiscovering();
+        boolean isBleWorking = isBleAdvertising || isBleDiscovering;
+        boolean isWifiWorking = isWifiAdvertising || isWifiDiscovering;
+        boolean isAdvertising = isBleAdvertising || isWifiAdvertising;
+        boolean isDiscovering = isBleDiscovering || isWifiDiscovering;
+        boolean bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
+        boolean wifiEnabled = mWifiDirectManager.isWifiEnabled();
+
+        if (isBleWorking) {
+            if (BluetoothUtils.isBluetoothMacAddressUnknown(getBluetoothMacAddress()) &&
+                    !mBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted()) {
+                updateStateInternal(DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS, isDiscovering, isAdvertising);
+            } else if (mBluetoothMacAddressResolutionHelper.getIsProvideBluetoothMacAddressModeStarted()) {
+                updateStateInternal(DiscoveryManagerState.PROVIDING_BLUETOOTH_MAC_ADDRESS, isDiscovering, isAdvertising);
+            } else if (isWifiWorking) {
+                updateStateInternal(DiscoveryManagerState.RUNNING_BLE_AND_WIFI, isDiscovering, isAdvertising);
+            } else {
+                updateStateInternal(DiscoveryManagerState.RUNNING_BLE, isDiscovering, isAdvertising);
+            }
+        } else if (isWifiWorking) {
+            updateStateInternal(DiscoveryManagerState.RUNNING_WIFI, isDiscovering, isAdvertising);
+        } else {
+            // no discovery/advertisement running
+            if ((mShouldBeAdvertising || mShouldBeScanning) &&
+                    ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && !bluetoothEnabled && !wifiEnabled) ||
+                            (discoveryMode == DiscoveryMode.BLE && !bluetoothEnabled) ||
+                            (discoveryMode == DiscoveryMode.WIFI && !wifiEnabled))) {
+                updateStateInternal(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, isDiscovering, isAdvertising);
+            } else {
+                updateStateInternal(DiscoveryManagerState.NOT_STARTED, isDiscovering, isAdvertising);
             }
         }
     }

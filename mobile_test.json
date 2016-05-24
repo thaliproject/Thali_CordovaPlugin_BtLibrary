@@ -1,0 +1,13 @@
+{
+  "build": "./build.sh",
+  "binary_path": {
+    "android": "btconnectorlib2-release-androidTest-unsigned.apk"
+  },
+  "target": "android",
+  "priority": "normal",
+  "csname": {
+    "android": "org.thaliproject.p2p.btconnectorlib.test"
+  },
+  "instrumentationTestRunner": "android.support.test.runner.AndroidJUnitRunner",
+  "timeout": 300
+}

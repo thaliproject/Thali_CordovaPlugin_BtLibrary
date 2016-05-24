@@ -112,9 +112,9 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                     final int failureCount = mBluetoothServerSocketConsecutiveCreationFailureCount;
                     resetBluetoothServerSocketConsecutiveCreationFailureCount();
                     mListener.onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(failureCount);
+                    mStopThread = true;
                 }
 
-                mStopThread = true;
             }
 
             if (mBluetoothServerSocket != null && !mStopThread) {
