@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.os.CountDownTimer;
 import android.os.Handler;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -80,6 +81,11 @@ public class BluetoothConnectorTest {
 
         mBluetoothConnector = new BluetoothConnector(mMockContext, mMockListener, mMockBluetoothAdapter,
                 new UUID(1, 1), "name", "identity", mMockSharedPreferences);
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        mBluetoothConnector.shutdown();
     }
 
     @Test

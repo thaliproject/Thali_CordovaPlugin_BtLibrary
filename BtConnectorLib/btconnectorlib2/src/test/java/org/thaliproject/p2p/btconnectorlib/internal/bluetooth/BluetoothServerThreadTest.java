@@ -64,6 +64,7 @@ public class BluetoothServerThreadTest {
     private UUID myUUID = new UUID(1, 1);
     private String myServerName = "serverName";
     private Field mStopThreadField;
+    private long MAX_TIMEOUT = 5000;
 
     @Before
     public void setUp() throws Exception {
@@ -83,7 +84,7 @@ public class BluetoothServerThreadTest {
 
     @After
     public void tearDown() throws Exception {
-
+        mBluetoothServerThread.shutdown();
     }
 
     @SuppressWarnings("unchecked")
@@ -125,7 +126,7 @@ public class BluetoothServerThreadTest {
             }
         });
         service.start();
-        service.join();
+        service.join(MAX_TIMEOUT);
 
         CopyOnWriteArrayList<BluetoothSocketIoThread> mSocketIoThreads
                 = (CopyOnWriteArrayList<BluetoothSocketIoThread>)
@@ -171,7 +172,7 @@ public class BluetoothServerThreadTest {
             }
         });
         service.start();
-        service.join();
+        service.join(MAX_TIMEOUT);
 
         final ArgumentCaptor<BluetoothSocket> btSocketCaptor
                 = ArgumentCaptor.forClass(BluetoothSocket.class);
@@ -219,7 +220,7 @@ public class BluetoothServerThreadTest {
         });
 
         service.start();
-        service.join();
+        service.join(MAX_TIMEOUT);
 
         verify(mMockListener, never()).onIncomingConnectionConnected(any(BluetoothSocket.class),
                 any(PeerProperties.class));
@@ -246,7 +247,7 @@ public class BluetoothServerThreadTest {
         });
 
         service.start();
-        service.join();
+        service.join(MAX_TIMEOUT);
 
         verify(mMockListener, times(1)).onIncomingConnectionFailed(anyString());
         verify(mMockListener, times(1)).onServerStopped();
@@ -271,7 +272,7 @@ public class BluetoothServerThreadTest {
         });
 
         service.start();
-        service.join();
+        service.join(MAX_TIMEOUT);
 
         verify(mMockListener, times(1))
                 .onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(
