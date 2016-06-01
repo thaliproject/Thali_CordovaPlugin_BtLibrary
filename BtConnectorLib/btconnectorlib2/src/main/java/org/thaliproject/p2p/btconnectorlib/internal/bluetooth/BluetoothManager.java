@@ -47,8 +47,142 @@ public class BluetoothManager {
         SUPPORTED
     }
 
+    /**
+     * Helper class for checking features support
+     */
+    private abstract class FeatureSupportChecker {
+
+        protected abstract String getFeatureName();
+        protected abstract String getSharedPreferencesKey();
+        protected abstract FeatureSupportedStatus getCurrentStatus();
+        protected abstract void setCurrentStatus(FeatureSupportedStatus status);
+
+        public FeatureSupportedStatus isSupported() {
+
+            if (!CommonUtils.isLollipopOrHigher()) {
+                Log.d(TAG, "Checking support for " + getFeatureName() + ": The build version of the device is too low - API level 21 or higher required");
+                return FeatureSupportedStatus.NOT_SUPPORTED;
+            }
+            if (mBluetoothAdapter == null) {
+                Log.e(TAG, "Checking support for " + getFeatureName() + ": No Bluetooth adapter - This may indicate that the device has no Bluetooth support at all");
+                return FeatureSupportedStatus.NOT_SUPPORTED;
+            }
+            if (!isBluetoothEnabled()) {
+                Log.w(TAG, "Checking support for " + getFeatureName() + ": Cannot do the check when the Bluetooth is disabled - will return stored value");
+                return getCurrentStatus();
+            }
+
+            FeatureSupportedStatus featureSupportedStatus = isFeatureSupported() ?
+                    FeatureSupportedStatus.SUPPORTED : FeatureSupportedStatus.NOT_SUPPORTED;
+
+            if (getCurrentStatus() == FeatureSupportedStatus.NOT_RESOLVED
+                    || getCurrentStatus() != featureSupportedStatus) {
+                // Store the value in case this is queried sometime when the Bluetooth is disabled
+                setCurrentStatus(featureSupportedStatus);
+
+                Log.v(TAG, "Checking support for " + getFeatureName() + ": Storing the value ("
+                        + getCurrentStatus() + ") in persistent storage");
+
+                mSharedPreferencesEditor.putInt(
+                        getSharedPreferencesKey(),
+                        featureSupportedStatusToInt(getCurrentStatus()));
+                mSharedPreferencesEditor.apply();
+            }
+
+            return featureSupportedStatus;
+        }
+
+        protected abstract boolean isFeatureSupported();
+    }
+
+    private class MultipleAdvertisementSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "multiple advertisement";
+        }
+
+        @Override
+        protected String getSharedPreferencesKey() {
+            return KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED;
+        }
+
+        @Override
+        protected FeatureSupportedStatus getCurrentStatus() {
+            return mBleMultipleAdvertisementSupportedStatus;
+        }
+
+        @Override
+        protected void setCurrentStatus(FeatureSupportedStatus status) {
+            mBleMultipleAdvertisementSupportedStatus = status;
+        }
+
+        @Override
+        protected boolean isFeatureSupported() {
+            return mBluetoothAdapter.isMultipleAdvertisementSupported();
+        }
+    }
+
+    private class ScanBatchingSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "offloaded scan batching";
+        }
+
+        @Override
+        protected String getSharedPreferencesKey() {
+            return KEY_IS_BLUETOOTH_LE_OFFLOADED_SCAN_BATCHING_SUPPORTED;
+        }
+
+        @Override
+        protected FeatureSupportedStatus getCurrentStatus() {
+            return mBleScanBatchingSupportedStatus;
+        }
+
+        @Override
+        protected void setCurrentStatus(FeatureSupportedStatus status) {
+            mBleScanBatchingSupportedStatus = status;
+        }
+
+        @Override
+        protected boolean isFeatureSupported() {
+            return mBluetoothAdapter.isOffloadedScanBatchingSupported();
+        }
+    }
+
+    private class FilteringSupportChecker extends FeatureSupportChecker {
+
+        @Override
+        protected String getFeatureName() {
+            return "offloaded filtering";
+        }
+
+        @Override
+        protected String getSharedPreferencesKey() {
+            return KEY_IS_BLUETOOTH_LE_OFFLOADED_FILTERING_SUPPORTED;
+        }
+
+        @Override
+        protected FeatureSupportedStatus getCurrentStatus() {
+            return mBleFilteringSupportedStatus;
+        }
+
+        @Override
+        protected void setCurrentStatus(FeatureSupportedStatus status) {
+            mBleFilteringSupportedStatus = status;
+        }
+
+        @Override
+        protected boolean isFeatureSupported() {
+            return mBluetoothAdapter.isOffloadedFilteringSupported();
+        }
+    }
+
     private static final String TAG = BluetoothManager.class.getName();
     private static final String KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED = "is_bluetooth_le_multi_advertisement_supported";
+    private static final String KEY_IS_BLUETOOTH_LE_OFFLOADED_SCAN_BATCHING_SUPPORTED = "is_bluetooth_le_offloaded_scan_batching_supported";
+    private static final String KEY_IS_BLUETOOTH_LE_OFFLOADED_FILTERING_SUPPORTED = "is_bluetooth_le_offloaded_filtering_supported";
     private static BluetoothManager mInstance = null;
     private final Context mContext;
     private final BluetoothAdapter mBluetoothAdapter;
@@ -58,6 +192,8 @@ public class BluetoothManager {
     private SharedPreferences.Editor mSharedPreferencesEditor;
     private boolean mInitialized = false;
     private FeatureSupportedStatus mBleMultipleAdvertisementSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
+    private FeatureSupportedStatus mBleScanBatchingSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
+    private FeatureSupportedStatus mBleFilteringSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
 
     /**
      * Getter for the singleton instance of this class.
@@ -114,9 +250,23 @@ public class BluetoothManager {
         mSharedPreferences = sharedPreferences;
         mSharedPreferencesEditor = mSharedPreferences.edit();
 
-        mBleMultipleAdvertisementSupportedStatus = intToFeatureSupportedStatus(
-                mSharedPreferences.getInt(
-                        KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED,
+        mBleMultipleAdvertisementSupportedStatus =
+                readStatusFromSharedPreferences(KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED);
+        mBleScanBatchingSupportedStatus =
+                readStatusFromSharedPreferences(KEY_IS_BLUETOOTH_LE_OFFLOADED_SCAN_BATCHING_SUPPORTED);
+        mBleFilteringSupportedStatus =
+                readStatusFromSharedPreferences(KEY_IS_BLUETOOTH_LE_OFFLOADED_FILTERING_SUPPORTED);
+
+    }
+
+    /**
+     * Helper method to read feature status from shared preferences
+     *
+     * @param key The key to look for in shared preferences.
+     * @return Feature status or FeatureSupportedStatus.NOT_RESOLVED if given key is not found.
+     */
+    private FeatureSupportedStatus readStatusFromSharedPreferences(String key) {
+        return intToFeatureSupportedStatus(mSharedPreferences.getInt(key,
                         featureSupportedStatusToInt(FeatureSupportedStatus.NOT_RESOLVED)));
     }
 
@@ -189,45 +339,38 @@ public class BluetoothManager {
      */
     @TargetApi(21)
     public FeatureSupportedStatus isBleMultipleAdvertisementSupported() {
-        FeatureSupportedStatus featureSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
+        FeatureSupportChecker checker = new MultipleAdvertisementSupportChecker();
+        return checker.isSupported();
+    }
 
-        if (CommonUtils.isLollipopOrHigher()) {
-            if (mBluetoothAdapter != null) {
-                if (isBluetoothEnabled()) {
-                    featureSupportedStatus = mBluetoothAdapter.isMultipleAdvertisementSupported()
-                            ? FeatureSupportedStatus.SUPPORTED : FeatureSupportedStatus.NOT_SUPPORTED;
+    /**
+     * Checks if the chipset has a support for Bluetooth LE scan batching.
+     * If Bluetooth is enabled and the feature support status is not resolved before, the value is
+     * stored in the persistent storage.
+     *
+     * @return FeatureSupportedStatus.NOT_RESOLVED, if Bluetooth is disabled and the feature support has not been resolved before.
+     *         FeatureSupportedStatus.NOT_SUPPORTED, if not supported.
+     *         FeatureSupportedStatus.SUPPORTED, if supported.
+     */
+    @TargetApi(21)
+    public FeatureSupportedStatus isBleOffloadedScanBatchingSupported() {
+        FeatureSupportChecker checker = new ScanBatchingSupportChecker();
+        return checker.isSupported();
+    }
 
-                    if (mBleMultipleAdvertisementSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED
-                            || mBleMultipleAdvertisementSupportedStatus != featureSupportedStatus) {
-                        // Store the value in case this is queried sometime when the Bluetooth is
-                        mBleMultipleAdvertisementSupportedStatus = featureSupportedStatus;
-
-                            Log.v(TAG, "isBleMultipleAdvertisementSupported: Storing the value ("
-                                    + mBleMultipleAdvertisementSupportedStatus + ") in persistent storage");
-
-                            mSharedPreferencesEditor.putInt(
-                                    KEY_IS_BLUETOOTH_LE_MULTI_ADVERTISEMENT_SUPPORTED,
-                                    featureSupportedStatusToInt(mBleMultipleAdvertisementSupportedStatus));
-                            mSharedPreferencesEditor.apply();
-
-                    }
-                } else if (mBleMultipleAdvertisementSupportedStatus != FeatureSupportedStatus.NOT_RESOLVED) {
-                    // Use the value resolved before
-                    featureSupportedStatus = mBleMultipleAdvertisementSupportedStatus;
-                } else {
-                    Log.w(TAG, "isBleMultipleAdvertisementSupported: Cannot do the check when the Bluetooth is disabled - will return \"not resolved\"");
-                    featureSupportedStatus = FeatureSupportedStatus.NOT_RESOLVED;
-                }
-            } else {
-                Log.e(TAG, "isBleMultipleAdvertisementSupported: No Bluetooth adapter - This may indicate that the device has no Bluetooth support at all");
-                featureSupportedStatus = FeatureSupportedStatus.NOT_SUPPORTED;
-            }
-        } else {
-            Log.d(TAG, "isBleMultipleAdvertisementSupported: The build version of the device is too low - API level 21 or higher required");
-            featureSupportedStatus = FeatureSupportedStatus.NOT_SUPPORTED;
-        }
-
-        return featureSupportedStatus;
+    /**
+     * Checks if the chipset has a support for Bluetooth LE filtering.
+     * If Bluetooth is enabled and the feature support status is not resolved before, the value is
+     * stored in the persistent storage.
+     *
+     * @return FeatureSupportedStatus.NOT_RESOLVED, if Bluetooth is disabled and the feature support has not been resolved before.
+     *         FeatureSupportedStatus.NOT_SUPPORTED, if not supported.
+     *         FeatureSupportedStatus.SUPPORTED, if supported.
+     */
+    @TargetApi(21)
+    public FeatureSupportedStatus isBleOffloadedFilteringSupported() {
+        FeatureSupportChecker checker = new FilteringSupportChecker();
+        return checker.isSupported();
     }
 
     /**
@@ -367,6 +510,26 @@ public class BluetoothManager {
     }
 
     /**
+     * Helper method to resolve feature support if not already resolved
+     */
+    private void resolveFeatureSupport() {
+        if (mBleMultipleAdvertisementSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED) {
+            // Resolve the BLE multi advertisement support
+            isBleMultipleAdvertisementSupported();
+        }
+
+        if (mBleScanBatchingSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED) {
+            // Resolve the BLE scan batching support
+            isBleOffloadedScanBatchingSupported();
+        }
+
+        if (mBleFilteringSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED) {
+            // Resolve the BLE filtering support
+            isBleOffloadedFilteringSupported();
+        }
+    }
+
+    /**
      * Broadcast receiver for Bluetooth adapter scan mode changes.
      */
     private class BluetoothModeBroadcastReceiver extends BroadcastReceiver {
@@ -377,10 +540,8 @@ public class BluetoothManager {
             if (BluetoothAdapter.ACTION_SCAN_MODE_CHANGED.equals(action)) {
                 int mode = intent.getIntExtra(BluetoothAdapter.EXTRA_SCAN_MODE, BluetoothAdapter.ERROR);
 
-                if (mBleMultipleAdvertisementSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED
-                        && mode != BluetoothAdapter.SCAN_MODE_NONE) {
-                    // Resolve the BLE multi advertisement support
-                    isBleMultipleAdvertisementSupported();
+                if (mode != BluetoothAdapter.SCAN_MODE_NONE) {
+                    resolveFeatureSupport();
                 }
 
                 for (BluetoothManagerListener listener : mListeners) {
@@ -390,6 +551,10 @@ public class BluetoothManager {
 
             if (BluetoothAdapter.ACTION_STATE_CHANGED.equals(action)) {
                 int state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR);
+
+                if (state == BluetoothAdapter.STATE_ON) {
+                    resolveFeatureSupport();
+                }
 
                 for (BluetoothManagerListener listener : mListeners) {
                     listener.onBluetoothAdapterStateChanged(state);

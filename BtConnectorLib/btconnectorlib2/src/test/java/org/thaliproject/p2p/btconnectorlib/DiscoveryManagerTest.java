@@ -692,18 +692,18 @@ public class DiscoveryManagerTest {
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED)));
 
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-        doReturn(false).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(false);
         // set the state to check if it has changed
         stateField.set(discoveryManager, DiscoveryManager.DiscoveryManagerState
                 .PROVIDING_BLUETOOTH_MAC_ADDRESS);
-        assertThat("Should not start if BLE multi advertisement not supported",
+        assertThat("Should not start if BLE is not supported",
                 discoveryManagerSpy.start(true, true), is(false));
         assertThat("Should update the state to NOT_STARTED ",
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
 
-        //supported BleMultipleAdvertisement but scanner not created
-        doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
+        //supported BLE but scanner not created
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
         assertThat("Should not start if scanner not started",
                 discoveryManagerSpy.start(true, true), is(false));
         assertThat("Should update the state to NOT_STARTED ",
@@ -712,9 +712,10 @@ public class DiscoveryManagerTest {
 
         // 2.1 discovery mode = DiscoveryMode.BLE, startScanner = false, startAdvertising = false
 
-        //supported BleMultipleAdvertisement but bleDiscoveryStarted not started
+        //supported BleMultipleAdvertisement but discovery not started
         doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
         when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
 
         assertThat("Should not start in BLE multi advertisement when startScanner and startAdvertising are false",
@@ -723,59 +724,20 @@ public class DiscoveryManagerTest {
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
 
-        // 2.2 discovery mode = DiscoveryMode.BLE, startScanner = true, startAdvertising = false
+        // 2.2 discovery mode = DiscoveryMode.BLE, startScanner = false, startAdvertising = true
 
-        //supported BleMultipleAdvertisement and bleDiscoveryStarted started
+        //supported BleMultipleAdvertisement and advertisement started
         doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
         doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
                 .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
         mBlePeerDiscovererField.set(discoveryManagerSpy, mMockBlePeerDiscoverer);
         doReturn(true).when(discoveryManagerSpy).isBleDiscovering();
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
         when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
-        when(mMockBlePeerDiscoverer.startScanner()).thenReturn(true);
-
-        assertThat("Should start in BLE multi advertisement when startScanner true and startAdvertising are false",
-                discoveryManagerSpy.start(true, false), is(true));
-        assertThat("Should update the state to RUNNING_BLE ",
-                discoveryManagerSpy.getState(),
-                is(equalTo(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE)));
-
-        // when unknown mac address
-        doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
-        doReturn(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)
-                .when(discoveryManagerSpy).getBluetoothMacAddress();
-
-        doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
-                .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
-
-        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-        when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
-        when(mMockBlePeerDiscoverer.startScanner()).thenReturn(true);
-
-        assertThat("Should start in BLE multi advertisement when startScanner true and startAdvertising are false",
-                discoveryManagerSpy.start(true, false), is(true));
-        assertThat("Should update the state to WAITING_FOR_BLUETOOTH_MAC_ADDRESS when BT MAC address unknown ",
-                discoveryManagerSpy.getState(),
-                is(equalTo(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS)));
-
-        // 2.3 discovery mode = DiscoveryMode.BLE, startScanner = false, startAdvertising = true
-
-        //supported BleMultipleAdvertisement and bleDiscoveryStarted started
-        doReturn(true).when(discoveryManagerSpy).isBleMultipleAdvertisementSupported();
-        doReturn("00:01:02:03:04:05")
-                .when(discoveryManagerSpy).getBluetoothMacAddress();
-
-        doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
-                .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
-
-        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
-
-        when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
-
         when(mMockBlePeerDiscoverer.startAdvertiser()).thenReturn(true);
 
-        assertThat("Should not start in BLE multi advertisement when startScanner is false and startAdvertising are true",
+        assertThat("Should start in BLE multi advertisement when startScanner is false and startAdvertising is true",
                 discoveryManagerSpy.start(false, true), is(true));
         assertThat("Should update the state to RUNNING_BLE ",
                 discoveryManagerSpy.getState(),
@@ -790,14 +752,48 @@ public class DiscoveryManagerTest {
                 .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
         when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
         when(mMockBlePeerDiscoverer.startAdvertiser()).thenReturn(true);
 
-        assertThat("Should start in BLE multi advertisement when startScanner true and startAdvertising are false",
-                discoveryManagerSpy.start(true, false), is(true));
+        assertThat("Should start in BLE multi advertisement when startScanner is false and startAdvertising is true",
+                discoveryManagerSpy.start(false, true), is(true));
         assertThat("Should update the state to WAITING_FOR_BLUETOOTH_MAC_ADDRESS when BT MAC address unknown ",
                 discoveryManagerSpy.getState(),
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS)));
+
+        // 2.3 discovery mode = DiscoveryMode.BLE, startScanner = true, startAdvertising = false
+
+        // not supported filtering and scan batching and discovery started
+        doReturn(false).when(discoveryManagerSpy).isBleOffloadedScanBatchingSupported();
+        doReturn(false).when(discoveryManagerSpy).isBleOffloadedFilteringSupported();
+        doReturn("00:01:02:03:04:05")
+                .when(discoveryManagerSpy).getBluetoothMacAddress();
+        doReturn(mMockBlePeerDiscoverer).when(discoveryManagerSpy)
+                .getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
+        doReturn(false).when(discoveryManagerSpy).isBleDiscovering();
+        when(mMockBluetoothManager.bind(Mockito.any(DiscoveryManager.class))).thenReturn(true);
+
+        assertThat("Should not start BLE discovery",
+                discoveryManagerSpy.start(true, false), is(false));
+        assertThat("Should update the state to NOT_STARTED ",
+                discoveryManagerSpy.getState(),
+                is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
+
+        // supported filtering and scan batching and discovery started
+        mBlePeerDiscovererField.set(discoveryManagerSpy, mMockBlePeerDiscoverer);
+        when(mMockBlePeerDiscoverer.startScanner()).thenReturn(true);
+        doReturn(true).when(discoveryManagerSpy).isBleDiscovering();
+        doReturn(true).when(discoveryManagerSpy).isBleOffloadedScanBatchingSupported();
+        doReturn(true).when(discoveryManagerSpy).isBleOffloadedFilteringSupported();
+
+        assertThat("Should start BLE discovery",
+                discoveryManagerSpy.start(true, false), is(true));
+        assertThat("Should update the state to RUNNING_BLE ",
+                discoveryManagerSpy.getState(),
+                is(equalTo(DiscoveryManager.DiscoveryManagerState.RUNNING_BLE)));
     }
 
     @Test
