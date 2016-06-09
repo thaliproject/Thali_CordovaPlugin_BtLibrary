@@ -11,7 +11,7 @@ import static org.junit.Assert.fail;
 
 public class AbstractConnectivityManagerTest {
 
-    private static long MAX_MEDIA_TIMEOUT = 20000;
+    private static long MAX_MEDIA_TIMEOUT = 60000;
     private static long CHECK_MEDIA_INTERVAL = 500;
 
     protected static void toggleBluetooth(boolean turnOn) throws Exception {
