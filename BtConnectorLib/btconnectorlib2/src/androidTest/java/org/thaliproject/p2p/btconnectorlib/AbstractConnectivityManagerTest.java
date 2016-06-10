@@ -22,6 +22,15 @@ public class AbstractConnectivityManagerTest {
         }
 
         // first make sure bluetooth is not changing its state right now
+        long currentTimeout = 0;
+        while (currentTimeout < MAX_MEDIA_TIMEOUT) {
+            if (btAdapter.getState() == BluetoothAdapter.STATE_ON ||
+                btAdapter.getState() == BluetoothAdapter.STATE_OFF) {
+                break;
+            }
+            Thread.sleep(CHECK_MEDIA_INTERVAL);
+            currentTimeout += CHECK_MEDIA_INTERVAL;
+        }
         assertThat(btAdapter.getState(), anyOf(is(BluetoothAdapter.STATE_ON),
                                                is(BluetoothAdapter.STATE_OFF)));
 
@@ -32,7 +41,7 @@ public class AbstractConnectivityManagerTest {
         }
 
         int expectedState = turnOn ? BluetoothAdapter.STATE_ON : BluetoothAdapter.STATE_OFF;
-        long currentTimeout = 0;
+        currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
@@ -60,6 +69,15 @@ public class AbstractConnectivityManagerTest {
         }
 
         // first make sure wifi is not changing its state right now
+        long currentTimeout = 0;
+        while (currentTimeout < MAX_MEDIA_TIMEOUT) {
+            if (wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED ||
+                wifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
+                break;
+            }
+            Thread.sleep(CHECK_MEDIA_INTERVAL);
+            currentTimeout += CHECK_MEDIA_INTERVAL;
+        }
         assertThat(wifiManager.getWifiState(), anyOf(is(WifiManager.WIFI_STATE_ENABLED),
                                                      is(WifiManager.WIFI_STATE_DISABLED)));
 
@@ -70,7 +88,7 @@ public class AbstractConnectivityManagerTest {
         }
 
         int expectedState = turnOn ? WifiManager.WIFI_STATE_ENABLED : WifiManager.WIFI_STATE_DISABLED;
-        long currentTimeout = 0;
+        currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
