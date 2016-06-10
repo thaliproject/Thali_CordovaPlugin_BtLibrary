@@ -650,7 +650,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
 
                         if (parsedAdvertisement != null) {
-                            UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids().get(0).getUuid();
+                            UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
+                                    scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
 
                             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                                     || BlePeerDiscoveryUtils.uuidStartsWithExpectedServiceUuid(scannedServiceUuid, mServiceUuid)) {
