@@ -40,7 +40,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     private ConnectionManager mConnectionManager = null;
     private Context mContext = null;
-    private final long MAX_TIMEOUT = 60000;
+    private final long MAX_TIMEOUT = 20000;
     private final long CHECK_INTERVAL = 500;
 
     // helper to check discovery state with defined timeout

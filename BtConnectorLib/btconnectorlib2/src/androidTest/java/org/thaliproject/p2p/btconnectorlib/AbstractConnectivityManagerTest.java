@@ -1,17 +1,17 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
+import android.net.wifi.WifiManager;
 import android.support.test.InstrumentationRegistry;
 
-import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
-
+import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.fail;
 
 public class AbstractConnectivityManagerTest {
 
-    private static long MAX_MEDIA_TIMEOUT = 60000;
+    private static long MAX_MEDIA_TIMEOUT = 20000;
     private static long CHECK_MEDIA_INTERVAL = 500;
 
     protected static void toggleBluetooth(boolean turnOn) throws Exception {
@@ -20,20 +20,26 @@ public class AbstractConnectivityManagerTest {
             // Device does not support Bluetooth
             fail("No Bluetooth support!");
         }
-        if (turnOn && !btAdapter.isEnabled()) {
+
+        // first make sure bluetooth is not changing its state right now
+        assertThat(btAdapter.getState(), anyOf(is(BluetoothAdapter.STATE_ON),
+                                               is(BluetoothAdapter.STATE_OFF)));
+
+        if (turnOn && btAdapter.getState() == BluetoothAdapter.STATE_OFF) {
             btAdapter.enable();
-        } else if (!turnOn && btAdapter.isEnabled()) {
+        } else if (!turnOn && btAdapter.getState() == BluetoothAdapter.STATE_ON) {
             btAdapter.disable();
         }
 
+        int expectedState = turnOn ? BluetoothAdapter.STATE_ON : BluetoothAdapter.STATE_OFF;
         long currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
-            if (btAdapter.isEnabled() != turnOn && currentTimeout < MAX_MEDIA_TIMEOUT) {
+            if (btAdapter.getState() != expectedState && currentTimeout < MAX_MEDIA_TIMEOUT) {
                 continue;
             }
-            assertThat(btAdapter.isEnabled(), is(turnOn));
+            assertThat(btAdapter.getState(), is(expectedState));
             break;
         }
     }
@@ -45,26 +51,33 @@ public class AbstractConnectivityManagerTest {
 
     protected static void toggleWifi(boolean turnOn) throws Exception {
 
-        WifiDirectManager wifiManager = WifiDirectManager.getInstance(InstrumentationRegistry.getContext());
+        WifiManager wifiManager = (WifiManager) InstrumentationRegistry.getContext().getSystemService(
+                InstrumentationRegistry.getContext().WIFI_SERVICE);
 
         if (wifiManager == null) {
             // Device does not support WIFI
             fail("No Wifi support!");
         }
-        if (turnOn && !wifiManager.isWifiEnabled()) {
+
+        // first make sure wifi is not changing its state right now
+        assertThat(wifiManager.getWifiState(), anyOf(is(WifiManager.WIFI_STATE_ENABLED),
+                                                     is(WifiManager.WIFI_STATE_DISABLED)));
+
+        if (turnOn && wifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
             wifiManager.setWifiEnabled(true);
-        } else if (!turnOn && wifiManager.isWifiEnabled()) {
+        } else if (!turnOn && wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED) {
             wifiManager.setWifiEnabled(false);
         }
 
+        int expectedState = turnOn ? WifiManager.WIFI_STATE_ENABLED : WifiManager.WIFI_STATE_DISABLED;
         long currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
-            if (wifiManager.isWifiEnabled() != turnOn && currentTimeout < MAX_MEDIA_TIMEOUT) {
+            if (wifiManager.getWifiState() != expectedState && currentTimeout < MAX_MEDIA_TIMEOUT) {
                 continue;
             }
-            assertThat(wifiManager.isWifiEnabled(), is(turnOn));
+            assertThat(wifiManager.getWifiState(), is(expectedState));
             break;
         }
     }
