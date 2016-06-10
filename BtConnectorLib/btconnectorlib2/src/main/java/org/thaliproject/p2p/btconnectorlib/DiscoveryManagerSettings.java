@@ -285,8 +285,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             DiscoveryManager discoveryManager = (DiscoveryManager) mListeners.get(0);
 
             if (discoveryManager != null) {
-                boolean isBleMultipleAdvertisementSupported = discoveryManager.isBleMultipleAdvertisementSupported();
-                boolean isWifiSupported = discoveryManager.isWifiDirectSupported();
+                boolean isBleMultipleAdvertisementSupported = true; //discoveryManager.isBleMultipleAdvertisementSupported();
+                boolean isWifiSupported = true; //discoveryManager.isWifiDirectSupported();
 
                 switch (discoveryMode) {
                     case BLE:
