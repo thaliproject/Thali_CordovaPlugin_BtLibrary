@@ -285,8 +285,8 @@ public class DiscoveryManagerSettingsTest {
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE),
                 is(equalTo(false)));
 
-        when(mMockDiscoveryManager.isBleMultipleAdvertisementSupported()).thenReturn(true);
-        assertThat("Should return true if isBleMultipleAdvertisementSupported is true",
+        when(mMockDiscoveryManager.isBleSupported()).thenReturn(true);
+        assertThat("Should return true if isBleSupported is true",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE),
                 is(equalTo(true)));
 
@@ -302,7 +302,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count should be incremented", applyCnt, is(equalTo(1)));
 
         // The same mode repeated
-        assertThat("Should return true if isBleMultipleAdvertisementSupported is true",
+        assertThat("Should return true if isBleSupported is true",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE),
                 is(equalTo(true)));
 
@@ -335,22 +335,22 @@ public class DiscoveryManagerSettingsTest {
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI),
                 is(equalTo(false)));
 
-        when(mMockDiscoveryManager.isBleMultipleAdvertisementSupported()).thenReturn(true);
+        when(mMockDiscoveryManager.isBleSupported()).thenReturn(true);
 
         // Listeners registered
         assertThat("Should return false if isBleMultipleAdvertisementSupported is false",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI),
                 is(equalTo(false)));
 
-        when(mMockDiscoveryManager.isBleMultipleAdvertisementSupported()).thenReturn(false);
+        when(mMockDiscoveryManager.isBleSupported()).thenReturn(false);
         when(mMockDiscoveryManager.isWifiDirectSupported()).thenReturn(true);
         assertThat("Should return false if isWifiDirectSupported is false",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI),
                 is(equalTo(false)));
 
-        when(mMockDiscoveryManager.isBleMultipleAdvertisementSupported()).thenReturn(true);
+        when(mMockDiscoveryManager.isBleSupported()).thenReturn(true);
         when(mMockDiscoveryManager.isWifiDirectSupported()).thenReturn(true);
-        assertThat("Should return true if isBleMultipleAdvertisementSupported and isWifiDirectSupported are true",
+        assertThat("Should return true if isBleSupported and isWifiDirectSupported are true",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI),
                 is(equalTo(true)));
 
@@ -366,7 +366,7 @@ public class DiscoveryManagerSettingsTest {
         assertThat("Apply count should be incremented", applyCnt, is(equalTo(2)));
 
         // The same mode repeated
-        assertThat("Should return true if isBleMultipleAdvertisementSupported and isWifiDirectSupported are true",
+        assertThat("Should return true if isBleSupported and isWifiDirectSupported are true",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI),
                 is(equalTo(true)));
 
@@ -388,9 +388,9 @@ public class DiscoveryManagerSettingsTest {
         field.set(mDiscoveryManagerSettings, DiscoveryManager.DiscoveryMode.WIFI);
         mDiscoveryManagerSettings.addListener(mMockDiscoveryManager);
 
-        when(mMockDiscoveryManager.isBleMultipleAdvertisementSupported()).thenReturn(true);
+        when(mMockDiscoveryManager.isBleSupported()).thenReturn(true);
 
-        assertThat("Should return true if isBleMultipleAdvertisementSupported is true",
+        assertThat("Should return true if isBleSupported is true",
                 mDiscoveryManagerSettings.setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE, true),
                 is(equalTo(true)));
 

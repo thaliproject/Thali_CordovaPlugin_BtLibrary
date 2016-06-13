@@ -113,7 +113,11 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         return btAdapter.isMultipleAdvertisementSupported();
     }
 
-    private boolean isWifiDirectSupported() throws Exception {
+    private boolean isBleSupported() {
+        return mDiscoveryManager.isBleSupported();
+    }
+
+    private boolean isWifiDirectSupported() {
         return mDiscoveryManager.isWifiDirectSupported();
     }
 
@@ -1051,6 +1055,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testUnsupportedMultipleAdvertisement() throws Exception {
+        assumeThat(isBleSupported(), is(true));
         assumeThat(isBleAdvertisementSupported(), is(false));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
@@ -1103,6 +1108,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testIsBleOffloadedScanBatchingNotSupported() throws Exception {
+        assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedScanBatchingSupported(), is(false));
 
         // set feature support to NOT_RESOLVED
@@ -1124,6 +1130,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testUnsupportedScanBatching() throws Exception {
+        assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedScanBatchingSupported(), is(false));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
@@ -1176,6 +1183,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testIsBleOffloadedFilteringNotSupported() throws Exception {
+        assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedFilteringSupported(), is(false));
 
         // set feature support to NOT_RESOLVED
@@ -1197,6 +1205,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testUnsupportedFiltering() throws Exception {
+        assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedFilteringSupported(), is(false));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
