@@ -1322,4 +1322,15 @@ public class DiscoveryManager
             }
         }
     }
+    
+    private String mNullDeviceName = "";
+
+    @Override
+    public void setDeviceName(String deviceName) {
+        mNullDeviceName = deviceName;
+    };
+
+    public String getNullDeviceName() {
+        return mNullDeviceName;
+    }
 }

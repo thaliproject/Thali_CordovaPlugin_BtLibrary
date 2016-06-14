@@ -35,7 +35,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     private static boolean defaultBTStatus;
     private static boolean defaultWifiStatus;
     private final long MAX_TIMEOUT = 20000;
-    private final long CHECK_INTERVAL = 500;
+    private final long CHECK_INTERVAL = 2000;
 
     private static void setDiscoveryMode(DiscoveryManager.DiscoveryMode mode) {
         DiscoveryManagerSettings settings = DiscoveryManagerSettings
@@ -147,6 +147,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @After
     public void tearDown() throws Exception {
+        assertThat(mDiscoveryManager.getNullDeviceName(), is(""));
         mDiscoveryManager.dispose();
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.NOT_STARTED);
         checkAllStatesWithTimeout(false, false, false, false, false);

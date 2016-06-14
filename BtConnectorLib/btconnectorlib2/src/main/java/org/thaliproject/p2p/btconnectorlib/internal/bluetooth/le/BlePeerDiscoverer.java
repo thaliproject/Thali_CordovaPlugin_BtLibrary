@@ -31,6 +31,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * A listener for peer discovery events.
      */
     public interface BlePeerDiscoveryListener {
+        void setDeviceName(String deviceName);
         /**
          * Called when the state of this class has changed.
          * @param state The new state.
@@ -652,6 +653,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         if (parsedAdvertisement != null) {
                             UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
                                     scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
+
+                            if (scannedServiceUuid == null) {
+                                mListener.setDeviceName(scanResult.getScanRecord().getDeviceName());
+                            }
 
                             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                                     || BlePeerDiscoveryUtils.uuidStartsWithExpectedServiceUuid(scannedServiceUuid, mServiceUuid)) {
