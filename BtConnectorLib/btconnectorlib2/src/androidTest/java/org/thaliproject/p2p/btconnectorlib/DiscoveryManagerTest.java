@@ -35,7 +35,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     private static boolean defaultBTStatus;
     private static boolean defaultWifiStatus;
     private final long MAX_TIMEOUT = 20000;
-    private final long CHECK_INTERVAL = 2000;
+    private final long CHECK_INTERVAL = 500;
 
     private static void setDiscoveryMode(DiscoveryManager.DiscoveryMode mode) {
         DiscoveryManagerSettings settings = DiscoveryManagerSettings
