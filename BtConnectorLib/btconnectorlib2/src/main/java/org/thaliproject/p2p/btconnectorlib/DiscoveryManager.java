@@ -149,7 +149,7 @@ public class DiscoveryManager
         public boolean isSupported() {
             BluetoothManager.FeatureSupportedStatus featureSupportedStatus = isFeatureSupported();
             if (featureSupportedStatus == BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED
-                    && mBluetoothManager.isBleSupported()) {
+                    && isBleSupported()) {
                 Log.w(TAG, "Bluetooth is not enabled so we could not check whether or not Bluetooth "
                         + "LE " + getFeatureName() + " is supported. However, Bluetooth LE is supported "
                         + "so we just *assume* this feature is supported too (which may not "
@@ -324,6 +324,11 @@ public class DiscoveryManager
         FeatureSupportChecker checker = new FilteringSupportChecker();
         return checker.isSupported();
     }
+
+    /**
+     * @return True, if BLE is supported. False otherwise.
+     */
+    public boolean isBleSupported() { return mBluetoothManager.isBleSupported(); }
 
     /**
      * @return True, if Wi-Fi Direct is supported. False otherwise.
@@ -1321,16 +1326,5 @@ public class DiscoveryManager
                 updateStateInternal(DiscoveryManagerState.NOT_STARTED, isDiscovering, isAdvertising);
             }
         }
-    }
-    
-    private String mNullDeviceName = "";
-
-    @Override
-    public void setDeviceName(String deviceName) {
-        mNullDeviceName = deviceName;
-    };
-
-    public String getNullDeviceName() {
-        return mNullDeviceName;
     }
 }

@@ -285,29 +285,20 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             DiscoveryManager discoveryManager = (DiscoveryManager) mListeners.get(0);
 
             if (discoveryManager != null) {
-                boolean isBleMultipleAdvertisementSupported = true; //discoveryManager.isBleMultipleAdvertisementSupported();
-                boolean isWifiSupported = true; //discoveryManager.isWifiDirectSupported();
+                boolean isBleSupported = discoveryManager.isBleSupported();
+                boolean isWifiSupported = discoveryManager.isWifiDirectSupported();
 
                 switch (discoveryMode) {
                     case BLE:
-                        if (isBleMultipleAdvertisementSupported) {
-                            ok = true;
-                        }
-
+                        ok = isBleSupported;
                         break;
 
                     case WIFI:
-                        if (isWifiSupported) {
-                            ok = true;
-                        }
-
+                        ok = isWifiSupported;
                         break;
 
                     case BLE_AND_WIFI:
-                        if (isBleMultipleAdvertisementSupported && isWifiSupported) {
-                            ok = true;
-                        }
-
+                        ok = isBleSupported && isWifiSupported;
                         break;
 
                     default:
@@ -319,8 +310,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
                     Log.i(TAG, "setDiscoveryMode: Discovery mode " + discoveryMode + " is supported");
                 } else {
                     Log.e(TAG, "setDiscoveryMode: Discovery mode " + discoveryMode
-                            + " is not supported; BLE advertisement supported: " + isBleMultipleAdvertisementSupported
-                            + ", Wi-Fi supported: " + isWifiSupported);
+                            + " is not supported; BLE supported : " + isBleSupported
+                            + ", Wi-Fi supported : " + isWifiSupported);
                 }
             } else {
                 Log.e(TAG, "setDiscoveryMode: Failed to get the discovery manager instance");
