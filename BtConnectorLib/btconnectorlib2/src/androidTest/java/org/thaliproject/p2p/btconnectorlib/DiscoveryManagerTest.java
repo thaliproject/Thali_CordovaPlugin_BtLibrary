@@ -1019,7 +1019,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         // set feature support to NOT_RESOLVED
         BluetoothManager btManager = BluetoothManager.getInstance(InstrumentationRegistry.getContext());
-        Field supportField = btManager.getClass().getDeclaredField("mBleFilteringSupportedStatus");
+        Field supportField = btManager.getClass().getDeclaredField("mBleMultipleAdvertisementSupportedStatus");
         supportField.setAccessible(true);
         supportField.set(btManager, BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED);
         assertThat(mDiscoveryManager.isBleMultipleAdvertisementSupported(), is(true));
@@ -1039,7 +1039,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         // set feature support to NOT_RESOLVED
         BluetoothManager btManager = BluetoothManager.getInstance(InstrumentationRegistry.getContext());
-        Field supportField = btManager.getClass().getDeclaredField("mBleFilteringSupportedStatus");
+        Field supportField = btManager.getClass().getDeclaredField("mBleMultipleAdvertisementSupportedStatus");
         supportField.setAccessible(true);
         supportField.set(btManager, BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED);
         assertThat(mDiscoveryManager.isBleMultipleAdvertisementSupported(), is(true));
@@ -1091,7 +1091,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         // set feature support to NOT_RESOLVED
         BluetoothManager btManager = BluetoothManager.getInstance(InstrumentationRegistry.getContext());
-        Field supportField = btManager.getClass().getDeclaredField("mBleFilteringSupportedStatus");
+        Field supportField = btManager.getClass().getDeclaredField("mBleScanBatchingSupportedStatus");
         supportField.setAccessible(true);
         supportField.set(btManager, BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED);
         assertThat(mDiscoveryManager.isBleOffloadedScanBatchingSupported(), is(true));
@@ -1112,7 +1112,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(false);
         // set feature support to NOT_RESOLVED
         BluetoothManager btManager = BluetoothManager.getInstance(InstrumentationRegistry.getContext());
-        Field supportField = btManager.getClass().getDeclaredField("mBleFilteringSupportedStatus");
+        Field supportField = btManager.getClass().getDeclaredField("mBleScanBatchingSupportedStatus");
         supportField.setAccessible(true);
         supportField.set(btManager, BluetoothManager.FeatureSupportedStatus.NOT_RESOLVED);
         assertThat(mDiscoveryManager.isBleOffloadedScanBatchingSupported(), is(true));
