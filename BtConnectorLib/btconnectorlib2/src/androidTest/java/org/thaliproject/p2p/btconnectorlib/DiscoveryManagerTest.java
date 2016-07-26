@@ -180,7 +180,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         dmSettings.addListener(mDiscoveryManager);
     }
 
-    @Test
+    //@Test
     public void testStartBluetoothDisabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         toggleBluetooth(false);
@@ -190,7 +190,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningBluetoothEnabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
         toggleBluetooth(true);
@@ -201,7 +201,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningBluetoothEnabledStartDiscovery() throws Exception {
         assumeThat(isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -213,7 +213,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiDisabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         toggleWifi(false);
@@ -224,7 +224,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabled() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
@@ -235,7 +235,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartDiscovery() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -248,7 +248,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -261,7 +261,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartDiscoveryAndAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -274,7 +274,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiDisabledBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         toggleWifi(false);
@@ -287,7 +287,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     // WIFI enabled, BT disabled
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledBW() throws Exception {
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
@@ -299,7 +299,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartDiscoveryBW() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -313,7 +313,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartAdvertisingBW() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -327,7 +327,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -342,7 +342,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     // Both BT and WIFI enabled
-    @Test
+    //@Test
     public void testStartListeningWifiBTEnabledStartDiscoveryBW() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -356,7 +356,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, true, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiBTEnabledStartAdvertisingBW() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -370,7 +370,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true, false, true);
     }
 
-    @Test
+    //@Test
     public void testStartListeningWifiBTEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                    isBleAdvertisementSupported(), is(true));
@@ -386,7 +386,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     }
 
     // BT enabled, Wifi disabled
-    @Test
+    //@Test
     public void testStartListeningBTEnabledStartDiscoveryBW() throws Exception {
         assumeThat(isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -400,7 +400,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningBTEnabledStartAdvertisingBW() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -414,7 +414,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartListeningBTEnabledStartDiscoveryAndAdvertisingBW() throws Exception {
         assumeThat(isBleDiscoverySupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -428,7 +428,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothStateDuringDiscovery() throws Exception {
         assumeThat(isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -446,7 +446,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothStateDuringAdvertising() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -464,7 +464,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothStateDuringBoth() throws Exception {
         assumeThat(isBleDiscoverySupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -482,7 +482,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeWifiStateDuringDiscovery() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -501,7 +501,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, false);
     }
 
-    @Test
+    //@Test
     public void testChangeWifiStateDuringAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -520,7 +520,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, false, true);
     }
 
-    @Test
+    //@Test
     public void testChangeWifiStateDuringBoth() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -539,7 +539,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothWifiStateDuringDiscovering() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -569,7 +569,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothWifiStateDuringAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -599,7 +599,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testChangeBluetoothWifiStateDuringBoth() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                    isBleAdvertisementSupported(), is(true));
@@ -630,7 +630,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothDiscovery() throws Exception {
         assumeThat(isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -651,7 +651,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothAdvertising() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -672,7 +672,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothBoth() throws Exception {
         assumeThat(isBleDiscoverySupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -692,7 +692,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopWifiDiscovery() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -714,7 +714,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopWifiAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -736,7 +736,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopWifiBoth() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -757,7 +757,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothWifiDiscovery() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -780,7 +780,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothWifiAdvertising() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
@@ -803,7 +803,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testStartStopBluetoothWifiBoth() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                 isBleAdvertisementSupported(), is(true));
@@ -826,7 +826,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testMultipleStartBluetooth() throws Exception {
         assumeThat(isBleDiscoverySupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -850,7 +850,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testMultipleStartWifi() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -874,7 +874,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testMultipleStartBoth() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                 isBleAdvertisementSupported(), is(true));
@@ -900,7 +900,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testDiscoveryModeChangeBluetooth() throws Exception {
         assumeThat(isBleDiscoverySupported() && isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
@@ -928,7 +928,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testDiscoveryModeChangeWifi() throws Exception {
         assumeThat(isWifiDirectSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.WIFI);
@@ -958,7 +958,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, false, true, true);
     }
 
-    @Test
+    //@Test
     public void testDiscoveryModeChangeBoth() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                 isBleAdvertisementSupported(), is(true));
@@ -985,7 +985,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, true, true, true);
     }
 
-    @Test
+    //@Test
     public void testUnknownBluetoothMacAddress() throws Exception {
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                    isBleAdvertisementSupported(), is(true));
@@ -1011,7 +1011,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, true, true);
     }
 
-    @Test
+    //@Test
     public void testIsBleMultipleAdvertisementSupported() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(true));
 
@@ -1031,7 +1031,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleMultipleAdvertisementSupported(), is(true));
     }
 
-    @Test
+    //@Test
     public void testIsBleMultipleAdvertisementNotSupported() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(false));
 
@@ -1051,7 +1051,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleMultipleAdvertisementSupported(), is(false));
     }
 
-    @Test
+    //@Test
     public void testUnsupportedMultipleAdvertisement() throws Exception {
         assumeThat(isBleSupported(), is(true));
         assumeThat(isBleAdvertisementSupported(), is(false));
@@ -1067,7 +1067,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testUnsupportedMultipleAdvertisementButDiscovering() throws Exception {
         assumeThat(isBleAdvertisementSupported(), is(false));
         assumeThat(isBleDiscoverySupported(), is(true));
@@ -1083,7 +1083,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, true, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testIsBleOffloadedScanBatchingSupported() throws Exception {
         assumeThat(isOffloadedScanBatchingSupported(), is(true));
 
@@ -1103,7 +1103,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleOffloadedScanBatchingSupported(), is(true));
     }
 
-    @Test
+    //@Test
     public void testIsBleOffloadedScanBatchingNotSupported() throws Exception {
         assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedScanBatchingSupported(), is(false));
@@ -1124,7 +1124,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleOffloadedScanBatchingSupported(), is(false));
     }
 
-    @Test
+    //@Test
     public void testUnsupportedScanBatching() throws Exception {
         assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedScanBatchingSupported(), is(false));
@@ -1140,7 +1140,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testUnsupportedScanBatchingButAdvertising() throws Exception {
         assumeThat(isOffloadedScanBatchingSupported(), is(false));
         assumeThat(isBleAdvertisementSupported(), is(true));
@@ -1156,7 +1156,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(true, false, true, false, false);
     }
 
-    @Test
+    //@Test
     public void testIsBleOffloadedFilteringSupported() throws Exception {
         assumeThat(isOffloadedFilteringSupported(), is(true));
 
@@ -1176,7 +1176,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleOffloadedFilteringSupported(), is(true));
     }
 
-    @Test
+    //@Test
     public void testIsBleOffloadedFilteringNotSupported() throws Exception {
         assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedFilteringSupported(), is(false));
@@ -1197,7 +1197,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mDiscoveryManager.isBleOffloadedFilteringSupported(), is(false));
     }
 
-    @Test
+    //@Test
     public void testUnsupportedFiltering() throws Exception {
         assumeThat(isBleSupported(), is(true));
         assumeThat(isOffloadedFilteringSupported(), is(false));
@@ -1213,7 +1213,7 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         checkAllStatesWithTimeout(false, false, false, false, false);
     }
 
-    @Test
+    //@Test
     public void testUnsupportedFilteringButAdvertising() throws Exception {
         assumeThat(isOffloadedFilteringSupported(), is(false));
         assumeThat(isBleAdvertisementSupported(), is(true));

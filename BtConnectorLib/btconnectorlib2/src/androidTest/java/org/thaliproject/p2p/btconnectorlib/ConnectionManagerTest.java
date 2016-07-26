@@ -110,7 +110,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mConnectionManager.getBluetoothManager(), is(btManager));
     }
 
-    @Test
+    //@Test
     public void testIllegalArgumentsConstruction() throws Exception {
         // connection manager listener may be null - correct call
         new ConnectionManager(mContext, null, UUID.randomUUID(), "DUMMY_NAME");
@@ -124,7 +124,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         new ConnectionManager(mContext, mConnectionManagerListener, null, "DUMMY_NAME");
     }
 
-    @Test
+    //@Test
     public void testStartListeningBluetoothDisabled() throws Exception {
         toggleBluetooth(false);
 
@@ -136,7 +136,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                         ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
     }
 
-    @Test
+    //@Test
     public void testStartListeningBluetoothEnabled() throws Exception {
         boolean isRunning = mConnectionManager.startListeningForIncomingConnections();
         assertThat(isRunning, is(true));
@@ -145,28 +145,28 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
     }
 
-    @Test
+    //@Test
     public void testOnConnectionFailed() throws Exception {
         mConnectionManager.onConnectionFailed(null, "DUMMY_MESSAGE");
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1)).onConnectionFailed(null, "DUMMY_MESSAGE");
     }
 
-    @Test
+    //@Test
     public void testOnConnectionTimeout() throws Exception {
         mConnectionManager.onConnectionTimeout(null);
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1)).onConnectionTimeout(null);
     }
 
-    @Test
+    //@Test
     public void testOnConnected() throws Exception {
         mConnectionManager.onConnected(null, true, null);
         waitForMainLooper();
         verify(mConnectionManagerListener, times(1)).onConnected(null, true, null);
     }
 
-    @Test
+    //@Test
     public void testOnIsServerStartedChanged() throws Exception {
         mConnectionManager.startListeningForIncomingConnections();
         checkStateWithTimeout(ConnectionManager.ConnectionManagerState.RUNNING);
@@ -184,7 +184,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
     }
 
-    @Test
+    //@Test
     public void testOnIsServerStartedChangedBluetoothDisabled() throws Exception {
         toggleBluetooth(false);
 
@@ -193,7 +193,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         checkStateWithTimeout(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
     }
 
-    @Test
+    //@Test
     public void testOnBluetoothAdapterScanModeChangedScanModeNone() throws Exception {
         toggleBluetooth(false);
         mConnectionManager.startListeningForIncomingConnections();
@@ -211,7 +211,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                         ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
     }
 
-    @Test
+    //@Test
     public void testOnBluetoothAdapterScanModeChangedScanModeConnectable() throws Exception {
         toggleBluetooth(false);
         mConnectionManager.startListeningForIncomingConnections();
@@ -238,7 +238,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.RUNNING);
     }
 
-    @Test
+    //@Test
     public void testOnHandshakeRequiredSettingChanged() throws Exception {
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
         boolean currentHandshake = cmSettings.getHandshakeRequired();
@@ -260,7 +260,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(handshake, is(!currentHandshake));
     }
 
-    @Test
+    //@Test
     public void testOnConnectionManagerSettingsChanged() throws Exception {
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
         long currentConnectionTimeout = cmSettings.getConnectionTimeout();
@@ -296,7 +296,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(retries, is(currentRetries + 1));
     }
 
-    @Test
+    //@Test
      public void testDispose() throws Exception {
         toggleBluetooth(false);
         mConnectionManager.startListeningForIncomingConnections();
@@ -316,7 +316,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(isShutdownField.getBoolean(bluetoothConnector), is(true));
     }
 
-    @Test
+    //@Test
     public void testSetPeerName() throws Exception {
         String btAddress;
         if (!CommonUtils.isMarshmallowOrHigher()) {
@@ -344,12 +344,12 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mConnectionManager.setPeerName(null);
     }
 
-    @Test
+    //@Test
     public void testStopListeningForIncomingConnections() throws Exception {
         // tested with testDispose
     }
 
-    @Test
+    //@Test
     public void testStartStopListening() throws Exception {
         boolean isRunning = mConnectionManager.startListeningForIncomingConnections();
         assertThat(isRunning, is(true));
@@ -386,7 +386,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .onConnectionManagerStateChanged(ConnectionManager.ConnectionManagerState.NOT_STARTED);
     }
 
-    @Test
+    //@Test
     public void testConnect() throws Exception {
         // no target device - connection initialization fails
         assertThat(mConnectionManager.connect(null), is(false));
@@ -444,7 +444,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         verifyNoMoreInteractions(mConnectionManagerListener);
     }
 
-    @Test
+    //@Test
     public void testCancelConnectionAttempt() throws Exception {
         PeerProperties peerProperties =  new PeerProperties("02:00:00:00:00:00");
 
@@ -456,7 +456,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(true));
     }
 
-    @Test
+    //@Test
     public void testSetEmulateMarshmallow() throws Exception {
         mConnectionManager.setEmulateMarshmallow(true);
         Field emulateMarshmallowField = mConnectionManager.getClass().getSuperclass()
@@ -468,7 +468,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(emulateMarshmallowField.getBoolean(mConnectionManager), is(false));
     }
 
-    @Test
+    //@Test
     public void testGetBluetoothMacAddress() throws Exception {
         // read device mac address
         DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
@@ -498,7 +498,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(nullValue()));
     }
 
-    @Test
+    //@Test
     public void testGetPropertiesFromIdentityString() throws Exception {
         PeerProperties peerProperties = new PeerProperties();
         String jsonString = "";
@@ -526,7 +526,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(peerProperties.getBluetoothMacAddress(), is("DUMMY_MAC"));
     }
 
-    @Test
+    //@Test
     public void testVerifyIdentityString() throws Exception {
         Field identityField = mConnectionManager.getClass().getSuperclass()
                 .getDeclaredField("mMyIdentityString");
@@ -557,7 +557,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                    is("{\"name\":\"OTHER_DUMMY_NAME\",\"address\":\"AA:BB:CC:DD:EE:FF\"}"));
     }
 
-    @Test
+    //@Test
     public void testClearIdentityString() throws Exception {
         Field identityField = mConnectionManager.getClass().getSuperclass()
                 .getDeclaredField("mMyIdentityString");
@@ -569,7 +569,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
     }
 
-    @Test
+    //@Test
     public void testTogglingBluetoothDuringWork() throws Exception {
         mConnectionManager.startListeningForIncomingConnections();
         checkStateWithTimeout(ConnectionManager.ConnectionManagerState.RUNNING);
@@ -598,7 +598,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         checkStateWithTimeout(ConnectionManager.ConnectionManagerState.NOT_STARTED);
     }
 
-    @Test
+    //@Test
     public void testTogglingBluetoothDuringStopping() throws Exception {
         Field bluetoothConnectorField = mConnectionManager.getClass()
                 .getDeclaredField("mBluetoothConnector");
