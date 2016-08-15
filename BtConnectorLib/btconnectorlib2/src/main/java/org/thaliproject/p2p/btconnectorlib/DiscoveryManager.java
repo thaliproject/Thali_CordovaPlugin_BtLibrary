@@ -463,17 +463,6 @@ public class DiscoveryManager
         mShouldBeScanning = startDiscovery;
         mShouldBeAdvertising = startAdvertising;
 
-        if (!mShouldBeScanning && !mShouldBeAdvertising) {
-            if (mState != DiscoveryManagerState.NOT_STARTED) {
-                stop();
-            }
-            return started;
-        } else if (!mShouldBeScanning && isDiscovering()) {
-            stopDiscovery();
-        } else if (!mShouldBeAdvertising && isAdvertising()) {
-            stopAdvertising();
-        }
-
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
