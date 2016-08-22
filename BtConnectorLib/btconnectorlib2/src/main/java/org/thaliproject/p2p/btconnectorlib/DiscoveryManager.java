@@ -463,6 +463,18 @@ public class DiscoveryManager
         mShouldBeScanning = startDiscovery;
         mShouldBeAdvertising = startAdvertising;
 
+//
+//        if (!mShouldBeScanning && !mShouldBeAdvertising) {
+//            if (mState != DiscoveryManagerState.NOT_STARTED) {
+//                stop();
+//            }
+//            return started;
+//        } else if (!mShouldBeScanning && isDiscovering()) {
+//            stopDiscovery();
+//        } else if (!mShouldBeAdvertising && isAdvertising()) {
+//            stopAdvertising();
+//        }
+
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
 
@@ -1065,19 +1077,19 @@ public class DiscoveryManager
 
     /**
      * From PeerModel.Listener
-     *
+     * <p>
      * Forwards the event to the listener.
      *
      * @param peerProperties The properties of the added peer.
      */
     @Override
     public void onPeerAdded(final PeerProperties peerProperties) {
-        //Log.v(TAG, "onPeerAdded: " + peerProperties);
-
+//        Log.e(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+//                    Log.e(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
                     mListener.onPeerDiscovered(peerProperties);
                 }
             });
@@ -1086,17 +1098,19 @@ public class DiscoveryManager
 
     /**
      * From PeerModel.Listener
-     *
+     * <p>
      * Forwards the event to the listener.
      *
      * @param peerProperties The properties of the updated peer.
      */
     @Override
     public void onPeerUpdated(final PeerProperties peerProperties) {
+//        Log.e(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+//                    Log.e(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
                     mListener.onPeerUpdated(peerProperties);
                 }
             });
@@ -1105,17 +1119,19 @@ public class DiscoveryManager
 
     /**
      * From PeerModel.Listener
-     *
+     * <p>
      * Forwards the event to the listener.
      *
      * @param peerProperties The properties of the expired and removed peer.
      */
     @Override
     public void onPeerExpiredAndRemoved(final PeerProperties peerProperties) {
+        Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
                     mListener.onPeerLost(peerProperties);
                 }
             });

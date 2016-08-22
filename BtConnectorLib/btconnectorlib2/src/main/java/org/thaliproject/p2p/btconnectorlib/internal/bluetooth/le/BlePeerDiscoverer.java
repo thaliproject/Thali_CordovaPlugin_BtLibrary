@@ -692,6 +692,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
                     if (peerProperties != null) {
+//                        Log.e(TAG, "onPeerDiscovered: " + peerProperties.toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
