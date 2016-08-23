@@ -604,6 +604,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 Log.e(TAG, "onAdvertiserFailedToStart: Manufacturer data fallback did not work either");
             }
         }
+        else {
+            //TODO temp solution. Just restart
+            Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
+            startAdvertiser();
+        }
     }
 
     @Override
