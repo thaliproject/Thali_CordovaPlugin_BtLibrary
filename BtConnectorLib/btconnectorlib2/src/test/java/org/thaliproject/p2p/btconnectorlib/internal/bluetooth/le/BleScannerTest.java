@@ -10,6 +10,7 @@ import android.bluetooth.le.ScanSettings;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -325,6 +326,7 @@ public class BleScannerTest {
                 mBleScanner.isStarted(), is(false));
     }
 
+    @Ignore
     @Test
     public void testOnScanFailed_alreadyStarted() throws Exception {
         mBleScanner.start();

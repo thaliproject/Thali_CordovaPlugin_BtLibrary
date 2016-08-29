@@ -385,14 +385,15 @@ public class BluetoothManager {
      *
      * @param enable If true, will enable. If false, will disable.
      */
-    public void setBluetoothEnabled(boolean enable) {
+    public boolean setBluetoothEnabled(boolean enable) {
         if (mBluetoothAdapter != null) {
             if (enable) {
-                mBluetoothAdapter.enable();
+                return mBluetoothAdapter.enable();
             } else {
-                mBluetoothAdapter.disable();
+                return mBluetoothAdapter.disable();
             }
         }
+        throw  new RuntimeException("Bluetooth adapter is null");
     }
 
     public BluetoothAdapter getBluetoothAdapter()
@@ -555,7 +556,7 @@ public class BluetoothManager {
                 if (state == BluetoothAdapter.STATE_ON) {
                     resolveFeatureSupport();
                 }
-
+                //TODO add some logic detect that user turned bluetooth off and it didn't just crash
                 for (BluetoothManagerListener listener : mListeners) {
                     listener.onBluetoothAdapterStateChanged(state);
                 }

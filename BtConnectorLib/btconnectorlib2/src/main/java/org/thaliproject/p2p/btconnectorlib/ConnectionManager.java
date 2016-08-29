@@ -296,6 +296,7 @@ public class ConnectionManager
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
         Log.i(TAG, "onBluetoothAdapterScanModeChanged: Mode changed to " + mode);
+        Log.i(TAG, "onBluetoothAdapterScanModeChanged: ConnectionManagerState is  " + mState.toString());
 
         if (mode == BluetoothAdapter.SCAN_MODE_NONE) {
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
@@ -320,6 +321,7 @@ public class ConnectionManager
     @Override
     public void onBluetoothAdapterStateChanged(int state) {
         Log.i(TAG, "onBluetoothAdapterStateChanged: State changed to " + state);
+        Log.i(TAG, "onBluetoothAdapterStateChanged: ConnectionManagerState State changed to " + mState.toString());
 
         if (state == BluetoothAdapter.STATE_OFF) {
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
@@ -455,6 +457,7 @@ public class ConnectionManager
      * Updates the state of this instance and notifies the listener.
      */
     private synchronized void updateState() {
+        Log.d(TAG, "updateState: mShouldBeStarted :  " + mShouldBeStarted + ", mIsServerStarted:  " + mIsServerStarted);
         if (mShouldBeStarted && mIsServerStarted) {
             setState(ConnectionManagerState.RUNNING);
         } else if (mShouldBeStarted && !mBluetoothManager.isBluetoothEnabled()) {

@@ -7,14 +7,17 @@ import android.annotation.TargetApi;
 import android.bluetooth.le.ScanFilter;
 import android.os.ParcelUuid;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
@@ -32,6 +35,15 @@ class BlePeerDiscoveryUtils {
         String provideBluetoothMacAddressRequestId = null;
         String bluetoothMacAddress = null;
         int extraInformation = PeerProperties.NO_EXTRA_INFORMATION;
+
+        @Override
+        public String toString() {
+            return  "[UUID = " + uuid
+                    + ", bluetoothMacAddress = " +  bluetoothMacAddress
+                    + ", provideBluetoothMacAddressRequestId = " + provideBluetoothMacAddressRequestId
+                    + "extra info = " + extraInformation + "]\n";
+
+        }
     }
 
     private static final String TAG = BlePeerDiscoveryUtils.class.getName();
@@ -46,8 +58,8 @@ class BlePeerDiscoveryUtils {
     /**
      * Creates a new scan filter based on the given arguments.
      *
-     * @param serviceUuid The service UUID for the scan filter. Use null to not set.
-     * @param manufacturerId The manufacturer ID. Ignored, if useManufacturerId is false.
+     * @param serviceUuid       The service UUID for the scan filter. Use null to not set.
+     * @param manufacturerId    The manufacturer ID. Ignored, if useManufacturerId is false.
      * @param useManufacturerId If true, will add the manufacturer ID to the filter properties.
      * @return A newly created scan filter or null in case of a failure.
      */
@@ -55,6 +67,7 @@ class BlePeerDiscoveryUtils {
         Log.d(TAG, "createScanFilter: "
                 + ((serviceUuid != null) ? "Service UUID: \"" + serviceUuid.toString() + "\"" : "No service UUID")
                 + ", use manufacturer ID: " + useManufacturerId);
+        Log.d(TAG, "manufacturer ID: " + manufacturerId);
 
         ScanFilter scanFilter = null;
         ScanFilter.Builder builder = new ScanFilter.Builder();
@@ -70,7 +83,7 @@ class BlePeerDiscoveryUtils {
             }
 
             scanFilter = builder.build();
-            Log.v(TAG, "createScanFilter: " + scanFilter.toString());
+            Log.i(TAG, "createScanFilter: " + scanFilter.toString());
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
         }
@@ -93,7 +106,7 @@ class BlePeerDiscoveryUtils {
         if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)) {
             int extraInformation = byteToUint8(serviceData[0]);
             byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
-
+//            Log.d(TAG, "parseServiceData : " + Arrays.toString(serviceData));
             for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
                 bluetoothAddressAsByteArray[i] = serviceData[i + 1];
             }
@@ -238,7 +251,7 @@ class BlePeerDiscoveryUtils {
      * Parses the given manufacturer data.
      *
      * @param manufacturerData The manufacturer data.
-     * @param serviceUuid The expected service UUID.
+     * @param serviceUuid      The expected service UUID.
      * @return A newly created ParsedAdvertisement instance or null in case of UUID mismatch.
      */
     public static ParsedAdvertisement parseManufacturerData(byte[] manufacturerData, UUID serviceUuid) {
@@ -371,15 +384,15 @@ class BlePeerDiscoveryUtils {
 
     /**
      * Rotates the byte, with the given index, of the given UUID and returns the modified UUID.
-     *
+     * <p>
      * A UUID with rotated byte can be used to define and communicate a distinct state e.g.
      * differentiate between willingness to provide assistance (peer its Bluetooth MAC address)
      * instead of requesting assistance.
      *
      * @param originalUuid The original UUID.
-     * @param byteIndex The index of the byte (not the index of the char) to rotate. A UUID contains
-     *                  16 bytes, so the last index is 15. Thus, greater value than 15 will result
-     *                  in an error.
+     * @param byteIndex    The index of the byte (not the index of the char) to rotate. A UUID contains
+     *                     16 bytes, so the last index is 15. Thus, greater value than 15 will result
+     *                     in an error.
      * @return The UUID with the byte rotated or null in case of a failure.
      */
     public static UUID rotateByte(UUID originalUuid, int byteIndex) {
@@ -429,8 +442,8 @@ class BlePeerDiscoveryUtils {
             } else {
                 newUuidAsString =
                         originalUuidAsString.substring(0, startIndexOfByte)
-                        + byteAsString
-                        + originalUuidAsString.substring(startIndexOfByte + 2, originalUuidAsString.length());
+                                + byteAsString
+                                + originalUuidAsString.substring(startIndexOfByte + 2, originalUuidAsString.length());
             }
 
             newUuid = UUID.fromString(newUuidAsString);
@@ -484,7 +497,7 @@ class BlePeerDiscoveryUtils {
      * @return The given 8-bit integer as byte.
      */
     public static byte int8ToByte(int int8) {
-        return (byte)int8;
+        return (byte) int8;
     }
 
     /**
@@ -494,7 +507,7 @@ class BlePeerDiscoveryUtils {
      * @return The given byte as unsigned 8-bit integer.
      */
     public static int byteToUint8(byte int8AsByte) {
-        int int8 = (int)int8AsByte;
+        int int8 = (int) int8AsByte;
 
         if (int8 < 0) {
             int8 += 256;

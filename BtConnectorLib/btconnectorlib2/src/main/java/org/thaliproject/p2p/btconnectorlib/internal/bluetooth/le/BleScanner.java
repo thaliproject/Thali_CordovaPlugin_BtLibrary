@@ -15,6 +15,7 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadFactory;
 
 /**
  * General BLE scanner.
@@ -110,6 +111,7 @@ class BleScanner extends ScanCallback {
      * @return True, if starting. False in case of an error.
      */
     public synchronized boolean start() {
+        Log.d(TAG, "start");
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeScanner != null) {
                 try {
@@ -137,6 +139,13 @@ class BleScanner extends ScanCallback {
         if (mBluetoothLeScanner != null) {
             try {
                 mBluetoothLeScanner.stopScan(this);
+//                mBluetoothLeScanner.startScan();
+//                //TODO temp test
+//                try {
+//                    Thread.sleep(500L);
+//                } catch (InterruptedException e) {
+//                    Log.e(TAG, "stop: " + e.getMessage());
+//                }
                 Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
@@ -237,12 +246,18 @@ class BleScanner extends ScanCallback {
         switch (errorCode) {
             case SCAN_FAILED_ALREADY_STARTED:
                 reason = "BLE scan with the same settings is already started by the app";
-
+                Log.e(TAG, "onScanFailed: " + reason + ", error code is " + errorCode);
                 try {
                     mBluetoothLeScanner.stopScan(this);
                 } catch (IllegalStateException e) {
+                    Log.e(TAG, "onScanFailed: stop scan failure " + e.getMessage());
                 }
 
+
+//                if (mListener != null) {
+//                    mListener.onScannerFailed(errorCode);
+//                }
+//                return;
                 break;
             case SCAN_FAILED_APPLICATION_REGISTRATION_FAILED:
                 reason = "App cannot be registered";
