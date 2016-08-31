@@ -10,8 +10,10 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
+import android.os.RemoteException;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,6 +55,7 @@ class BleScanner extends ScanCallback {
     private List<ScanFilter> mScanFilters = new ArrayList<>();
     private ScanSettings mScanSettings = null;
     private State mState = State.NOT_STARTED;
+    private BluetoothAdapter mBluetoothAdapter;
 
     /**
      * Constructor.
@@ -76,6 +79,7 @@ class BleScanner extends ScanCallback {
     public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter,
                       ScanSettings.Builder builder, DiscoveryManagerSettings settings) {
         mListener = listener;
+        mBluetoothAdapter = bluetoothAdapter;
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         try {
@@ -118,7 +122,16 @@ class BleScanner extends ScanCallback {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
                     setState(State.RUNNING, true);
                 } catch (Exception e) {
+                    //TODO restart bluetooth if it failed
                     Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
+//                    if (!mBluetoothAdapter.isEnabled()){
+//                        Log.i(TAG, "start: reenabling bluetooth");
+//                        if (mBluetoothAdapter.enable()){
+//                            Log.i(TAG, "start: successfully reenabled");
+//                        } else {
+//                            Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
+//                        }
+//                    }
                 }
             } else {
                 Log.e(TAG, "start: No BLE scanner instance");
@@ -139,13 +152,6 @@ class BleScanner extends ScanCallback {
         if (mBluetoothLeScanner != null) {
             try {
                 mBluetoothLeScanner.stopScan(this);
-//                mBluetoothLeScanner.startScan();
-//                //TODO temp test
-//                try {
-//                    Thread.sleep(500L);
-//                } catch (InterruptedException e) {
-//                    Log.e(TAG, "stop: " + e.getMessage());
-//                }
                 Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
                 Log.e(TAG, "stop: " + e.getMessage(), e);
@@ -252,12 +258,6 @@ class BleScanner extends ScanCallback {
                 } catch (IllegalStateException e) {
                     Log.e(TAG, "onScanFailed: stop scan failure " + e.getMessage());
                 }
-
-
-//                if (mListener != null) {
-//                    mListener.onScannerFailed(errorCode);
-//                }
-//                return;
                 break;
             case SCAN_FAILED_APPLICATION_REGISTRATION_FAILED:
                 reason = "App cannot be registered";

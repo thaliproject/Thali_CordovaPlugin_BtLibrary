@@ -324,6 +324,15 @@ public class ConnectionManager
         Log.i(TAG, "onBluetoothAdapterStateChanged: ConnectionManagerState State changed to " + mState.toString());
 
         if (state == BluetoothAdapter.STATE_OFF) {
+
+//            if (mShouldBeStarted && mState == ConnectionManagerState.RUNNING){
+//                Log.d(TAG, "Restarting bluetooth");
+//                if (mBluetoothManager.setBluetoothEnabled(true)){
+//                    Log.d(TAG, "Bluetooth restarted successfully");
+//                    return;
+//                }
+//            }
+
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
                 Log.w(TAG, "onBluetoothAdapterStateChanged: Bluetooth disabled, pausing...");
                 mBluetoothConnector.stopListeningForIncomingConnections();

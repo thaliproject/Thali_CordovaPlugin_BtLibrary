@@ -219,6 +219,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         final BluetoothSocket bluetoothSocket = who.getSocket();
 
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
+        if (who.getPeerProperties() !=null){
+            Log.d(TAG, "onBytesWritten: Peer props = " + who.getPeerProperties().toString());
+        }
 
         PeerProperties peerProperties =
                 BluetoothUtils.validateReceivedHandshakeMessage(bytes, size, bluetoothSocket);
@@ -263,6 +266,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     public void onBytesWritten(byte[] buffer, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
+        if (who.getPeerProperties() !=null){
+            Log.d(TAG, "onBytesWritten: Peer props = " + who.getPeerProperties().toString());
+        }
     }
 
     /**

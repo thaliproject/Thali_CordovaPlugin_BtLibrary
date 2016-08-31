@@ -492,11 +492,14 @@ public class DiscoveryManager
         if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
 //            if (!bluetoothEnabled) {
-//                boolean enabled = mBluetoothManager.setBluetoothEnabled(true);
-//                if (!enabled) {
+//                bluetoothEnabled = mBluetoothManager.setBluetoothEnabled(true);
+//                if (!bluetoothEnabled) {
 //                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because cannot enable Bluetooth");
 //                    throw new IllegalStateException("Bluetooth is disabled and we cannot enable it. Probably some system crash in Bluetooth service on the device");
+//                } else {
+//                    Log.d(TAG, "Re-enabled bluetooth");
 //                }
+//
 //            }
             if (bluetoothEnabled) {
                 // Try to start BLE based discovery

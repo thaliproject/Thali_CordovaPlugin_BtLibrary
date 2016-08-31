@@ -107,7 +107,12 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
                 mBluetoothServerSocketConsecutiveCreationFailureCount++;
                 Log.d(TAG, "run: Bluetooth server socket consecutive creation failure count is now "
                         + mBluetoothServerSocketConsecutiveCreationFailureCount);
-
+                //give bluetooth a chance to restore internal state and to be up
+                try {
+                    Thread.sleep(300L);
+                } catch (InterruptedException e1) {
+                    e1.printStackTrace();
+                }
                 if (mBluetoothServerSocketConsecutiveCreationFailureCount >=
                         BLUETOOTH_SERVER_SOCKET_CONSECUTIVE_CREATION_FAILURE_COUNT_LIMIT) {
                     final int failureCount = mBluetoothServerSocketConsecutiveCreationFailureCount;
@@ -222,6 +227,9 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
+        if (who.getPeerProperties() != null) {
+            Log.d(TAG, "onBytesRead:  Peer props = " + who.getPeerProperties().toString());
+        }
 
         PeerProperties peerProperties =
                 BluetoothUtils.validateReceivedHandshakeMessage(bytes, size, who.getSocket());
@@ -255,6 +263,9 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     public void onBytesWritten(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
+        if (who.getPeerProperties() != null) {
+            Log.d(TAG, "onBytesRead:  Peer props = " + who.getPeerProperties().toString());
+        }
 
         // Remove the thread from the list, but do not close the socket associated with it, since
         // it is now the responsibility of the listener to do that.

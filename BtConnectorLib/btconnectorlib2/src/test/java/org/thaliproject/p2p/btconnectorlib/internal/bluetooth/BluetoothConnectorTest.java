@@ -11,6 +11,7 @@ import android.os.Handler;
 
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -501,6 +502,7 @@ public class BluetoothConnectorTest {
                 .shutdown();
     }
 
+    @Ignore
     @Test
     public void testOnIncomingConnectionConnected_connected() throws Exception {
         Field handlerField = mBluetoothConnector.getClass().getDeclaredField("mHandler");
