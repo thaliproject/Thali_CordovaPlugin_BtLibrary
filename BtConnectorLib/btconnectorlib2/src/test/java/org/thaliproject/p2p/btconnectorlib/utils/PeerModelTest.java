@@ -285,7 +285,9 @@ public class PeerModelTest {
     public void testAddOrUpdateDiscoveredPeer_Update() throws Exception {
         // prepare a peer's list
         HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
-        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(1000L));
+        //should use real time (not 1000L) because in method used value of System.currentTimeMillis()
+        long initialTime = System.currentTimeMillis();
+        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(initialTime));
 
         Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         mDiscoveredPeersField.setAccessible(true);
@@ -314,7 +316,8 @@ public class PeerModelTest {
     public void testAddOrUpdateDiscoveredPeer_Update2() throws Exception {
         // prepare a peer's list
         HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
-        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(1000L));
+        long initialTime = System.currentTimeMillis();
+        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(initialTime));
 
         Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         mDiscoveredPeersField.setAccessible(true);
@@ -330,6 +333,34 @@ public class PeerModelTest {
         verify(mMockListener, never()).onPeerAdded(isA(PeerProperties.class));
         verify(mMockDiscoveryManagerSettings, times(1)).getPeerExpiration();
 
+        Field discoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
+        discoveredPeersField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        HashMap<PeerProperties, Timestamp> peers
+                = (HashMap<PeerProperties, Timestamp>) discoveredPeersField.get(mPeerModel);
+
+        assertThat("The peer is added", peers.size(), is(1));
+    }
+
+    @Test
+    public void testAddOrUpdateDiscoveredPeer_UpdateTimeslot() throws Exception {
+        HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
+        long initialTime = System.currentTimeMillis();
+        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(initialTime - DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS-1));
+
+        Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
+        mDiscoveredPeersField.setAccessible(true);
+        mDiscoveredPeersField.set(mPeerModel, mDiscoveredPeers);
+
+        doNothing().when(mMockListener).onPeerUpdated(isA(PeerProperties.class));
+        when(mMockDiscoveryManagerSettings.getPeerExpiration()).thenReturn(DiscoveryManagerSettings.DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+        when(mMockPeerProperties.hasMoreInformation(isA(PeerProperties.class))).thenReturn(false);
+
+        mPeerModel.addOrUpdateDiscoveredPeer(mMockPeerProperties);
+
+        verify(mMockListener, never()).onPeerUpdated(isA(PeerProperties.class));
+        verify(mMockListener, times(1)).onPeerAdded(isA(PeerProperties.class));
+        verify(mMockDiscoveryManagerSettings, times(1)).getPeerExpiration();
         Field discoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         discoveredPeersField.setAccessible(true);
         @SuppressWarnings("unchecked")
