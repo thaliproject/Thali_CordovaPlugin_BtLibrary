@@ -194,7 +194,8 @@ public class PeerModel {
     public PeerProperties getNotExpiredPeerProperties(PeerProperties peerPropertiesToAddOrUpdate) {
         PeerProperties oldPeerProperties = null;
         Timestamp lastUpdatePeerPropertiesTime = mDiscoveredPeers.get(peerPropertiesToAddOrUpdate);
-        long expireTime = System.currentTimeMillis() - DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS;
+        long expireTime = System.currentTimeMillis() -
+                DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS;
         if (lastUpdatePeerPropertiesTime != null && expireTime > lastUpdatePeerPropertiesTime.getTime()) {
             removePeer(peerPropertiesToAddOrUpdate);
         } else {
