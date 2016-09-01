@@ -58,6 +58,7 @@ public class BluetoothManager {
         protected abstract void setCurrentStatus(FeatureSupportedStatus status);
 
         public FeatureSupportedStatus isSupported() {
+            Log.d(TAG, " FeatureSupportChecker isSupported");
 
             if (!CommonUtils.isLollipopOrHigher()) {
                 Log.d(TAG, "Checking support for " + getFeatureName() + ": The build version of the device is too low - API level 21 or higher required");
@@ -385,14 +386,15 @@ public class BluetoothManager {
      *
      * @param enable If true, will enable. If false, will disable.
      */
-    public void setBluetoothEnabled(boolean enable) {
+    public boolean setBluetoothEnabled(boolean enable) {
         if (mBluetoothAdapter != null) {
             if (enable) {
-                mBluetoothAdapter.enable();
+                return mBluetoothAdapter.enable();
             } else {
-                mBluetoothAdapter.disable();
+                return mBluetoothAdapter.disable();
             }
         }
+        throw  new RuntimeException("Bluetooth adapter is null");
     }
 
     public BluetoothAdapter getBluetoothAdapter()
@@ -513,6 +515,8 @@ public class BluetoothManager {
      * Helper method to resolve feature support if not already resolved
      */
     private void resolveFeatureSupport() {
+        Log.d(TAG, "resolveFeatureSupport");
+
         if (mBleMultipleAdvertisementSupportedStatus == FeatureSupportedStatus.NOT_RESOLVED) {
             // Resolve the BLE multi advertisement support
             isBleMultipleAdvertisementSupported();
@@ -555,7 +559,7 @@ public class BluetoothManager {
                 if (state == BluetoothAdapter.STATE_ON) {
                     resolveFeatureSupport();
                 }
-
+                //TODO add some logic detect that user turned bluetooth off and it didn't just crash
                 for (BluetoothManagerListener listener : mListeners) {
                     listener.onBluetoothAdapterStateChanged(state);
                 }

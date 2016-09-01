@@ -8,16 +8,21 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.os.CountDownTimer;
 import android.os.ParcelUuid;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.UUID;
@@ -33,12 +38,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     public interface BlePeerDiscoveryListener {
         /**
          * Called when the state of this class has changed.
+         *
          * @param state The new state.
          */
         void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state);
 
         /**
          * Called when a peer was discovered.
+         *
          * @param peerProperties The properties of the discovered peer.
          */
         void onPeerDiscovered(PeerProperties peerProperties);
@@ -48,7 +55,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         /**
          * Called when we receive a request from a peer to provide it its Bluetooth MAC address.
-         *
+         * <p>
          * Part of Bro Mode.
          *
          * @param requestId The request ID associated with the device in need of assistance.
@@ -59,7 +66,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
          * Called when we see that a peer is willing to provide us our own Bluetooth MAC address
          * via Bluetooth device discovery. After receiving this event, we should make our device
          * discoverable via Bluetooth.
-         *
+         * <p>
          * Part of Bro Mode.
          *
          * @param requestId The request ID.
@@ -69,20 +76,20 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         /**
          * Called when we are done broadcasting our willingness to help the peer provide its
          * Bluetooth MAC address or done broadcasting the discovered Bluetooth MAC address.
-         *
+         * <p>
          * Part of Bro Mode.
-         *
+         * <p>
          * Note: The operation is never considered to be completed, since this method is called
          * when the advertising timeouts.
          *
-         * @param requestId The request ID associated with the device in need of assistance.
+         * @param requestId    The request ID associated with the device in need of assistance.
          * @param wasCompleted True, if the operation was completed.
          */
         void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted);
 
         /**
          * Called when we receive our own Bluetooth MAC address.
-         *
+         * <p>
          * Part of Bro Mode.
          *
          * @param bluetoothMacAddress Our Bluetooth MAC address.
@@ -103,16 +110,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     /**
      * The type of the advertisement data advertised by the Bluetooth LE advertiser.
-     *
+     * <p>
      * MANUFACTURER_DATA: Will advertise using manufacturer data and will parse only manufacturer
-     *                    data based advertisements.
-     *
+     * data based advertisements.
+     * <p>
      * SERVICE_DATA: Will advertise using service data and will scan (using a filter) and parse only
-     *               service data based advertisements.
-     *
+     * service data based advertisements.
+     * <p>
      * DO_NOT_CARE: Will advertise primarily using service data, but in case that fails, will
-     *              fallback to using manufacturer data. Will parse both manufacturer and service
-     *              data based advertisements.
+     * fallback to using manufacturer data. Will parse both manufacturer and service
+     * data based advertisements.
      */
     public enum AdvertisementDataType {
         MANUFACTURER_DATA,
@@ -150,7 +157,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     /**
      * See PeerAdvertisementFactory.generateNewProvideBluetoothMacAddressRequestUuid
-     *
+     * <p>
      * Part of Bro Mode.
      */
     public static UUID generateNewProvideBluetoothMacAddressRequestUuid(UUID serviceUuid) {
@@ -160,15 +167,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Constructor.
      *
-     * @param listener The listener.
-     * @param bluetoothAdapter The Bluetooth adapter.
-     * @param serviceUuid The BLE service UUID.
+     * @param listener                              The listener.
+     * @param bluetoothAdapter                      The Bluetooth adapter.
+     * @param serviceUuid                           The BLE service UUID.
      * @param provideBluetoothMacAddressRequestUuid UUID for "Provide Bluetooth MAC address" mode.
-     * @param myBluetoothMacAddress Our Bluetooth MAC address for advertisement.
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
-     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
-     * @param advertisementDataType The advertisement data type.
+     * @param myBluetoothMacAddress                 Our Bluetooth MAC address for advertisement.
+     * @param manufacturerId                        The manufacturer ID.
+     * @param beaconAdLengthAndType                 The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation              The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param advertisementDataType                 The advertisement data type.
      */
     public BlePeerDiscoverer(
             BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
@@ -186,16 +193,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Constructor.
      * The constructor used for testing purposes allowing to use mocked bleAdvertiser and bleScanner.
      *
-     * @param listener The listener.
-     * @param bluetoothAdapter The Bluetooth adapter.
-     * @param serviceUuid The BLE service UUID.
+     * @param listener                              The listener.
+     * @param bluetoothAdapter                      The Bluetooth adapter.
+     * @param serviceUuid                           The BLE service UUID.
      * @param provideBluetoothMacAddressRequestUuid UUID for "Provide Bluetooth MAC address" mode.
-     * @param myBluetoothMacAddress Our Bluetooth MAC address for advertisement.
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
-     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
-     * @param bleAdvertiser The instance of the general BLE advertiser.
-     * @param bleScanner The instance of the general BLE scanner.
+     * @param myBluetoothMacAddress                 Our Bluetooth MAC address for advertisement.
+     * @param manufacturerId                        The manufacturer ID.
+     * @param beaconAdLengthAndType                 The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation              The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param bleAdvertiser                         The instance of the general BLE advertiser.
+     * @param bleScanner                            The instance of the general BLE scanner.
      */
     public BlePeerDiscoverer(
             BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
@@ -274,13 +281,13 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Sets the settings for both the BLE advertiser and the scanner.
      *
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
-     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
-     * @param advertisementDataType The advertisement data type.
-     * @param advertiseMode The advertise mode for the BLE advertiser.
-     * @param advertiseTxPowerLevel The advertise TX power level for the BLE advertiser.
-     * @param scanMode The scan mode for the BLE scanner.
+     * @param manufacturerId                The manufacturer ID.
+     * @param beaconAdLengthAndType         The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation      The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param advertisementDataType         The advertisement data type.
+     * @param advertiseMode                 The advertise mode for the BLE advertiser.
+     * @param advertiseTxPowerLevel         The advertise TX power level for the BLE advertiser.
+     * @param scanMode                      The scan mode for the BLE scanner.
      * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
      * @return True, if all the settings were applied successfully. False, if at least one of
      * settings failed to be applied.
@@ -299,16 +306,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Sets the settings for both the BLE advertiser and the scanner.
      *
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type (comes after the manufacturer ID).
-     * @param beaconAdExtraInformation The optional extra information for beacon data (unsigned 8-bit integer).
-     * @param advertisementDataType The advertisement data type.
-     * @param advertiseMode The advertise mode for the BLE advertiser.
-     * @param advertiseTxPowerLevel The advertise TX power level for the BLE advertiser.
-     * @param scanMode The scan mode for the BLE scanner.
+     * @param manufacturerId                The manufacturer ID.
+     * @param beaconAdLengthAndType         The beacon ad length and type (comes after the manufacturer ID).
+     * @param beaconAdExtraInformation      The optional extra information for beacon data (unsigned 8-bit integer).
+     * @param advertisementDataType         The advertisement data type.
+     * @param advertiseMode                 The advertise mode for the BLE advertiser.
+     * @param advertiseTxPowerLevel         The advertise TX power level for the BLE advertiser.
+     * @param scanMode                      The scan mode for the BLE scanner.
      * @param scanReportDelayInMilliseconds The new scan report delay in milliseconds.
-     * @param advertiseSettingsBuilder The Builder for AdvertiseSettings.
-     * @param scanSettingsBuilder The Builder for ScanSettings.
+     * @param advertiseSettingsBuilder      The Builder for AdvertiseSettings.
+     * @param scanSettingsBuilder           The Builder for ScanSettings.
      * @return True, if all the settings were applied successfully. False, if at least one of
      * settings failed to be applied.
      */
@@ -467,6 +474,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     /**
      * Starts the BLE peer discovery.
+     *
      * @return True, if starting or already started. False, if failed to start.
      */
     public synchronized boolean startScannerAndAdvertiser() {
@@ -487,14 +495,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Starts advertising the given Bluetooth MAC address with the given UUID via BLE for a certain
      * period of time.
-     *
+     * <p>
      * Part of Bro Mode.
      *
-     * @param requestId The request ID.
-     * @param bluetoothMacAddress A Bluetooth MAC address of a discovered device.
-     *                            Use PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN to notify the
-     *                            peer of our willingness to help (so that it will make itself
-     *                            discoverable).
+     * @param requestId              The request ID.
+     * @param bluetoothMacAddress    A Bluetooth MAC address of a discovered device.
+     *                               Use PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN to notify the
+     *                               peer of our willingness to help (so that it will make itself
+     *                               discoverable).
      * @param durationInMilliseconds The duration of the advertising in milliseconds.
      * @return True, if started. False otherwise.
      */
@@ -556,7 +564,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     /**
      * Stops the peer Bluetooth MAC address helper advertiser.
-     *
+     * <p>
      * Part of Bro Mode.
      */
     public synchronized void stopPeerAddressHelperAdvertiser() {
@@ -582,7 +590,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     /**
      * Called when the Bluetooth LE advertiser fails to start.
-     *
+     * <p>
      * If the error code was ADVERTISE_FAILED_DATA_TOO_LARGE and the advertisement data type is
      * DO_NOT_CARE and this is the first time we got the error (using service data), we will try
      * fallback to using manufacturer data instead.
@@ -603,6 +611,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             } else {
                 Log.e(TAG, "onAdvertiserFailedToStart: Manufacturer data fallback did not work either");
             }
+        } else {
+            //TODO temp solution. Just restart
+            Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
+            startAdvertiser();
         }
     }
 
@@ -615,7 +627,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     @Override
     public void onScannerFailed(int errorCode) {
         Log.e(TAG, "onScannerFailed: " + errorCode);
+        Log.e(TAG, "onScannerFailed: scanner is started =  " + mBleScanner.isStarted());
         // No need to update state here, since onIsScannerStartedChanged will be called
+
+        //TODO restart if already started
+        //TODO need to investigate onIsScannerStartedChanged
+
+//        if (errorCode == ScanCallback.SCAN_FAILED_ALREADY_STARTED){
+//            startScanner();
+//        }
     }
 
     @Override
@@ -646,13 +666,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 if (serviceData != null && serviceData.size() > 0) {
                     for (ParcelUuid uuid : serviceData.keySet()) {
                         byte[] serviceDataContent = serviceData.get(uuid);
-                        //Log.v(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
+//                        Log.d(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
+//                        Log.d(TAG, "checkScanResult: serviceDataContent : " + Arrays.toString(serviceDataContent));
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
 
+
                         if (parsedAdvertisement != null) {
+//                            Log.d(TAG, "checkScanResult: parsedAdvertisement : " + parsedAdvertisement.toString());
                             UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
                                     scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
-
+//                            Log.d(TAG, "checkScanResult: scannedServiceUuid : " + scannedServiceUuid.toString());
                             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                                     || BlePeerDiscoveryUtils.uuidStartsWithExpectedServiceUuid(scannedServiceUuid, mServiceUuid)) {
                                 parsedAdvertisement.uuid = scannedServiceUuid;
@@ -662,8 +685,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                                 break;
                             } else {
                                 // UUID mismatch
+//                                Log.d(TAG, "checkScanResult: parsedAdvertisement uuid mismatch");
                                 parsedAdvertisement = null;
                             }
+                        } else {
+//                            Log.d(TAG, "checkScanResult: parsedAdvertisement : null");
                         }
                     }
                 }
@@ -692,6 +718,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
                     if (peerProperties != null) {
+//                        Log.e(TAG, "onPeerDiscovered: " + peerProperties.toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
@@ -757,7 +784,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     /**
      * Creates the advertise data based on the current advertise data type and the given properties.
      *
-     * @param uuid The UUID.
+     * @param uuid                The UUID.
      * @param bluetoothMacAddress The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance.
      */
@@ -766,7 +793,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                 || (mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE
-                    && !mAdvertiserFailedToStartUsingServiceData)) {
+                && !mAdvertiserFailedToStartUsingServiceData)) {
             advertiseData = PeerAdvertisementFactory.createAdvertiseDataToServiceData(
                     uuid, mBeaconAdExtraInformation, bluetoothMacAddress);
         } else {
@@ -774,7 +801,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             advertiseData = PeerAdvertisementFactory.createAdvertiseDataToManufacturerData(
                     mManufacturerId, mBeaconAdLengthAndType, uuid, mBeaconAdExtraInformation, bluetoothMacAddress);
         }
-
+//        Log.i(TAG, "createAdvertiseData: created " + advertiseData.toString());
         return advertiseData;
     }
 

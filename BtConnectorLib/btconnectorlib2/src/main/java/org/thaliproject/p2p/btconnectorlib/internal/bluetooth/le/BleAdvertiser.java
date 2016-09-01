@@ -96,7 +96,7 @@ class BleAdvertiser extends AdvertiseCallback {
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
         if (advertiseData != null) {
-            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
+//            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
             boolean wasStarted = isStarted();
 
             if (wasStarted) {
@@ -149,6 +149,7 @@ class BleAdvertiser extends AdvertiseCallback {
                 if (mAdvertiseData != null) {
                     try {
                         Log.v(TAG, "start: Starting...");
+                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         setState(State.STARTING, true);
                     } catch (Exception e) {
