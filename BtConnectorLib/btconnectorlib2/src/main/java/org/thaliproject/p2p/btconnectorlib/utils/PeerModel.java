@@ -186,6 +186,24 @@ public class PeerModel {
     }
 
     /**
+     * return peer properties if they are not expired or null
+     *
+     * @param peerPropertiesToAddOrUpdate The peer properties .
+     * @return The found not expired peer properties or null otherwise.
+     */
+    public PeerProperties getNotExpiredPeerProperties(PeerProperties peerPropertiesToAddOrUpdate) {
+        PeerProperties oldPeerProperties = null;
+        Timestamp lastUpdatePeerPropertiesTime = mDiscoveredPeers.get(peerPropertiesToAddOrUpdate);
+        long expireTime = System.currentTimeMillis() - DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS;
+        if (lastUpdatePeerPropertiesTime != null && expireTime > lastUpdatePeerPropertiesTime.getTime()) {
+            removePeer(peerPropertiesToAddOrUpdate);
+        } else {
+            oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
+        }
+        return oldPeerProperties;
+    }
+
+    /**
      * Adds or updates the given peer properties to the collection.
      *
      * @param peerPropertiesToAddOrUpdate The peer properties to add/update.
@@ -194,13 +212,7 @@ public class PeerModel {
         synchronized (this) {
             if (peerPropertiesToAddOrUpdate != null) {
                 //Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerProperties.toString());
-                PeerProperties oldPeerProperties = null;
-                Timestamp lastUpdatePeerPropertiesTime = mDiscoveredPeers.get(peerPropertiesToAddOrUpdate);
-                if (lastUpdatePeerPropertiesTime != null && System.currentTimeMillis() - lastUpdatePeerPropertiesTime.getTime() > mSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS) {
-                    removePeer(peerPropertiesToAddOrUpdate);
-                } else {
-                    oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
-                }
+                PeerProperties oldPeerProperties = getNotExpiredPeerProperties(peerPropertiesToAddOrUpdate);
                 if (oldPeerProperties != null) {
                     // This one was already in the list
 

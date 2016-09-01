@@ -346,14 +346,16 @@ public class PeerModelTest {
     public void testAddOrUpdateDiscoveredPeer_UpdateTimeslot() throws Exception {
         HashMap<PeerProperties, Timestamp> mDiscoveredPeers = new HashMap<>();
         long initialTime = System.currentTimeMillis();
-        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(initialTime - DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS-1));
+        long expiredTime = initialTime - DiscoveryManagerSettings.DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS - 1;
+        mDiscoveredPeers.put(mMockPeerProperties, new Timestamp(expiredTime));
 
         Field mDiscoveredPeersField = mPeerModel.getClass().getDeclaredField("mDiscoveredPeers");
         mDiscoveredPeersField.setAccessible(true);
         mDiscoveredPeersField.set(mPeerModel, mDiscoveredPeers);
 
         doNothing().when(mMockListener).onPeerUpdated(isA(PeerProperties.class));
-        when(mMockDiscoveryManagerSettings.getPeerExpiration()).thenReturn(DiscoveryManagerSettings.DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
+        when(mMockDiscoveryManagerSettings.getPeerExpiration())
+                .thenReturn(DiscoveryManagerSettings.DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS);
         when(mMockPeerProperties.hasMoreInformation(isA(PeerProperties.class))).thenReturn(false);
 
         mPeerModel.addOrUpdateDiscoveredPeer(mMockPeerProperties);
