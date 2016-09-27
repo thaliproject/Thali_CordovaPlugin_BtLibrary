@@ -468,17 +468,25 @@ public class DiscoveryManager
         mShouldBeScanning = startDiscovery;
         mShouldBeAdvertising = startAdvertising;
 
-//
 //        if (!mShouldBeScanning && !mShouldBeAdvertising) {
 //            if (mState != DiscoveryManagerState.NOT_STARTED) {
 //                stop();
 //            }
-//            return started;
-//        } else if (!mShouldBeScanning && isDiscovering()) {
-//            stopDiscovery();
-//        } else if (!mShouldBeAdvertising && isAdvertising()) {
-//            stopAdvertising();
+//            return false;
 //        }
+
+        //TODO change in startstop operation handler
+        if (!mShouldBeScanning && !mShouldBeAdvertising) {
+            if (mState != DiscoveryManagerState.NOT_STARTED) {
+                stop();
+            }
+            return false;
+        } else if (!mShouldBeScanning && isDiscovering()) {
+            stopDiscovery();
+        } else if (!mShouldBeAdvertising && isAdvertising()) {
+            stopAdvertising();
+        }
+
 
         mBluetoothManager.bind(this);
         mWifiDirectManager.bind(this);
@@ -1198,6 +1206,9 @@ public class DiscoveryManager
                         started = mBlePeerDiscoverer.startScanner();
                     } else if (mShouldBeAdvertising && isBleMultipleAdvertisementSupported()) {
                         started = mBlePeerDiscoverer.startAdvertiser();
+                    }
+                    else {
+                        Log.e(TAG, "startBlePeerDiscoverer: useless ble start discovering");
                     }
                 } else {
                     Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");

@@ -144,6 +144,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @return True, if starting. False in case of a failure.
      */
     public synchronized boolean start() {
+        Log.d(TAG, "start, state = " + mState);
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
@@ -151,6 +152,7 @@ class BleAdvertiser extends AdvertiseCallback {
                         Log.v(TAG, "start: Starting...");
                         Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
+                        Log.i(TAG, "start: Started advertisment");
                         setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
@@ -164,7 +166,7 @@ class BleAdvertiser extends AdvertiseCallback {
         } else {
             Log.d(TAG, "start: Already running");
         }
-
+        Log.i(TAG, "start: return, state = " + mState);
         return (mState != State.NOT_STARTED);
     }
 
@@ -237,6 +239,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
+        Log.d(TAG, "setState: current  = " + mState + ", new = " + state);
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;

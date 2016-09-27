@@ -475,17 +475,23 @@ public class BluetoothConnector
             final BluetoothSocket bluetoothSocket, final PeerProperties peerProperties) {
 
         Log.i(TAG, "onIncomingConnectionConnected: " + peerProperties.toString());
-
-        mHandler.post(new Runnable() {
+        if (mHandler.getLooper() != null) {
+            Log.d(TAG, "onIncomingConnectionConnected: HANDLER LOOPER THREAD" + mHandler.getLooper().getThread().toString());
+        }
+        boolean posted = mHandler.post(new Runnable() {
             @Override
             public void run() {
+                Log.d(TAG, "onIncomingConnectionConnected: bluetoothSocket.isConnected() " + bluetoothSocket.isConnected());
+                Log.d(TAG, "onIncomingConnectionConnected: HANDLER LOOPER THREAD" + mHandler.getLooper().getThread().toString());
                 if (bluetoothSocket.isConnected()) {
+//                    Log.d(TAG, "onIncomingConnectionConnected: bluetoothSocket.isConnected() " + bluetoothSocket.isConnected());
                     mListener.onConnected(bluetoothSocket, true, peerProperties);
                 } else {
                     onIncomingConnectionFailed("Disconnected");
                 }
             }
         });
+        Log.i(TAG, "onIncomingConnectionConnected: posted = " + posted);
     }
 
     /**

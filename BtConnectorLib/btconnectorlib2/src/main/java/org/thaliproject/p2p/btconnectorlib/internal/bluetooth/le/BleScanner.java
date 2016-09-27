@@ -60,7 +60,7 @@ class BleScanner extends ScanCallback {
     private List<ScanFilter> mScanFilters = new ArrayList<>();
     private ScanSettings mScanSettings = null;
     private State mState = State.NOT_STARTED;
-    private BluetoothAdapter mBluetoothAdapter;
+//    private BluetoothAdapter mBluetoothAdapter;
 
     /**
      * Constructor.
@@ -84,7 +84,7 @@ class BleScanner extends ScanCallback {
     public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter,
                       ScanSettings.Builder builder, DiscoveryManagerSettings settings) {
         mListener = listener;
-        mBluetoothAdapter = bluetoothAdapter;
+//        mBluetoothAdapter = bluetoothAdapter;
         mBluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
 
         try {
@@ -240,19 +240,24 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onBatchScanResults(List<ScanResult> scanResults) {
+        super.onBatchScanResults(scanResults);
         Log.d(TAG, "onBatchScanResults");
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
-                    Log.d(TAG, "onBatchScanResults: Scan result: " + scanResult.toString());
+//                    Log.d(TAG, "onBatchScanResults: Scan result: " + scanResult.toString());
                     mListener.onScanResult(scanResult);
                 }
             }
+        }
+        else {
+            Log.e(TAG, "LOOOOK AT MEE!!!! No LISTENER");
         }
     }
 
     @Override
     public void onScanFailed(int errorCode) {
+        super.onScanFailed(errorCode);
         String reason = "";
 
         switch (errorCode) {
@@ -289,10 +294,13 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onScanResult(int callbackType, ScanResult scanResult) {
+        super.onScanResult(callbackType, scanResult);
         Log.d(TAG, "onScanResult");
         if (scanResult != null) {
-            Log.d(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
-
+//            Log.d(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
+            if (mListener == null){
+                Log.e(TAG, "LOOOOK AT MEE!!!! No LISTENER");
+            }
             if (mListener != null) {
                 mListener.onScanResult(scanResult);
             }

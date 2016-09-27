@@ -62,7 +62,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private int mMaxNumberOfRetries = DEFAULT_MAX_NUMBER_OF_RETRIES;
     private long mTimeStarted = 0;
-    private boolean mIsShuttingDown = false;
+    private volatile boolean  mIsShuttingDown = false;
 
     /**
      * Constructor.
@@ -111,7 +111,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         mTimeStarted = new Date().getTime();
         boolean socketConnectSucceeded = tryToConnect();
+        Log.i(TAG, "socketConnectSucceeded " + socketConnectSucceeded);
         final BluetoothSocket bluetoothSocket = mBluetoothSocket;
+
 
         if (mHandshakeRequired && socketConnectSucceeded && bluetoothSocket != null && !mIsShuttingDown) {
             String errorMessage = "";
@@ -122,6 +124,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
                 mHandshakeThread.setExitThreadAfterRead(true);
                 //Please, do it
                 mHandshakeThread.setPeerProperties(mPeerProperties);
+                Log.d(TAG, "Strating handshake");
                 mHandshakeThread.start();
                 boolean handshakeSucceeded = mHandshakeThread.write(getHandshakeMessage()); // This does not throw exceptions
 
@@ -336,32 +339,39 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     private synchronized Exception createSocketAndConnect(final int port) {
         // Make sure the current socket, if one exists, is closed
+        //TODO what for?
         if (mBluetoothSocket != null) {
             try {
                 mBluetoothSocket.close();
             } catch (IOException | NullPointerException e) {
+                Log.e(TAG, " createSocketAndConnect : " + e.getMessage());
             }
-        }
 
+        }
+        Log.d(TAG, " createSocketAndConnect: socket closed");
         boolean socketCreatedSuccessfully = false;
         Exception exception = null;
 
         try {
             if (port == SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT) {
                 // Use the standard method of creating a socket
+                Log.d(TAG, " createSocketAndConnect: SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT");
                 mBluetoothSocket = mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
             } else if (port == 0) {
                 // Use a rotating port number
+                Log.d(TAG, " createSocketAndConnect: port == 0");
                 mBluetoothSocket = BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
             } else {
                 // Use the given port number
+                Log.d(TAG, " createSocketAndConnect: given port");
                 mBluetoothSocket = BluetoothUtils.createBluetoothSocketToServiceRecord(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, port, false);
             }
 
             socketCreatedSuccessfully = true;
         } catch (IOException e) {
+            Log.e(TAG, " createSocketAndConnect: " + e.getMessage());
             exception = e;
         }
 
@@ -369,13 +379,17 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         if (socketCreatedSuccessfully && createdBluetoothSocket != null) {
             try {
+                Log.e(TAG, " createSocketAndConnect: connecting" );
                 createdBluetoothSocket.connect(); // Blocking call
+                Log.i(TAG, " createSocketAndConnect: connected" );
             } catch (IOException e) {
                 exception = e;
+                Log.e(TAG, " createSocketAndConnect: connect, " + e.getMessage());
 
                 try {
                     createdBluetoothSocket.close();
                 } catch (IOException e2) {
+                    Log.e(TAG, " createSocketAndConnect: close, " + e.getMessage());
                 }
             }
         }
@@ -393,6 +407,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         String errorMessage = "";
         int socketConnectAttemptNo = 1;
 
+        Log.d(TAG, "tryToConnect:  socketConnectSucceeded = " + socketConnectSucceeded + ", mIsShuttingDown = " + mIsShuttingDown);
         while (!socketConnectSucceeded && !mIsShuttingDown) {
             Exception socketException = createSocketAndConnect(mInsecureRfcommSocketPort);
 

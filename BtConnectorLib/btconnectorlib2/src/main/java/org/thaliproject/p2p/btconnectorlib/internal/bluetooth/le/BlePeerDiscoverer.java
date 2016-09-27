@@ -479,7 +479,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     public synchronized boolean startScannerAndAdvertiser() {
         Log.i(TAG, "startScannerAndAdvertiser");
-        return (startScanner() && startAdvertiser());
+//        return (startScanner() && startAdvertiser());
+        boolean adv = startAdvertiser();
+        boolean disc = startScanner();
+        Log.i(TAG, "startScannerAndAdvertiser, adv = " + adv + ", disc = " + disc);
+        return (adv && disc);
     }
 
     /**
@@ -656,8 +660,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     private synchronized void checkScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
-
+        Log.d(TAG, "checkScanResult: ");
         if (scanResult != null && scanResult.getScanRecord() != null) {
+            Log.d(TAG, "checkScanResult: " + scanResult.toString());
             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                     || mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE) {
                 // Try to parse the service data
@@ -719,6 +724,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
                     if (peerProperties != null) {
 //                        Log.e(TAG, "onPeerDiscovered: " + peerProperties.toString());
+                        Log.e(TAG, "onPeerDiscovered: scan record " + scanResult.getScanRecord().toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
@@ -752,6 +758,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Resolves and updates the state and notifies the listener.
      */
     private synchronized void updateState() {
+        Log.d(TAG, "updateState");
         EnumSet<BlePeerDiscovererStateSet> deducedStateSet =
                 EnumSet.noneOf(BlePeerDiscovererStateSet.class);
 
@@ -774,6 +781,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             deducedStateSet.add(BlePeerDiscovererStateSet.NOT_STARTED);
         }
 
+        Log.d(TAG, "updateState: deducedStateSet: " + deducedStateSet);
+        Log.d(TAG, "updateState: stateSet: " + mStateSet);
         if (!mStateSet.equals(deducedStateSet)) {
             Log.d(TAG, "updateState: State changed from " + mStateSet + " to " + deducedStateSet);
             mStateSet = deducedStateSet;
