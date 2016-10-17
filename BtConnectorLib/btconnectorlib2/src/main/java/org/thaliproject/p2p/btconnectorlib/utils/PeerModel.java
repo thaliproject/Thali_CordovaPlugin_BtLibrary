@@ -5,8 +5,10 @@ package org.thaliproject.p2p.btconnectorlib.utils;
 
 import android.os.CountDownTimer;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.HashMap;
@@ -15,19 +17,21 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A model for discovered peers.
- *
+ * <p>
  * Peer expiration is based on a time elapsed since we last saw the peer.
  */
 public class PeerModel {
     public interface Listener {
         /**
          * Called when a new peer is added to the model.
+         *
          * @param peerProperties The properties of the added peer.
          */
         void onPeerAdded(PeerProperties peerProperties);
 
         /**
          * Called when an existing peer is updated.
+         *
          * @param peerProperties The properties of the updated peer.
          */
         void onPeerUpdated(PeerProperties peerProperties);
@@ -35,6 +39,7 @@ public class PeerModel {
         /**
          * Called when an existing peer expired and was removed from the model.
          * Peer expiration is based on a time elapsed since we last saw the peer.
+         *
          * @param peerProperties The properties of the expired and removed peer.
          */
         void onPeerExpiredAndRemoved(PeerProperties peerProperties);
@@ -48,6 +53,7 @@ public class PeerModel {
 
     /**
      * Constructor.
+     *
      * @param settings The Discovery manager settings.
      */
     public PeerModel(Listener listener, DiscoveryManagerSettings settings) {
@@ -57,6 +63,7 @@ public class PeerModel {
 
     /**
      * Adds the given listener.
+     *
      * @param listener The listener to add.
      */
     public void addListener(Listener listener) {
@@ -68,6 +75,7 @@ public class PeerModel {
 
     /**
      * Removes the given listener.
+     *
      * @param listener The listener to remove.
      */
     public void removeListener(Listener listener) {
@@ -92,9 +100,9 @@ public class PeerModel {
 
     /**
      * Recreates the check expired peers timer.
-     *
+     * <p>
      * Peer expiration is based on a time elapsed since we last saw the peer.
-     *
+     * <p>
      * This method takes no argument, since it is expected that the time has been updated to the
      * settings, where the timer will retrieve it when reconstructed.
      */
@@ -107,6 +115,7 @@ public class PeerModel {
 
     /**
      * Tries to find a discovered peer with the given Bluetooth MAC address.
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address of a peer to find.
      * @return A peer properties instance if found, null if not.
      */
@@ -127,6 +136,7 @@ public class PeerModel {
 
     /**
      * Tries to find a discovered peer with the given device address.
+     *
      * @param deviceAddress The device address of a peer to find.
      * @return A peer properties instance if found, null if not.
      */
@@ -147,6 +157,7 @@ public class PeerModel {
 
     /**
      * Removes the given peer properties from the collection.
+     *
      * @param peerPropertiesToRemove The peer properties to remove.
      * @return The found and removed peer properties or null, if not found.
      */
@@ -176,6 +187,7 @@ public class PeerModel {
 
     /**
      * Adds or updates the given peer properties to the collection.
+     *
      * @param peerPropertiesToAddOrUpdate The peer properties to add/update.
      */
     public void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
@@ -195,15 +207,15 @@ public class PeerModel {
                     // Make sure we don't lose any data when updating
                     PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
                     boolean hasMoreInfo = peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties);
-//                    Log.d(TAG, "has more info: " + hasMoreInfo + ",  extra info differs: " + extraInformationDiffers);
-//                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)
-//                            || extraInformationDiffers) {
-                        // The new discovery result has new/more information than the old one
-//                        Log.d(TAG, "Want to call onPeerUpdated. Listteners size = " + mListeners.size());
+                    Log.d(TAG, "has more info: " + hasMoreInfo + ",  extra info differs: " + extraInformationDiffers);
+                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)
+                            || extraInformationDiffers) {
+                        //                        The new discovery result has new/more information than the old one
+                        Log.d(TAG, "Want to call onPeerUpdated. Listteners size = " + mListeners.size());
                         for (Listener listener : mListeners) {
                             listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
                         }
-//                    }
+                    }
                 } else {
 
                     Log.d(TAG, "Want to call onPeerAdded. Listeners size = " + mListeners.size());
@@ -239,7 +251,7 @@ public class PeerModel {
 
         // Find and copy expired peers to a separate list
         while (iterator.hasNext()) {
-            HashMap.Entry entry = (HashMap.Entry)iterator.next();
+            HashMap.Entry entry = (HashMap.Entry) iterator.next();
             PeerProperties entryPeerProperties = (PeerProperties) entry.getKey();
             Timestamp entryTimestamp = (Timestamp) entry.getValue();
 
