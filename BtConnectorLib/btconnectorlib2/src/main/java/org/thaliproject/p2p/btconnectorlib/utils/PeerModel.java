@@ -195,15 +195,15 @@ public class PeerModel {
                     // Make sure we don't lose any data when updating
                     PeerProperties.copyMissingValuesFromOldPeer(oldPeerProperties, peerPropertiesToAddOrUpdate);
                     boolean hasMoreInfo = peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties);
-//                    Log.d(TAG, "has more info: " + hasMoreInfo + ",  extra info differs: " + extraInformationDiffers);
-//                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)
-//                            || extraInformationDiffers) {
+                    Log.d(TAG, "has more info: " + hasMoreInfo + ",  extra info differs: " + extraInformationDiffers);
+                    if (peerPropertiesToAddOrUpdate.hasMoreInformation(oldPeerProperties)
+                            || extraInformationDiffers) {
                         // The new discovery result has new/more information than the old one
-//                        Log.d(TAG, "Want to call onPeerUpdated. Listteners size = " + mListeners.size());
+                        Log.d(TAG, "Want to call onPeerUpdated. Listeners size = " + mListeners.size());
                         for (Listener listener : mListeners) {
                             listener.onPeerUpdated(peerPropertiesToAddOrUpdate);
                         }
-//                    }
+                    }
                 } else {
 
                     Log.d(TAG, "Want to call onPeerAdded. Listeners size = " + mListeners.size());
