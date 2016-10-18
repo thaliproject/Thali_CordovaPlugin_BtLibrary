@@ -120,11 +120,13 @@ class BleScanner extends ScanCallback {
      * @return True, if starting. False in case of an error.
      */
     public synchronized boolean start() {
-        Log.d(TAG, "start");
+//        Log.d(TAG, "start");
+        Log.d(TAG, "start: Current thread = " + Thread.currentThread() + " id = " + Thread.currentThread().getId());
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeScanner != null) {
                 try {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
+                    Log.d(TAG, "start: scan started");
                     setState(State.RUNNING, true);
                 } catch (Exception e) {
                     //TODO restart bluetooth if it failed
@@ -242,6 +244,7 @@ class BleScanner extends ScanCallback {
     public void onBatchScanResults(List<ScanResult> scanResults) {
         super.onBatchScanResults(scanResults);
         Log.d(TAG, "onBatchScanResults");
+        Log.d(TAG, "Current thread = " + Thread.currentThread());
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
@@ -249,8 +252,7 @@ class BleScanner extends ScanCallback {
                     mListener.onScanResult(scanResult);
                 }
             }
-        }
-        else {
+        } else {
             Log.e(TAG, "LOOOOK AT MEE!!!! No LISTENER");
         }
     }
@@ -259,7 +261,7 @@ class BleScanner extends ScanCallback {
     public void onScanFailed(int errorCode) {
         super.onScanFailed(errorCode);
         String reason = "";
-
+        Log.d(TAG, "Current thread = " + Thread.currentThread());
         switch (errorCode) {
             case SCAN_FAILED_ALREADY_STARTED:
                 reason = "BLE scan with the same settings is already started by the app";
@@ -296,9 +298,10 @@ class BleScanner extends ScanCallback {
     public void onScanResult(int callbackType, ScanResult scanResult) {
         super.onScanResult(callbackType, scanResult);
         Log.d(TAG, "onScanResult");
+        Log.d(TAG, "Current thread = " + Thread.currentThread());
         if (scanResult != null) {
 //            Log.d(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
-            if (mListener == null){
+            if (mListener == null) {
                 Log.e(TAG, "LOOOOK AT MEE!!!! No LISTENER");
             }
             if (mListener != null) {
@@ -316,6 +319,7 @@ class BleScanner extends ScanCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
+        Log.d(TAG, "set state: Current thread = " + Thread.currentThread() + " id = " + Thread.currentThread().getId());
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;

@@ -499,16 +499,6 @@ public class DiscoveryManager
 
         if (discoveryMode == DiscoveryMode.BLE || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             bluetoothEnabled = mBluetoothManager.isBluetoothEnabled();
-//            if (!bluetoothEnabled) {
-//                bluetoothEnabled = mBluetoothManager.setBluetoothEnabled(true);
-//                if (!bluetoothEnabled) {
-//                    Log.e(TAG, "start: Cannot start BLE based peer discovery, because cannot enable Bluetooth");
-//                    throw new IllegalStateException("Bluetooth is disabled and we cannot enable it. Probably some system crash in Bluetooth service on the device");
-//                } else {
-//                    Log.d(TAG, "Re-enabled bluetooth");
-//                }
-//
-//            }
             if (bluetoothEnabled) {
                 // Try to start BLE based discovery
                 mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
@@ -1179,6 +1169,7 @@ public class DiscoveryManager
      * @return True, if started (or already running). False otherwise.
      */
     private synchronized boolean startBlePeerDiscoverer() {
+        Log.d(TAG, "startBlePeerDiscoverer");
         boolean started = false;
         boolean permissionsGranted = false;
 
