@@ -1289,6 +1289,8 @@ public class DiscoveryManager
      * @param isAdvertising The new status of advertising
      */
     private synchronized void updateStateInternal(final DiscoveryManagerState state, final boolean isDiscovering, final boolean isAdvertising) {
+        Log.d(TAG, "updateStateInternal " +
+                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
         if (mState != state || mIsDiscovering != isDiscovering || mIsAdvertising != isAdvertising) {
             mState = state;
             mIsDiscovering = isDiscovering;
@@ -1307,12 +1309,16 @@ public class DiscoveryManager
                 });
             }
         }
+        Log.d(TAG, "updateStateInternal finished " +
+                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
     }
 
     /**
      * Updates the state of this instance and notifies the listener.
      */
     private synchronized void updateState() {
+        Log.d(TAG, "updateState: " +
+                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         boolean isBleAdvertising = isBleAdvertising();
         boolean isBleDiscovering = isBleDiscovering();
@@ -1349,5 +1355,7 @@ public class DiscoveryManager
                 updateStateInternal(DiscoveryManagerState.NOT_STARTED, isDiscovering, isAdvertising);
             }
         }
+        Log.d(TAG, "updateState finished " +
+                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
     }
 }

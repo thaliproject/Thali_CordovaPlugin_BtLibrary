@@ -10,6 +10,7 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 
 /**
@@ -37,7 +38,9 @@ class BleAdvertiser extends AdvertiseCallback {
         NOT_STARTED,
         STARTING,
         RUNNING
-    };
+    }
+
+    ;
 
     private static final String TAG = BleAdvertiser.class.getName();
     private Listener mListener = null;
@@ -49,7 +52,7 @@ class BleAdvertiser extends AdvertiseCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
     public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter) {
@@ -60,10 +63,10 @@ class BleAdvertiser extends AdvertiseCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
-     * @param builder The builder for AdvertiseSettings.
-     * @param settings The discovery manager settings.
+     * @param builder          The builder for AdvertiseSettings.
+     * @param settings         The discovery manager settings.
      */
     public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter,
                          AdvertiseSettings.Builder builder, DiscoveryManagerSettings settings) {
@@ -144,16 +147,15 @@ class BleAdvertiser extends AdvertiseCallback {
      * @return True, if starting. False in case of a failure.
      */
     public synchronized boolean start() {
-        Log.d(TAG, "start: state = " + mState);
-        Log.d(TAG, "start: Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+        Log.d(TAG, "start:  state = " + mState + currentThreadToString());
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        Log.v(TAG, "start: Starting...");
-                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString());
+//                        Log.v(TAG, "start: Starting...");
+                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString() + currentThreadToString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
-                        Log.i(TAG, "start: Started advertisment");
+                        Log.i(TAG, "start: Started advertisment " + currentThreadToString());
                         setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
@@ -167,8 +169,12 @@ class BleAdvertiser extends AdvertiseCallback {
         } else {
             Log.d(TAG, "start: Already running");
         }
-        Log.i(TAG, "start: return, state = " + mState);
-        return (mState != State.NOT_STARTED);
+        try {
+            Log.i(TAG, "start: return, state = " + mState + currentThreadToString());
+            return (mState != State.NOT_STARTED);
+        } finally {
+            Log.d(TAG, "start returned: " + currentThreadToString());
+        }
     }
 
     /**
@@ -197,7 +203,7 @@ class BleAdvertiser extends AdvertiseCallback {
     @Override
     public void onStartFailure(int errorCode) {
         String reason = "";
-        Log.d(TAG, "onStartFailure: Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+        Log.d(TAG, "onStartFailure: " + currentThreadToString());
 
         switch (errorCode) {
             case ADVERTISE_FAILED_ALREADY_STARTED:
@@ -230,20 +236,18 @@ class BleAdvertiser extends AdvertiseCallback {
 
     @Override
     public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-        Log.i(TAG, "onStartSuccess");
-        Log.d(TAG, "onStartSuccess : Current thread = " + " id = " +  Thread.currentThread().getId());
+        Log.d(TAG, "onStartSuccess : " +currentThreadToString());
         setState(State.RUNNING, true);
     }
 
     /**
      * Sets the state and notifies listener if required.
      *
-     * @param state The new state.
+     * @param state              The new state.
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
-        Log.d(TAG, "setState: current  = " + mState + ", new = " + state);
-        Log.d(TAG, "setState: Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+        Log.d(TAG, "setState: current  = " + mState + ", new = " + state + currentThreadToString());
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
@@ -252,21 +256,25 @@ class BleAdvertiser extends AdvertiseCallback {
                 switch (mState) {
                     case NOT_STARTED:
                         Log.d(TAG, "setState: onIsAdvertiserStartedChanged false. " +
-                                "Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+                                currentThreadToString());
                         mListener.onIsAdvertiserStartedChanged(false);
                         break;
                     case RUNNING:
-                        Log.d(TAG, "setState: onIsAdvertiserStartedChanged true. " +
-                                "Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+                        Log.d(TAG, "setState: onIsAdvertiserStartedChanged true. " + currentThreadToString());
                         mListener.onIsAdvertiserStartedChanged(true);
                         break;
                     default:
                         // Nothing to do here
                         Log.d(TAG, "setState: onIsAdvertiserStartedChanged default (no call to listener). " +
-                                "Current thread = " + Thread.currentThread() + " id = " +  Thread.currentThread().getId());
+                                currentThreadToString());
                         break;
                 }
             }
         }
+        Log.d(TAG, "setState: finished" + currentThreadToString());
+    }
+
+    public static String currentThreadToString() {
+        return ". Current thread = " + Thread.currentThread() + ", id = " + Thread.currentThread().getId();
     }
 }

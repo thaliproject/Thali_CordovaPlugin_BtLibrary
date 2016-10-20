@@ -121,7 +121,7 @@ class BleScanner extends ScanCallback {
      */
     public synchronized boolean start() {
 //        Log.d(TAG, "start");
-        Log.d(TAG, "start: Current thread = " + Thread.currentThread() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "start: " + BleAdvertiser.currentThreadToString());
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeScanner != null) {
                 try {
@@ -244,7 +244,7 @@ class BleScanner extends ScanCallback {
     public void onBatchScanResults(List<ScanResult> scanResults) {
         super.onBatchScanResults(scanResults);
         Log.d(TAG, "onBatchScanResults");
-        Log.d(TAG, "Current thread = " + Thread.currentThread());
+        Log.d(TAG, BleAdvertiser.currentThreadToString());
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
@@ -261,7 +261,7 @@ class BleScanner extends ScanCallback {
     public void onScanFailed(int errorCode) {
         super.onScanFailed(errorCode);
         String reason = "";
-        Log.d(TAG, "Current thread = " + Thread.currentThread());
+        Log.d(TAG, BleAdvertiser.currentThreadToString());
         switch (errorCode) {
             case SCAN_FAILED_ALREADY_STARTED:
                 reason = "BLE scan with the same settings is already started by the app";
@@ -298,7 +298,7 @@ class BleScanner extends ScanCallback {
     public void onScanResult(int callbackType, ScanResult scanResult) {
         super.onScanResult(callbackType, scanResult);
         Log.d(TAG, "onScanResult");
-        Log.d(TAG, "Current thread = " + Thread.currentThread());
+        Log.d(TAG, BleAdvertiser.currentThreadToString());
         if (scanResult != null) {
 //            Log.d(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
             if (mListener == null) {
@@ -319,7 +319,7 @@ class BleScanner extends ScanCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
-        Log.d(TAG, "set state: Current thread = " + Thread.currentThread() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "set state: " + BleAdvertiser.currentThreadToString());
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
