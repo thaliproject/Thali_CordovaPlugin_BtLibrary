@@ -459,9 +459,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             advertiseData = createAdvertiseData(mServiceUuid, mMyBluetoothMacAddress);
             mOurRequestId = null;
         }
-
-        mBleAdvertiser.setAdvertiseData(advertiseData);
-        boolean start = mBleAdvertiser.start();
+        boolean start;
+        synchronized (mBleAdvertiser) {
+            mBleAdvertiser.setAdvertiseData(advertiseData);
+            start = mBleAdvertiser.start();
+        }
         Log.d(TAG, "startAdvertiser started = " + start + BleAdvertiser.currentThreadToString());
         return start;
     }
@@ -484,7 +486,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if starting or already started. False, if failed to start.
      */
     public synchronized boolean startScannerAndAdvertiser() {
-        Log.i(TAG, "startScannerAndAdvertiser");
+//        Log.i(TAG, "startScannerAndAdvertiser");
 //        return (startScanner() && startAdvertiser());
         Log.d(TAG, "startScannerAndAdvertiser : " + BleAdvertiser.currentThreadToString());
         boolean adv = startAdvertiser();
@@ -498,7 +500,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Stops the BLE peer discovery.
      */
     public synchronized void stopScannerAndAdvertiser() {
-        Log.i(TAG, "stopScannerAndAdvertiser");
+//        Log.i(TAG, "stopScannerAndAdvertiser");
         Log.d(TAG, "stopScannerAndAdvertiser: " + BleAdvertiser.currentThreadToString());
         stopPeerAddressHelperAdvertiser();
         stopScanner();

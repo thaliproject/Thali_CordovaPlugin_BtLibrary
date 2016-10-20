@@ -98,6 +98,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseData The advertise data to set.
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
+        Log.d(TAG, "setAdvertiseData: " + currentThreadToString());
         if (advertiseData != null) {
 //            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
             boolean wasStarted = isStarted();
@@ -114,6 +115,7 @@ class BleAdvertiser extends AdvertiseCallback {
         } else {
             throw new NullPointerException("The given advertise data is null");
         }
+        Log.d(TAG, "setAdvertiseData finished: " + currentThreadToString());
     }
 
     /**
@@ -183,6 +185,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
+        Log.d(TAG, "stop. " + currentThreadToString());
         if (mBluetoothLeAdvertiser != null) {
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(this);
@@ -193,6 +196,7 @@ class BleAdvertiser extends AdvertiseCallback {
         }
 
         setState(State.NOT_STARTED, notifyStateChanged);
+        Log.d(TAG, "stop finished. " + currentThreadToString());
     }
 
     /**
