@@ -20,6 +20,7 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.lang.reflect.Array;
 import java.util.Arrays;
@@ -412,7 +413,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if starting or already started. False otherwise.
      */
     public synchronized boolean startScanner() {
-        Log.d(TAG, "startScanner: " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "startScanner: " + ThreadUtils.currentThreadToString());
         if (!mBleScanner.isStarted()) {
             Log.i(TAG, "startScanner: Starting...");
 
@@ -427,7 +428,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Stops the BLE scanner.
      */
     public synchronized void stopScanner() {
-        Log.d(TAG, "stopScanner: " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "stopScanner: " + ThreadUtils.currentThreadToString());
         if (mBleScanner.isStarted()) {
             Log.i(TAG, "stopScanner: Stopping...");
         }
@@ -441,10 +442,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if starting or already started. False otherwise.
      */
     public synchronized boolean startAdvertiser() {
-        Log.d(TAG, "startAdvertiser: " + BleAdvertiser.currentThreadToString());
-        Log.d(TAG, "startAdvertiser Before stop");
+        Log.d(TAG, "startAdvertiser: " + ThreadUtils.currentThreadToString());
         stopPeerAddressHelperAdvertiser(); // Need to stop, if running, since we can have only one advertiser
-        Log.d(TAG, "startAdvertiser after stop");
         if (!mBleAdvertiser.isStarted()) {
             Log.i(TAG, "startAdvertiser: Starting...");
         }
@@ -464,7 +463,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             mBleAdvertiser.setAdvertiseData(advertiseData);
             start = mBleAdvertiser.start();
         }
-        Log.d(TAG, "startAdvertiser started = " + start + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "startAdvertiser started = " + start + ThreadUtils.currentThreadToString());
         return start;
     }
 
@@ -472,7 +471,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Stops the BLE advertiser.
      */
     public synchronized void stopAdvertiser() {
-        Log.d(TAG, "stopAdvertiser:" + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "stopAdvertiser:" + ThreadUtils.currentThreadToString());
         if (mBleAdvertiser.isStarted()) {
             Log.i(TAG, "stopAdvertiser: Stopping...");
         }
@@ -486,11 +485,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if starting or already started. False, if failed to start.
      */
     public synchronized boolean startScannerAndAdvertiser() {
-//        Log.i(TAG, "startScannerAndAdvertiser");
 //        return (startScanner() && startAdvertiser());
-        Log.d(TAG, "startScannerAndAdvertiser : " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "startScannerAndAdvertiser : " + ThreadUtils.currentThreadToString());
         boolean adv = startAdvertiser();
-        Log.d(TAG, "startScannerAndAdvertiser: advertiser is started. " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "startScannerAndAdvertiser: advertiser is started. " + ThreadUtils.currentThreadToString());
         boolean disc = startScanner();
         Log.i(TAG, "startScannerAndAdvertiser: adv = " + adv + ", disc = " + disc);
         return (adv && disc);
@@ -500,8 +498,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Stops the BLE peer discovery.
      */
     public synchronized void stopScannerAndAdvertiser() {
-//        Log.i(TAG, "stopScannerAndAdvertiser");
-        Log.d(TAG, "stopScannerAndAdvertiser: " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "stopScannerAndAdvertiser: " + ThreadUtils.currentThreadToString());
         stopPeerAddressHelperAdvertiser();
         stopScanner();
         stopAdvertiser();
@@ -635,7 +632,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     @Override
     public void onIsAdvertiserStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsAdvertiserStartedChanged: " + isStarted + BleAdvertiser.currentThreadToString());
+        Log.i(TAG, "onIsAdvertiserStartedChanged: " + isStarted + ThreadUtils.currentThreadToString());
         updateState();
     }
 
@@ -644,18 +641,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         Log.e(TAG, "onScannerFailed: " + errorCode);
         Log.e(TAG, "onScannerFailed: scanner is started =  " + mBleScanner.isStarted());
         // No need to update state here, since onIsScannerStartedChanged will be called
-
-        //TODO restart if already started
-        //TODO need to investigate onIsScannerStartedChanged
-
-//        if (errorCode == ScanCallback.SCAN_FAILED_ALREADY_STARTED){
-//            startScanner();
-//        }
     }
 
     @Override
     public void onIsScannerStartedChanged(boolean isStarted) {
-        Log.i(TAG, "onIsScannerStartedChanged: " + isStarted + BleAdvertiser.currentThreadToString());
+        Log.i(TAG, "onIsScannerStartedChanged: " + isStarted + ThreadUtils.currentThreadToString());
         updateState();
     }
 
@@ -682,16 +672,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 if (serviceData != null && serviceData.size() > 0) {
                     for (ParcelUuid uuid : serviceData.keySet()) {
                         byte[] serviceDataContent = serviceData.get(uuid);
-//                        Log.d(TAG, "checkScanResult: Got service data with UUID \"" + uuid + "\"");
-//                        Log.d(TAG, "checkScanResult: serviceDataContent : " + Arrays.toString(serviceDataContent));
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
 
 
                         if (parsedAdvertisement != null) {
-//                            Log.d(TAG, "checkScanResult: parsedAdvertisement : " + parsedAdvertisement.toString());
                             UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
                                     scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
-//                            Log.d(TAG, "checkScanResult: scannedServiceUuid : " + scannedServiceUuid.toString());
                             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                                     || BlePeerDiscoveryUtils.uuidStartsWithExpectedServiceUuid(scannedServiceUuid, mServiceUuid)) {
                                 parsedAdvertisement.uuid = scannedServiceUuid;
@@ -769,7 +755,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * Resolves and updates the state and notifies the listener.
      */
     private synchronized void updateState() {
-        Log.d(TAG, "updateState : " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "updateState : " + ThreadUtils.currentThreadToString());
         EnumSet<BlePeerDiscovererStateSet> deducedStateSet =
                 EnumSet.noneOf(BlePeerDiscovererStateSet.class);
 
@@ -794,14 +780,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         Log.d(TAG, "updateState: deducedStateSet: " + deducedStateSet);
         Log.d(TAG, "updateState: stateSet: " + mStateSet);
-        Log.d(TAG, BleAdvertiser.currentThreadToString());
+        Log.d(TAG, ThreadUtils.currentThreadToString());
         if (!mStateSet.equals(deducedStateSet)) {
             Log.d(TAG, "updateState: State changed from " + mStateSet + " to " + deducedStateSet +
-                    BleAdvertiser.currentThreadToString());
+                    ThreadUtils.currentThreadToString());
             mStateSet = deducedStateSet;
             mListener.onBlePeerDiscovererStateChanged(mStateSet);
         }
-        Log.d(TAG, "update state finished. " + BleAdvertiser.currentThreadToString());
+        Log.d(TAG, "update state finished. " + ThreadUtils.currentThreadToString());
     }
 
     /**

@@ -25,6 +25,7 @@ import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer;
 import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiPeerDiscoverer.WifiPeerDiscovererStateSet;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.PeerModel;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.util.Collection;
 import java.util.Date;
@@ -468,14 +469,6 @@ public class DiscoveryManager
         mShouldBeScanning = startDiscovery;
         mShouldBeAdvertising = startAdvertising;
 
-//        if (!mShouldBeScanning && !mShouldBeAdvertising) {
-//            if (mState != DiscoveryManagerState.NOT_STARTED) {
-//                stop();
-//            }
-//            return false;
-//        }
-
-        //TODO change in startstop operation handler
         if (!mShouldBeScanning && !mShouldBeAdvertising) {
             if (mState != DiscoveryManagerState.NOT_STARTED) {
                 stop();
@@ -1139,12 +1132,12 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerExpiredAndRemoved(final PeerProperties peerProperties) {
-        Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+        Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+                    Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
                     mListener.onPeerLost(peerProperties);
                 }
             });
@@ -1197,8 +1190,7 @@ public class DiscoveryManager
                         started = mBlePeerDiscoverer.startScanner();
                     } else if (mShouldBeAdvertising && isBleMultipleAdvertisementSupported()) {
                         started = mBlePeerDiscoverer.startAdvertiser();
-                    }
-                    else {
+                    } else {
                         Log.e(TAG, "startBlePeerDiscoverer: useless ble start discovering");
                     }
                 } else {
@@ -1289,8 +1281,7 @@ public class DiscoveryManager
      * @param isAdvertising The new status of advertising
      */
     private synchronized void updateStateInternal(final DiscoveryManagerState state, final boolean isDiscovering, final boolean isAdvertising) {
-        Log.d(TAG, "updateStateInternal " +
-                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "updateStateInternal " + ThreadUtils.currentThreadToString());
         if (mState != state || mIsDiscovering != isDiscovering || mIsAdvertising != isAdvertising) {
             mState = state;
             mIsDiscovering = isDiscovering;
@@ -1309,16 +1300,14 @@ public class DiscoveryManager
                 });
             }
         }
-        Log.d(TAG, "updateStateInternal finished " +
-                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "updateStateInternal finished " + ThreadUtils.currentThreadToString());
     }
 
     /**
      * Updates the state of this instance and notifies the listener.
      */
     private synchronized void updateState() {
-        Log.d(TAG, "updateState: " +
-                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "updateState: " + ThreadUtils.currentThreadToString());
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         boolean isBleAdvertising = isBleAdvertising();
         boolean isBleDiscovering = isBleDiscovering();
@@ -1350,12 +1339,11 @@ public class DiscoveryManager
                     ((discoveryMode == DiscoveryMode.BLE_AND_WIFI && !bluetoothEnabled && !wifiEnabled) ||
                             (discoveryMode == DiscoveryMode.BLE && !bluetoothEnabled) ||
                             (discoveryMode == DiscoveryMode.WIFI && !wifiEnabled))) {
-                updateStateInternal(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, isDiscovering, isAdvertising);
+                updateStateInternal(DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED, false, false);
             } else {
-                updateStateInternal(DiscoveryManagerState.NOT_STARTED, isDiscovering, isAdvertising);
+                updateStateInternal(DiscoveryManagerState.NOT_STARTED, false, false);
             }
         }
-        Log.d(TAG, "updateState finished " +
-                ".Current thread = " + Thread.currentThread().toString() + " id = " + Thread.currentThread().getId());
+        Log.d(TAG, "updateState finished " + ThreadUtils.currentThreadToString());
     }
 }
