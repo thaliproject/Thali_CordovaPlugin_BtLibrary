@@ -145,6 +145,7 @@ class BleScanner extends ScanCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
+        Log.d(TAG, "stop, " + ThreadUtils.currentThreadToString());
         if (mBluetoothLeScanner != null) {
             try {
                 mBluetoothLeScanner.stopScan(this);
@@ -155,6 +156,7 @@ class BleScanner extends ScanCallback {
         }
 
         setState(State.NOT_STARTED, notifyStateChanged);
+        Log.d(TAG, "stop finished, " + ThreadUtils.currentThreadToString());
     }
 
     /**
@@ -231,8 +233,7 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onBatchScanResults(List<ScanResult> scanResults) {
-        super.onBatchScanResults(scanResults);
-        Log.d(TAG, "onBatchScanResults: " + ThreadUtils.currentThreadToString());
+        Log.d(TAG, "onBatchScanResults: results count  = " + scanResults.size() + ". " + ThreadUtils.currentThreadToString());
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
@@ -284,8 +285,7 @@ class BleScanner extends ScanCallback {
     @Override
     public void onScanResult(int callbackType, ScanResult scanResult) {
         super.onScanResult(callbackType, scanResult);
-        Log.d(TAG, "onScanResult");
-        Log.d(TAG, ThreadUtils.currentThreadToString());
+        Log.d(TAG, "onScanResul: " + ThreadUtils.currentThreadToString());
         if (scanResult != null) {
             if (mListener == null) {
                 Log.wtf(TAG, "No listener");
@@ -311,18 +311,40 @@ class BleScanner extends ScanCallback {
             mState = state;
 
             if (notifyStateChanged && mListener != null) {
-                switch (mState) {
-                    case NOT_STARTED:
-                        mListener.onIsScannerStartedChanged(false);
-                        break;
-                    case RUNNING:
-                        mListener.onIsScannerStartedChanged(true);
-                        break;
-                    default:
-                        // Nothing to do here
-                        break;
-                }
+                notifyStateChanged();
             }
         }
     }
+
+    private void notifyStateChanged() {
+        switch (mState) {
+            case NOT_STARTED:
+                notifyScannerStateChanged(false);
+                break;
+            case RUNNING:
+                notifyScannerStateChanged(true);
+                break;
+            default:
+                // Nothing to do here
+                break;
+        }
+    }
+
+    private void notifyScannerStateChanged(final boolean isStarted) {
+        Log.d(TAG, "notifyScannerStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
+        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onIsScannerStartedChanged(isStarted);
+            }
+        });
+        processPosted(posted);
+    }
+
+    private void processPosted(boolean posted) {
+        if (posted) {
+            throw new RuntimeException("Couldn't post to main helper");
+        }
+    }
+
 }

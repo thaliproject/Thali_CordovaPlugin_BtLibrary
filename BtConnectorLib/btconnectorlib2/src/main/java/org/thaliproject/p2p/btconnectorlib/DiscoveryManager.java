@@ -709,6 +709,7 @@ public class DiscoveryManager
      */
     @Override
     public void onAdvertiseScanSettingsChanged() {
+        Log.d(TAG, "onAdvertiseScanSettingsChanged: " + ThreadUtils.currentThreadToString());
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.applySettings(
                     mSettings.getManufacturerId(),

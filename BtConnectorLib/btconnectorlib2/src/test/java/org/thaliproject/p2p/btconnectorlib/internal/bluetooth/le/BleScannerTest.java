@@ -146,6 +146,7 @@ public class BleScannerTest {
                 scanSettingsField.get(bleScanner), is(notNullValue()));
     }
 
+    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
     @Test
     public void testStart() throws Exception {
 
@@ -197,6 +198,7 @@ public class BleScannerTest {
                 bleScanner.isStarted(), is(false));
     }
 
+    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
     @Test
     public void testStop_noBTLEScanner() throws Exception {
 
@@ -215,6 +217,7 @@ public class BleScannerTest {
                 mBleScanner.isStarted(), is(false));
     }
 
+    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
     @Test
     public void testStop_notify() throws Exception {
         mBleScanner.start();
@@ -312,6 +315,7 @@ public class BleScannerTest {
         verify(mMockListener, times(2)).onScanResult(any(ScanResult.class));
     }
 
+    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
     @Test
     public void testOnScanFailed() throws Exception {
         mBleScanner.start();

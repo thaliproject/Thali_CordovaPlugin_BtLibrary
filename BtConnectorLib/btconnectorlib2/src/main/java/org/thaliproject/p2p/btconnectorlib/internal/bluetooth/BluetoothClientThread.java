@@ -301,6 +301,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * Closes the handshake thread, if one exists, and the Bluetooth socket.
      */
     private void close() {
+        Log.d(TAG, "close");
         if (mHandshakeThread != null) {
             mHandshakeThread.close(true, false);
         }

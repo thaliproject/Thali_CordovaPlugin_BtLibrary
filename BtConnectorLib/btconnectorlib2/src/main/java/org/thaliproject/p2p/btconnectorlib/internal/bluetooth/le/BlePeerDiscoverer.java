@@ -333,7 +333,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 + "\n    - Advertise mode: " + advertiseMode
                 + "\n    - Advertise TX power level: " + advertiseTxPowerLevel
                 + "\n    - Scan mode: " + scanMode
-                + "\n    - Scan report delay in milliseconds: " + scanReportDelayInMilliseconds);
+                + "\n    - Scan report delay in milliseconds: " + scanReportDelayInMilliseconds
+                + "\n    - " + ThreadUtils.currentThreadToString());
 
         boolean advertiserSettingsWereSet = false;
 
@@ -362,15 +363,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         if (advertiserSettingsWereSet) {
             boolean advertiserWasStarted = mBleAdvertiser.isStarted();
-
+            Log.d(TAG, "applySettings: advertiserWasStarted " + advertiserWasStarted + " " + ThreadUtils.currentThreadToString());
             if (advertiserWasStarted) {
+                Log.d(TAG, "applySettings: stop advertiser "  + ThreadUtils.currentThreadToString());
                 mBleAdvertiser.stop(false);
             }
-
             mBleAdvertiser.setAdvertiseSettings(advertiseSettingsBuilder.build());
-
             if (advertiserWasStarted) {
-                startAdvertiser();
+                Log.d(TAG, "applySettings: start advertiser "  + ThreadUtils.currentThreadToString());
+                boolean started = startAdvertiser();
+                Log.d(TAG, "applySettings: start advertiser started = " + started + " "  + ThreadUtils.currentThreadToString());
             }
         }
 
@@ -391,15 +393,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         if (scannerSettingsWereSet) {
             boolean scannerWasStarted = mBleScanner.isStarted();
-
+            Log.d(TAG, "applySettings: scannerWasStarted " + scannerWasStarted + " " + ThreadUtils.currentThreadToString());
             if (scannerWasStarted) {
+                Log.d(TAG, "applySettings: stop scanner "  + ThreadUtils.currentThreadToString());
                 mBleScanner.stop(false);
             }
-
             mBleScanner.setScanSettings(scanSettingsBuilder.build());
-
             if (scannerWasStarted) {
-                startScanner();
+                Log.d(TAG, "applySettings: start scanner "  + ThreadUtils.currentThreadToString());
+                boolean started = startScanner();
+                Log.d(TAG, "applySettings: start scanner started = " + started + " "  + ThreadUtils.currentThreadToString());
             }
         }
 
@@ -463,7 +466,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             mBleAdvertiser.setAdvertiseData(advertiseData);
             start = mBleAdvertiser.start();
         }
-        Log.d(TAG, "startAdvertiser started = " + start + ThreadUtils.currentThreadToString());
+        Log.d(TAG, "startAdvertiser started = " + start + " " + ThreadUtils.currentThreadToString());
         return start;
     }
 
@@ -579,7 +582,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * <p>
      * Part of Bro Mode.
      */
-    public synchronized void stopPeerAddressHelperAdvertiser() {
+    private synchronized void stopPeerAddressHelperAdvertiser() {
+        Log.d(TAG, "stopPeerAddressHelperAdvertiser " + ThreadUtils.currentThreadToString());
         if (mPeerAddressHelperAdvertisementTimeoutTimer != null) {
             mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
             mPeerAddressHelperAdvertisementTimeoutTimer = null;
@@ -661,9 +665,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     private synchronized void checkScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
-        Log.d(TAG, "checkScanResult: ");
+//        Log.d(TAG, "checkScanResult: ");
         if (scanResult != null && scanResult.getScanRecord() != null) {
-            Log.d(TAG, "checkScanResult: " + scanResult.toString());
+//            Log.d(TAG, "checkScanResult: " + scanResult.toString());
             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                     || mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE) {
                 // Try to parse the service data
@@ -721,7 +725,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
                     if (peerProperties != null) {
 //                        Log.e(TAG, "onPeerDiscovered: " + peerProperties.toString());
-                        Log.e(TAG, "onPeerDiscovered: scan record " + scanResult.getScanRecord().toString());
+//                        Log.e(TAG, "onPeerDiscovered: scan record " + scanResult.getScanRecord().toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
@@ -803,14 +807,16 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                 || (mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE
                 && !mAdvertiserFailedToStartUsingServiceData)) {
+            Log.d(TAG, "createAdvertiseData: createAdvertiseDataToServiceData ");
             advertiseData = PeerAdvertisementFactory.createAdvertiseDataToServiceData(
                     uuid, mBeaconAdExtraInformation, bluetoothMacAddress);
         } else {
+            Log.d(TAG, "createAdvertiseData: createAdvertiseDataToManufacturerData ");
             // MANUFACTURER_DATA or DO_NOT_CARE with failure trying to use service data
             advertiseData = PeerAdvertisementFactory.createAdvertiseDataToManufacturerData(
                     mManufacturerId, mBeaconAdLengthAndType, uuid, mBeaconAdExtraInformation, bluetoothMacAddress);
         }
-//        Log.i(TAG, "createAdvertiseData: created " + advertiseData.toString());
+        Log.i(TAG, "createAdvertiseData: created " + advertiseData.toString());
         return advertiseData;
     }
 

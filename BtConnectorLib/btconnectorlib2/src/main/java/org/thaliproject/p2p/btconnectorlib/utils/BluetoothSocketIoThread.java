@@ -193,12 +193,14 @@ public class BluetoothSocketIoThread extends Thread {
      * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
      */
     public synchronized void close(boolean closeStreams, boolean closeSocket) {
+        Log.d(TAG, "close. " + ThreadUtils.currentThreadToString() );
         mIsShuttingDown = true;
 
         if (closeStreams) {
             if (mInputStream != null) {
                 try {
                     mInputStream.close();
+                    Log.d(TAG, "mInputStream closed. " + ThreadUtils.currentThreadToString() );
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close the input stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
                 }
@@ -207,6 +209,7 @@ public class BluetoothSocketIoThread extends Thread {
             if (mOutputStream != null) {
                 try {
                     mOutputStream.close();
+                    Log.d(TAG, "mOutputStream closed. " + ThreadUtils.currentThreadToString() );
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close the output stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
                 }
@@ -216,6 +219,7 @@ public class BluetoothSocketIoThread extends Thread {
         if (closeSocket && mSocket != null) {
             try {
                 mSocket.close();
+                Log.d(TAG, "mSocket closed. " + ThreadUtils.currentThreadToString() );
             } catch (IOException e) {
                 Log.w(TAG, "Failed to close the socket: " + e.getMessage() + " (thread ID: " + getId() + ")");
             }

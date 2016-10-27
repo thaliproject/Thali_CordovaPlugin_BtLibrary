@@ -102,7 +102,7 @@ class BleAdvertiser extends AdvertiseCallback {
         Log.d(TAG, "setAdvertiseData: " + ThreadUtils.currentThreadToString());
         if (advertiseData != null) {
             boolean wasStarted = isStarted();
-
+            Log.d(TAG, "setAdvertiseData: was started = " + wasStarted);
             if (wasStarted) {
                 stop(false);
             }
@@ -124,6 +124,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseSettings The advertise settings to set.
      */
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
+        Log.d(TAG, "setAdvertiseSettings, " + ThreadUtils.currentThreadToString());
         if (advertiseSettings != null) {
             mAdvertiseSettings = advertiseSettings;
 
@@ -256,25 +257,43 @@ class BleAdvertiser extends AdvertiseCallback {
             mState = state;
 
             if (notifyStateChanged && mListener != null) {
-                switch (mState) {
-                    case NOT_STARTED:
-                        Log.d(TAG, "setState: onIsAdvertiserStartedChanged false. " +
-                                ThreadUtils.currentThreadToString());
-                        mListener.onIsAdvertiserStartedChanged(false);
-                        break;
-                    case RUNNING:
-                        Log.d(TAG, "setState: onIsAdvertiserStartedChanged true. " + ThreadUtils.currentThreadToString());
-                        mListener.onIsAdvertiserStartedChanged(true);
-                        break;
-                    default:
-                        // Nothing to do here
-                        Log.d(TAG, "setState: onIsAdvertiserStartedChanged default (no call to listener). " +
-                                ThreadUtils.currentThreadToString());
-                        break;
-                }
+                notifyStateChanged();
             }
         }
-        Log.d(TAG, "setState: finished" + ThreadUtils.currentThreadToString());
+        Log.d(TAG, "setState: finished " + ThreadUtils.currentThreadToString());
+    }
+
+    private void notifyStateChanged() {
+        switch (mState) {
+            case NOT_STARTED:
+                notifyAdvertiserStateChanged(false);
+                break;
+            case RUNNING:
+                notifyAdvertiserStateChanged(true);
+                break;
+            default:
+                // Nothing to do here
+                Log.d(TAG, "setState: onIsAdvertiserStartedChanged default (no call to listener). " +
+                        ThreadUtils.currentThreadToString());
+                break;
+        }
+    }
+
+    private void notifyAdvertiserStateChanged(final boolean isStarted) {
+        Log.d(TAG, "notifyAdvertiserStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
+        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onIsAdvertiserStartedChanged(isStarted);
+            }
+        });
+        processPosted(posted);
+    }
+
+    private void processPosted(boolean posted) {
+        if (posted) {
+            throw new RuntimeException("Couldn't post to main helper");
+        }
     }
 
 }

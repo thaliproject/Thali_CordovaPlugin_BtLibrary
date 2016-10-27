@@ -4,11 +4,19 @@
 
 package org.thaliproject.p2p.btconnectorlib.utils;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.Locale;
 
 public class ThreadUtils {
 
-    public static String currentThreadToString(){
+    public static String currentThreadToString() {
         return String.format(Locale.getDefault(), "Current thread: %s, id: %d", Thread.currentThread().toString(), Thread.currentThread().getId());
+    }
+
+    public static boolean postToMainHelper(Runnable action) {
+        Handler h = new Handler(Looper.getMainLooper());
+        return h.post(action);
     }
 }

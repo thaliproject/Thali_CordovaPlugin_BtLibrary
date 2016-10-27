@@ -14,6 +14,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.util.UUID;
 
@@ -388,6 +389,7 @@ public class ConnectionManager
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    Log.i(TAG, "onConnected run: " + peerProperties + ". " + ThreadUtils.currentThreadToString());
                     mListener.onConnected(bluetoothSocket, isIncoming, peerProperties);
                 }
             });
