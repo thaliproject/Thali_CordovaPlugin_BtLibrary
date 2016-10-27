@@ -342,7 +342,7 @@ class BleScanner extends ScanCallback {
     }
 
     private void processPosted(boolean posted) {
-        if (posted) {
+        if (!posted) {
             throw new RuntimeException("Couldn't post to main helper");
         }
     }
