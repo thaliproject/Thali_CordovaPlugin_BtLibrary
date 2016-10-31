@@ -4,7 +4,6 @@ import android.os.CountDownTimer;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
@@ -312,7 +311,6 @@ public class PeerModelTest {
         assertThat("The peer is added", peers.size(), is(1));
     }
 
-    @Ignore
     @Test
     public void testAddOrUpdateDiscoveredPeer_Update2() throws Exception {
         // prepare a peer's list

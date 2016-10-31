@@ -11,7 +11,6 @@ import android.os.Handler;
 
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -640,7 +639,6 @@ public class DiscoveryManagerTest {
                 is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
     }
 
-    @Ignore
     @Test
     public void testStartDiscoveryModeBLE() throws Exception {
         DiscoveryManager discoveryManagerSpy;
@@ -1102,7 +1100,6 @@ public class DiscoveryManagerTest {
                 is(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED));
     }
 
-    @Ignore
     @Test
     public void testOnWifiP2PStateChanged_BLE_AND_WIFIMode() throws Exception {
 
