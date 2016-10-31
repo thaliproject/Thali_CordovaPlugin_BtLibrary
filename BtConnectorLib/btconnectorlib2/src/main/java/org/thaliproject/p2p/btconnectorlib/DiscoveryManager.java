@@ -1091,7 +1091,7 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerAdded(final PeerProperties peerProperties) {
-//        Log.d(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+        Log.d(TAG, "onPeerAdded: " + peerProperties.toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
@@ -1111,7 +1111,7 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerUpdated(final PeerProperties peerProperties) {
-//        Log.d(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+        Log.d(TAG, "onPeerUpdated: " + peerProperties.toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override

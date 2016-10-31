@@ -175,12 +175,9 @@ public class ConnectionEngine implements
      * @param peerProperties The properties of the peer to connect to.
      */
     public synchronized void connect(PeerProperties peerProperties) {
-        //TODO stop discovery
-//        Log.w(TAG, "is adv = " + mDiscoveryManager.isAdvertising() + " , is disc = " + mDiscoveryManager.isDiscovering());
         if (mDiscoveryManager.isAdvertising() || mDiscoveryManager.isDiscovering()) {
             mDiscoveryManager.stop();
         }
-//        Log.w(TAG, "is adv = " + mDiscoveryManager.isAdvertising() + " , is disc = " + mDiscoveryManager.isDiscovering());
 
         if (peerProperties != null) {
             if (mConnectionManager.connect(peerProperties)) {
@@ -466,16 +463,16 @@ public class ConnectionEngine implements
 
     @Override
     public void onBytesRead(byte[] bytes, int numberOfBytesRead, BluetoothSocketIoThread bluetoothSocketIoThread) {
-//        Log.v(TAG, "onBytesRead: Received " + numberOfBytesRead + " bytes from peer "
-//                + (bluetoothSocketIoThread.getPeerProperties() != null
-//                ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
+        Log.v(TAG, "onBytesRead: Received " + numberOfBytesRead + " bytes from peer "
+                + (bluetoothSocketIoThread.getPeerProperties() != null
+                ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
     }
 
     @Override
     public void onBytesWritten(byte[] bytes, int numberOfBytesWritten, BluetoothSocketIoThread bluetoothSocketIoThread) {
-//        Log.v(TAG, "onBytesWritten: Sent " + numberOfBytesWritten + " bytes to peer "
-//                + (bluetoothSocketIoThread.getPeerProperties() != null
-//                ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
+        Log.v(TAG, "onBytesWritten: Sent " + numberOfBytesWritten + " bytes to peer "
+                + (bluetoothSocketIoThread.getPeerProperties() != null
+                ? bluetoothSocketIoThread.getPeerProperties().toString() : "<no ID>"));
     }
 
     @Override

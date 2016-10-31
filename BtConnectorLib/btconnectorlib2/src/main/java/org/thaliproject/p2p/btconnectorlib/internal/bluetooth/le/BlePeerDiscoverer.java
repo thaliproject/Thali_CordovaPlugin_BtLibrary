@@ -485,13 +485,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if starting or already started. False, if failed to start.
      */
     public synchronized boolean startScannerAndAdvertiser() {
-//        return (startScanner() && startAdvertiser());
         Log.d(TAG, "startScannerAndAdvertiser : " + ThreadUtils.currentThreadToString());
-        boolean adv = startAdvertiser();
+        boolean advertiserStarted = startAdvertiser();
         Log.d(TAG, "startScannerAndAdvertiser: advertiser is started. " + ThreadUtils.currentThreadToString());
-        boolean disc = startScanner();
-        Log.i(TAG, "startScannerAndAdvertiser: adv = " + adv + ", disc = " + disc);
-        return (adv && disc);
+        boolean scannerStarted = startScanner();
+        Log.i(TAG, "startScannerAndAdvertiser: adv = " + advertiserStarted + ", disc = " + scannerStarted);
+        return (advertiserStarted && scannerStarted);
     }
 
     /**
@@ -627,6 +626,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         } else {
             // Just restart. We can change it when found out how to detect difference
             // between user's disabling and crash
+            // issue https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/85
             Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
             startAdvertiser();
         }
@@ -685,11 +685,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                                 break;
                             } else {
                                 // UUID mismatch
-//                                Log.d(TAG, "checkScanResult: parsedAdvertisement uuid mismatch");
+                                Log.d(TAG, "checkScanResult: parsedAdvertisement uuid mismatch");
                                 parsedAdvertisement = null;
                             }
                         } else {
-//                            Log.d(TAG, "checkScanResult: parsedAdvertisement : null");
+                            Log.d(TAG, "checkScanResult: parsedAdvertisement : null");
                         }
                     }
                 }
@@ -727,7 +727,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     // to get rid of a possible race condition.
                     if (mMyBluetoothMacAddress != null
                             || parsedAdvertisement.provideBluetoothMacAddressRequestId.compareTo(mOurRequestId) > 0) {
-                        //Log.d(TAG, "checkScanResult: Will try to provide a device its Bluetooth MAC address");
+                        Log.d(TAG, "checkScanResult: Will try to provide a device its Bluetooth MAC address");
                         mListener.onProvideBluetoothMacAddressRequest(
                                 parsedAdvertisement.provideBluetoothMacAddressRequestId);
                     } else {
@@ -794,8 +794,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return A newly created AdvertiseData instance.
      */
     private AdvertiseData createAdvertiseData(UUID uuid, String bluetoothMacAddress) {
-        AdvertiseData advertiseData = null;
-
+        AdvertiseData advertiseData;
         if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                 || (mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE
                 && !mAdvertiserFailedToStartUsingServiceData)) {
@@ -843,12 +842,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         if (parsedAdvertisement != null) {
             if (parsedAdvertisement.provideBluetoothMacAddressRequestId != null) {
-                //Log.i(TAG, "resolveAdvertisementType: Received Bluetooth MAC address request ID: "
-                //        + parsedAdvertisement.provideBluetoothMacAddressRequestId);
-
                 if (BluetoothUtils.isBluetoothMacAddressUnknown(parsedAdvertisement.bluetoothMacAddress)) {
-                    //Log.d(TAG, "checkScanResult: Our request ID: " + mOurRequestId);
-
                     UUID rotatedProvideBluetoothMacAddressRequestUuid =
                             BlePeerDiscoveryUtils.rotateByte(
                                     mProvideBluetoothMacAddressRequestUuid,

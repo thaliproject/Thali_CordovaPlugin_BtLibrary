@@ -559,6 +559,7 @@ public class BluetoothManager {
                     resolveFeatureSupport();
                 }
                 //TODO add some logic detect that user turned bluetooth off and it didn't just crash
+                // https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/85
                 for (BluetoothManagerListener listener : mListeners) {
                     listener.onBluetoothAdapterStateChanged(state);
                 }
