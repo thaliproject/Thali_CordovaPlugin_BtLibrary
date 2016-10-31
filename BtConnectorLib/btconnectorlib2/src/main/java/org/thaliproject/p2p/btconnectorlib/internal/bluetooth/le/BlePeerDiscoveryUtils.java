@@ -17,7 +17,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.Random;
 import java.util.UUID;
@@ -83,7 +82,7 @@ class BlePeerDiscoveryUtils {
             }
 
             scanFilter = builder.build();
-            Log.i(TAG, "createScanFilter: " + scanFilter.toString());
+            Log.d(TAG, "createScanFilter: " + scanFilter.toString());
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "createScanFilter: " + e.getMessage(), e);
         }
@@ -106,7 +105,6 @@ class BlePeerDiscoveryUtils {
         if (serviceData.length >= (BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT + 1)) {
             int extraInformation = byteToUint8(serviceData[0]);
             byte[] bluetoothAddressAsByteArray = new byte[BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT];
-//            Log.d(TAG, "parseServiceData : " + Arrays.toString(serviceData));
             for (int i = 0; (i < BluetoothUtils.BLUETOOTH_ADDRESS_BYTE_COUNT && i < serviceData.length - 1); ++i) {
                 bluetoothAddressAsByteArray[i] = serviceData[i + 1];
             }
@@ -217,9 +215,7 @@ class BlePeerDiscoveryUtils {
                 }
 
                 bytesExtracted = true;
-            } catch (IOException e) {
-                Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
-            } catch (IndexOutOfBoundsException e) {
+            } catch (IOException | IndexOutOfBoundsException e) {
                 Log.e(TAG, "parseManufacturerData: Failed to parse data: " + e.getMessage(), e);
             }
         }
@@ -372,9 +368,7 @@ class BlePeerDiscoveryUtils {
                 }
 
                 bluetoothMacAddress = int8ArrayToBluetoothAddress(bluetoothAddressAsInt8Array);
-            } catch (IOException e) {
-                Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
-            } catch (IndexOutOfBoundsException e) {
+            } catch (IOException | IndexOutOfBoundsException e) {
                 Log.e(TAG, "byteArrayToBluetoothMacAddress: Failed to read the Bluetooth MAC address: " + e.getMessage(), e);
             }
         }
@@ -419,9 +413,7 @@ class BlePeerDiscoveryUtils {
         try {
             byteAsInt = Integer.parseInt(originalUuidAsString.substring(
                     startIndexOfByte, startIndexOfByte + 2), 16);
-        } catch (NumberFormatException e) {
-            Log.e(TAG, "rotateByte: Failed extract the byte as integer: " + e.getMessage(), e);
-        } catch (IndexOutOfBoundsException e) {
+        } catch (NumberFormatException | IndexOutOfBoundsException e) {
             Log.e(TAG, "rotateByte: Failed extract the byte as integer: " + e.getMessage(), e);
         }
 

@@ -58,7 +58,6 @@ public class BluetoothManager {
         protected abstract void setCurrentStatus(FeatureSupportedStatus status);
 
         public FeatureSupportedStatus isSupported() {
-//            Log.d(TAG, " FeatureSupportChecker isSupported");
 
             if (!CommonUtils.isLollipopOrHigher()) {
                 Log.d(TAG, "Checking support for " + getFeatureName() + ": The build version of the device is too low - API level 21 or higher required");

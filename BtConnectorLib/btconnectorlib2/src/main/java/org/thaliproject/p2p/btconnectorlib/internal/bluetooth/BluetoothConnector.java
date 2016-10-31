@@ -486,7 +486,6 @@ public class BluetoothConnector
                 Log.d(TAG, "onIncomingConnectionConnected: bluetoothSocket.isConnected() " + bluetoothSocket.isConnected());
                 Log.d(TAG, "onIncomingConnectionConnected: HANDLER LOOPER THREAD" + mHandler.getLooper().getThread().toString());
                 if (bluetoothSocket.isConnected()) {
-//                    Log.d(TAG, "onIncomingConnectionConnected: bluetoothSocket.isConnected() " + bluetoothSocket.isConnected());
                     mListener.onConnected(bluetoothSocket, true, peerProperties);
                 } else {
                     onIncomingConnectionFailed("Disconnected");

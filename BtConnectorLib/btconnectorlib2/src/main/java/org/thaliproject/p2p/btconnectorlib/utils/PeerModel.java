@@ -181,9 +181,7 @@ public class PeerModel {
     public void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
         synchronized (this) {
             if (peerPropertiesToAddOrUpdate != null) {
-//                Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerPropertiesToAddOrUpdate.toString());
                 PeerProperties oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
-//                Log.v(TAG, "old properties is  " + (oldPeerProperties == null ? "null" : "not null"));
                 if (oldPeerProperties != null) {
                     // This one was already in the list
 

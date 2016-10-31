@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
-import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
@@ -22,8 +21,6 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
-import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.UUID;
@@ -628,7 +625,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 Log.e(TAG, "onAdvertiserFailedToStart: Manufacturer data fallback did not work either");
             }
         } else {
-            //TODO temp solution. Just restart
+            // Just restart. We can change it when found out how to detect difference
+            // between user's disabling and crash
             Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
             startAdvertiser();
         }
@@ -665,9 +663,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     private synchronized void checkScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
-//        Log.d(TAG, "checkScanResult: ");
         if (scanResult != null && scanResult.getScanRecord() != null) {
-//            Log.d(TAG, "checkScanResult: " + scanResult.toString());
             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                     || mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE) {
                 // Try to parse the service data
@@ -677,8 +673,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     for (ParcelUuid uuid : serviceData.keySet()) {
                         byte[] serviceDataContent = serviceData.get(uuid);
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
-
-
                         if (parsedAdvertisement != null) {
                             UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
                                     scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
@@ -724,8 +718,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
                     if (peerProperties != null) {
-//                        Log.e(TAG, "onPeerDiscovered: " + peerProperties.toString());
-//                        Log.e(TAG, "onPeerDiscovered: scan record " + scanResult.getScanRecord().toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
@@ -881,6 +873,4 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         return advertisementType;
     }
-
-
 }

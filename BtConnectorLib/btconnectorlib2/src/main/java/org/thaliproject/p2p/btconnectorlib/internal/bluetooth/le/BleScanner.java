@@ -10,17 +10,14 @@ import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
-import android.os.RemoteException;
 import android.util.Log;
 
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
-import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ThreadFactory;
 
 /**
  * General BLE scanner.

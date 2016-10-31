@@ -1091,12 +1091,11 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerAdded(final PeerProperties peerProperties) {
-//        Log.e(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+//        Log.d(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-//                    Log.e(TAG, "onPeerAdded: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
                     mListener.onPeerDiscovered(peerProperties);
                 }
             });
@@ -1112,12 +1111,11 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerUpdated(final PeerProperties peerProperties) {
-//        Log.e(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
+//        Log.d(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-//                    Log.e(TAG, "onPeerUpdated: " + peerProperties.toString() + "Thread = " + Thread.currentThread().toString());
                     mListener.onPeerUpdated(peerProperties);
                 }
             });
@@ -1133,12 +1131,12 @@ public class DiscoveryManager
      */
     @Override
     public void onPeerExpiredAndRemoved(final PeerProperties peerProperties) {
-        Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
+        Log.d(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
         if (mListener != null) {
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    Log.e(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
+                    Log.d(TAG, "onPeerExpiredAndRemoved: " + peerProperties.toString() + ThreadUtils.currentThreadToString());
                     mListener.onPeerLost(peerProperties);
                 }
             });
@@ -1176,7 +1174,6 @@ public class DiscoveryManager
 
         if (permissionsGranted) {
             if (mBluetoothManager.bind(this)) {
-
                 getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress();
 
                 if (mBleServiceUuid != null) {
@@ -1192,7 +1189,7 @@ public class DiscoveryManager
                     } else if (mShouldBeAdvertising && isBleMultipleAdvertisementSupported()) {
                         started = mBlePeerDiscoverer.startAdvertiser();
                     } else {
-                        Log.e(TAG, "startBlePeerDiscoverer: useless ble start discovering");
+                        Log.w(TAG, "startBlePeerDiscoverer: useless ble start discovering");
                     }
                 } else {
                     Log.e(TAG, "startBlePeerDiscoverer: No BLE service UUID");
