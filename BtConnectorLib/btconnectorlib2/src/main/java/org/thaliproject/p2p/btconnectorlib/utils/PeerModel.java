@@ -181,6 +181,7 @@ public class PeerModel {
     public void addOrUpdateDiscoveredPeer(PeerProperties peerPropertiesToAddOrUpdate) {
         synchronized (this) {
             if (peerPropertiesToAddOrUpdate != null) {
+                Log.v(TAG, "addOrUpdateDiscoveredPeer: " + peerPropertiesToAddOrUpdate.toString());
                 PeerProperties oldPeerProperties = removePeer(peerPropertiesToAddOrUpdate);
                 if (oldPeerProperties != null) {
                     // This one was already in the list
@@ -213,11 +214,11 @@ public class PeerModel {
 
                 mDiscoveredPeers.put(peerPropertiesToAddOrUpdate, new Timestamp(new Date().getTime()));
 
-//                Log.v(TAG, "addOrUpdateDiscoveredPeer: "
-//                        + ((oldPeerProperties == null)
-//                            ? ("New peer, " + peerPropertiesToAddOrUpdate.toString() + ", added")
-//                            : ("Timestamp of peer " + peerPropertiesToAddOrUpdate.toString() + " updated"))
-//                        + " - the peer count is " + mDiscoveredPeers.size());
+                Log.v(TAG, "addOrUpdateDiscoveredPeer: "
+                        + ((oldPeerProperties == null)
+                            ? ("New peer, " + peerPropertiesToAddOrUpdate.toString() + ", added")
+                            : ("Timestamp of peer " + peerPropertiesToAddOrUpdate.toString() + " updated"))
+                        + " - the peer count is " + mDiscoveredPeers.size());
 
                 if (mCheckExpiredPeersTimer == null) {
                     createCheckPeerExpirationTimer();

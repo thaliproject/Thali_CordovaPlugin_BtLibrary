@@ -145,6 +145,8 @@ class BleScanner extends ScanCallback {
         Log.d(TAG, "stop, " + ThreadUtils.currentThreadToString());
         if (mBluetoothLeScanner != null) {
             try {
+                mBluetoothLeScanner.flushPendingScanResults(this);
+                Log.d(TAG, "stop: scan results are flushed ");
                 mBluetoothLeScanner.stopScan(this);
                 Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
@@ -234,6 +236,7 @@ class BleScanner extends ScanCallback {
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
+                    Log.d(TAG, "onBatchScanResults. scan = " + scanResult.toString());
                     mListener.onScanResult(scanResult);
                 }
             }
@@ -282,8 +285,9 @@ class BleScanner extends ScanCallback {
     @Override
     public void onScanResult(int callbackType, ScanResult scanResult) {
         super.onScanResult(callbackType, scanResult);
-        Log.d(TAG, "onScanResul: " + ThreadUtils.currentThreadToString());
+        Log.d(TAG, "onScanResult: " + ThreadUtils.currentThreadToString());
         if (scanResult != null) {
+            Log.d(TAG, "onScanResult: " + scanResult.toString());
             if (mListener == null) {
                 Log.e(TAG, "No listener");
             }

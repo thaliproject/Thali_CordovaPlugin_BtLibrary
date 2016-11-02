@@ -664,6 +664,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private synchronized void checkScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
         if (scanResult != null && scanResult.getScanRecord() != null) {
+            Log.d(TAG, "checkScanResult: " + scanResult.toString());
             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
                     || mAdvertisementDataType == AdvertisementDataType.DO_NOT_CARE) {
                 // Try to parse the service data
@@ -674,6 +675,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         byte[] serviceDataContent = serviceData.get(uuid);
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
                         if (parsedAdvertisement != null) {
+                            Log.d(TAG, "checkScanResult: parsedAdvertisement: " + parsedAdvertisement);
                             UUID scannedServiceUuid = scanResult.getScanRecord().getServiceUuids() != null ?
                                     scanResult.getScanRecord().getServiceUuids().get(0).getUuid() : null;
                             if (mAdvertisementDataType == AdvertisementDataType.SERVICE_DATA
@@ -708,7 +710,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         if (parsedAdvertisement != null) {
             AdvertisementType advertisementType = resolveAdvertisementType(parsedAdvertisement);
-            //Log.v(TAG, "checkScanResult: Resolved advertisement type: " + advertisementType);
+            Log.v(TAG, "checkScanResult: Resolved advertisement type: " + advertisementType);
 
             switch (advertisementType) {
                 case ADVERTISEMENT_UNKNOWN:
@@ -718,6 +720,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
                     if (peerProperties != null) {
+                        Log.d(TAG, "checkScanResult onPeerDiscovered " + peerProperties.toString());
                         mListener.onPeerDiscovered(peerProperties);
                     }
 
