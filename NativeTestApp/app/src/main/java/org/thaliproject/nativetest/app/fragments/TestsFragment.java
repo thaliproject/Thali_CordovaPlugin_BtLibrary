@@ -14,6 +14,8 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.Spinner;
+
+import org.thaliproject.nativetest.app.BatteryEngine;
 import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.test.AbstractTest;
@@ -29,16 +31,21 @@ public class TestsFragment extends Fragment {
     private Spinner mTestSelectorSpinner = null;
     private Button mRunTestButton = null;
     private int mSelectedTestIndex = 0;
+    private BatteryEngine mBatteryEngine;
+    private Button runBatteryTestButton = null;
 
     public TestsFragment() {
     }
 
-    public void setTestEngine(TestEngine testEngine) {
+    public void setTestEngine(TestEngine testEngine, BatteryEngine batteryEngine){
         mTestEngine = testEngine;
-
+        mBatteryEngine = batteryEngine;
         if (mTestEngine != null) {
             populateTestSelector();
             bindRunButton();
+        }
+        if (mBatteryEngine != null) {
+            bindBatteryButton();
         }
     }
 
@@ -58,6 +65,9 @@ public class TestsFragment extends Fragment {
 
         mRunTestButton = (Button) view.findViewById(R.id.runTestButton);
         bindRunButton();
+
+        runBatteryTestButton = (Button) view.findViewById(R.id.runBatteryTest);
+        bindBatteryButton();
 
         return view;
     }
@@ -106,6 +116,29 @@ public class TestsFragment extends Fragment {
                     if (mTestEngine != null) {
                         if (mTestEngine.runTest(TestEngine.getTests().get(mSelectedTestIndex))) {
                             //mRunTestButton.setEnabled(false);
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    private void bindBatteryButton() {
+        if (mBatteryEngine != null && runBatteryTestButton != null) {
+            runBatteryTestButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    if (mBatteryEngine != null) {
+                        if(!mBatteryEngine.isStarted()) {
+                            runBatteryTestButton.setText(R.string.stop_battery_test);
+                            mBatteryEngine.runTest();
+
+                        }
+                        else{
+                            runBatteryTestButton.setText(R.string.battery_test);
+                            mBatteryEngine.onTestFinished();
+                            mBatteryEngine.stop();
+
                         }
                     }
                 }

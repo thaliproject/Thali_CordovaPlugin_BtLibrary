@@ -86,12 +86,7 @@ public class LogFragment extends Fragment {
      */
     private static synchronized void addLogItem(String message, LogItem.LogMessageType logMessageType) {
         Timestamp timestamp = new Timestamp(new Date().getTime());
-        LogItem logItem = new LogItem(timestamp, message, logMessageType);
-        mLog.add(0, logItem);
-
-        if (mLog.size() > MAX_NUMBER_OF_LOG_ITEMS) {
-            mLog.remove(mLog.size() - 1); // Remove the last item
-        }
+        final LogItem logItem = new LogItem(timestamp, message, logMessageType);
 
         if (mContext != null && mListAdapter != null) {
             Handler handler = new Handler(mContext.getMainLooper());
@@ -99,6 +94,11 @@ public class LogFragment extends Fragment {
             handler.post(new Runnable() {
                 @Override
                 public void run() {
+                    mLog.add(0, logItem);
+
+                    if (mLog.size() > MAX_NUMBER_OF_LOG_ITEMS) {
+                        mLog.remove(mLog.size() - 1); // Remove the last item
+                    }
                     mListAdapter.notifyDataSetChanged();
                 }
             });

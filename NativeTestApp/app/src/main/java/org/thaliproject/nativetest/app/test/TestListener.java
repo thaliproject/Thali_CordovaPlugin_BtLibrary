@@ -20,4 +20,14 @@ public interface TestListener {
      * @param results The test results.
      */
     void onTestFinished(String testName, float successRate, String results);
+
+    /**
+     * Called when a test is about to start.
+     */
+    void onTestStarting();
+
+    /**
+     * Called when a test is runTest or aborted.
+     */
+    void onTestFinished();
 }

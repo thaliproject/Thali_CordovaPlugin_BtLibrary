@@ -131,6 +131,16 @@ public class TestEngine extends ConnectionEngine implements TestListener {
         mCurrentTest = null;
     }
 
+    @Override
+    public void onTestStarting() {
+
+    }
+
+    @Override
+    public void onTestFinished() {
+
+    }
+
     /**
      * @param state The new state.
      * @param isDiscovering True, if peer discovery is active. False otherwise.
@@ -189,4 +199,6 @@ public class TestEngine extends ConnectionEngine implements TestListener {
             ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onBluetoothMacAddressResolved(bluetoothMacAddress);
         }
     }
+
+
 }

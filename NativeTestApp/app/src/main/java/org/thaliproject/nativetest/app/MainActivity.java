@@ -38,6 +38,7 @@ public class MainActivity
 
     private ConnectionEngine mConnectionEngine = null;
     private TestEngine mTestEngine = null;
+    private  BatteryEngine mBatteryEngine = null;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -268,6 +269,10 @@ public class MainActivity
         if (mTestEngine == null) {
             mTestEngine = new TestEngine(mContext, this, this);
         }
+        if (mBatteryEngine == null) {
+            mBatteryEngine = new BatteryEngine(mContext, this, this);
+        }
+
 
         mConnectionEngine.start();
     }
@@ -281,6 +286,11 @@ public class MainActivity
         if (mTestEngine != null) {
             mTestEngine.dispose();
             mTestEngine = null;
+        }
+
+        if (mBatteryEngine != null) {
+            mBatteryEngine.dispose();
+            mBatteryEngine = null;
         }
     }
 
@@ -310,7 +320,7 @@ public class MainActivity
                 case SETTINGS_FRAGMENT: return mSettingsFragment;
                 case TESTS_FRAGMENT:
                     mTestsFragment = new TestsFragment();
-                    mTestsFragment.setTestEngine((TestEngine) mTestEngine);
+                    mTestsFragment.setTestEngine((TestEngine) mTestEngine, (BatteryEngine)mBatteryEngine);
                     return mTestsFragment;
             }
 
@@ -333,5 +343,15 @@ public class MainActivity
         public int getCount() {
             return 4;
         }
+    }
+
+    @Override
+    public void onTestStarting() {
+        mConnectionEngine.stop();
+    }
+
+    @Override
+    public void onTestFinished() {
+        mConnectionEngine.start();
     }
 }

@@ -333,6 +333,22 @@ public class ConnectionEngine implements
         Log.i(TAG, "onConnected: Total number of connections is now " + totalNumberOfConnections);
 
         if (totalNumberOfConnections == 1) {
+            if(mCheckConnectionsTimer == null){
+                mCheckConnectionsTimer = new CountDownTimer(
+                        CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS,
+                        CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS) {
+                    @Override
+                    public void onTick(long l) {
+                        // Not used
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        sendPingToAllPeers();
+                        mCheckConnectionsTimer.start();
+                    }
+                };
+            }
             mCheckConnectionsTimer.cancel();
             mCheckConnectionsTimer.start();
         }
@@ -545,7 +561,8 @@ public class ConnectionEngine implements
      * @param peerProperties The peer properties.
      */
     protected synchronized void autoConnectIfEnabled(PeerProperties peerProperties) {
-        if (!mIsShuttingDown) {
+        //null pointer crash on battery test
+        if (!mIsShuttingDown && mSettings!=null) {
             if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
                 if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
                         || !mModel.hasConnectionToPeer(peerProperties, true)) {
@@ -636,4 +653,5 @@ public class ConnectionEngine implements
                     mActivity, new String[] { permission }, PERMISSION_REQUEST_ACCESS_COARSE_LOCATION);
         }
     }
+
 }

@@ -42,4 +42,7 @@
     <string name="peer_name_info">After changing the peer name restarting the app is required for the setting to take effect.</string>
 
     <string name="run_test">Run test</string>
+
+    <string name="battery_test">Battery test</string>
+    <string name="stop_battery_test">Stop battery test</string>
 </resources>
