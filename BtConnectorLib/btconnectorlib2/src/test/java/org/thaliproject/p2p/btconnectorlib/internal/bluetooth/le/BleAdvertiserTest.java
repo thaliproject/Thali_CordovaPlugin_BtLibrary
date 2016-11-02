@@ -265,7 +265,7 @@ public class BleAdvertiserTest {
                 bleAdvertiser.isStarted(), is(false));
     }
 
-    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testStop_noBTAdvertiser() throws Exception {
 
@@ -285,7 +285,7 @@ public class BleAdvertiserTest {
                 mBleAdvertiser.isStarted(), is(false));
     }
 
-    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testStop_notify() throws Exception {
 
@@ -316,7 +316,7 @@ public class BleAdvertiserTest {
                 mBleAdvertiser.isStarted(), is(false));
     }
 
-    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testOnStartFailure() throws Exception {
         mBleAdvertiser.setAdvertiseData(mMockAdvertiseData);
@@ -330,7 +330,7 @@ public class BleAdvertiserTest {
                 AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED);
     }
 
-    @Ignore //https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testOnStartSuccess() throws Exception {
         mBleAdvertiser.onStartSuccess(mMockAdvertiseSettings);
