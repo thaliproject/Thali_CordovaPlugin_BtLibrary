@@ -22,6 +22,7 @@ import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.util.EnumSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -135,6 +136,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
     private static final String TAG = BlePeerDiscoverer.class.getName();
     private static final int UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD = 9;
+    private static final int ADVERTISER_RESTART_MAX_ATTEMPTS = 5;
     private final BlePeerDiscoveryListener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mServiceUuid;
@@ -152,6 +154,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private boolean mIsAssistingPeer = false;
     private boolean mWasAdvertiserStartedBeforeStartingToAssistPeer = false;
     private boolean mAdvertiserFailedToStartUsingServiceData = false;
+    private int mAdvertiserRestartsCount = 0;
 
     /**
      * See PeerAdvertisementFactory.generateNewProvideBluetoothMacAddressRequestUuid
@@ -362,14 +365,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             boolean advertiserWasStarted = mBleAdvertiser.isStarted();
             Log.d(TAG, "applySettings: advertiserWasStarted " + advertiserWasStarted + " " + ThreadUtils.currentThreadToString());
             if (advertiserWasStarted) {
-                Log.d(TAG, "applySettings: stop advertiser "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: stop advertiser " + ThreadUtils.currentThreadToString());
                 mBleAdvertiser.stop(false);
             }
             mBleAdvertiser.setAdvertiseSettings(advertiseSettingsBuilder.build());
             if (advertiserWasStarted) {
-                Log.d(TAG, "applySettings: start advertiser "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: start advertiser " + ThreadUtils.currentThreadToString());
                 boolean started = startAdvertiser();
-                Log.d(TAG, "applySettings: start advertiser started = " + started + " "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: start advertiser started = " + started + " " + ThreadUtils.currentThreadToString());
             }
         }
 
@@ -392,14 +395,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             boolean scannerWasStarted = mBleScanner.isStarted();
             Log.d(TAG, "applySettings: scannerWasStarted " + scannerWasStarted + " " + ThreadUtils.currentThreadToString());
             if (scannerWasStarted) {
-                Log.d(TAG, "applySettings: stop scanner "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: stop scanner " + ThreadUtils.currentThreadToString());
                 mBleScanner.stop(false);
             }
             mBleScanner.setScanSettings(scanSettingsBuilder.build());
             if (scannerWasStarted) {
-                Log.d(TAG, "applySettings: start scanner "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: start scanner " + ThreadUtils.currentThreadToString());
                 boolean started = startScanner();
-                Log.d(TAG, "applySettings: start scanner started = " + started + " "  + ThreadUtils.currentThreadToString());
+                Log.d(TAG, "applySettings: start scanner started = " + started + " " + ThreadUtils.currentThreadToString());
             }
         }
 
@@ -627,8 +630,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             // Just restart. We can change it when found out how to detect difference
             // between user's disabling and crash
             // issue https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/85
-            Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
-            startAdvertiser();
+            if (mAdvertiserRestartsCount < ADVERTISER_RESTART_MAX_ATTEMPTS) {
+                Log.e(TAG, "onAdvertiserFailedToStart: Just restart advertiser");
+                mAdvertiserRestartsCount++;
+                startAdvertiser();
+            } else {
+                Log.e(TAG, String.format(Locale.getDefault(),
+                        "onAdvertiserFailedToStart: Couldn't restart advertiser %d times in a row",
+                        ADVERTISER_RESTART_MAX_ATTEMPTS));
+            }
         }
     }
 
@@ -771,6 +781,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             } else {
                 deducedStateSet.add(BlePeerDiscovererStateSet.ADVERTISING);
             }
+            mAdvertiserRestartsCount = 0;
         }
 
         if (deducedStateSet.isEmpty()) {
