@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.util.Log;
 import android.widget.Toast;
-
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
