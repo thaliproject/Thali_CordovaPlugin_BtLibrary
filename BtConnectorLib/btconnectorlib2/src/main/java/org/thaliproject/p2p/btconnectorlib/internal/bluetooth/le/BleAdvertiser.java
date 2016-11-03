@@ -10,7 +10,9 @@ import android.bluetooth.le.AdvertiseData;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 /**
  * General BLE advertiser.
@@ -37,7 +39,9 @@ class BleAdvertiser extends AdvertiseCallback {
         NOT_STARTED,
         STARTING,
         RUNNING
-    };
+    }
+
+    ;
 
     private static final String TAG = BleAdvertiser.class.getName();
     private Listener mListener = null;
@@ -49,7 +53,7 @@ class BleAdvertiser extends AdvertiseCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
     public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter) {
@@ -60,10 +64,10 @@ class BleAdvertiser extends AdvertiseCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
-     * @param builder The builder for AdvertiseSettings.
-     * @param settings The discovery manager settings.
+     * @param builder          The builder for AdvertiseSettings.
+     * @param settings         The discovery manager settings.
      */
     public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter,
                          AdvertiseSettings.Builder builder, DiscoveryManagerSettings settings) {
@@ -95,14 +99,15 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseData The advertise data to set.
      */
     public void setAdvertiseData(AdvertiseData advertiseData) {
+        Log.d(TAG, "setAdvertiseData: " + ThreadUtils.currentThreadToString());
         if (advertiseData != null) {
-            Log.i(TAG, "setAdvertiseData: " + advertiseData.toString());
             boolean wasStarted = isStarted();
-
+            Log.d(TAG, "setAdvertiseData: was started = " + wasStarted);
             if (wasStarted) {
                 stop(false);
             }
 
+            Log.d(TAG, "setAdvertiseData: advertiseData = " + advertiseData.toString());
             mAdvertiseData = advertiseData;
 
             if (wasStarted) {
@@ -111,6 +116,7 @@ class BleAdvertiser extends AdvertiseCallback {
         } else {
             throw new NullPointerException("The given advertise data is null");
         }
+        Log.d(TAG, "setAdvertiseData finished: " + ThreadUtils.currentThreadToString());
     }
 
     /**
@@ -119,6 +125,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param advertiseSettings The advertise settings to set.
      */
     public void setAdvertiseSettings(AdvertiseSettings advertiseSettings) {
+        Log.d(TAG, "setAdvertiseSettings, " + ThreadUtils.currentThreadToString());
         if (advertiseSettings != null) {
             mAdvertiseSettings = advertiseSettings;
 
@@ -144,12 +151,14 @@ class BleAdvertiser extends AdvertiseCallback {
      * @return True, if starting. False in case of a failure.
      */
     public synchronized boolean start() {
+        Log.d(TAG, "start:  state = " + mState + ThreadUtils.currentThreadToString());
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        Log.v(TAG, "start: Starting...");
+                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString() + ThreadUtils.currentThreadToString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
+                        Log.i(TAG, "start: Started advertisment " + ThreadUtils.currentThreadToString());
                         setState(State.STARTING, true);
                     } catch (Exception e) {
                         Log.e(TAG, "start: Failed to start advertising: " + e.getMessage(), e);
@@ -163,8 +172,12 @@ class BleAdvertiser extends AdvertiseCallback {
         } else {
             Log.d(TAG, "start: Already running");
         }
-
-        return (mState != State.NOT_STARTED);
+        try {
+            Log.i(TAG, "start: return, state = " + mState + ThreadUtils.currentThreadToString());
+            return (mState != State.NOT_STARTED);
+        } finally {
+            Log.d(TAG, "start returned: " + ThreadUtils.currentThreadToString());
+        }
     }
 
     /**
@@ -173,6 +186,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
+        Log.d(TAG, "stop. " + ThreadUtils.currentThreadToString());
         if (mBluetoothLeAdvertiser != null) {
             try {
                 mBluetoothLeAdvertiser.stopAdvertising(this);
@@ -183,6 +197,7 @@ class BleAdvertiser extends AdvertiseCallback {
         }
 
         setState(State.NOT_STARTED, notifyStateChanged);
+        Log.d(TAG, "stop finished. " + ThreadUtils.currentThreadToString());
     }
 
     /**
@@ -193,6 +208,7 @@ class BleAdvertiser extends AdvertiseCallback {
     @Override
     public void onStartFailure(int errorCode) {
         String reason = "";
+        Log.d(TAG, "onStartFailure: " + ThreadUtils.currentThreadToString());
 
         switch (errorCode) {
             case ADVERTISE_FAILED_ALREADY_STARTED:
@@ -225,34 +241,60 @@ class BleAdvertiser extends AdvertiseCallback {
 
     @Override
     public void onStartSuccess(AdvertiseSettings settingsInEffect) {
-        Log.i(TAG, "onStartSuccess");
+        Log.d(TAG, "onStartSuccess : " + ThreadUtils.currentThreadToString());
         setState(State.RUNNING, true);
     }
 
     /**
      * Sets the state and notifies listener if required.
      *
-     * @param state The new state.
+     * @param state              The new state.
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
+        Log.d(TAG, "setState: current  = " + mState + ", new = " + state + ThreadUtils.currentThreadToString());
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
             if (notifyStateChanged && mListener != null) {
-                switch (mState) {
-                    case NOT_STARTED:
-                        mListener.onIsAdvertiserStartedChanged(false);
-                        break;
-                    case RUNNING:
-                        mListener.onIsAdvertiserStartedChanged(true);
-                        break;
-                    default:
-                        // Nothing to do here
-                        break;
-                }
+                notifyStateChanged();
             }
         }
+        Log.d(TAG, "setState: finished " + ThreadUtils.currentThreadToString());
     }
+
+    private void notifyStateChanged() {
+        switch (mState) {
+            case NOT_STARTED:
+                notifyAdvertiserStateChanged(false);
+                break;
+            case RUNNING:
+                notifyAdvertiserStateChanged(true);
+                break;
+            default:
+                // Nothing to do here
+                Log.d(TAG, "setState: onIsAdvertiserStartedChanged default (no call to listener). " +
+                        ThreadUtils.currentThreadToString());
+                break;
+        }
+    }
+
+    private void notifyAdvertiserStateChanged(final boolean isStarted) {
+        Log.d(TAG, "notifyAdvertiserStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
+        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onIsAdvertiserStartedChanged(isStarted);
+            }
+        });
+        processPosted(posted);
+    }
+
+    private void processPosted(boolean posted) {
+        if (!posted) {
+            throw new RuntimeException("Couldn't post to main helper");
+        }
+    }
+
 }

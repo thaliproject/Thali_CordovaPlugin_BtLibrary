@@ -7,6 +7,7 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -264,6 +265,7 @@ public class BleAdvertiserTest {
                 bleAdvertiser.isStarted(), is(false));
     }
 
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testStop_noBTAdvertiser() throws Exception {
 
@@ -283,6 +285,7 @@ public class BleAdvertiserTest {
                 mBleAdvertiser.isStarted(), is(false));
     }
 
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testStop_notify() throws Exception {
 
@@ -313,6 +316,7 @@ public class BleAdvertiserTest {
                 mBleAdvertiser.isStarted(), is(false));
     }
 
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testOnStartFailure() throws Exception {
         mBleAdvertiser.setAdvertiseData(mMockAdvertiseData);
@@ -326,6 +330,7 @@ public class BleAdvertiserTest {
                 AdvertiseCallback.ADVERTISE_FAILED_ALREADY_STARTED);
     }
 
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testOnStartSuccess() throws Exception {
         mBleAdvertiser.onStartSuccess(mMockAdvertiseSettings);

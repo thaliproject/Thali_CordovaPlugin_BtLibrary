@@ -14,6 +14,7 @@ import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
 import java.util.UUID;
 
@@ -296,6 +297,7 @@ public class ConnectionManager
     @Override
     public void onBluetoothAdapterScanModeChanged(int mode) {
         Log.i(TAG, "onBluetoothAdapterScanModeChanged: Mode changed to " + mode);
+        Log.i(TAG, "onBluetoothAdapterScanModeChanged: ConnectionManagerState is  " + mState.toString());
 
         if (mode == BluetoothAdapter.SCAN_MODE_NONE) {
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
@@ -320,6 +322,7 @@ public class ConnectionManager
     @Override
     public void onBluetoothAdapterStateChanged(int state) {
         Log.i(TAG, "onBluetoothAdapterStateChanged: State changed to " + state);
+        Log.i(TAG, "onBluetoothAdapterStateChanged: ConnectionManagerState State changed to " + mState.toString());
 
         if (state == BluetoothAdapter.STATE_OFF) {
             if (mState != ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED) {
@@ -377,6 +380,7 @@ public class ConnectionManager
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    Log.i(TAG, "onConnected run: " + peerProperties + ". " + ThreadUtils.currentThreadToString());
                     mListener.onConnected(bluetoothSocket, isIncoming, peerProperties);
                 }
             });
@@ -455,6 +459,7 @@ public class ConnectionManager
      * Updates the state of this instance and notifies the listener.
      */
     private synchronized void updateState() {
+        Log.d(TAG, "updateState: mShouldBeStarted :  " + mShouldBeStarted + ", mIsServerStarted:  " + mIsServerStarted);
         if (mShouldBeStarted && mIsServerStarted) {
             setState(ConnectionManagerState.RUNNING);
         } else if (mShouldBeStarted && !mBluetoothManager.isBluetoothEnabled()) {

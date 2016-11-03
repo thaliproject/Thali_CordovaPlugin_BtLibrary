@@ -11,8 +11,11 @@ import android.bluetooth.le.ScanFilter;
 import android.bluetooth.le.ScanResult;
 import android.bluetooth.le.ScanSettings;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,18 +27,21 @@ class BleScanner extends ScanCallback {
     public interface Listener {
         /**
          * Called when the Bluetooth LE scanning fails.
+         *
          * @param errorCode The error code.
          */
         void onScannerFailed(int errorCode);
 
         /**
          * Called when this scanner is started or stopped.
+         *
          * @param isStarted If true, the scanning was started. If false, the scanning was stopped.
          */
         void onIsScannerStartedChanged(boolean isStarted);
 
         /**
          * Called when the scanner has picked up a result.
+         *
          * @param result The scan result.
          */
         void onScanResult(ScanResult result);
@@ -56,7 +62,7 @@ class BleScanner extends ScanCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
     public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter) {
@@ -67,10 +73,10 @@ class BleScanner extends ScanCallback {
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
-     * @param builder The builder for ScanSettings.
-     * @param settings The discovery manager settings.
+     * @param builder          The builder for ScanSettings.
+     * @param settings         The discovery manager settings.
      */
     public BleScanner(Listener listener, BluetoothAdapter bluetoothAdapter,
                       ScanSettings.Builder builder, DiscoveryManagerSettings settings) {
@@ -110,10 +116,12 @@ class BleScanner extends ScanCallback {
      * @return True, if starting. False in case of an error.
      */
     public synchronized boolean start() {
+        Log.d(TAG, "start: " + ThreadUtils.currentThreadToString());
         if (mState == State.NOT_STARTED) {
             if (mBluetoothLeScanner != null) {
                 try {
                     mBluetoothLeScanner.startScan(mScanFilters, mScanSettings, this);
+                    Log.d(TAG, "start: scan started");
                     setState(State.RUNNING, true);
                 } catch (Exception e) {
                     Log.e(TAG, "start: Failed to start: " + e.getMessage(), e);
@@ -134,8 +142,11 @@ class BleScanner extends ScanCallback {
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     public synchronized void stop(boolean notifyStateChanged) {
+        Log.d(TAG, "stop, " + ThreadUtils.currentThreadToString());
         if (mBluetoothLeScanner != null) {
             try {
+                mBluetoothLeScanner.flushPendingScanResults(this);
+                Log.d(TAG, "stop: scan results are flushed ");
                 mBluetoothLeScanner.stopScan(this);
                 Log.d(TAG, "stop: Stopped");
             } catch (IllegalStateException e) {
@@ -144,6 +155,7 @@ class BleScanner extends ScanCallback {
         }
 
         setState(State.NOT_STARTED, notifyStateChanged);
+        Log.d(TAG, "stop finished, " + ThreadUtils.currentThreadToString());
     }
 
     /**
@@ -194,8 +206,8 @@ class BleScanner extends ScanCallback {
             mScanSettings = scanSettings;
 
             Log.i(TAG, "setScanSettings: Mode: " + mScanSettings.getScanMode()
-                + ", report delay in milliseconds: " + mScanSettings.getReportDelayMillis()
-                + ", scan result type: " + mScanSettings.getScanResultType());
+                    + ", report delay in milliseconds: " + mScanSettings.getReportDelayMillis()
+                    + ", scan result type: " + mScanSettings.getScanResultType());
         } else {
             throw new NullPointerException("The argument (ScanSettings) cannot be null");
         }
@@ -203,12 +215,12 @@ class BleScanner extends ScanCallback {
 
     /**
      * Applies the additional, default scan setting values for Marshmallow.
-     *
+     * <p>
      * Thali specs dictate that when calling startScan the settings argument MUST be used and MUST be set to:
-     *
-     *  setCallbackType(callbackType) - If on API 23 then callbackType MUST be set to the flag CALLBACK_TYPE_ALL_MATCHES and MUST NOT include the CALLBACK_TYPE_MATCH_LOST. We are explicitly not going to worry about announcing when a BLE peripheral has gone. It really shouldn't matter given how we are using BLE.
-     *  setMatchMode(matchMode) - If on API 23 then matchMode MUST be set to MATCH_MODE_STICKY .
-     *  setNumOfMatches(numOfMatches) - If on API 23 then numOfMatches MUST bet set to MATCH_NUM_MAX_ADVERTISEMENT.
+     * <p>
+     * setCallbackType(callbackType) - If on API 23 then callbackType MUST be set to the flag CALLBACK_TYPE_ALL_MATCHES and MUST NOT include the CALLBACK_TYPE_MATCH_LOST. We are explicitly not going to worry about announcing when a BLE peripheral has gone. It really shouldn't matter given how we are using BLE.
+     * setMatchMode(matchMode) - If on API 23 then matchMode MUST be set to MATCH_MODE_STICKY .
+     * setNumOfMatches(numOfMatches) - If on API 23 then numOfMatches MUST bet set to MATCH_NUM_MAX_ADVERTISEMENT.
      */
     @TargetApi(23)
     public void applyAdditionalMarshmallowSettings(ScanSettings.Builder scanSettingsBuilder) {
@@ -220,29 +232,33 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onBatchScanResults(List<ScanResult> scanResults) {
+        Log.d(TAG, "onBatchScanResults: results count  = " + scanResults.size() + ". " + ThreadUtils.currentThreadToString());
         if (mListener != null) {
             for (ScanResult scanResult : scanResults) {
                 if (scanResult != null) {
-                    //Log.v(TAG, "onBatchScanResults: Scan result: " + scanResult.toString());
+                    Log.d(TAG, "onBatchScanResults. scan = " + scanResult.toString());
                     mListener.onScanResult(scanResult);
                 }
             }
+        } else {
+            Log.wtf(TAG, "No listener");
         }
     }
 
     @Override
     public void onScanFailed(int errorCode) {
+        super.onScanFailed(errorCode);
         String reason = "";
-
+        Log.d(TAG, ThreadUtils.currentThreadToString());
         switch (errorCode) {
             case SCAN_FAILED_ALREADY_STARTED:
                 reason = "BLE scan with the same settings is already started by the app";
-
+                Log.e(TAG, "onScanFailed: " + reason + ", error code is " + errorCode);
                 try {
                     mBluetoothLeScanner.stopScan(this);
                 } catch (IllegalStateException e) {
+                    Log.e(TAG, "onScanFailed: stop scan failure " + e.getMessage());
                 }
-
                 break;
             case SCAN_FAILED_APPLICATION_REGISTRATION_FAILED:
                 reason = "App cannot be registered";
@@ -268,39 +284,68 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onScanResult(int callbackType, ScanResult scanResult) {
+        super.onScanResult(callbackType, scanResult);
+        Log.d(TAG, "onScanResult: " + ThreadUtils.currentThreadToString());
         if (scanResult != null) {
-            //Log.v(TAG, "onScanResult: Callback type: " + callbackType + ", Scan result: " + scanResult.toString());
-
+            Log.d(TAG, "onScanResult: " + scanResult.toString());
+            if (mListener == null) {
+                Log.e(TAG, "No listener");
+            }
             if (mListener != null) {
                 mListener.onScanResult(scanResult);
             }
+        } else {
+            Log.d(TAG, "onScanResult: there are no scan result");
         }
     }
 
     /**
      * Sets the state and notifies listener if required.
      *
-     * @param state The new state.
+     * @param state              The new state.
      * @param notifyStateChanged If true, will notify the listener, if the state is changed.
      */
     private synchronized void setState(State state, boolean notifyStateChanged) {
+        Log.d(TAG, "set state: " + ThreadUtils.currentThreadToString());
         if (mState != state) {
             Log.d(TAG, "setState: State changed from " + mState + " to " + state);
             mState = state;
 
             if (notifyStateChanged && mListener != null) {
-                switch (mState) {
-                    case NOT_STARTED:
-                        mListener.onIsScannerStartedChanged(false);
-                        break;
-                    case RUNNING:
-                        mListener.onIsScannerStartedChanged(true);
-                        break;
-                    default:
-                        // Nothing to do here
-                        break;
-                }
+                notifyStateChanged();
             }
         }
     }
+
+    private void notifyStateChanged() {
+        switch (mState) {
+            case NOT_STARTED:
+                notifyScannerStateChanged(false);
+                break;
+            case RUNNING:
+                notifyScannerStateChanged(true);
+                break;
+            default:
+                // Nothing to do here
+                break;
+        }
+    }
+
+    private void notifyScannerStateChanged(final boolean isStarted) {
+        Log.d(TAG, "notifyScannerStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
+        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+            @Override
+            public void run() {
+                mListener.onIsScannerStartedChanged(isStarted);
+            }
+        });
+        processPosted(posted);
+    }
+
+    private void processPosted(boolean posted) {
+        if (!posted) {
+            throw new RuntimeException("Couldn't post to main helper");
+        }
+    }
+
 }
