@@ -330,7 +330,7 @@ public class BleScannerTest {
                 mBleScanner.isStarted(), is(false));
     }
 
-    @Ignore
+    @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")
     @Test
     public void testOnScanFailed_alreadyStarted() throws Exception {
         mBleScanner.start();

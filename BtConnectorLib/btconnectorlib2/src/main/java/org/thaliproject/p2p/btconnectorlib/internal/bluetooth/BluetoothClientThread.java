@@ -6,8 +6,10 @@ package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.io.IOException;
 import java.util.Date;
 import java.util.UUID;
@@ -24,8 +26,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
          * Called when socket connection with a peer succeeds.
          *
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
-         * @param peerProperties The peer properties.
-         * @param who The Bluetooth client thread instance calling this callback.
+         * @param peerProperties  The peer properties.
+         * @param who             The Bluetooth client thread instance calling this callback.
          */
         void onSocketConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties, BluetoothClientThread who);
 
@@ -34,8 +36,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
          *
          * @param bluetoothSocket The Bluetooth socket associated with the connection.
-         * @param peerProperties The peer properties.
-         * @param who The Bluetooth client thread instance calling this callback.
+         * @param peerProperties  The peer properties.
+         * @param who             The Bluetooth client thread instance calling this callback.
          */
         void onHandshakeSucceeded(BluetoothSocket bluetoothSocket, PeerProperties peerProperties, BluetoothClientThread who);
 
@@ -43,8 +45,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
          * Called when connection attempt fails.
          *
          * @param peerProperties The peer properties.
-         * @param errorMessage The error message.
-         * @param who The Bluetooth client thread instance calling this callback.
+         * @param errorMessage   The error message.
+         * @param who            The Bluetooth client thread instance calling this callback.
          */
         void onConnectionFailed(PeerProperties peerProperties, String errorMessage, BluetoothClientThread who);
     }
@@ -62,17 +64,17 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     private int mInsecureRfcommSocketPort = SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT;
     private int mMaxNumberOfRetries = DEFAULT_MAX_NUMBER_OF_RETRIES;
     private long mTimeStarted = 0;
-    private volatile boolean  mIsShuttingDown = false;
+    private volatile boolean mIsShuttingDown = false;
 
     /**
      * Constructor.
      *
-     * @param listener The listener.
+     * @param listener                   The listener.
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
-     * @param myIdentityString Our identity.
+     * @param serviceRecordUuid          Our UUID (service record UUID to lookup RFCOMM channel).
+     * @param myIdentityString           Our identity.
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth device instance is null.
-     * @throws IOException Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
+     * @throws IOException          Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
      */
     public BluetoothClientThread(
             Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
@@ -99,7 +101,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * From Thread.
-     *
+     * <p>
      * Tries to connect to the Bluetooth socket. If successful, will create a handshake instance to
      * handle the connecting process.
      */
@@ -212,8 +214,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * identity is valid, notify the user that we have established a connection.
      *
      * @param bytes The array of bytes read.
-     * @param size The size of the array.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param size  The size of the array.
+     * @param who   The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
@@ -221,7 +223,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         final BluetoothSocket bluetoothSocket = who.getSocket();
 
         Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
-        if (who.getPeerProperties() !=null){
+        if (who.getPeerProperties() != null) {
             Log.d(TAG, "onBytesWritten: Peer props = " + who.getPeerProperties().toString());
         }
 
@@ -261,14 +263,14 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * Does nothing, but logs the event.
      *
      * @param buffer The array of bytes read.
-     * @param size The size of the array.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param size   The size of the array.
+     * @param who    The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onBytesWritten(byte[] buffer, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
-        if (who.getPeerProperties() !=null){
+        if (who.getPeerProperties() != null) {
             Log.d(TAG, "onBytesWritten: Peer props = " + who.getPeerProperties().toString());
         }
     }
@@ -278,7 +280,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * hands and we need to notify the listener and shutdown.
      *
      * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param who    The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onDisconnected(String reason, BluetoothSocketIoThread who) {
@@ -339,7 +341,8 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     private synchronized Exception createSocketAndConnect(final int port) {
         // Make sure the current socket, if one exists, is closed
-        //TODO what for?
+        // TODO what for?
+        // https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/96
         if (mBluetoothSocket != null) {
             try {
                 mBluetoothSocket.close();
@@ -379,9 +382,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
 
         if (socketCreatedSuccessfully && createdBluetoothSocket != null) {
             try {
-                Log.e(TAG, " createSocketAndConnect: connecting" );
+                Log.e(TAG, " createSocketAndConnect: connecting");
                 createdBluetoothSocket.connect(); // Blocking call
-                Log.i(TAG, " createSocketAndConnect: connected" );
+                Log.i(TAG, " createSocketAndConnect: connected");
             } catch (IOException e) {
                 exception = e;
                 Log.e(TAG, " createSocketAndConnect: connect, " + e.getMessage());

@@ -236,6 +236,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         mManufacturerId = manufacturerId;
         mBeaconAdLengthAndType = beaconAdLengthAndType;
+        Log.d(TAG, "beacon extra : " + beaconAdExtraInformation);
         mBeaconAdExtraInformation = beaconAdExtraInformation;
         mAdvertisementDataType = advertisementDataType;
     }
@@ -342,6 +343,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         // The scanner filter will be automatically updated when the scanner is started/restarted
         mManufacturerId = manufacturerId;
         mBeaconAdLengthAndType = beaconAdLengthAndType;
+        Log.d(TAG, "beacon extra : " + beaconAdExtraInformation);
         mBeaconAdExtraInformation = beaconAdExtraInformation;
         mAdvertisementDataType = advertisementDataType;
 

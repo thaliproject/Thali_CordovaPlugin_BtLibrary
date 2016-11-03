@@ -107,6 +107,7 @@ class BleAdvertiser extends AdvertiseCallback {
                 stop(false);
             }
 
+            Log.d(TAG, "setAdvertiseData: advertiseData = " + advertiseData.toString());
             mAdvertiseData = advertiseData;
 
             if (wasStarted) {
