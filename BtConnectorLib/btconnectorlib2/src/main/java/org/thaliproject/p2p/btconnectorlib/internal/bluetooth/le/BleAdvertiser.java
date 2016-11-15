@@ -110,6 +110,8 @@ class BleAdvertiser extends AdvertiseCallback {
             Log.d(TAG, "setAdvertiseData: advertiseData = " + advertiseData.toString());
             mAdvertiseData = advertiseData;
 
+            // in all the cases we manually call start after setting advertise data
+            // unnecessary start
             if (wasStarted) {
                 start();
             }
@@ -282,7 +284,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     private void notifyAdvertiserStateChanged(final boolean isStarted) {
         Log.d(TAG, "notifyAdvertiserStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
-        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+        boolean posted = ThreadUtils.postToMainHandler(new Runnable() {
             @Override
             public void run() {
                 mListener.onIsAdvertiserStartedChanged(isStarted);
@@ -293,7 +295,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     private void processPosted(boolean posted) {
         if (!posted) {
-            throw new RuntimeException("Couldn't post to main helper");
+            throw new RuntimeException("Couldn't post to main handler");
         }
     }
 

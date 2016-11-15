@@ -853,7 +853,8 @@ public class DiscoveryManager
     @Override
     public void onWifiPeerDiscovererStateChanged(EnumSet<WifiPeerDiscovererStateSet> state) {
         if (!mWifiPeerDiscovererStateSet.equals(state)) {
-            Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + mWifiPeerDiscovererStateSet + " -> " + state);
+            Log.i(TAG, "onWifiPeerDiscovererStateChanged: " + mWifiPeerDiscovererStateSet + " -> " + state +
+                    " " + ThreadUtils.currentThreadToString());
             mWifiPeerDiscovererStateSet = state;
             updateState();
         }
@@ -869,7 +870,8 @@ public class DiscoveryManager
     @Override
     public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state) {
         if (!mBlePeerDiscovererStateSet.equals(state)) {
-            Log.i(TAG, "onBlePeerDiscovererStateChanged: " + mBlePeerDiscovererStateSet + " -> " + state);
+            Log.i(TAG, "onBlePeerDiscovererStateChanged: " + mBlePeerDiscovererStateSet + " -> " + state +
+                    " " + ThreadUtils.currentThreadToString());
             mBlePeerDiscovererStateSet = state;
             updateState();
         }
@@ -1147,8 +1149,9 @@ public class DiscoveryManager
      * Stops the discovery for pending restart. Does not notify the listener.
      */
     private synchronized void stopForRestart() {
+        Log.d(TAG, "stopForRestart " + ThreadUtils.currentThreadToString());
         if (mState != DiscoveryManagerState.NOT_STARTED) {
-            Log.d(TAG, "stopForRestart");
+            Log.d(TAG, "stopForRestart. " + mState.toString());
             mBluetoothMacAddressResolutionHelper.stopAllBluetoothMacAddressResolutionOperations();
             stopBlePeerDiscoverer();
             stopWifiPeerDiscovery();
