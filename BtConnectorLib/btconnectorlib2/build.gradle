@@ -6,7 +6,7 @@ group = gradle.ext.group
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "23.0.3"
+    buildToolsVersion "25"
 
     defaultConfig {
         minSdkVersion 21

@@ -728,12 +728,18 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 case ADVERTISEMENT_UNKNOWN:
                     break;
                 case ADVERTISEMENT_PEER_PROPERTIES:
-                    PeerProperties peerProperties =
+                    final PeerProperties peerProperties =
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
                     if (peerProperties != null) {
                         Log.d(TAG, "checkScanResult onPeerDiscovered " + peerProperties.toString());
-                        mListener.onPeerDiscovered(peerProperties);
+                        ThreadUtils.performOnMainThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mListener.onPeerDiscovered(peerProperties);
+                            }
+                        });
+
                     }
 
                     break;
@@ -743,17 +749,29 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     if (mMyBluetoothMacAddress != null
                             || parsedAdvertisement.provideBluetoothMacAddressRequestId.compareTo(mOurRequestId) > 0) {
                         Log.d(TAG, "checkScanResult: Will try to provide a device its Bluetooth MAC address");
-                        mListener.onProvideBluetoothMacAddressRequest(
-                                parsedAdvertisement.provideBluetoothMacAddressRequestId);
+                        final BlePeerDiscoveryUtils.ParsedAdvertisement finalParsedAdvertisement = parsedAdvertisement;
+                        ThreadUtils.performOnMainThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mListener.onProvideBluetoothMacAddressRequest(
+                                        finalParsedAdvertisement.provideBluetoothMacAddressRequestId);
+                            }
+                        });
                     } else {
                         Log.d(TAG, "checkScanResult: Will not try to provide a device its Bluetooth MAC address, but expect it to provide ours instead");
                     }
 
                     break;
                 case ADVERTISEMENT_PEER_READY_TO_PROVIDE_BLUETOOTH_MAC_ADDRESS:
-                    mListener.onPeerReadyToProvideBluetoothMacAddress(mOurRequestId);
+                    ThreadUtils.performOnMainThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mListener.onPeerReadyToProvideBluetoothMacAddress(mOurRequestId);
+                        }
+                    });
                     break;
                 case ADVERTISEMENT_PEER_PROVIDING_OUR_BLUETOOTH_MAC_ADDRESS:
+                    //No synchronized methods further
                     mListener.onBluetoothMacAddressResolved(parsedAdvertisement.bluetoothMacAddress);
                     break;
                 default:
@@ -797,7 +815,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             Log.d(TAG, "updateState: State changed from " + mStateSet + " to " + deducedStateSet +
                     ThreadUtils.currentThreadToString());
             mStateSet = deducedStateSet;
-            mListener.onBlePeerDiscovererStateChanged(mStateSet);
+            ThreadUtils.performOnMainThread(new Runnable() {
+                @Override
+                public void run() {
+                    mListener.onBlePeerDiscovererStateChanged(mStateSet);
+                }
+            });
         }
         Log.d(TAG, "update state finished. " + ThreadUtils.currentThreadToString());
     }

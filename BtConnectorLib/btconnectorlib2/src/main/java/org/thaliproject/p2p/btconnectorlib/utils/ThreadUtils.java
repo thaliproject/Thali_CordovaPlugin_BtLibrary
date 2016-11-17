@@ -15,7 +15,7 @@ public class ThreadUtils {
         return String.format(Locale.getDefault(), "Current thread: %s, id: %d", Thread.currentThread().toString(), Thread.currentThread().getId());
     }
 
-    public static boolean postToMainHelper(Runnable action) {
+    public static boolean performOnMainThread(Runnable action) {
         Handler h = new Handler(Looper.getMainLooper());
         return h.post(action);
     }

@@ -333,7 +333,7 @@ class BleScanner extends ScanCallback {
 
     private void notifyScannerStateChanged(final boolean isStarted) {
         Log.d(TAG, "notifyScannerStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
-        boolean posted = ThreadUtils.postToMainHelper(new Runnable() {
+        boolean posted = ThreadUtils.performOnMainThread(new Runnable() {
             @Override
             public void run() {
                 mListener.onIsScannerStartedChanged(isStarted);
