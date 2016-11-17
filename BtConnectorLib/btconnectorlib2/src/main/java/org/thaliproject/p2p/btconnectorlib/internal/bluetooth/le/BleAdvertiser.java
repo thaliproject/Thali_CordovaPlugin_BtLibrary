@@ -284,7 +284,7 @@ class BleAdvertiser extends AdvertiseCallback {
 
     private void notifyAdvertiserStateChanged(final boolean isStarted) {
         Log.d(TAG, "notifyAdvertiserStateChanged: started =  " + isStarted + ". " + ThreadUtils.currentThreadToString());
-        boolean posted = ThreadUtils.postToMainHandler(new Runnable() {
+        boolean posted = ThreadUtils.performOnMainThread(new Runnable() {
             @Override
             public void run() {
                 mListener.onIsAdvertiserStartedChanged(isStarted);

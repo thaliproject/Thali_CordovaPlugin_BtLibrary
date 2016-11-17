@@ -733,7 +733,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
                     if (peerProperties != null) {
                         Log.d(TAG, "checkScanResult onPeerDiscovered " + peerProperties.toString());
-                        ThreadUtils.postToMainHandler(new Runnable() {
+                        ThreadUtils.performOnMainThread(new Runnable() {
                             @Override
                             public void run() {
                                 mListener.onPeerDiscovered(peerProperties);
@@ -750,7 +750,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                             || parsedAdvertisement.provideBluetoothMacAddressRequestId.compareTo(mOurRequestId) > 0) {
                         Log.d(TAG, "checkScanResult: Will try to provide a device its Bluetooth MAC address");
                         final BlePeerDiscoveryUtils.ParsedAdvertisement finalParsedAdvertisement = parsedAdvertisement;
-                        ThreadUtils.postToMainHandler(new Runnable() {
+                        ThreadUtils.performOnMainThread(new Runnable() {
                             @Override
                             public void run() {
                                 mListener.onProvideBluetoothMacAddressRequest(
@@ -763,7 +763,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
                     break;
                 case ADVERTISEMENT_PEER_READY_TO_PROVIDE_BLUETOOTH_MAC_ADDRESS:
-                    ThreadUtils.postToMainHandler(new Runnable() {
+                    ThreadUtils.performOnMainThread(new Runnable() {
                         @Override
                         public void run() {
                             mListener.onPeerReadyToProvideBluetoothMacAddress(mOurRequestId);
@@ -815,7 +815,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             Log.d(TAG, "updateState: State changed from " + mStateSet + " to " + deducedStateSet +
                     ThreadUtils.currentThreadToString());
             mStateSet = deducedStateSet;
-            ThreadUtils.postToMainHandler(new Runnable() {
+            ThreadUtils.performOnMainThread(new Runnable() {
                 @Override
                 public void run() {
                     mListener.onBlePeerDiscovererStateChanged(mStateSet);
