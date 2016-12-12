@@ -14,6 +14,8 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
+
 import java.io.IOException;
 import java.util.Date;
 import java.util.Iterator;
@@ -475,10 +477,10 @@ public class BluetoothConnector
             final BluetoothSocket bluetoothSocket, final PeerProperties peerProperties) {
 
         Log.i(TAG, "onIncomingConnectionConnected: " + peerProperties.toString());
-
-        mHandler.post(new Runnable() {
+        boolean posted = mHandler.post(new Runnable() {
             @Override
             public void run() {
+                Log.d(TAG, "onIncomingConnectionConnected: bluetoothSocket.isConnected() " + bluetoothSocket.isConnected());
                 if (bluetoothSocket.isConnected()) {
                     mListener.onConnected(bluetoothSocket, true, peerProperties);
                 } else {
@@ -486,6 +488,7 @@ public class BluetoothConnector
                 }
             }
         });
+        Log.i(TAG, "onIncomingConnectionConnected: posted = " + posted);
     }
 
     /**
@@ -618,9 +621,12 @@ public class BluetoothConnector
             mHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    Log.d(TAG, "handleSuccessfulClientThread run. " + ThreadUtils.currentThreadToString());
                     if (bluetoothSocket.isConnected()) {
+                        Log.d(TAG, "onConnected run. " + ThreadUtils.currentThreadToString());
                         mListener.onConnected(bluetoothSocket, false, peerProperties);
                     } else {
+                        Log.d(TAG, "onConnectionFailed run. " + ThreadUtils.currentThreadToString());
                         onConnectionFailed(peerProperties, "Disconnected", bluetoothClientThread);
                     }
                 }

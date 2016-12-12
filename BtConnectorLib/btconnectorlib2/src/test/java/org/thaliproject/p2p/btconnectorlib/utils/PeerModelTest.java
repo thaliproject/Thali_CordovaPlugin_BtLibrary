@@ -261,6 +261,7 @@ public class PeerModelTest {
                 pp, is(nullValue()));
     }
 
+
     @Test
     public void testAddOrUpdateDiscoveredPeer_Add() throws Exception {
         doNothing().when(mMockListener).onPeerAdded(isA(PeerProperties.class));

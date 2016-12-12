@@ -175,6 +175,10 @@ public class ConnectionEngine implements
      * @param peerProperties The properties of the peer to connect to.
      */
     public synchronized void connect(PeerProperties peerProperties) {
+        if (mDiscoveryManager.isAdvertising() || mDiscoveryManager.isDiscovering()) {
+            mDiscoveryManager.stop();
+        }
+
         if (peerProperties != null) {
             if (mConnectionManager.connect(peerProperties)) {
                 LogFragment.logMessage("Trying to connect to peer " + peerProperties.toString());
