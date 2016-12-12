@@ -1218,7 +1218,7 @@ public class DiscoveryManager
             mBlePeerDiscoverer.stopScannerAndAdvertiser();
             mBlePeerDiscoverer.setListener(new BlePeerDiscoverer.BlePeerDiscoveryListener() {
                 private void logError() {
-                    Log.e(TAG, "c");
+                    Log.e(TAG, "call method on deleted instance of BlePeerDiscoverer");
                 }
 
                 @Override
@@ -1345,9 +1345,9 @@ public class DiscoveryManager
     private synchronized void updateState() {
         Log.d(TAG, "updateState: " + ThreadUtils.currentThreadToString());
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
-        if(mBlePeerDiscoverer!=null){
-            if(!mBlePeerDiscoverer.getState().equals(mBlePeerDiscovererStateSet)){
-                Log.e(TAG,"seems that updateState call different BlePeerDiscoverer");
+        if (mBlePeerDiscoverer != null) {
+            if (!mBlePeerDiscoverer.getState().equals(mBlePeerDiscovererStateSet)) {
+                Log.e(TAG, "seems that updateState call different BlePeerDiscoverer");
             }
             mBlePeerDiscovererStateSet = mBlePeerDiscoverer.getState();
         }
