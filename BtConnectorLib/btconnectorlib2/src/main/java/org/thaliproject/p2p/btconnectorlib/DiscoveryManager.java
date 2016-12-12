@@ -1216,6 +1216,41 @@ public class DiscoveryManager
     private synchronized void stopBlePeerDiscoverer() {
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.stopScannerAndAdvertiser();
+            mBlePeerDiscoverer.setListener(new BlePeerDiscoverer.BlePeerDiscoveryListener() {
+                private void logError() {
+                    Log.e(TAG, "call method on deleted instance of BlePeerDiscoverer");
+                }
+
+                @Override
+                public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state) {
+                    logError();
+                }
+
+                @Override
+                public void onPeerDiscovered(PeerProperties peerProperties) {
+                    logError();
+                }
+
+                @Override
+                public void onProvideBluetoothMacAddressRequest(String requestId) {
+                    logError();
+                }
+
+                @Override
+                public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
+                    logError();
+                }
+
+                @Override
+                public void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted) {
+                    logError();
+                }
+
+                @Override
+                public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
+                    logError();
+                }
+            });
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
         }
@@ -1310,6 +1345,14 @@ public class DiscoveryManager
     private synchronized void updateState() {
         Log.d(TAG, "updateState: " + ThreadUtils.currentThreadToString());
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
+        if (mBlePeerDiscoverer != null) {
+            if (!mBlePeerDiscoverer.getState().equals(mBlePeerDiscovererStateSet)) {
+                Log.e(TAG, "seems that updateState call different BlePeerDiscoverer");
+            }
+            mBlePeerDiscovererStateSet = mBlePeerDiscoverer.getState();
+        }
+        mBlePeerDiscovererStateSet = mBlePeerDiscoverer != null ? mBlePeerDiscoverer.getState() :
+                mBlePeerDiscovererStateSet;
         boolean isBleAdvertising = isBleAdvertising();
         boolean isBleDiscovering = isBleDiscovering();
         boolean isWifiAdvertising = isWifiAdvertising();

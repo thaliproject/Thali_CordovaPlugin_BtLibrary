@@ -137,7 +137,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private static final String TAG = BlePeerDiscoverer.class.getName();
     private static final int UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD = 9;
     private static final int ADVERTISER_RESTART_MAX_ATTEMPTS = 5;
-    private final BlePeerDiscoveryListener mListener;
+
+    public void setListener(BlePeerDiscoveryListener mListener) {
+        this.mListener = mListener;
+    }
+
+    private BlePeerDiscoveryListener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mServiceUuid;
     private final UUID mProvideBluetoothMacAddressRequestUuid;
