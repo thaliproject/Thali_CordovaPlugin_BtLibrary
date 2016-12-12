@@ -55,7 +55,6 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     public static final int DEFAULT_SCAN_MODE = ScanSettings.SCAN_MODE_BALANCED;
     public static final long DEFAULT_SCAN_REPORT_DELAY_IN_FOREGROUND_IN_MILLISECONDS = 500;
     public static final long DEFAULT_SCAN_REPORT_DELAY_IN_BACKGROUND_IN_MILLISECONDS = 1000;
-    public static final long DEFAULT_PEER_PROPERTIES_UPDATE_PERIOD_IN_MILLISECONDS = 5000;
 
     // Keys for shared preferences
     private static final String KEY_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = "automate_bluetooth_mac_address_resolution";
