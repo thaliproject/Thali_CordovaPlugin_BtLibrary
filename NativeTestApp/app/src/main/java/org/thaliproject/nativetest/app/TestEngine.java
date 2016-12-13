@@ -6,6 +6,7 @@ package org.thaliproject.nativetest.app;
 import android.app.Activity;
 import android.content.Context;
 import android.util.Log;
+
 import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.test.AbstractTest;
 import org.thaliproject.nativetest.app.test.FindMyBluetoothAddressTest;
@@ -14,6 +15,7 @@ import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +30,8 @@ public class TestEngine extends ConnectionEngine implements TestListener {
 
     /**
      * Constructor.
-     * @param context The application context.
+     *
+     * @param context  The application context.
      * @param activity The activity.
      * @param listener The test listener.
      */
@@ -56,6 +59,7 @@ public class TestEngine extends ConnectionEngine implements TestListener {
 
     /**
      * Runs the given test.
+     *
      * @param testToRun The test to runTest.
      * @return True, if the test was started successfully. False otherwise.
      */
@@ -112,9 +116,10 @@ public class TestEngine extends ConnectionEngine implements TestListener {
     /**
      * Dumps the test results to logcat, stops this engine (the connection and discovery manager)
      * and notifies the listener.
-     * @param testName The name of the test.
+     *
+     * @param testName    The name of the test.
      * @param successRate The success rate (1.0 is 100 %).
-     * @param results The test results.
+     * @param results     The test results.
      */
     @Override
     public void onTestFinished(String testName, float successRate, String results) {
@@ -131,8 +136,18 @@ public class TestEngine extends ConnectionEngine implements TestListener {
         mCurrentTest = null;
     }
 
+    @Override
+    public void onTestStarting() {
+
+    }
+
+    @Override
+    public void onTestFinished() {
+
+    }
+
     /**
-     * @param state The new state.
+     * @param state         The new state.
      * @param isDiscovering True, if peer discovery is active. False otherwise.
      * @param isAdvertising True, if advertising is active. False otherwise.
      */
@@ -189,4 +204,6 @@ public class TestEngine extends ConnectionEngine implements TestListener {
             ((DiscoveryManager.DiscoveryManagerListener) mCurrentTest).onBluetoothMacAddressResolved(bluetoothMacAddress);
         }
     }
+
+
 }

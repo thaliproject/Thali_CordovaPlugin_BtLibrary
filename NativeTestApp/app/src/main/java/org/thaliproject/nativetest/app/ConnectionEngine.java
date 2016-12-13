@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+
 import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
@@ -23,6 +24,7 @@ import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
+
 import java.io.IOException;
 import java.util.UUID;
 
@@ -234,8 +236,8 @@ public class ConnectionEngine implements
     /**
      * Called when the user grants/denies a permission request.
      *
-     * @param requestCode The request code associated with the permission request.
-     * @param permissions The permissions in question.
+     * @param requestCode  The request code associated with the permission request.
+     * @param permissions  The permissions in question.
      * @param grantResults The grant results (granted/denied).
      */
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
@@ -292,8 +294,8 @@ public class ConnectionEngine implements
      * connections.
      *
      * @param bluetoothSocket The Bluetooth socket.
-     * @param isIncoming If true, this is an incoming connection. If false, this is an outgoing connection.
-     * @param peerProperties The peer properties.
+     * @param isIncoming      If true, this is an incoming connection. If false, this is an outgoing connection.
+     * @param peerProperties  The peer properties.
      */
     @Override
     public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
@@ -337,6 +339,22 @@ public class ConnectionEngine implements
         Log.i(TAG, "onConnected: Total number of connections is now " + totalNumberOfConnections);
 
         if (totalNumberOfConnections == 1) {
+            if (mCheckConnectionsTimer == null) {
+                mCheckConnectionsTimer = new CountDownTimer(
+                        CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS,
+                        CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS) {
+                    @Override
+                    public void onTick(long l) {
+                        // Not used
+                    }
+
+                    @Override
+                    public void onFinish() {
+                        sendPingToAllPeers();
+                        mCheckConnectionsTimer.start();
+                    }
+                };
+            }
             mCheckConnectionsTimer.cancel();
             mCheckConnectionsTimer.start();
         }
@@ -400,7 +418,7 @@ public class ConnectionEngine implements
     }
 
     /**
-     * @param state The new state.
+     * @param state         The new state.
      * @param isDiscovering True, if peer discovery is active. False otherwise.
      * @param isAdvertising True, if advertising is active. False otherwise.
      */
@@ -549,7 +567,8 @@ public class ConnectionEngine implements
      * @param peerProperties The peer properties.
      */
     protected synchronized void autoConnectIfEnabled(PeerProperties peerProperties) {
-        if (!mIsShuttingDown) {
+        //null pointer crash on battery test
+        if (!mIsShuttingDown && mSettings != null) {
             if (mSettings.getAutoConnect() && !mModel.hasConnectionToPeer(peerProperties, false)) {
                 if (mSettings.getAutoConnectEvenWhenIncomingConnectionEstablished()
                         || !mModel.hasConnectionToPeer(peerProperties, true)) {
@@ -637,7 +656,8 @@ public class ConnectionEngine implements
         } else {
             // No explanation needed, we can request the permission.
             ActivityCompat.requestPermissions(
-                    mActivity, new String[] { permission }, PERMISSION_REQUEST_ACCESS_COARSE_LOCATION);
+                    mActivity, new String[]{permission}, PERMISSION_REQUEST_ACCESS_COARSE_LOCATION);
         }
     }
+
 }
