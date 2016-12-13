@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Context;
 import android.util.Log;
 import android.widget.Toast;
+
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
@@ -23,12 +24,10 @@ public class BatteryEngine extends ConnectionEngine implements TestListener {
      *
      * @param context
      * @param activity
-     *
-     *
      */
     private TestListener mListener = null;
 
-    public BatteryEngine(Context context, Activity activity,TestListener listener) {
+    public BatteryEngine(Context context, Activity activity, TestListener listener) {
         super(context, activity);
         this.mListener = listener;
     }
@@ -61,22 +60,20 @@ public class BatteryEngine extends ConnectionEngine implements TestListener {
         }
     }
 
-    public void runTest(){
+    public void runTest() {
         PeerProperties peerProperties = null;
-        if(mModel.getPeers().size()!=0){
+        if (mModel.getPeers().size() != 0) {
             peerProperties = mModel.getPeers().get(0);
             mDiscoveryManager.stop();
             onTestStarting();
-            Connection connection = mModel.getConnectionToPeer(peerProperties,false);
-            if(connection!=null){
+            Connection connection = mModel.getConnectionToPeer(peerProperties, false);
+            if (connection != null) {
                 connection.disconnect();
-            }
-            else {
+            } else {
                 connect(peerProperties);
             }
-        }
-        else{
-            Toast.makeText(((MainActivity)mListener),"There is no discovered peers!!! Start Discovery first",Toast
+        } else {
+            Toast.makeText(((MainActivity) mListener), "There is no discovered peers!!! Start Discovery first", Toast
                     .LENGTH_SHORT).show();
         }
 
@@ -85,33 +82,33 @@ public class BatteryEngine extends ConnectionEngine implements TestListener {
     @Override
     public void onDisconnected(String reason, Connection connection) {
         super.onDisconnected(reason, connection);
-        Log.i(TAG, "onDisconnected  "+ connection.getPeerProperties());
-        if(isStarted)
+        Log.i(TAG, "onDisconnected  " + connection.getPeerProperties());
+        if (isStarted)
             connect(connection.getPeerProperties());
     }
 
     @Override
     public void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties) {
         super.onConnected(bluetoothSocket, isIncoming, peerProperties);
-        Log.i(TAG, "created new Bluetooth socket to "+peerProperties);
-        if(isStarted)
+        Log.i(TAG, "created new Bluetooth socket to " + peerProperties);
+        if (isStarted)
             startSendingData(peerProperties);
     }
 
     @Override
     public void onDataSent(float dataSentInMegaBytes, float transferSpeed, PeerProperties receivingPeer) {
         super.onDataSent(dataSentInMegaBytes, transferSpeed, receivingPeer);
-        Log.i(TAG, "onDataSent "+ receivingPeer);
-        Connection connection = mModel.getConnectionToPeer(receivingPeer,false);
-        if(isStarted)
+        Log.i(TAG, "onDataSent " + receivingPeer);
+        Connection connection = mModel.getConnectionToPeer(receivingPeer, false);
+        if (isStarted)
             connection.disconnect();
     }
 
     @Override
     public void onConnectionFailed(PeerProperties peerProperties, String errorMessage) {
         super.onConnectionFailed(peerProperties, errorMessage);
-        Log.i(TAG, "onConnectionFailed "+peerProperties);
-        if(isStarted)
+        Log.i(TAG, "onConnectionFailed " + peerProperties);
+        if (isStarted)
             connect(peerProperties);
     }
 

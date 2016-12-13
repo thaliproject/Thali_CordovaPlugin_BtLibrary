@@ -19,6 +19,7 @@ import org.thaliproject.nativetest.app.BatteryEngine;
 import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.nativetest.app.test.AbstractTest;
+
 import java.util.List;
 
 /**
@@ -37,7 +38,7 @@ public class TestsFragment extends Fragment {
     public TestsFragment() {
     }
 
-    public void setTestEngine(TestEngine testEngine, BatteryEngine batteryEngine){
+    public void setTestEngine(TestEngine testEngine, BatteryEngine batteryEngine) {
         mTestEngine = testEngine;
         mBatteryEngine = batteryEngine;
         if (mTestEngine != null) {
@@ -129,12 +130,11 @@ public class TestsFragment extends Fragment {
                 @Override
                 public void onClick(View view) {
                     if (mBatteryEngine != null) {
-                        if(!mBatteryEngine.isStarted()) {
+                        if (!mBatteryEngine.isStarted()) {
                             runBatteryTestButton.setText(R.string.stop_battery_test);
                             mBatteryEngine.runTest();
 
-                        }
-                        else{
+                        } else {
                             runBatteryTestButton.setText(R.string.battery_test);
                             mBatteryEngine.onTestFinished();
                             mBatteryEngine.stop();

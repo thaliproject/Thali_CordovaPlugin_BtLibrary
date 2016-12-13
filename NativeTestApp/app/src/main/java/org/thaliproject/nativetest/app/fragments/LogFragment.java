@@ -15,8 +15,10 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+
 import org.thaliproject.nativetest.app.model.LogItem;
 import org.thaliproject.nativetest.app.R;
+
 import java.sql.Timestamp;
 import java.util.Date;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,7 +51,7 @@ public class LogFragment extends Fragment {
         mContext = view.getContext();
         mListAdapter = new ListAdapter(mContext);
 
-        mListView = (ListView)view.findViewById(R.id.listView);
+        mListView = (ListView) view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
 
         return view;
@@ -57,6 +59,7 @@ public class LogFragment extends Fragment {
 
     /**
      * Adds a new log item with the given message.
+     *
      * @param message The message for the log item.
      */
     public static void logMessage(String message) {
@@ -65,6 +68,7 @@ public class LogFragment extends Fragment {
 
     /**
      * Adds a new log item with the given error message.
+     *
      * @param errorMessage The error message for the log item.
      */
     public static void logError(String errorMessage) {
@@ -73,6 +77,7 @@ public class LogFragment extends Fragment {
 
     /**
      * Adds a new log item with the given message.
+     *
      * @param message The message for the log item.
      */
     public static void logTestEngineMessage(String message) {
@@ -81,7 +86,8 @@ public class LogFragment extends Fragment {
 
     /**
      * Adds a new log item with the given message.
-     * @param message The message for the log item.
+     *
+     * @param message        The message for the log item.
      * @param logMessageType The message type.
      */
     private static synchronized void addLogItem(String message, LogItem.LogMessageType logMessageType) {
@@ -140,7 +146,7 @@ public class LogFragment extends Fragment {
 
             LogItem logItem = mLog.get(position);
 
-            TextView textView = (TextView)view.findViewById(R.id.timestamp);
+            TextView textView = (TextView) view.findViewById(R.id.timestamp);
             textView.setText(logItem.timestampString);
 
             if (mDefaultTextViewColors == null) {
@@ -156,7 +162,7 @@ public class LogFragment extends Fragment {
                 textView.setTextColor(mDefaultTextViewColors);
             }
 
-            textView = (TextView)view.findViewById(R.id.message);
+            textView = (TextView) view.findViewById(R.id.message);
             textView.setText(logItem.message);
 
             if (logItem.type == LogItem.LogMessageType.ERROR) {

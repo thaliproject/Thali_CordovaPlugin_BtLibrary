@@ -17,6 +17,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
+
 import org.thaliproject.nativetest.app.fragments.LogFragment;
 import org.thaliproject.nativetest.app.fragments.PeerListFragment;
 import org.thaliproject.nativetest.app.fragments.SettingsFragment;
@@ -27,9 +28,8 @@ import org.thaliproject.nativetest.app.test.TestListener;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
-public class MainActivity
-        extends AppCompatActivity
-        implements ActivityCompat.OnRequestPermissionsResultCallback, PeerListFragment.Listener, TestListener {
+public class MainActivity extends AppCompatActivity implements PeerListFragment.Listener,
+        ActivityCompat.OnRequestPermissionsResultCallback, TestListener {
 
     private static final String TAG = MainActivity.class.getName();
 
@@ -38,7 +38,7 @@ public class MainActivity
 
     private ConnectionEngine mConnectionEngine = null;
     private TestEngine mTestEngine = null;
-    private  BatteryEngine mBatteryEngine = null;
+    private BatteryEngine mBatteryEngine = null;
 
     /**
      * The {@link android.support.v4.view.PagerAdapter} that will provide
@@ -75,10 +75,10 @@ public class MainActivity
 
         mMyFragmentAdapter = new MyFragmentAdapter(getSupportFragmentManager(), this);
 
-        mViewPager = (ViewPager)findViewById(R.id.pager);
+        mViewPager = (ViewPager) findViewById(R.id.pager);
         mViewPager.setAdapter(mMyFragmentAdapter);
 
-        mSlidingTabLayout = (SlidingTabLayout)findViewById(R.id.sliding_tabs);
+        mSlidingTabLayout = (SlidingTabLayout) findViewById(R.id.sliding_tabs);
         mSlidingTabLayout.setViewPager(mViewPager);
 
         mLogFragment = new LogFragment();
@@ -100,6 +100,7 @@ public class MainActivity
 
     /**
      * Displays a toast with the given message.
+     *
      * @param message The message to show.
      */
     public static void showToast(final String message) {
@@ -311,16 +312,18 @@ public class MainActivity
 
         @Override
         public Fragment getItem(int index) {
-            switch (index){
+            switch (index) {
                 case PEER_LIST_FRAGMENT:
                     mPeerListFragment = new PeerListFragment();
                     mPeerListFragment.setListener(mMainActivity);
                     return mPeerListFragment;
-                case LOG_FRAGMENT: return mLogFragment;
-                case SETTINGS_FRAGMENT: return mSettingsFragment;
+                case LOG_FRAGMENT:
+                    return mLogFragment;
+                case SETTINGS_FRAGMENT:
+                    return mSettingsFragment;
                 case TESTS_FRAGMENT:
                     mTestsFragment = new TestsFragment();
-                    mTestsFragment.setTestEngine((TestEngine) mTestEngine, (BatteryEngine)mBatteryEngine);
+                    mTestsFragment.setTestEngine((TestEngine) mTestEngine, (BatteryEngine) mBatteryEngine);
                     return mTestsFragment;
             }
 
@@ -330,10 +333,14 @@ public class MainActivity
         @Override
         public CharSequence getPageTitle(int position) {
             switch (position) {
-                case PEER_LIST_FRAGMENT: return "Peers";
-                case LOG_FRAGMENT: return "Log";
-                case SETTINGS_FRAGMENT: return "Settings";
-                case TESTS_FRAGMENT: return "Tests";
+                case PEER_LIST_FRAGMENT:
+                    return "Peers";
+                case LOG_FRAGMENT:
+                    return "Log";
+                case SETTINGS_FRAGMENT:
+                    return "Settings";
+                case TESTS_FRAGMENT:
+                    return "Tests";
             }
 
             return super.getPageTitle(position);
