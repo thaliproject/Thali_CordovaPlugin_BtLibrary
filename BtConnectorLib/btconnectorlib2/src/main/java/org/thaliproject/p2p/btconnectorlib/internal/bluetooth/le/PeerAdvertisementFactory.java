@@ -27,18 +27,18 @@ class PeerAdvertisementFactory {
 
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
-     *
+     * <p>
      * advertiseData MUST be set to:
+     * <p>
+     * addManufacturerData() - This MUST NOT be set. We need all the space in the BLE Advertisement we can get.
+     * addServiceData(serviceDataUuid, serviceData) - serviceDataUuid MUST be set to the Thali service's BLE UUID and serviceData MUST be set to the single byte "0" followed by the Bluetooth MAC address as a byte stream.
+     * addServiceUuid(serviceUuid) - serviceUuid MUST be set to the Thali service's BLE UUID.
+     * setIncludeDeviceName() - Must be set to false. We need the space.
+     * setIncludeTxPowerLevel() - Must be set to false. We need the space.
      *
-     *  addManufacturerData() - This MUST NOT be set. We need all the space in the BLE Advertisement we can get.
-     *  addServiceData(serviceDataUuid, serviceData) - serviceDataUuid MUST be set to the Thali service's BLE UUID and serviceData MUST be set to the single byte "0" followed by the Bluetooth MAC address as a byte stream.
-     *  addServiceUuid(serviceUuid) - serviceUuid MUST be set to the Thali service's BLE UUID.
-     *  setIncludeDeviceName() - Must be set to false. We need the space.
-     *  setIncludeTxPowerLevel() - Must be set to false. We need the space.
-     *
-     * @param serviceUuid The service UUID.
+     * @param serviceUuid              The service UUID.
      * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
-     * @param bluetoothMacAddress The Bluetooth MAC address.
+     * @param bluetoothMacAddress      The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
     public static AdvertiseData createAdvertiseDataToServiceData(
@@ -49,21 +49,22 @@ class PeerAdvertisementFactory {
                 serviceUuid, beaconAdExtraInformation, bluetoothMacAddress, builder);
 
     }
+
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
-     *
+     * <p>
      * advertiseData MUST be set to:
+     * <p>
+     * addManufacturerData() - This MUST NOT be set. We need all the space in the BLE Advertisement we can get.
+     * addServiceData(serviceDataUuid, serviceData) - serviceDataUuid MUST be set to the Thali service's BLE UUID and serviceData MUST be set to the single byte "0" followed by the Bluetooth MAC address as a byte stream.
+     * addServiceUuid(serviceUuid) - serviceUuid MUST be set to the Thali service's BLE UUID.
+     * setIncludeDeviceName() - Must be set to false. We need the space.
+     * setIncludeTxPowerLevel() - Must be set to false. We need the space.
      *
-     *  addManufacturerData() - This MUST NOT be set. We need all the space in the BLE Advertisement we can get.
-     *  addServiceData(serviceDataUuid, serviceData) - serviceDataUuid MUST be set to the Thali service's BLE UUID and serviceData MUST be set to the single byte "0" followed by the Bluetooth MAC address as a byte stream.
-     *  addServiceUuid(serviceUuid) - serviceUuid MUST be set to the Thali service's BLE UUID.
-     *  setIncludeDeviceName() - Must be set to false. We need the space.
-     *  setIncludeTxPowerLevel() - Must be set to false. We need the space.
-     *
-     * @param serviceUuid The service UUID.
+     * @param serviceUuid              The service UUID.
      * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
-     * @param bluetoothMacAddress The Bluetooth MAC address.
-     * @param builder The Builder for AdvertiseData
+     * @param bluetoothMacAddress      The Bluetooth MAC address.
+     * @param builder                  The Builder for AdvertiseData
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
     public static AdvertiseData createAdvertiseDataToServiceData(
@@ -109,11 +110,11 @@ class PeerAdvertisementFactory {
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
      *
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type.
-     * @param serviceUuid The service UUID.
+     * @param manufacturerId           The manufacturer ID.
+     * @param beaconAdLengthAndType    The beacon ad length and type.
+     * @param serviceUuid              The service UUID.
      * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
-     * @param bluetoothMacAddress The Bluetooth MAC address.
+     * @param bluetoothMacAddress      The Bluetooth MAC address.
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
     public static AdvertiseData createAdvertiseDataToManufacturerData(
@@ -134,14 +135,14 @@ class PeerAdvertisementFactory {
     /**
      * Creates AdvertiseData based on the given service UUID and Bluetooth MAC address.
      *
-     * @param manufacturerId The manufacturer ID.
-     * @param beaconAdLengthAndType The beacon ad length and type.
-     * @param serviceUuid The service UUID.
+     * @param manufacturerId           The manufacturer ID.
+     * @param beaconAdLengthAndType    The beacon ad length and type.
+     * @param serviceUuid              The service UUID.
      * @param beaconAdExtraInformation The beacon ad extra information (8-bit integer).
-     * @param bluetoothMacAddress The Bluetooth MAC address.
-     * @param builder The Builder for AdvertiseData
-     * @param byteArrayOutputStream The instance of ByteArrayOutputStream
-     * @param dataOutputStream The instance of DataOutputStream
+     * @param bluetoothMacAddress      The Bluetooth MAC address.
+     * @param builder                  The Builder for AdvertiseData
+     * @param byteArrayOutputStream    The instance of ByteArrayOutputStream
+     * @param dataOutputStream         The instance of DataOutputStream
      * @return A newly created AdvertiseData instance or null in case of a failure.
      */
     public static AdvertiseData createAdvertiseDataToManufacturerData(
@@ -225,6 +226,7 @@ class PeerAdvertisementFactory {
         PeerProperties peerProperties = null;
 
         if (parsedAdvertisement != null) {
+            Log.d(TAG, "Parsed advertisment: " + parsedAdvertisement.toString());
             if (parsedAdvertisement.bluetoothMacAddress != null) {
                 peerProperties = new PeerProperties(parsedAdvertisement.bluetoothMacAddress);
                 peerProperties.setExtraInformation(parsedAdvertisement.extraInformation);
@@ -240,9 +242,9 @@ class PeerAdvertisementFactory {
      * Parses peer properties from the given manufacturer data byte array.
      *
      * @param manufacturerData The manufacturer data.
-     * @param serviceUuid The service UUID. Will return peer properties, if and only if this UUID
-     *                    matches the one provided in manufacturer data. If this is null, no
-     *                    comparison is made and all UUIDs are accepted.
+     * @param serviceUuid      The service UUID. Will return peer properties, if and only if this UUID
+     *                         matches the one provided in manufacturer data. If this is null, no
+     *                         comparison is made and all UUIDs are accepted.
      * @return The peer properties or null in case of a failure or UUID mismatch.
      */
     public static PeerProperties manufacturerDataToPeerProperties(byte[] manufacturerData, UUID serviceUuid) {
@@ -255,7 +257,7 @@ class PeerAdvertisementFactory {
      * Creates a "Provide Bluetooth MAC address" UUID based on the given service UUID and request ID.
      *
      * @param serviceUuid The service UUID to be used as a basis for the new UUID.
-     * @param requestId The request ID that will be used to replace the ending of the service UUID.
+     * @param requestId   The request ID that will be used to replace the ending of the service UUID.
      * @return A newly created UUID.
      */
     public static UUID createProvideBluetoothMacAddressUuid(UUID serviceUuid, String requestId) {

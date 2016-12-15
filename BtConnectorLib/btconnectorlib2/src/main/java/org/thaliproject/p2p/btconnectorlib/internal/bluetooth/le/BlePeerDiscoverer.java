@@ -138,9 +138,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private static final int UUID_BYTE_INDEX_TO_ROTATE_FOR_PEER_READY_TO_PROVIDE_AD = 9;
     private static final int ADVERTISER_RESTART_MAX_ATTEMPTS = 5;
 
-    public void setListener(BlePeerDiscoveryListener mListener) {
-        this.mListener = mListener;
-    }
+//    public void setListener(BlePeerDiscoveryListener mListener) {
+//        this.mListener = mListener;
+//    }
 
     private BlePeerDiscoveryListener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
@@ -210,13 +210,12 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @param bleAdvertiser                         The instance of the general BLE advertiser.
      * @param bleScanner                            The instance of the general BLE scanner.
      */
-    public BlePeerDiscoverer(
-            BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
-            UUID serviceUuid, UUID provideBluetoothMacAddressRequestUuid,
-            String myBluetoothMacAddress,
-            int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
-            AdvertisementDataType advertisementDataType,
-            BleAdvertiser bleAdvertiser, BleScanner bleScanner) {
+    BlePeerDiscoverer(BlePeerDiscoveryListener listener, BluetoothAdapter bluetoothAdapter,
+                      UUID serviceUuid, UUID provideBluetoothMacAddressRequestUuid,
+                      String myBluetoothMacAddress,
+                      int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
+                      AdvertisementDataType advertisementDataType,
+                      BleAdvertiser bleAdvertiser, BleScanner bleScanner) {
         mListener = listener;
 
         if (mListener == null) {
@@ -326,7 +325,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      * @return True, if all the settings were applied successfully. False, if at least one of
      * settings failed to be applied.
      */
-    public boolean applySettings(
+    boolean applySettings(
             int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
             AdvertisementDataType advertisementDataType, int advertiseMode,
             int advertiseTxPowerLevel, int scanMode, long scanReportDelayInMilliseconds,
@@ -547,13 +546,31 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 
         mWasAdvertiserStartedBeforeStartingToAssistPeer = mBleAdvertiser.isStarted();
 
-        mBleAdvertiser.setAdvertiseData(createAdvertiseData(uuid, bluetoothMacAddress));
+        resetPeerAddressAdvertisementTimer(requestId, durationInMilliseconds);
+        boolean advertiserStarted;
+        synchronized (mBleAdvertiser) {
+            mBleAdvertiser.setAdvertiseData(createAdvertiseData(uuid, bluetoothMacAddress));
+            advertiserStarted = mBleAdvertiser.start();
+        }
+        if (advertiserStarted) {
+            Log.i(TAG, "startPeerAddressHelperAdvertiser: Started advertising: " + uuid + " " + bluetoothMacAddress);
+            mPeerAddressHelperAdvertisementTimeoutTimer.start();
+            mIsAssistingPeer = true;
+            updateState();
+            wasStarted = true;
+        } else {
+            Log.e(TAG, "startPeerAddressHelperAdvertiser: Failed to start");
+            stopPeerAddressHelperAdvertiser();
+        }
 
+        return wasStarted;
+    }
+
+    private void resetPeerAddressAdvertisementTimer(final String requestId, long durationInMilliseconds) {
         if (mPeerAddressHelperAdvertisementTimeoutTimer != null) {
             mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
             mPeerAddressHelperAdvertisementTimeoutTimer = null;
         }
-
         mPeerAddressHelperAdvertisementTimeoutTimer =
                 new CountDownTimer(durationInMilliseconds, durationInMilliseconds) {
                     @Override
@@ -568,19 +585,6 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         mListener.onProvideBluetoothMacAddressResult(requestId, false);
                     }
                 };
-
-        if (mBleAdvertiser.start()) {
-            Log.i(TAG, "startPeerAddressHelperAdvertiser: Started advertising: " + uuid + " " + bluetoothMacAddress);
-            mPeerAddressHelperAdvertisementTimeoutTimer.start();
-            mIsAssistingPeer = true;
-            updateState();
-            wasStarted = true;
-        } else {
-            Log.e(TAG, "startPeerAddressHelperAdvertiser: Failed to start");
-            stopPeerAddressHelperAdvertiser();
-        }
-
-        return wasStarted;
     }
 
     /**

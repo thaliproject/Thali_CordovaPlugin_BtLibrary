@@ -287,7 +287,7 @@ class BleScanner extends ScanCallback {
         super.onScanResult(callbackType, scanResult);
         Log.d(TAG, "onScanResult: " + ThreadUtils.currentThreadToString());
         if (scanResult != null) {
-            Log.d(TAG, "onScanResult: " + scanResult.toString());
+            Log.d(TAG, "onScanResult: " + scanResult.toString() + ". " + ThreadUtils.currentThreadToString());
             if (mListener == null) {
                 Log.e(TAG, "No listener");
             }
