@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The main interface for BLE based peer discovery.
@@ -142,7 +143,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 //        this.mListener = mListener;
 //    }
 
-    private BlePeerDiscoveryListener mListener;
+    private AtomicReference<BlePeerDiscoveryListener> mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mServiceUuid;
     private final UUID mProvideBluetoothMacAddressRequestUuid;
@@ -216,10 +217,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                       int manufacturerId, int beaconAdLengthAndType, int beaconAdExtraInformation,
                       AdvertisementDataType advertisementDataType,
                       BleAdvertiser bleAdvertiser, BleScanner bleScanner) {
-        mListener = listener;
+        mListener = new AtomicReference<>(listener);
 
-        if (mListener == null) {
-            throw new NullPointerException("BlePeerDiscoveryListener cannot be null");
+        if (mListener.get() == null) {
+            throw new IllegalArgumentException("BlePeerDiscoveryListener cannot be null");
         }
 
         mBluetoothAdapter = bluetoothAdapter;
@@ -567,10 +568,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     private void resetPeerAddressAdvertisementTimer(final String requestId, long durationInMilliseconds) {
-        if (mPeerAddressHelperAdvertisementTimeoutTimer != null) {
-            mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
-            mPeerAddressHelperAdvertisementTimeoutTimer = null;
-        }
+        stopPeerAddressAdvertisementTimer();
         mPeerAddressHelperAdvertisementTimeoutTimer =
                 new CountDownTimer(durationInMilliseconds, durationInMilliseconds) {
                     @Override
@@ -582,9 +580,18 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     public void onFinish() {
                         stopPeerAddressHelperAdvertiser();
                         Log.i(TAG, "Stopped advertising the Bluetooth MAC address of a discovered device");
-                        mListener.onProvideBluetoothMacAddressResult(requestId, false);
+                        if (mListener.get() != null) {
+                            mListener.get().onProvideBluetoothMacAddressResult(requestId, false);
+                        }
                     }
                 };
+    }
+
+    private void stopPeerAddressAdvertisementTimer() {
+        if (mPeerAddressHelperAdvertisementTimeoutTimer != null) {
+            mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
+            mPeerAddressHelperAdvertisementTimeoutTimer = null;
+        }
     }
 
     /**
@@ -594,11 +601,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
      */
     private synchronized void stopPeerAddressHelperAdvertiser() {
         Log.d(TAG, "stopPeerAddressHelperAdvertiser " + ThreadUtils.currentThreadToString());
-        if (mPeerAddressHelperAdvertisementTimeoutTimer != null) {
-            mPeerAddressHelperAdvertisementTimeoutTimer.cancel();
-            mPeerAddressHelperAdvertisementTimeoutTimer = null;
-        }
-
+        stopPeerAddressAdvertisementTimer();
         if (mIsAssistingPeer) {
             Log.d(TAG, "stopPeerAddressHelperAdvertiser: Stopping...");
 
@@ -740,12 +743,14 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     final PeerProperties peerProperties =
                             PeerAdvertisementFactory.parsedAdvertisementToPeerProperties(parsedAdvertisement);
 
-                    if (peerProperties != null) {
+                    if (peerProperties != null && mListener.get() != null) {
                         Log.d(TAG, "checkScanResult onPeerDiscovered " + peerProperties.toString());
                         ThreadUtils.performOnMainThread(new Runnable() {
                             @Override
                             public void run() {
-                                mListener.onPeerDiscovered(peerProperties);
+                                if (mListener.get() != null) {
+                                    mListener.get().onPeerDiscovered(peerProperties);
+                                }
                             }
                         });
 
@@ -762,8 +767,10 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                         ThreadUtils.performOnMainThread(new Runnable() {
                             @Override
                             public void run() {
-                                mListener.onProvideBluetoothMacAddressRequest(
-                                        finalParsedAdvertisement.provideBluetoothMacAddressRequestId);
+                                if (mListener.get() != null) {
+                                    mListener.get().onProvideBluetoothMacAddressRequest(
+                                            finalParsedAdvertisement.provideBluetoothMacAddressRequestId);
+                                }
                             }
                         });
                     } else {
@@ -775,13 +782,17 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                     ThreadUtils.performOnMainThread(new Runnable() {
                         @Override
                         public void run() {
-                            mListener.onPeerReadyToProvideBluetoothMacAddress(mOurRequestId);
+                            if (mListener.get() != null) {
+                                mListener.get().onPeerReadyToProvideBluetoothMacAddress(mOurRequestId);
+                            }
                         }
                     });
                     break;
                 case ADVERTISEMENT_PEER_PROVIDING_OUR_BLUETOOTH_MAC_ADDRESS:
                     //No synchronized methods further
-                    mListener.onBluetoothMacAddressResolved(parsedAdvertisement.bluetoothMacAddress);
+                    if (mListener.get() != null) {
+                        mListener.get().onBluetoothMacAddressResolved(parsedAdvertisement.bluetoothMacAddress);
+                    }
                     break;
                 default:
                     Log.e(TAG, "checkScanResult: Unrecognized advertisement type");
@@ -827,7 +838,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             ThreadUtils.performOnMainThread(new Runnable() {
                 @Override
                 public void run() {
-                    mListener.onBlePeerDiscovererStateChanged(mStateSet);
+                    if (mListener.get() != null) {
+                        mListener.get().onBlePeerDiscovererStateChanged(mStateSet);
+                    }
                 }
             });
         }
@@ -914,5 +927,9 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         }
 
         return advertisementType;
+    }
+
+    public void releaseListener() {
+        mListener.set(null);
     }
 }

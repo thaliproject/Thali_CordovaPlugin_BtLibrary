@@ -1216,43 +1216,7 @@ public class DiscoveryManager
     private synchronized void stopBlePeerDiscoverer() {
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.stopScannerAndAdvertiser();
-//            mBlePeerDiscoverer.
-//            mBlePeerDiscoverer.setListener(new BlePeerDiscoverer.BlePeerDiscoveryListener() {
-//                private void logError() {
-//                    Log.e(TAG, "call method on deleted instance of BlePeerDiscoverer. " +
-//                            ThreadUtils.currentThreadToString());
-//                }
-//
-//                @Override
-//                public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state) {
-//                    logError();
-//                }
-//
-//                @Override
-//                public void onPeerDiscovered(PeerProperties peerProperties) {
-//                    logError();
-//                }
-//
-//                @Override
-//                public void onProvideBluetoothMacAddressRequest(String requestId) {
-//                    logError();
-//                }
-//
-//                @Override
-//                public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
-//                    logError();
-//                }
-//
-//                @Override
-//                public void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted) {
-//                    logError();
-//                }
-//
-//                @Override
-//                public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-//                    logError();
-//                }
-//            });
+            mBlePeerDiscoverer.releaseListener();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
         }
