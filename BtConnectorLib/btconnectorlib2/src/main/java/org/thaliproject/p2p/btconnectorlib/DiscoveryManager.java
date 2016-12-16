@@ -657,16 +657,17 @@ public class DiscoveryManager
     public BlePeerDiscoverer getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
         if (mBlePeerDiscoverer == null) {
             Log.v(TAG, "getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
+            AdvertisementData advertisementData = new AdvertisementData(mSettings.getManufacturerId(),
+                    mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(),
+                    mSettings.getAdvertisementDataType());
             mBlePeerDiscoverer = new BlePeerDiscoverer(
                     this,
                     mBluetoothManager.getBluetoothAdapter(),
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
                     getBluetoothMacAddress(),
-                    mSettings.getManufacturerId(),
-                    mSettings.getBeaconAdLengthAndType(),
-                    mSettings.getBeaconAdExtraInformation(),
-                    mSettings.getAdvertisementDataType());
+                    advertisementData);
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
@@ -711,11 +712,11 @@ public class DiscoveryManager
     public void onAdvertiseScanSettingsChanged() {
         Log.d(TAG, "onAdvertiseScanSettingsChanged: " + ThreadUtils.currentThreadToString());
         if (mBlePeerDiscoverer != null) {
+            AdvertisementData advertisementData = new AdvertisementData(
+                    mSettings.getManufacturerId(), mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(), mSettings.getAdvertisementDataType());
             mBlePeerDiscoverer.applySettings(
-                    mSettings.getManufacturerId(),
-                    mSettings.getBeaconAdLengthAndType(),
-                    mSettings.getBeaconAdExtraInformation(),
-                    mSettings.getAdvertisementDataType(),
+                    advertisementData,
                     mSettings.getAdvertiseMode(),
                     mSettings.getAdvertiseTxPowerLevel(),
                     mSettings.getScanMode(),

@@ -12,6 +12,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.runners.MockitoJUnitRunner;
+import org.thaliproject.p2p.btconnectorlib.AdvertisementData;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
@@ -70,14 +71,14 @@ public class BlePeerDiscovererTest {
         UUID serviceUuid = new UUID(1, 1);
         UUID provideBluetoothMacAddressRequestUuid = new UUID(2, 2);
         String macAddress = "00:11:22:33:44:55";
-
-        blePeerDiscoverer = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
-                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+        AdvertisementData advertisementData = new AdvertisementData(
                 DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_LENGTH_AND_TYPE,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_EXTRA_INFORMATION,
-                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE,
-                mMockBleAdvertiser, mMockBleScanner);
+                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE);
+        blePeerDiscoverer = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
+                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+                advertisementData, mMockBleAdvertiser, mMockBleScanner);
     }
 
     @Test
@@ -85,14 +86,14 @@ public class BlePeerDiscovererTest {
         UUID serviceUuid = new UUID(1, 1);
         UUID provideBluetoothMacAddressRequestUuid = new UUID(2, 2);
         String macAddress = "00:11:22:33:44:55";
-
-        BlePeerDiscoverer bpd = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
-                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+        AdvertisementData advertisementData = new AdvertisementData(
                 DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_LENGTH_AND_TYPE,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_EXTRA_INFORMATION,
-                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE,
-                mMockBleAdvertiser, mMockBleScanner);
+                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE);
+        BlePeerDiscoverer bpd = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
+                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+                advertisementData, mMockBleAdvertiser, mMockBleScanner);
 
         assertThat("The BlePeerDiscoverer is properly created",
                 bpd, is(notNullValue()));
@@ -111,14 +112,14 @@ public class BlePeerDiscovererTest {
         UUID macAddrRqUuid = new UUID(2, leastSigBits);
         String properRqn = "0000000" + toHexString(macAddrRqUuid.getLeastSignificantBits());
         String macAddress = PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN;
-
-        BlePeerDiscoverer bpd = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
-                serviceUuid, macAddrRqUuid, macAddress,
+        AdvertisementData advertisementData = new AdvertisementData(
                 DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_LENGTH_AND_TYPE,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_EXTRA_INFORMATION,
-                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE,
-                mMockBleAdvertiser, mMockBleScanner);
+                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE);
+        BlePeerDiscoverer bpd = new BlePeerDiscoverer(mMockListener, mMockBluetoothAdapter,
+                serviceUuid, macAddrRqUuid, macAddress,
+                advertisementData, mMockBleAdvertiser, mMockBleScanner);
 
         assertThat("The BlePeerDiscoverer is properly created",
                 bpd, is(notNullValue()));
@@ -139,15 +140,15 @@ public class BlePeerDiscovererTest {
         UUID serviceUuid = new UUID(1, 1);
         UUID provideBluetoothMacAddressRequestUuid = new UUID(2, 2);
         String macAddress = "00:11:22:33:44:55";
-
-        thrown.expect(NullPointerException.class);
-        new BlePeerDiscoverer(null, mMockBluetoothAdapter,
-                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+        AdvertisementData advertisementData = new AdvertisementData(
                 DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_LENGTH_AND_TYPE,
                 DiscoveryManagerSettings.DEFAULT_BEACON_AD_EXTRA_INFORMATION,
-                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE,
-                mMockBleAdvertiser, mMockBleScanner);
+                DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE);
+        thrown.expect(IllegalArgumentException.class);
+        new BlePeerDiscoverer(null, mMockBluetoothAdapter,
+                serviceUuid, provideBluetoothMacAddressRequestUuid, macAddress,
+                advertisementData, mMockBleAdvertiser, mMockBleScanner);
     }
 
     @Test
@@ -198,8 +199,9 @@ public class BlePeerDiscovererTest {
         when(mMockAdvertiseSettingsBuilder.build()).thenReturn(mMockAdvertiseSettings);
         when(mMockScanSettingsBuilder.build()).thenReturn(mMockScanSettings);
 
-        boolean retVal = blePeerDiscoverer.applySettings(manufacturerId, beaconAdLengthAndType,
-                beaconAdExtraInformation, advertisementDataType, advertiseMode, advertiseTxPowerLevel,
+        AdvertisementData advertisementData = new AdvertisementData(manufacturerId, beaconAdLengthAndType,
+                beaconAdExtraInformation, advertisementDataType);
+        boolean retVal = blePeerDiscoverer.applySettings(advertisementData, advertiseMode, advertiseTxPowerLevel,
                 scanMode, scanReportDelayInMilliseconds, mMockAdvertiseSettingsBuilder, mMockScanSettingsBuilder);
 
         verify(mMockAdvertiseSettingsBuilder, times(1)).setAdvertiseMode(advertiseMode);
@@ -230,9 +232,9 @@ public class BlePeerDiscovererTest {
         when(mMockAdvertiseSettingsBuilder.build()).thenReturn(mMockAdvertiseSettings);
         when(mMockScanSettingsBuilder.build()).thenReturn(mMockScanSettings);
         when(mMockScanSettingsBuilder.setScanMode(anyInt())).thenThrow(IllegalArgumentException.class);
-
-        boolean retVal = blePeerDiscoverer.applySettings(manufacturerId, beaconAdLengthAndType,
-                beaconAdExtraInformation, advertisementDataType, advertiseMode, advertiseTxPowerLevel,
+        AdvertisementData advertisementData = new AdvertisementData(manufacturerId, beaconAdLengthAndType,
+                beaconAdExtraInformation, advertisementDataType);
+        boolean retVal = blePeerDiscoverer.applySettings(advertisementData, advertiseMode, advertiseTxPowerLevel,
                 scanMode, scanReportDelayInMilliseconds, mMockAdvertiseSettingsBuilder, mMockScanSettingsBuilder);
 
         verify(mMockAdvertiseSettingsBuilder, times(1)).setAdvertiseMode(advertiseMode);
@@ -263,9 +265,9 @@ public class BlePeerDiscovererTest {
         when(mMockAdvertiseSettingsBuilder.build()).thenReturn(mMockAdvertiseSettings);
         when(mMockScanSettingsBuilder.build()).thenReturn(mMockScanSettings);
 
-
-        boolean retVal = blePeerDiscoverer.applySettings(manufacturerId, beaconAdLengthAndType,
-                beaconAdExtraInformation, advertisementDataType, advertiseMode, advertiseTxPowerLevel,
+        AdvertisementData advertisementData = new AdvertisementData(manufacturerId, beaconAdLengthAndType,
+                beaconAdExtraInformation, advertisementDataType);
+        boolean retVal = blePeerDiscoverer.applySettings(advertisementData, advertiseMode, advertiseTxPowerLevel,
                 scanMode, scanReportDelayInMilliseconds, mMockAdvertiseSettingsBuilder, mMockScanSettingsBuilder);
 
         verify(mMockAdvertiseSettingsBuilder, never()).setTxPowerLevel(anyInt());

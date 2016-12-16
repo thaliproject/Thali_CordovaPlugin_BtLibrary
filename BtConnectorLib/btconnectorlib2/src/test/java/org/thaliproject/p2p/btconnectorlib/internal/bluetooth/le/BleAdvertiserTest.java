@@ -168,7 +168,7 @@ public class BleAdvertiserTest {
 
     @Test
     public void testSetAdvertiseData_exception() throws Exception {
-        thrown.expect(NullPointerException.class);
+        thrown.expect(IllegalArgumentException.class);
         mBleAdvertiser.setAdvertiseData(null);
     }
 
