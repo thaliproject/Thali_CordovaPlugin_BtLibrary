@@ -144,7 +144,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
 //        this.mListener = mListener;
 //    }
 
-    private BlePeerDiscoveryListener mListener;
+    private volatile BlePeerDiscoveryListener mListener;
     private final BluetoothAdapter mBluetoothAdapter;
     private final UUID mServiceUuid;
     private final UUID mProvideBluetoothMacAddressRequestUuid;
@@ -155,7 +155,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     private String mOurRequestId = null;
     private CountDownTimer mPeerAddressHelperAdvertisementTimeoutTimer = null;
 
-    private AdvertisementData advertisementData = new AdvertisementData(DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
+    private volatile AdvertisementData advertisementData = new AdvertisementData(DiscoveryManagerSettings.DEFAULT_MANUFACTURER_ID,
             DiscoveryManagerSettings.DEFAULT_BEACON_AD_LENGTH_AND_TYPE,
             DiscoveryManagerSettings.DEFAULT_BEACON_AD_EXTRA_INFORMATION,
             DiscoveryManagerSettings.DEFAULT_ADVERTISEMENT_DATA_TYPE);
@@ -435,7 +435,7 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
             Log.i(TAG, "startAdvertiser: Starting...");
         }
 
-        AdvertiseData advertiseData = null;
+        AdvertiseData advertiseData;
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mMyBluetoothMacAddress)) {
             // We do not know our own Bluetooth MAC address, do request it (Bro mode)
@@ -671,8 +671,8 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 Map<ParcelUuid, byte[]> serviceData = scanResult.getScanRecord().getServiceData();
 
                 if (serviceData != null && serviceData.size() > 0) {
-                    for (ParcelUuid uuid : serviceData.keySet()) {
-                        byte[] serviceDataContent = serviceData.get(uuid);
+                    for (Map.Entry<ParcelUuid, byte[]> data : serviceData.entrySet()) {
+                        byte[] serviceDataContent = data.getValue();
                         parsedAdvertisement = BlePeerDiscoveryUtils.parseServiceData(serviceDataContent);
                         if (parsedAdvertisement != null) {
                             Log.d(TAG, "checkScanResult: parsedAdvertisement: " + parsedAdvertisement);
