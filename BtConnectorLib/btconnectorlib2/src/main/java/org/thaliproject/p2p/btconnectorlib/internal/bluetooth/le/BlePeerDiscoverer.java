@@ -22,7 +22,11 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -657,15 +661,50 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
         checkScanResult(result);
     }
 
+    @Override
+    public void onBatchScanResults(List<ScanResult> results) {
+        processBatchScanResults(results);
+    }
+
+    private void processBatchScanResults(List<ScanResult> results) {
+        List<BlePeerDiscoveryUtils.ParsedAdvertisement> advertisements = transformScanResults(results);
+        Collections.sort(advertisements, new Comparator<BlePeerDiscoveryUtils.ParsedAdvertisement>() {
+            @Override
+            public int compare(BlePeerDiscoveryUtils.ParsedAdvertisement lhs, BlePeerDiscoveryUtils.ParsedAdvertisement rhs) {
+                return lhs.extraInformation - rhs.extraInformation;
+            }
+        });
+        for (BlePeerDiscoveryUtils.ParsedAdvertisement adv : advertisements) {
+            processAdvertisement(adv);
+        }
+    }
+
+    private List<BlePeerDiscoveryUtils.ParsedAdvertisement> transformScanResults(List<ScanResult> results) {
+        List<BlePeerDiscoveryUtils.ParsedAdvertisement> parsedAdvertisements = new ArrayList<>(results.size());
+        for (ScanResult res : results) {
+            BlePeerDiscoveryUtils.ParsedAdvertisement adv = parseScanResult(res);
+            if (adv != null) {
+                parsedAdvertisements.add(adv);
+            }
+        }
+        return parsedAdvertisements;
+    }
+
     /**
      * Tries to parse the given result and take action based on the advertisement type.
      *
      * @param scanResult The scan result.
      */
-    private synchronized void checkScanResult(ScanResult scanResult) {
+    private void checkScanResult(ScanResult scanResult) {
+        BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = parseScanResult(scanResult);
+        processAdvertisement(parsedAdvertisement);
+    }
+
+    private BlePeerDiscoveryUtils.ParsedAdvertisement parseScanResult(ScanResult scanResult) {
         BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement = null;
         if (scanResult != null && scanResult.getScanRecord() != null) {
             Log.d(TAG, "checkScanResult: " + scanResult.toString());
+            //TODO It's strange that data parsing based on OUR advertisement settings. Different peers can have different settings
             if (isNotManufacturerData(advertisementData.advertisementDataType)) {
                 // Try to parse the service data
                 Map<ParcelUuid, byte[]> serviceData = scanResult.getScanRecord().getServiceData();
@@ -707,7 +746,11 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
                 }
             }
         }
+        return parsedAdvertisement;
+    }
 
+    //TODO removed synchronized from checkResult. We can omit messages posting via handler
+    private void processAdvertisement(BlePeerDiscoveryUtils.ParsedAdvertisement parsedAdvertisement) {
         if (parsedAdvertisement != null) {
             AdvertisementType advertisementType = resolveAdvertisementType(parsedAdvertisement);
             Log.v(TAG, "checkScanResult: Resolved advertisement type: " + advertisementType);

@@ -310,9 +310,7 @@ public class BleScannerTest {
         scanResults.add(null);
 
         mBleScanner.onBatchScanResults(scanResults);
-        verify(mMockListener, times(1)).onScanResult(mMockScanResult1);
-        verify(mMockListener, times(1)).onScanResult(mMockScanResult2);
-        verify(mMockListener, times(2)).onScanResult(any(ScanResult.class));
+        verify(mMockListener, times(1)).onBatchScanResults(scanResults);
     }
 
     @Ignore("https://github.com/thaliproject/Thali_CordovaPlugin_BtLibrary/issues/92")

@@ -45,6 +45,8 @@ class BleScanner extends ScanCallback {
          * @param result The scan result.
          */
         void onScanResult(ScanResult result);
+
+        void onBatchScanResults(List<ScanResult> results);
     }
 
     private enum State {
@@ -234,12 +236,7 @@ class BleScanner extends ScanCallback {
     public void onBatchScanResults(List<ScanResult> scanResults) {
         Log.d(TAG, "onBatchScanResults: results count  = " + scanResults.size() + ". " + ThreadUtils.currentThreadToString());
         if (mListener != null) {
-            for (ScanResult scanResult : scanResults) {
-                if (scanResult != null) {
-                    Log.d(TAG, "onBatchScanResults. scan = " + scanResult.toString());
-                    mListener.onScanResult(scanResult);
-                }
-            }
+            mListener.onBatchScanResults(scanResults);
         } else {
             Log.wtf(TAG, "No listener");
         }

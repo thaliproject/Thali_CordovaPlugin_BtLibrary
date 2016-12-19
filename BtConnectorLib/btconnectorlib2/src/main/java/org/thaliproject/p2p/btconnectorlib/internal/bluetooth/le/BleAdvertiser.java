@@ -159,7 +159,8 @@ class BleAdvertiser extends AdvertiseCallback {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString() + ThreadUtils.currentThreadToString());
+                        Log.i(TAG, "start: Starting... advertisement data = " + mAdvertiseData.toString() + ", "
+                                + ThreadUtils.currentThreadToString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         Log.i(TAG, "start: Started advertisment " + ThreadUtils.currentThreadToString());
                         setState(State.STARTING, true);

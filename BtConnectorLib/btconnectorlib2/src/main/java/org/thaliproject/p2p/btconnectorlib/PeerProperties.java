@@ -74,7 +74,7 @@ public class PeerProperties {
         mDeviceAddress = deviceAddress;
     }
 
-    public PeerProperties(String bluetoothMacAddress, int extraInformation){
+    public PeerProperties(String bluetoothMacAddress, int extraInformation) {
         setDefaultValues();
         mBluetoothMacAddress = bluetoothMacAddress;
         mExtraInformation = extraInformation;
@@ -120,7 +120,7 @@ public class PeerProperties {
         mServiceType = serviceType;
     }
 
-    String getDeviceName() {
+    public String getDeviceName() {
         return mDeviceName;
     }
 
