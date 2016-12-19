@@ -9,6 +9,7 @@ import android.net.wifi.p2p.WifiP2pManager.DnsSdServiceResponseListener;
 import android.net.wifi.p2p.nsd.WifiP2pDnsSdServiceRequest;
 import android.os.Handler;
 import android.util.Log;
+
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
@@ -21,6 +22,7 @@ class WifiServiceWatcher {
     public interface Listener {
         /**
          * Called when a new peer (with an appropriate service) is discovered.
+         *
          * @param peerProperties The discovered peer device with an appropriate service.
          */
         void onServiceDiscovered(PeerProperties peerProperties);
@@ -37,9 +39,10 @@ class WifiServiceWatcher {
 
     /**
      * Constructor.
-     * @param listener The listener.
-     * @param p2pManager The Wi-Fi P2P manager.
-     * @param p2pChannel The Wi-Fi P2P channel.
+     *
+     * @param listener    The listener.
+     * @param p2pManager  The Wi-Fi P2P manager.
+     * @param p2pChannel  The Wi-Fi P2P channel.
      * @param serviceType The service type.
      */
     public WifiServiceWatcher(
@@ -102,6 +105,7 @@ class WifiServiceWatcher {
 
     /**
      * Stops the service discovery.
+     *
      * @param restart If true, will restart.
      */
     public synchronized void stop(boolean restart) {
@@ -150,9 +154,10 @@ class WifiServiceWatcher {
         /**
          * Handles found services. Checks if the service type matches ours and that the received
          * identity string is valid. Notifies the listener, when peers are found.
+         *
          * @param identityString The identity string.
-         * @param serviceType The service type.
-         * @param p2pDevice The P2P device associated with the service.
+         * @param serviceType    The service type.
+         * @param p2pDevice      The P2P device associated with the service.
          */
         @Override
         public void onDnsSdServiceAvailable(String identityString, String serviceType, WifiP2pDevice p2pDevice) {
@@ -173,11 +178,8 @@ class WifiServiceWatcher {
 
                 if (resolvedPropertiesOk) {
                     Log.d(TAG, "onDnsSdServiceAvailable: Resolved peer properties: " + peerProperties.toString());
-                    peerProperties.setServiceType(serviceType);
-                    peerProperties.setDeviceName(p2pDevice.deviceName);
-                    peerProperties.setDeviceAddress(p2pDevice.deviceAddress);
+                    peerProperties = new PeerProperties(serviceType, p2pDevice.deviceName, p2pDevice.deviceAddress);
                 }
-
                 mListener.onServiceDiscovered(peerProperties);
             } else {
                 Log.i(TAG, "onDnsSdServiceAvailable: This not our service: " + mServiceType + " != " + serviceType);

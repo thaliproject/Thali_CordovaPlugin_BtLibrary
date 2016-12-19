@@ -1201,7 +1201,7 @@ public class DiscoveryManager
             }
         } else {
             mMissingPermission = Manifest.permission.ACCESS_COARSE_LOCATION;
-            Log.e(TAG, "startBlePeerDiscoverer: Permission \"" + mMissingPermission + "\" denied");
+            Log.e(TAG, "BlePeerDiscoverer: Permission \"" + mMissingPermission + "\" denied");
         }
 
         if (started) {
@@ -1314,6 +1314,7 @@ public class DiscoveryManager
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         if (mBlePeerDiscoverer != null) {
             if (!mBlePeerDiscoverer.getState().equals(mBlePeerDiscovererStateSet)) {
+                //We just didn't get called from BlePeerDiscoverer
                 Log.e(TAG, "seems that updateState call different BlePeerDiscoverer");
             }
             mBlePeerDiscovererStateSet = mBlePeerDiscoverer.getState();
