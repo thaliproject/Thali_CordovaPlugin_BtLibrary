@@ -22,7 +22,6 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The main interface for BLE based peer discovery.
@@ -667,27 +665,15 @@ public class BlePeerDiscoverer implements BleAdvertiser.Listener, BleScanner.Lis
     }
 
     private void processBatchScanResults(List<ScanResult> results) {
-        List<BlePeerDiscoveryUtils.ParsedAdvertisement> advertisements = transformScanResults(results);
-        Collections.sort(advertisements, new Comparator<BlePeerDiscoveryUtils.ParsedAdvertisement>() {
+        Collections.sort(results, new Comparator<ScanResult>() {
             @Override
-            public int compare(BlePeerDiscoveryUtils.ParsedAdvertisement lhs, BlePeerDiscoveryUtils.ParsedAdvertisement rhs) {
-                return lhs.extraInformation - rhs.extraInformation;
+            public int compare(ScanResult lhs, ScanResult rhs) {
+                return Long.compare(lhs.getTimestampNanos(), rhs.getTimestampNanos());
             }
         });
-        for (BlePeerDiscoveryUtils.ParsedAdvertisement adv : advertisements) {
-            processAdvertisement(adv);
+        for (ScanResult scanResult : results) {
+            checkScanResult(scanResult);
         }
-    }
-
-    private List<BlePeerDiscoveryUtils.ParsedAdvertisement> transformScanResults(List<ScanResult> results) {
-        List<BlePeerDiscoveryUtils.ParsedAdvertisement> parsedAdvertisements = new ArrayList<>(results.size());
-        for (ScanResult res : results) {
-            BlePeerDiscoveryUtils.ParsedAdvertisement adv = parseScanResult(res);
-            if (adv != null) {
-                parsedAdvertisements.add(adv);
-            }
-        }
-        return parsedAdvertisements;
     }
 
     /**
