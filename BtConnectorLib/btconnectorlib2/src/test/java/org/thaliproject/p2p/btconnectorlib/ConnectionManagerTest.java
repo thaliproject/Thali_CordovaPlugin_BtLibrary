@@ -97,6 +97,15 @@ public class ConnectionManagerTest {
     @After
     public void tearDown() throws Exception {
         connectionManager.dispose();
+        resetSettings();
+    }
+
+    private void resetSettings() throws NoSuchFieldException, IllegalAccessException {
+        ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
+                mMockSharedPreferences);
+        Field stateField = cmSettings.getClass().getDeclaredField("mInstance");
+        stateField.setAccessible(true);
+        stateField.set(cmSettings, null);
     }
 
     @Test
