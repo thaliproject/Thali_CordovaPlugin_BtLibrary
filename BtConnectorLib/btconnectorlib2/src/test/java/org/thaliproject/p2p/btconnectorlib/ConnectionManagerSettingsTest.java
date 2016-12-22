@@ -141,7 +141,6 @@ public class ConnectionManagerSettingsTest {
         assertThat(cmSettings, is(notNullValue()));
     }
 
-    @Ignore("We use listener on sharedPreferences.edit()  method, but in real code we already have sharep preferences editor")
     @Test
     public void testListener() throws Exception {
         ConnectionManager listener = new ConnectionManager(mMockContext,
@@ -310,6 +309,7 @@ public class ConnectionManagerSettingsTest {
         assertThat("Apply count is not incremented", applyCnt, is(equalTo(2)));
     }
 
+    @Ignore("We use listener on sharedPreferences.edit() method, but in real code we already have shared preferences editor")
     @Test
     public void testLoad() throws Exception {
 
