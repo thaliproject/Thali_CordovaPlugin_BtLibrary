@@ -8,10 +8,12 @@ import android.bluetooth.le.ScanSettings;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager.DiscoveryMode;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractSettings;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer.AdvertisementDataType;
+
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -22,7 +24,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         /**
          * Called when the desired discovery mode is changed.
          *
-         * @param discoveryMode The new discovery mode.
+         * @param discoveryMode     The new discovery mode.
          * @param startIfNotRunning If true, will start even if the discovery wasn't running.
          */
         void onDiscoveryModeChanged(DiscoveryMode discoveryMode, boolean startIfNotRunning);
@@ -43,7 +45,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     // Default settings
     public static final boolean DEFAULT_AUTOMATE_BLUETOOTH_MAC_ADDRESS_RESOLUTION = true;
     public static final long DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS = 40000;
-    public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int)(DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
+    public static final int DEFAULT_DEVICE_DISCOVERABLE_DURATION_IN_SECONDS = (int) (DEFAULT_PROVIDE_BLUETOOTH_MAC_ADDRESS_TIMEOUT_IN_MILLISECONDS / 1000);
     public static final DiscoveryMode DEFAULT_DISCOVERY_MODE = DiscoveryMode.BLE;
     public static final long DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS = 60000;
     public static final int DEFAULT_MANUFACTURER_ID = 76;
@@ -90,7 +92,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     private long mPeerExpirationInMilliseconds = DEFAULT_PEER_EXPIRATION_IN_MILLISECONDS;
     private int mManufacturerId = DEFAULT_MANUFACTURER_ID;
     private int mBeaconAdLengthAndType = DEFAULT_BEACON_AD_LENGTH_AND_TYPE;
-    private int mBeaconAdExtraInformation = DEFAULT_BEACON_AD_EXTRA_INFORMATION;
+    private volatile int mBeaconAdExtraInformation = DEFAULT_BEACON_AD_EXTRA_INFORMATION;
     private AdvertisementDataType mAdvertisementDataType = DEFAULT_ADVERTISEMENT_DATA_TYPE;
     private int mAdvertiseMode = DEFAULT_ADVERTISE_MODE;
     private int mAdvertiseTxPowerLevel = DEFAULT_ADVERTISE_TX_POWER_LEVEL;
@@ -111,9 +113,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     }
 
     /**
-     * @return The singleton instance of this class.
-     * @param context The application context for the shared preferences.
+     * @param context     The application context for the shared preferences.
      * @param preferences The shared preferences.
+     * @return The singleton instance of this class.
      */
     public static DiscoveryManagerSettings getInstance(Context context, SharedPreferences preferences) {
         if (mInstance == null) {
@@ -140,20 +142,18 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Adds a listener. In the ideal situation there is only one discovery manager and thus, one
      * listener. However, for testing we might need to use multiple.
-     *
+     * <p>
      * Note: Only the discovery manager can act as a listener.
      *
      * @param discoveryManager The discovery manager instance.
      */
     /* Package */ void addListener(DiscoveryManager discoveryManager) {
         if (discoveryManager != null) {
-            Listener listener = discoveryManager;
-
-            if (!mListeners.contains(listener)) {
-                mListeners.add(listener);
-                Log.v(TAG, "addListener: Listener " + listener + " added. We now have " + mListeners.size() + " listener(s)");
+            if (!mListeners.contains(discoveryManager)) {
+                mListeners.add(discoveryManager);
+                Log.v(TAG, "addListener: Listener " + discoveryManager + " added. We now have " + mListeners.size() + " listener(s)");
             } else {
-                Log.e(TAG, "addListener: Listener " + listener + " already in the list");
+                Log.e(TAG, "addListener: Listener " + discoveryManager + " already in the list");
                 throw new IllegalArgumentException(TAG + " addListener: Listener already in the list");
             }
         }
@@ -166,12 +166,10 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     /* Package */ void removeListener(DiscoveryManager discoveryManager) {
         if (discoveryManager != null && mListeners.size() > 0) {
-            Listener listener = discoveryManager;
-
-            if (mListeners.remove(listener)) {
-                Log.v(TAG, "removeListener: Listener " + listener + " removed from the list");
+            if (mListeners.remove(discoveryManager)) {
+                Log.v(TAG, "removeListener: Listener " + discoveryManager + " removed from the list");
             } else {
-                Log.e(TAG, "removeListener: Listener " + listener + " not in the list");
+                Log.e(TAG, "removeListener: Listener " + discoveryManager + " not in the list");
             }
         }
     }
@@ -237,7 +235,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     public void setBluetoothMacAddress(String bluetoothMacAddress) {
         if (BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)
-            && (mBluetoothMacAddress == null || !mBluetoothMacAddress.equals(bluetoothMacAddress))) {
+                && (mBluetoothMacAddress == null || !mBluetoothMacAddress.equals(bluetoothMacAddress))) {
             Log.i(TAG, "setBluetoothMacAddress: " + bluetoothMacAddress);
             mBluetoothMacAddress = bluetoothMacAddress;
             mSharedPreferencesEditor.putString(KEY_BLUETOOTH_MAC_ADDRESS, mBluetoothMacAddress);
@@ -266,7 +264,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Sets the discovery mode.
      *
-     * @param discoveryMode The discovery mode to set.
+     * @param discoveryMode     The discovery mode to set.
      * @param startIfNotRunning If true, will start the discovery manager even if it wasn't running.
      * @return True, if the given mode is supported and set or was already set. False otherwise
      * (likely because not supported). Note that the mode is only validated, if a discovery manager
@@ -396,10 +394,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_MANUFACTURER_ID, mManufacturerId);
             mSharedPreferencesEditor.apply();
 
-            if (mListeners.size() > 0) {
-                for (Listener listener : mListeners) {
-                    listener.onAdvertiseScanSettingsChanged();
-                }
+            for (Listener listener : mListeners) {
+                listener.onAdvertiseScanSettingsChanged();
             }
         }
     }
@@ -423,10 +419,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_BEACON_AD_LENGTH_AND_TYPE, mBeaconAdLengthAndType);
             mSharedPreferencesEditor.apply();
 
-            if (mListeners.size() > 0) {
-                for (Listener listener : mListeners) {
-                    listener.onAdvertiseScanSettingsChanged();
-                }
+            for (Listener listener : mListeners) {
+                listener.onAdvertiseScanSettingsChanged();
             }
         }
     }
@@ -450,10 +444,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.putInt(KEY_BEACON_AD_EXTRA_INFORMATION, mBeaconAdExtraInformation);
             mSharedPreferencesEditor.apply();
 
-            if (mListeners.size() > 0) {
-                for (Listener listener : mListeners) {
-                    listener.onAdvertiseScanSettingsChanged();
-                }
+            for (Listener listener : mListeners) {
+                listener.onAdvertiseScanSettingsChanged();
             }
         }
     }
@@ -608,9 +600,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * For convenience, when one wants to do a batch change for advertise and scan settings.
      *
-     * @param advertiseMode The advertise mode to set.
+     * @param advertiseMode         The advertise mode to set.
      * @param advertiseTxPowerLevel The power level to set.
-     * @param scanMode The scan mode to set.
+     * @param scanMode              The scan mode to set.
      */
     public void setAdvertiseScanModeAndTxPowerLevel(int advertiseMode, int advertiseTxPowerLevel, int scanMode) {
         if (!isValidAdvertiseMode(advertiseMode)) {
@@ -731,9 +723,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private int discoveryModeToInt(DiscoveryMode discoveryMode) {
         switch (discoveryMode) {
-            case BLE: return DISCOVERY_MODE_BLE;
-            case WIFI: return DISCOVERY_MODE_WIFI;
-            case BLE_AND_WIFI: return DISCOVERY_MODE_BLE_AND_WIFI;
+            case BLE:
+                return DISCOVERY_MODE_BLE;
+            case WIFI:
+                return DISCOVERY_MODE_WIFI;
+            case BLE_AND_WIFI:
+                return DISCOVERY_MODE_BLE_AND_WIFI;
             default:
                 Log.e(TAG, "discoveryModeToInt: Unknown discovery mode: " + discoveryMode);
                 break;
@@ -750,9 +745,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private DiscoveryMode intToDiscoveryMode(int discoveryModeAsInt) {
         switch (discoveryModeAsInt) {
-            case DISCOVERY_MODE_BLE: return DiscoveryMode.BLE;
-            case DISCOVERY_MODE_WIFI: return DiscoveryMode.WIFI;
-            case DISCOVERY_MODE_BLE_AND_WIFI: return DiscoveryMode.BLE_AND_WIFI;
+            case DISCOVERY_MODE_BLE:
+                return DiscoveryMode.BLE;
+            case DISCOVERY_MODE_WIFI:
+                return DiscoveryMode.WIFI;
+            case DISCOVERY_MODE_BLE_AND_WIFI:
+                return DiscoveryMode.BLE_AND_WIFI;
             default:
                 Log.e(TAG, "intToDiscoveryMode: Invalid argument: " + discoveryModeAsInt);
                 break;
@@ -769,9 +767,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private int advertisementDataTypeToInt(AdvertisementDataType advertisementDataType) {
         switch (advertisementDataType) {
-            case SERVICE_DATA: return ADVERTISEMENT_DATA_TYPE_SERVICE;
-            case MANUFACTURER_DATA: return ADVERTISEMENT_DATA_TYPE_MANUFACTURER;
-            case DO_NOT_CARE: return ADVERTISEMENT_DATA_DO_NOT_CARE;
+            case SERVICE_DATA:
+                return ADVERTISEMENT_DATA_TYPE_SERVICE;
+            case MANUFACTURER_DATA:
+                return ADVERTISEMENT_DATA_TYPE_MANUFACTURER;
+            case DO_NOT_CARE:
+                return ADVERTISEMENT_DATA_DO_NOT_CARE;
             default:
                 Log.e(TAG, "advertisementDataTypeToInt: Unrecognized advertisement type: " + advertisementDataType);
                 break;
@@ -788,9 +789,12 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private AdvertisementDataType intToAdvertisementDataType(int advertisementDataTypeAsInt) {
         switch (advertisementDataTypeAsInt) {
-            case ADVERTISEMENT_DATA_TYPE_SERVICE: return AdvertisementDataType.SERVICE_DATA;
-            case ADVERTISEMENT_DATA_TYPE_MANUFACTURER: return AdvertisementDataType.MANUFACTURER_DATA;
-            case ADVERTISEMENT_DATA_DO_NOT_CARE: return AdvertisementDataType.DO_NOT_CARE;
+            case ADVERTISEMENT_DATA_TYPE_SERVICE:
+                return AdvertisementDataType.SERVICE_DATA;
+            case ADVERTISEMENT_DATA_TYPE_MANUFACTURER:
+                return AdvertisementDataType.MANUFACTURER_DATA;
+            case ADVERTISEMENT_DATA_DO_NOT_CARE:
+                return AdvertisementDataType.DO_NOT_CARE;
             default:
                 Log.e(TAG, "intToAdvertisementDataType: Invalid argument: " + advertisementDataTypeAsInt);
                 break;
@@ -807,13 +811,17 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private boolean isValidAdvertiseMode(int advertiseMode) {
         switch (advertiseMode) {
-            case AdvertiseSettings.ADVERTISE_MODE_BALANCED: return true;
-            case AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY: return true;
-            case AdvertiseSettings.ADVERTISE_MODE_LOW_POWER: return true;
+            case AdvertiseSettings.ADVERTISE_MODE_BALANCED:
+                return true;
+            case AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY:
+                return true;
+            case AdvertiseSettings.ADVERTISE_MODE_LOW_POWER:
+                return true;
         }
 
         return false;
     }
+
     /**
      * Checks the validity of the given power level.
      *
@@ -822,10 +830,14 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private boolean isValidAdvertiseTxPowerLevel(int advertiseTxPowerLevel) {
         switch (advertiseTxPowerLevel) {
-            case AdvertiseSettings.ADVERTISE_TX_POWER_HIGH: return true;
-            case AdvertiseSettings.ADVERTISE_TX_POWER_LOW: return true;
-            case AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM: return true;
-            case AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW: return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_HIGH:
+                return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_LOW:
+                return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM:
+                return true;
+            case AdvertiseSettings.ADVERTISE_TX_POWER_ULTRA_LOW:
+                return true;
         }
 
         return false;
@@ -839,10 +851,14 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      */
     private boolean isValidScanMode(int scanMode) {
         switch (scanMode) {
-            case ScanSettings.SCAN_MODE_BALANCED: return true;
-            case ScanSettings.SCAN_MODE_LOW_LATENCY: return true;
-            case ScanSettings.SCAN_MODE_LOW_POWER: return true;
-            case ScanSettings.SCAN_MODE_OPPORTUNISTIC: return true;
+            case ScanSettings.SCAN_MODE_BALANCED:
+                return true;
+            case ScanSettings.SCAN_MODE_LOW_LATENCY:
+                return true;
+            case ScanSettings.SCAN_MODE_LOW_POWER:
+                return true;
+            case ScanSettings.SCAN_MODE_OPPORTUNISTIC:
+                return true;
         }
 
         return false;

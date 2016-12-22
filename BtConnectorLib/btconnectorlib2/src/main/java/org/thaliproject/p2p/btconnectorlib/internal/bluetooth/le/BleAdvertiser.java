@@ -41,8 +41,6 @@ class BleAdvertiser extends AdvertiseCallback {
         RUNNING
     }
 
-    ;
-
     private static final String TAG = BleAdvertiser.class.getName();
     private Listener mListener = null;
     private BluetoothLeAdvertiser mBluetoothLeAdvertiser = null;
@@ -56,7 +54,7 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param listener         The listener.
      * @param bluetoothAdapter The Bluetooth adapter.
      */
-    public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter) {
+    BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter) {
         this(listener, bluetoothAdapter, new AdvertiseSettings.Builder(),
                 DiscoveryManagerSettings.getInstance(null));
     }
@@ -69,8 +67,8 @@ class BleAdvertiser extends AdvertiseCallback {
      * @param builder          The builder for AdvertiseSettings.
      * @param settings         The discovery manager settings.
      */
-    public BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter,
-                         AdvertiseSettings.Builder builder, DiscoveryManagerSettings settings) {
+    BleAdvertiser(Listener listener, BluetoothAdapter bluetoothAdapter,
+                  AdvertiseSettings.Builder builder, DiscoveryManagerSettings settings) {
         mListener = listener;
         mBluetoothLeAdvertiser = bluetoothAdapter.getBluetoothLeAdvertiser();
 
@@ -98,9 +96,11 @@ class BleAdvertiser extends AdvertiseCallback {
      *
      * @param advertiseData The advertise data to set.
      */
-    public void setAdvertiseData(AdvertiseData advertiseData) {
+    void setAdvertiseData(AdvertiseData advertiseData) {
         Log.d(TAG, "setAdvertiseData: " + ThreadUtils.currentThreadToString());
         if (advertiseData != null) {
+            Log.d(TAG, "setAdvertiseData: " + advertiseData.toString() + ". "
+                    + ThreadUtils.currentThreadToString());
             boolean wasStarted = isStarted();
             Log.d(TAG, "setAdvertiseData: was started = " + wasStarted);
             if (wasStarted) {
@@ -108,6 +108,7 @@ class BleAdvertiser extends AdvertiseCallback {
             }
 
             Log.d(TAG, "setAdvertiseData: advertiseData = " + advertiseData.toString());
+            // this method is used only from synchronized environment before startAdvertiser()
             mAdvertiseData = advertiseData;
 
             // in all the cases we manually call start after setting advertise data
@@ -116,7 +117,7 @@ class BleAdvertiser extends AdvertiseCallback {
                 start();
             }
         } else {
-            throw new NullPointerException("The given advertise data is null");
+            throw new IllegalArgumentException("The given advertise data is null");
         }
         Log.d(TAG, "setAdvertiseData finished: " + ThreadUtils.currentThreadToString());
     }
@@ -158,7 +159,8 @@ class BleAdvertiser extends AdvertiseCallback {
             if (mBluetoothLeAdvertiser != null) {
                 if (mAdvertiseData != null) {
                     try {
-                        Log.i(TAG, "start: Starting... adv data = " + mAdvertiseData.toString() + ThreadUtils.currentThreadToString());
+                        Log.i(TAG, "start: Starting... advertisement data = " + mAdvertiseData.toString() + ", "
+                                + ThreadUtils.currentThreadToString());
                         mBluetoothLeAdvertiser.startAdvertising(mAdvertiseSettings, mAdvertiseData, null, this);
                         Log.i(TAG, "start: Started advertisment " + ThreadUtils.currentThreadToString());
                         setState(State.STARTING, true);

@@ -11,7 +11,6 @@ import android.preference.PreferenceManager;
  * An abstract base class for settings of the discovery and the connection manager.
  */
 public abstract class AbstractSettings {
-    protected static Context mContext = null;
     protected SharedPreferences mSharedPreferences;
     protected SharedPreferences.Editor mSharedPreferencesEditor;
     protected boolean mLoaded = false;
@@ -31,7 +30,6 @@ public abstract class AbstractSettings {
             throw new NullPointerException("Context is null");
         }
 
-        mContext = context;
         mSharedPreferences = sharedPreferences;
         mSharedPreferencesEditor = mSharedPreferences.edit();
     }

@@ -27,38 +27,34 @@ public class PeerProperties {
 
     /**
      * Constructor.
+     *
      * @param bluetoothMacAddress The Bluetooth MAC address.
      */
     public PeerProperties(String bluetoothMacAddress) {
-        mName = NO_PEER_NAME_STRING;
+        setDefaultValues();
         mBluetoothMacAddress = bluetoothMacAddress;
-        mServiceType = "";
-        mDeviceName =  "";
-        mDeviceAddress = "";
-        mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
     /**
      * Constructor.
-     * @param name The peer name.
+     *
+     * @param name                The peer name.
      * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
      */
     public PeerProperties(String name, String bluetoothMacAddress) {
+        setDefaultValues();
         mName = name;
         mBluetoothMacAddress = bluetoothMacAddress;
-        mServiceType = "";
-        mDeviceName =  "";
-        mDeviceAddress = "";
-        mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
     /**
      * Constructor.
-     * @param name The peer name.
+     *
+     * @param name                The peer name.
      * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
-     * @param serviceType The service type of the peer.
-     * @param deviceAddress The device address of the peer.
-     * @param deviceName The device name of the peer.
+     * @param serviceType         The service type of the peer.
+     * @param deviceAddress       The device address of the peer.
+     * @param deviceName          The device name of the peer.
      */
     public PeerProperties(
             String name, String bluetoothMacAddress,
@@ -66,8 +62,30 @@ public class PeerProperties {
         mName = name;
         mBluetoothMacAddress = bluetoothMacAddress;
         mServiceType = serviceType;
-        mDeviceName =  deviceName;
+        mDeviceName = deviceName;
         mDeviceAddress = deviceAddress;
+        mExtraInformation = NO_EXTRA_INFORMATION;
+    }
+
+    public PeerProperties(String serviceType, String deviceName, String deviceAddress) {
+        setDefaultValues();
+        mServiceType = serviceType;
+        mDeviceName = deviceName;
+        mDeviceAddress = deviceAddress;
+    }
+
+    public PeerProperties(String bluetoothMacAddress, int extraInformation) {
+        setDefaultValues();
+        mBluetoothMacAddress = bluetoothMacAddress;
+        mExtraInformation = extraInformation;
+    }
+
+    private void setDefaultValues() {
+        mName = NO_PEER_NAME_STRING;
+        mBluetoothMacAddress = "";
+        mServiceType = "";
+        mDeviceName = "";
+        mDeviceAddress = "";
         mExtraInformation = NO_EXTRA_INFORMATION;
     }
 
@@ -94,7 +112,7 @@ public class PeerProperties {
         mBluetoothMacAddress = bluetoothAddress;
     }
 
-    public String getServiceType() {
+    String getServiceType() {
         return mServiceType;
     }
 
@@ -122,12 +140,9 @@ public class PeerProperties {
         return mExtraInformation;
     }
 
-    public void setExtraInformation(int extraInformation) {
-        mExtraInformation = extraInformation;
-    }
-
     /**
      * Copies the content of the given source to this one.
+     *
      * @param sourcePeerProperties The source peer properties.
      */
     public void copyFrom(PeerProperties sourcePeerProperties) {
@@ -143,6 +158,7 @@ public class PeerProperties {
 
     /**
      * Checks that the main values (peer ID, name and Bluetooth address) are not empty (or null).
+     *
      * @return True, if the values are not empty (or null). False otherwise.
      */
     public boolean isValid() {
@@ -153,6 +169,7 @@ public class PeerProperties {
     /**
      * Checks if this instance has more information than the given one i.e. has more members with
      * data.
+     *
      * @param otherPeerProperties The other peer properties to compare to.
      * @return True, if this has more information than the given one. False otherwise.
      */
@@ -164,6 +181,7 @@ public class PeerProperties {
      * Checks the new peer properties for any missing information and copies them from the old
      * properties if it has it. In other words, this method can be used to make sure we do not lose
      * any information, when updating peers.
+     *
      * @param oldPeerProperties The old peer properties.
      * @param newPeerProperties The new peer properties.
      * @return True, if data was copied. False otherwise.
@@ -176,7 +194,7 @@ public class PeerProperties {
             if (!isNullOrEmpty(oldPeerProperties.mName)
                     && !oldPeerProperties.mName.equals(NO_PEER_NAME_STRING)
                     && (isNullOrEmpty(newPeerProperties.mName)
-                        || newPeerProperties.mName.equals(NO_PEER_NAME_STRING))) {
+                    || newPeerProperties.mName.equals(NO_PEER_NAME_STRING))) {
                 newPeerProperties.mName = oldPeerProperties.mName;
                 dataWasCopied = true;
             }
@@ -210,7 +228,7 @@ public class PeerProperties {
 
     @Override
     public boolean equals(Object otherPeerProperties) {
-        PeerProperties other = (PeerProperties)otherPeerProperties;
+        PeerProperties other = (PeerProperties) otherPeerProperties;
         boolean isMatch = false;
 
         if (other != null && other.getBluetoothMacAddress() != null && mBluetoothMacAddress != null) {

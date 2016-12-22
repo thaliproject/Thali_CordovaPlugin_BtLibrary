@@ -657,16 +657,17 @@ public class DiscoveryManager
     public BlePeerDiscoverer getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress() {
         if (mBlePeerDiscoverer == null) {
             Log.v(TAG, "getBlePeerDiscovererInstanceAndCheckBluetoothMacAddress: Constructing...");
+            AdvertisementData advertisementData = new AdvertisementData(mSettings.getManufacturerId(),
+                    mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(),
+                    mSettings.getAdvertisementDataType());
             mBlePeerDiscoverer = new BlePeerDiscoverer(
                     this,
                     mBluetoothManager.getBluetoothAdapter(),
                     mBleServiceUuid,
                     mBluetoothMacAddressResolutionHelper.getProvideBluetoothMacAddressRequestUuid(),
                     getBluetoothMacAddress(),
-                    mSettings.getManufacturerId(),
-                    mSettings.getBeaconAdLengthAndType(),
-                    mSettings.getBeaconAdExtraInformation(),
-                    mSettings.getAdvertisementDataType());
+                    advertisementData);
         }
 
         if (BluetoothUtils.isBluetoothMacAddressUnknown(mBlePeerDiscoverer.getBluetoothMacAddress())
@@ -711,11 +712,11 @@ public class DiscoveryManager
     public void onAdvertiseScanSettingsChanged() {
         Log.d(TAG, "onAdvertiseScanSettingsChanged: " + ThreadUtils.currentThreadToString());
         if (mBlePeerDiscoverer != null) {
+            AdvertisementData advertisementData = new AdvertisementData(
+                    mSettings.getManufacturerId(), mSettings.getBeaconAdLengthAndType(),
+                    mSettings.getBeaconAdExtraInformation(), mSettings.getAdvertisementDataType());
             mBlePeerDiscoverer.applySettings(
-                    mSettings.getManufacturerId(),
-                    mSettings.getBeaconAdLengthAndType(),
-                    mSettings.getBeaconAdExtraInformation(),
-                    mSettings.getAdvertisementDataType(),
+                    advertisementData,
                     mSettings.getAdvertiseMode(),
                     mSettings.getAdvertiseTxPowerLevel(),
                     mSettings.getScanMode(),
@@ -1200,7 +1201,7 @@ public class DiscoveryManager
             }
         } else {
             mMissingPermission = Manifest.permission.ACCESS_COARSE_LOCATION;
-            Log.e(TAG, "startBlePeerDiscoverer: Permission \"" + mMissingPermission + "\" denied");
+            Log.e(TAG, "BlePeerDiscoverer: Permission \"" + mMissingPermission + "\" denied");
         }
 
         if (started) {
@@ -1216,41 +1217,7 @@ public class DiscoveryManager
     private synchronized void stopBlePeerDiscoverer() {
         if (mBlePeerDiscoverer != null) {
             mBlePeerDiscoverer.stopScannerAndAdvertiser();
-            mBlePeerDiscoverer.setListener(new BlePeerDiscoverer.BlePeerDiscoveryListener() {
-                private void logError() {
-                    Log.e(TAG, "call method on deleted instance of BlePeerDiscoverer");
-                }
-
-                @Override
-                public void onBlePeerDiscovererStateChanged(EnumSet<BlePeerDiscovererStateSet> state) {
-                    logError();
-                }
-
-                @Override
-                public void onPeerDiscovered(PeerProperties peerProperties) {
-                    logError();
-                }
-
-                @Override
-                public void onProvideBluetoothMacAddressRequest(String requestId) {
-                    logError();
-                }
-
-                @Override
-                public void onPeerReadyToProvideBluetoothMacAddress(String requestId) {
-                    logError();
-                }
-
-                @Override
-                public void onProvideBluetoothMacAddressResult(String requestId, boolean wasCompleted) {
-                    logError();
-                }
-
-                @Override
-                public void onBluetoothMacAddressResolved(String bluetoothMacAddress) {
-                    logError();
-                }
-            });
+            mBlePeerDiscoverer.releaseListener();
             mBlePeerDiscoverer = null;
             Log.d(TAG, "stopBlePeerDiscoverer: Stopped");
         }
@@ -1347,6 +1314,7 @@ public class DiscoveryManager
         DiscoveryMode discoveryMode = mSettings.getDiscoveryMode();
         if (mBlePeerDiscoverer != null) {
             if (!mBlePeerDiscoverer.getState().equals(mBlePeerDiscovererStateSet)) {
+                //We just didn't get called from BlePeerDiscoverer
                 Log.e(TAG, "seems that updateState call different BlePeerDiscoverer");
             }
             mBlePeerDiscovererStateSet = mBlePeerDiscoverer.getState();
