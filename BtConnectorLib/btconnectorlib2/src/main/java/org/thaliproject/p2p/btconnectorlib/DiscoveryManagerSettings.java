@@ -40,6 +40,9 @@ public class DiscoveryManagerSettings extends AbstractSettings {
          * Called when any of the advertise/scan settings is changed.
          */
         void onAdvertiseScanSettingsChanged();
+
+        //TODO move peer extra info into separate settings, interface segregation and so on
+        void onPeerExtraInfoChanged(int newExtraInfo);
     }
 
     // Default settings
@@ -145,15 +148,15 @@ public class DiscoveryManagerSettings extends AbstractSettings {
      * <p>
      * Note: Only the discovery manager can act as a listener.
      *
-     * @param discoveryManager The discovery manager instance.
+     * @param listener The discovery manager settings listener.
      */
-    /* Package */ void addListener(DiscoveryManager discoveryManager) {
-        if (discoveryManager != null) {
-            if (!mListeners.contains(discoveryManager)) {
-                mListeners.add(discoveryManager);
-                Log.v(TAG, "addListener: Listener " + discoveryManager + " added. We now have " + mListeners.size() + " listener(s)");
+    /* Package */ void addListener(DiscoveryManagerSettings.Listener listener) {
+        if (listener != null) {
+            if (!mListeners.contains(listener)) {
+                mListeners.add(listener);
+                Log.v(TAG, "addListener: Listener " + listener + " added. We now have " + mListeners.size() + " listener(s)");
             } else {
-                Log.e(TAG, "addListener: Listener " + discoveryManager + " already in the list");
+                Log.e(TAG, "addListener: Listener " + listener + " already in the list");
                 throw new IllegalArgumentException(TAG + " addListener: Listener already in the list");
             }
         }
@@ -162,14 +165,14 @@ public class DiscoveryManagerSettings extends AbstractSettings {
     /**
      * Removes the given listener from the list.
      *
-     * @param discoveryManager The listener to remove.
+     * @param listener The listener to remove.
      */
-    /* Package */ void removeListener(DiscoveryManager discoveryManager) {
-        if (discoveryManager != null && mListeners.size() > 0) {
-            if (mListeners.remove(discoveryManager)) {
-                Log.v(TAG, "removeListener: Listener " + discoveryManager + " removed from the list");
+    /* Package */ void removeListener(DiscoveryManagerSettings.Listener listener) {
+        if (listener != null && mListeners.size() > 0) {
+            if (mListeners.remove(listener)) {
+                Log.v(TAG, "removeListener: Listener " + listener + " removed from the list");
             } else {
-                Log.e(TAG, "removeListener: Listener " + discoveryManager + " not in the list");
+                Log.e(TAG, "removeListener: Listener " + listener + " not in the list");
             }
         }
     }
@@ -445,7 +448,7 @@ public class DiscoveryManagerSettings extends AbstractSettings {
             mSharedPreferencesEditor.apply();
 
             for (Listener listener : mListeners) {
-                listener.onAdvertiseScanSettingsChanged();
+                listener.onPeerExtraInfoChanged(mBeaconAdExtraInformation);
             }
         }
     }

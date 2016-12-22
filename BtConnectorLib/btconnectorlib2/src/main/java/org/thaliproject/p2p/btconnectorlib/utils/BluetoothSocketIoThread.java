@@ -4,8 +4,11 @@
 package org.thaliproject.p2p.btconnectorlib.utils;
 
 import android.bluetooth.BluetoothSocket;
+import android.support.annotation.Nullable;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -23,8 +26,8 @@ public class BluetoothSocketIoThread extends Thread {
          * Called when bytes were successfully read.
          *
          * @param bytes The array of bytes read.
-         * @param size The size of the array.
-         * @param who The related BluetoothSocketIoThread instance.
+         * @param size  The size of the array.
+         * @param who   The related BluetoothSocketIoThread instance.
          */
         void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who);
 
@@ -32,8 +35,8 @@ public class BluetoothSocketIoThread extends Thread {
          * Called when bytes were written successfully.
          *
          * @param bytes The array of bytes written.
-         * @param size The size of the array.
-         * @param who The related BluetoothSocketIoThread instance.
+         * @param size  The size of the array.
+         * @param who   The related BluetoothSocketIoThread instance.
          */
         void onBytesWritten(byte[] bytes, int size, BluetoothSocketIoThread who);
 
@@ -41,7 +44,7 @@ public class BluetoothSocketIoThread extends Thread {
          * Called when the socket associated with the BluetoothSocketIoThread instance is disconnected.
          *
          * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
-         * @param who The related BluetoothSocketIoThread instance.
+         * @param who    The related BluetoothSocketIoThread instance.
          */
         void onDisconnected(String reason, BluetoothSocketIoThread who);
     }
@@ -60,10 +63,10 @@ public class BluetoothSocketIoThread extends Thread {
     /**
      * Constructor.
      *
-     * @param socket A Bluetooth socket.
+     * @param socket   A Bluetooth socket.
      * @param listener The listener.
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth socket instance is null.
-     * @throws IOException Thrown in case of failure to get the input and the output streams for the given socket.
+     * @throws IOException          Thrown in case of failure to get the input and the output streams for the given socket.
      */
     public BluetoothSocketIoThread(BluetoothSocket socket, Listener listener)
             throws NullPointerException, IOException {
@@ -75,13 +78,13 @@ public class BluetoothSocketIoThread extends Thread {
         mSocket = socket;
         mInputStream = mSocket.getInputStream();
         mOutputStream = mSocket.getOutputStream();
-        mPeerProperties = new PeerProperties();
     }
 
     public BluetoothSocket getSocket() {
         return mSocket;
     }
 
+    @Nullable
     public PeerProperties getPeerProperties() {
         return mPeerProperties;
     }
@@ -101,6 +104,7 @@ public class BluetoothSocketIoThread extends Thread {
 
     /**
      * Returns the buffer size used by the input stream.
+     *
      * @return The buffer size in bytes.
      */
     public int getBufferSize() {
@@ -121,7 +125,7 @@ public class BluetoothSocketIoThread extends Thread {
 
     /**
      * From Thread.
-     *
+     * <p>
      * Keeps reading the input stream of the socket until closed or disconnected (unless is set to
      * exit after one read() call).
      */
@@ -190,17 +194,17 @@ public class BluetoothSocketIoThread extends Thread {
      * disposed of.
      *
      * @param closeStreams If true, will close the input and output streams.
-     * @param closeSocket If true, will close the socket. Otherwise only the streams are closed.
+     * @param closeSocket  If true, will close the socket. Otherwise only the streams are closed.
      */
     public synchronized void close(boolean closeStreams, boolean closeSocket) {
-        Log.d(TAG, "close. " + ThreadUtils.currentThreadToString() );
+        Log.d(TAG, "close. " + ThreadUtils.currentThreadToString());
         mIsShuttingDown = true;
 
         if (closeStreams) {
             if (mInputStream != null) {
                 try {
                     mInputStream.close();
-                    Log.d(TAG, "mInputStream closed. " + ThreadUtils.currentThreadToString() );
+                    Log.d(TAG, "mInputStream closed. " + ThreadUtils.currentThreadToString());
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close the input stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
                 }
@@ -209,7 +213,7 @@ public class BluetoothSocketIoThread extends Thread {
             if (mOutputStream != null) {
                 try {
                     mOutputStream.close();
-                    Log.d(TAG, "mOutputStream closed. " + ThreadUtils.currentThreadToString() );
+                    Log.d(TAG, "mOutputStream closed. " + ThreadUtils.currentThreadToString());
                 } catch (IOException e) {
                     Log.w(TAG, "Failed to close the output stream: " + e.getMessage() + " (thread ID: " + getId() + ")");
                 }
@@ -219,7 +223,7 @@ public class BluetoothSocketIoThread extends Thread {
         if (closeSocket && mSocket != null) {
             try {
                 mSocket.close();
-                Log.d(TAG, "mSocket closed. " + ThreadUtils.currentThreadToString() );
+                Log.d(TAG, "mSocket closed. " + ThreadUtils.currentThreadToString());
             } catch (IOException e) {
                 Log.w(TAG, "Failed to close the socket: " + e.getMessage() + " (thread ID: " + getId() + ")");
             }

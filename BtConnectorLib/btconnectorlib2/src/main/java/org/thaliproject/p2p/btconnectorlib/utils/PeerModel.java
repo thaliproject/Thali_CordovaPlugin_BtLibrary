@@ -204,7 +204,6 @@ public class PeerModel {
                         }
                     }
                 } else {
-
                     Log.d(TAG, "Want to call onPeerAdded. Listeners size = " + mListeners.size());
                     // The given peer was not in the list before, hence it is a new one
                     for (Listener listener : mListeners) {

@@ -11,6 +11,7 @@ import android.content.SharedPreferences;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
@@ -24,8 +25,9 @@ import java.util.UUID;
 public class ConnectionManager
         extends AbstractBluetoothConnectivityAgent
         implements
-            BluetoothConnector.BluetoothConnectorListener,
-            ConnectionManagerSettings.Listener {
+        BluetoothConnector.BluetoothConnectorListener,
+        ConnectionManagerSettings.Listener,
+        DiscoveryManagerSettings.Listener { //TODO move peer extra info into separate settings
 
     public enum ConnectionManagerState {
         NOT_STARTED,
@@ -36,6 +38,7 @@ public class ConnectionManager
     public interface ConnectionManagerListener {
         /**
          * Called when the state of this instance is changed.
+         *
          * @param state The new state.
          */
         void onConnectionManagerStateChanged(ConnectionManagerState state);
@@ -45,8 +48,8 @@ public class ConnectionManager
          * Note that the ownership of the bluetooth socket is transferred to the listener.
          *
          * @param bluetoothSocket The Bluetooth socket associated with the peer.
-         * @param isIncoming True, if the connection was incoming. False, if outgoing.
-         * @param peerProperties The properties of the peer we're connected to.
+         * @param isIncoming      True, if the connection was incoming. False, if outgoing.
+         * @param peerProperties  The properties of the peer we're connected to.
          */
         void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties);
 
@@ -63,7 +66,7 @@ public class ConnectionManager
          *
          * @param peerProperties The properties of the peer we we're trying to connect to.
          *                       Note: This can be null.
-         * @param errorMessage The error message. Note: This can be null.
+         * @param errorMessage   The error message. Note: This can be null.
          */
         void onConnectionFailed(PeerProperties peerProperties, String errorMessage);
     }
@@ -82,11 +85,11 @@ public class ConnectionManager
     /**
      * Constructor.
      *
-     * @param context The application context.
+     * @param context  The application context.
      * @param listener The listener.
-     * @param myUuid Our (service record) UUID. Note that his has to match the one of the peers we
-     *               are trying to connect to, otherwise any connection attempt will fail.
-     * @param myName Our name.
+     * @param myUuid   Our (service record) UUID. Note that his has to match the one of the peers we
+     *                 are trying to connect to, otherwise any connection attempt will fail.
+     * @param myName   Our name.
      */
     public ConnectionManager(
             Context context, ConnectionManagerListener listener,
@@ -99,13 +102,13 @@ public class ConnectionManager
      * Constructor used in unit tests. It allows to provide initialized
      * bluetooth manager and shared preferences.
      *
-     * @param context The application context.
-     * @param listener The listener.
-     * @param myUuid Our (service record) UUID. Note that his has to match the one of the peers we
-     *               are trying to connect to, otherwise any connection attempt will fail.
-     * @param myName Our name.
+     * @param context          The application context.
+     * @param listener         The listener.
+     * @param myUuid           Our (service record) UUID. Note that his has to match the one of the peers we
+     *                         are trying to connect to, otherwise any connection attempt will fail.
+     * @param myName           Our name.
      * @param bluetoothManager The bluetooth manager.
-     * @param preferences The shared preferences.
+     * @param preferences      The shared preferences.
      */
     public ConnectionManager(
             Context context, ConnectionManagerListener listener,
@@ -121,14 +124,29 @@ public class ConnectionManager
         mSettings.load();
         mSettings.addListener(this);
 
+        addAsDiscoverySettingsListener(preferences);
+        myExtraInfo = loadExtraInfo();
         mHandler = new Handler(mContext.getMainLooper());
 
-        verifyIdentityString(preferences); // Creates the identity string
+        tryToCreateIdentityString(preferences); // Creates the identity string
 
         mBluetoothConnector = new BluetoothConnector(
                 mContext, this, mBluetoothManager.getBluetoothAdapter(),
                 mMyUuid, mMyName, mMyIdentityString);
         mBluetoothConnector.setConnectionTimeout(mSettings.getConnectionTimeout());
+    }
+
+    private void addAsDiscoverySettingsListener(SharedPreferences preferences) {
+        DiscoveryManagerSettings.getInstance(mContext, preferences).addListener(this);
+        DiscoveryManagerSettings.getInstance(mContext, preferences).load();
+    }
+
+    private int loadExtraInfo() {
+        return DiscoveryManagerSettings.getInstance(mContext).getBeaconAdExtraInformation();
+    }
+
+    private void removeAsDiscoverySettingsListener() {
+        DiscoveryManagerSettings.getInstance(mContext).removeListener(this);
     }
 
     /**
@@ -246,18 +264,6 @@ public class ConnectionManager
         mBluetoothConnector.cancelAllConnectionAttempts();
     }
 
-    /**
-     * When the peer name is changed, the identity string is recreated. We need to provide the
-     * updated string to the Bluetooth connector instance.
-     *
-     * @param myPeerName Our peer name.
-     */
-    @Override
-    public void setPeerName(String myPeerName) {
-        super.setPeerName(myPeerName);
-        mBluetoothConnector.setIdentityString(mMyIdentityString);
-    }
-
     @Override
     public void dispose() {
         Log.i(TAG, "dispose");
@@ -265,6 +271,7 @@ public class ConnectionManager
         stopListeningForIncomingConnections();
         mBluetoothConnector.shutdown();
         mSettings.removeListener(this);
+        removeAsDiscoverySettingsListener();
     }
 
     /**
@@ -355,7 +362,7 @@ public class ConnectionManager
     /**
      * Does nothing but logs the event.
      *
-     * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
+     * @param bluetoothDeviceName    The name of the Bluetooth device connecting to.
      * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
      */
     @Override
@@ -367,8 +374,8 @@ public class ConnectionManager
      * Notifies the listener about a successful connection.
      *
      * @param bluetoothSocket The Bluetooth socket.
-     * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
-     * @param peerProperties The properties of the peer connected to.
+     * @param isIncoming      True, if the connection was incoming. False, if it was outgoing.
+     * @param peerProperties  The properties of the peer connected to.
      */
     @Override
     public void onConnected(
@@ -414,7 +421,7 @@ public class ConnectionManager
      * Notifies the listener about this failed connection attempt.
      *
      * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
-     * @param errorMessage The error message. Note: Can be null.
+     * @param errorMessage   The error message. Note: Can be null.
      */
     @Override
     public void onConnectionFailed(final PeerProperties peerProperties, final String errorMessage) {
@@ -432,6 +439,27 @@ public class ConnectionManager
                 }
             });
         }
+    }
+
+    @Override
+    public void onDiscoveryModeChanged(DiscoveryManager.DiscoveryMode discoveryMode, boolean startIfNotRunning) {
+        //do nothing
+    }
+
+    @Override
+    public void onPeerExpirationSettingChanged(long peerExpirationInMilliseconds) {
+        //do nothing
+    }
+
+    @Override
+    public void onAdvertiseScanSettingsChanged() {
+        //do nothing
+    }
+
+    @Override
+    public void onPeerExtraInfoChanged(int newExtraInfo) {
+        setExtraInfo(newExtraInfo);
+        mBluetoothConnector.setIdentityString(mMyIdentityString);
     }
 
     /**

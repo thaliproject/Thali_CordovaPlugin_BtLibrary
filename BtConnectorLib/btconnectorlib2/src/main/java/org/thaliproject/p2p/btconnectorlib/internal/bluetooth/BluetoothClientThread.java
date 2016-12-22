@@ -89,7 +89,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         mListener = listener;
         mBluetoothDeviceToConnectTo = bluetoothDeviceToConnectTo;
         mServiceRecordUuid = serviceRecordUuid;
-        mPeerProperties = new PeerProperties();
+        mPeerProperties = new PeerProperties(mBluetoothDeviceToConnectTo.getAddress());
     }
 
     /**
@@ -286,7 +286,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     public void onDisconnected(String reason, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         final PeerProperties peerProperties = who.getPeerProperties();
-        Log.i(TAG, "onDisconnected: " + peerProperties.toString() + " (thread ID: " + threadId + ")");
+        if (peerProperties != null) {
+            Log.i(TAG, "onDisconnected: " + peerProperties.toString() + " (thread ID: " + threadId + ")");
+        }
 
         // If we were successful, the handshake thread instance was set to null
         if (mHandshakeThread != null) {
