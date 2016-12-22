@@ -283,7 +283,8 @@ public class DiscoveryManagerSettings extends AbstractSettings {
 
         if (mListeners.size() > 0) {
             // Check if the given discovery mode is supported
-            DiscoveryManager discoveryManager = (DiscoveryManager) mListeners.get(0);
+            //TODO we shouldn't cast listeners to some special classes
+            DiscoveryManager discoveryManager = findDiscoveryManagerInListeners();
 
             if (discoveryManager != null) {
                 boolean isBleSupported = discoveryManager.isBleSupported();
@@ -337,6 +338,15 @@ public class DiscoveryManagerSettings extends AbstractSettings {
         }
 
         return ok;
+    }
+
+    private DiscoveryManager findDiscoveryManagerInListeners() {
+        for (Listener listener : mListeners) {
+            if (listener instanceof DiscoveryManager) {
+                return (DiscoveryManager) listener;
+            }
+        }
+        return null;
     }
 
     /**
