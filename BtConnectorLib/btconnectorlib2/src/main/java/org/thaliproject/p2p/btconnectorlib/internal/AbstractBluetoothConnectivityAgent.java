@@ -26,7 +26,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected static final String JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS = "address";
     protected final Context mContext;
     protected final BluetoothManager mBluetoothManager;
-    protected String mMyIdentityString = "";
+    protected String mMyIdentityString = null;
     protected boolean mEmulateMarshmallow = false;
     protected int myExtraInfo = PeerProperties.NO_EXTRA_INFORMATION;
 
@@ -65,12 +65,13 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         return myExtraInfo;
     }
 
-    public void setExtraInfo(int extraInfo) {
-        if (extraInfo != PeerProperties.NO_EXTRA_INFORMATION) {
+    public boolean setExtraInfo(int extraInfo) {
+        if (extraInfo >= 0 && extraInfo < PeerProperties.NO_EXTRA_INFORMATION) {
             this.myExtraInfo = extraInfo;
             clearIdentityString();
-            tryToCreateIdentityString();
+            return tryToCreateIdentityString();
         }
+        return false;
     }
 
     /**

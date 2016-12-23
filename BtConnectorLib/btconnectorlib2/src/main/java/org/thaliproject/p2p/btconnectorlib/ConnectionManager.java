@@ -459,7 +459,15 @@ public class ConnectionManager
     @Override
     public void onPeerExtraInfoChanged(int newExtraInfo) {
         setExtraInfo(newExtraInfo);
-        mBluetoothConnector.setIdentityString(mMyIdentityString);
+    }
+
+    @Override
+    public boolean setExtraInfo(int extraInfo) {
+        boolean wasSet = super.setExtraInfo(extraInfo);
+        if (wasSet) {
+            mBluetoothConnector.setIdentityString(mMyIdentityString);
+        }
+        return wasSet;
     }
 
     /**

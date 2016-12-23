@@ -328,8 +328,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         int extraInfo = 12;
         String expected = "{\"generation\":" + extraInfo + ",\"address\":\"" + btAddress + "\"}";
 
-        // correct peer name
-        mConnectionManager.setExtraInfo(12);
+        mConnectionManager.setExtraInfo(extraInfo);
         Field bluetoothConnectorField = mConnectionManager.getClass()
                 .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
@@ -539,9 +538,17 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
 
         // correct extra info and bluetooth address
-        mConnectionManager.setExtraInfo(4);
+        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
+        mConnectionManager.setEmulateMarshmallow(true);
+        Field macAddressField = settings.getClass()
+                .getDeclaredField("mBluetoothMacAddress");
+        macAddressField.setAccessible(true);
+        String address = "AA:BB:CC:DD:EE:FF";
+        int generation = 4;
+        macAddressField.set(settings, address);
+        mConnectionManager.setExtraInfo(generation);
         assertThat((String) identityField.get(mConnectionManager),
-                is("{\"name\":4,\"address\":\"AA:BB:CC:DD:EE:FF\"}"));
+                is("{\"generation\":" + generation + ",\"address\":\"" + address + "\"}"));
     }
 
     @Test
