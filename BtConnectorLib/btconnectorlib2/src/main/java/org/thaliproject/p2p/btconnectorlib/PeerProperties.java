@@ -29,24 +29,7 @@ public class PeerProperties {
         tryToSetMacAddress(bluetoothMacAddress);
     }
 
-    /**
-     * Constructor.
-     *
-     * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
-     * @param serviceType         The service type of the peer.
-     * @param deviceAddress       The device address of the peer.
-     * @param deviceName          The device name of the peer.
-     */
-    public PeerProperties(String bluetoothMacAddress,
-                          String serviceType, String deviceAddress, String deviceName) {
-        setDefaultValues();
-        tryToSetMacAddress(bluetoothMacAddress);
-        mServiceType = serviceType;
-        mDeviceName = deviceName;
-        mDeviceAddress = deviceAddress;
-    }
-
-    public PeerProperties(String serviceType, String deviceName, String deviceAddress) {
+    public PeerProperties(String serviceType, String deviceName, String deviceAddress) { //uses only for wifi
         setDefaultValues();
         mServiceType = serviceType;
         mDeviceName = deviceName;
@@ -91,24 +74,12 @@ public class PeerProperties {
         return mServiceType;
     }
 
-    public void setServiceType(final String serviceType) {
-        mServiceType = serviceType;
-    }
-
     public String getDeviceName() {
         return mDeviceName;
     }
 
-    public void setDeviceName(final String deviceName) {
-        mDeviceName = deviceName;
-    }
-
     public String getDeviceAddress() {
         return mDeviceAddress;
-    }
-
-    public void setDeviceAddress(final String deviceAddress) {
-        mDeviceAddress = deviceAddress;
     }
 
     public int getExtraInformation() {
@@ -217,7 +188,8 @@ public class PeerProperties {
     private int fieldsWithData() {
         int count = 0;
 
-        if (!isNullOrEmpty(mBluetoothMacAddress)) {
+        if (!isNullOrEmpty(mBluetoothMacAddress) &&
+                !mBluetoothMacAddress.equals(BLUETOOTH_MAC_ADDRESS_UNKNOWN)) {
             count++;
         }
 

@@ -104,13 +104,16 @@ public class DiscoveryManagerTest {
 
     @After
     public void tearDown() throws Exception {
-        // the code below is needed to reset the DiscoveryManagerSettings singleton
+        discoveryManager.dispose();
+        resetSettings();
+    }
+
+    private void resetSettings() throws IllegalAccessException, NoSuchFieldException {
         DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
         Field instanceField = dmSettings.getClass().getDeclaredField("mInstance");
         instanceField.setAccessible(true);
         instanceField.set(dmSettings, null);
-        discoveryManager.dispose();
     }
 
     @Test
@@ -124,7 +127,6 @@ public class DiscoveryManagerTest {
 
         assertThat(dm, is(notNullValue()));
         assertThat(dm.getState(), is(equalTo(DiscoveryManager.DiscoveryManagerState.NOT_STARTED)));
-
     }
 
     @Test

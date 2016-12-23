@@ -101,11 +101,24 @@ public class ConnectionManagerTest {
     }
 
     private void resetSettings() throws NoSuchFieldException, IllegalAccessException {
+        resetConnectionManagerSettings();
+        resetDiscoveryManagerSettings();
+    }
+
+    private void resetConnectionManagerSettings() throws NoSuchFieldException, IllegalAccessException {
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mMockContext,
                 mMockSharedPreferences);
         Field stateField = cmSettings.getClass().getDeclaredField("mInstance");
         stateField.setAccessible(true);
         stateField.set(cmSettings, null);
+    }
+
+    private void resetDiscoveryManagerSettings() throws NoSuchFieldException, IllegalAccessException {
+        DiscoveryManagerSettings dmSettings = DiscoveryManagerSettings.getInstance(mMockContext,
+                mMockSharedPreferences);
+        Field stateField = dmSettings.getClass().getDeclaredField("mInstance");
+        stateField.setAccessible(true);
+        stateField.set(dmSettings, null);
     }
 
     @Test

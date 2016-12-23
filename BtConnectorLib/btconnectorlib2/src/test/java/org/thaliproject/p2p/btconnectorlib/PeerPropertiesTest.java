@@ -18,98 +18,78 @@ import static org.junit.Assert.assertThat;
 public class PeerPropertiesTest {
 
     private static final String TEST_MAC = "00:11:22:33:44:55";
-    private PeerProperties mPeerProperties;
-    private String mac = "0:0:0:0:0:0";
-    private String serviceType = "Service type";
-    private String deviceAddress = "192.168.0.1";
-    private String deviceName = "Test device name";
+    private static final int TEST_EXTRA_INFO = 12;
+    private static final String SERVICE_TYPE = "Service type";
+    private static final String DEVICE_ADDRESS = "192.168.0.1";
+    private static final String DEVICE_NAME = "Test device name";
+
+    private PeerProperties bluetoothPeerProperties;
+    private PeerProperties wifiPeerProperties;
 
     @Before
     public void setUp() throws Exception {
-        mPeerProperties = new PeerProperties(mac, serviceType, deviceAddress, deviceName);
-    }
-
-    @After
-    public void tearDown() throws Exception {
-
+        bluetoothPeerProperties = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
+        wifiPeerProperties = new PeerProperties(SERVICE_TYPE, DEVICE_NAME, DEVICE_ADDRESS);
     }
 
     @Test
     public void peerPropertiesConstructorThatTakesAString() {
-        PeerProperties pp = new PeerProperties(mac);
-        assertThat(pp.getBluetoothMacAddress(), is(equalTo(mac)));
+        PeerProperties pp = new PeerProperties(TEST_MAC);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(TEST_MAC)));
     }
 
     @Test
-    public void peerPropertiesConstructorThatTakesTwoStrings() {
-        PeerProperties pp = new PeerProperties(mac);
-        assertThat(pp.getBluetoothMacAddress(), is(equalTo(mac)));
-    }
-
-    @Test
-    public void peerPropertiesConstructorThatTakesFiveStrings() {
-        PeerProperties pp = new PeerProperties(mac, serviceType,
-                deviceAddress, deviceName);
-        assertThat(pp.getBluetoothMacAddress(), is(equalTo(mac)));
-        assertThat(pp.getServiceType(), is(equalTo(serviceType)));
-        assertThat(pp.getDeviceAddress(), is(equalTo(deviceAddress)));
-        assertThat(pp.getDeviceName(), is(equalTo(deviceName)));
+    public void peerPropertiesConstructorThatTakesTypeAddressAndName() {
+        PeerProperties pp = new PeerProperties(SERVICE_TYPE, DEVICE_NAME, DEVICE_ADDRESS);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)));
+        assertThat(pp.getServiceType(), is(equalTo(SERVICE_TYPE)));
+        assertThat(pp.getDeviceAddress(), is(equalTo(DEVICE_ADDRESS)));
+        assertThat(pp.getDeviceName(), is(equalTo(DEVICE_NAME)));
     }
 
     @Test
     public void testGetId() {
-        assertThat(mPeerProperties.getId(), is(equalTo(mac)));
+        assertThat(bluetoothPeerProperties.getId(), is(equalTo(TEST_MAC)));
+        assertThat(wifiPeerProperties.getId(), is(equalTo(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)));
     }
 
     @Test
     public void testGetBluetoothMacAddress() {
-        assertThat(mPeerProperties.getBluetoothMacAddress(), is(equalTo(mac)));
+        assertThat(bluetoothPeerProperties.getBluetoothMacAddress(), is(equalTo(TEST_MAC)));
+        assertThat(wifiPeerProperties.getId(), is(equalTo(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)));
     }
 
     @Test
     public void testGetServiceType() {
-        assertThat(mPeerProperties.getServiceType(), is(equalTo(serviceType)));
-    }
-
-    @Test
-    public void testSetServiceType() {
-        String newServiceType = "new service type";
-        mPeerProperties.setServiceType(newServiceType);
-        assertThat(mPeerProperties.getServiceType(), is(equalTo(newServiceType)));
+        assertThat(wifiPeerProperties.getServiceType(), is(equalTo(SERVICE_TYPE)));
+        assertThat(bluetoothPeerProperties.getServiceType(), is(nullValue()));
     }
 
     @Test
     public void testGetDeviceName() {
-        assertThat(mPeerProperties.getDeviceName(), is(equalTo(deviceName)));
-    }
-
-    @Test
-    public void testSetDeviceName() {
-        String newDeviceName = "new device name";
-        mPeerProperties.setDeviceName(newDeviceName);
-        assertThat(mPeerProperties.getDeviceName(), is(equalTo(newDeviceName)));
+        assertThat(wifiPeerProperties.getDeviceName(), is(equalTo(DEVICE_NAME)));
+        assertThat(bluetoothPeerProperties.getDeviceName(), is(nullValue()));
     }
 
     @Test
     public void testGetDeviceAddress() {
-        assertThat(mPeerProperties.getDeviceAddress(), is(equalTo(deviceAddress)));
-    }
-
-    @Test
-    public void testSetDeviceAddress() {
-        String newDeviceAddress = "127.0.1";
-        mPeerProperties.setDeviceAddress(newDeviceAddress);
-        assertThat(mPeerProperties.getDeviceAddress(), is(equalTo(newDeviceAddress)));
+        assertThat(wifiPeerProperties.getDeviceAddress(), is(equalTo(DEVICE_ADDRESS)));
+        assertThat(bluetoothPeerProperties.getDeviceAddress(), is(nullValue()));
     }
 
     @Test
     public void testCopyFrom() {
         PeerProperties pp = new PeerProperties(TEST_MAC);
-        pp.copyFrom(mPeerProperties);
-        assertThat(pp.getBluetoothMacAddress(), is(equalTo(mac)));
-        assertThat(pp.getDeviceAddress(), is(equalTo(deviceAddress)));
-        assertThat(pp.getServiceType(), is(equalTo(serviceType)));
-        assertThat(pp.getDeviceName(), is(equalTo(deviceName)));
+        pp.copyFrom(bluetoothPeerProperties);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(TEST_MAC)));
+        assertThat(pp.getExtraInformation(), is(equalTo(TEST_EXTRA_INFO)));
+
+        pp.copyFrom(wifiPeerProperties);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)));
+        assertThat(pp.getExtraInformation(), is(equalTo(PeerProperties.NO_EXTRA_INFORMATION)));
+        assertThat(pp.getDeviceAddress(), is(equalTo(DEVICE_ADDRESS)));
+        assertThat(pp.getServiceType(), is(equalTo(SERVICE_TYPE)));
+        assertThat(pp.getDeviceName(), is(equalTo(DEVICE_NAME)));
     }
 
     @Test
@@ -124,11 +104,11 @@ public class PeerPropertiesTest {
 
     @Test
     public void testIsValid() {
-        PeerProperties pp = new PeerProperties(mac);
+        PeerProperties pp = new PeerProperties(TEST_MAC);
         assertThat(pp.isValid(), is(false));
-        pp = new PeerProperties(mac, 12);
+        pp = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
         assertThat(pp.isValid(), is(true));
-        pp = new PeerProperties(mac, PeerProperties.NO_EXTRA_INFORMATION);
+        pp = new PeerProperties(TEST_MAC, PeerProperties.NO_EXTRA_INFORMATION);
         assertThat(pp.isValid(), is(false));
     }
 
@@ -139,25 +119,17 @@ public class PeerPropertiesTest {
         assertThat(pp1.hasMoreInformation(pp2), is(false));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
 
-        pp1.setDeviceName("device1");
+        pp1 = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
         assertThat(pp1.hasMoreInformation(pp2), is(true));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
-        pp2.setDeviceName("device2");
+        pp2 = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
         assertThat(pp1.hasMoreInformation(pp2), is(false));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
 
-        pp1.setDeviceAddress("127.0.0.1");
+        pp1 = new PeerProperties("type1", "deviceName1", "address1");
         assertThat(pp1.hasMoreInformation(pp2), is(true));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
-        pp2.setDeviceAddress("127.0.0.2");
-        assertThat(pp1.hasMoreInformation(pp2), is(false));
-        assertThat(pp2.hasMoreInformation(pp1), is(false));
-
-
-        pp1.setServiceType("type1");
-        assertThat(pp1.hasMoreInformation(pp2), is(true));
-        assertThat(pp2.hasMoreInformation(pp1), is(false));
-        pp2.setServiceType("type2");
+        pp2 = new PeerProperties("type2", "deviceName2", "address2");
         assertThat(pp1.hasMoreInformation(pp2), is(false));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
     }
@@ -169,15 +141,7 @@ public class PeerPropertiesTest {
         assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(false));
         assertThat(pp2.hasMoreInformation(pp1), is(false));
 
-        pp1.setDeviceName("device1");
-        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
-        assertThat(pp1.hasMoreInformation(pp2), is(false));
-
-        pp1.setDeviceAddress("127.0.0.1");
-        assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
-        assertThat(pp1.hasMoreInformation(pp2), is(false));
-
-        pp1.setServiceType("type1");
+        pp1 = new PeerProperties("type1", "deviceName1", "address1");
         assertThat(PeerProperties.copyMissingValuesFromOldPeer(pp1, pp2), is(true));
         assertThat(pp1.hasMoreInformation(pp2), is(false));
     }
@@ -185,15 +149,16 @@ public class PeerPropertiesTest {
     @Test
     public void testEquals() {
         // If the mac address is the same, objects are equal
-        PeerProperties pp1 = new PeerProperties(mac);
-        PeerProperties pp2 = new PeerProperties(mac);
+        PeerProperties pp1 = new PeerProperties(TEST_MAC);
+        PeerProperties pp2 = new PeerProperties(TEST_MAC);
         assertThat(pp1.equals(pp2), is(true));
-        PeerProperties pp3 = new PeerProperties(TEST_MAC);
+        PeerProperties pp3 = new PeerProperties("1:2:3");
         assertThat(pp2.equals(pp3), is(false));
     }
 
     @Test
     public void testToString() {
-        assertThat(mPeerProperties.toString(), is(equalTo("[" + mac + "]")));
+        assertThat(bluetoothPeerProperties.toString(), is(equalTo("[" + TEST_MAC + " " + TEST_EXTRA_INFO + "]")));
+        assertThat(new PeerProperties(TEST_MAC).toString(), is(equalTo("[" + TEST_MAC + "]")));
     }
 }
