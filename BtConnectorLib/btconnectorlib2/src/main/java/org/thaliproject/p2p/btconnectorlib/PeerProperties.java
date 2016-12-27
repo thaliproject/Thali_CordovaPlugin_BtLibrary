@@ -56,7 +56,10 @@ public class PeerProperties {
     private void tryToSetExtraInfo(int extraInformation) {
         if (extraInformation >= 0 && extraInformation < PeerProperties.NO_EXTRA_INFORMATION) {
             mExtraInformation = extraInformation;
+            return;
         }
+        throw new IllegalArgumentException("Extra information should be in range[0..255]. " +
+                "Provided extra information is " + extraInformation);
     }
 
     /**

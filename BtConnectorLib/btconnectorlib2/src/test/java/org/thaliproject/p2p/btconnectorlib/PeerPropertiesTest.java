@@ -2,9 +2,10 @@ package org.thaliproject.p2p.btconnectorlib;
 
 import android.test.suitebuilder.annotation.SmallTest;
 
-import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
 
@@ -25,6 +26,8 @@ public class PeerPropertiesTest {
 
     private PeerProperties bluetoothPeerProperties;
     private PeerProperties wifiPeerProperties;
+    @Rule
+    public ExpectedException thrown = ExpectedException.none();
 
     @Before
     public void setUp() throws Exception {
@@ -33,9 +36,21 @@ public class PeerPropertiesTest {
     }
 
     @Test
-    public void peerPropertiesConstructorThatTakesAString() {
+    public void peerPropertiesMacAddressConstructor() {
         PeerProperties pp = new PeerProperties(TEST_MAC);
         assertThat(pp.getBluetoothMacAddress(), is(equalTo(TEST_MAC)));
+    }
+
+    @Test
+    public void peerPropertiesMacAndExtraInfoConstructor() {
+        PeerProperties pp = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(TEST_MAC)));
+        assertThat(pp.getExtraInformation(), is(equalTo(TEST_EXTRA_INFO)));
+        pp = new PeerProperties("", TEST_EXTRA_INFO);
+        assertThat(pp.getBluetoothMacAddress(), is(equalTo(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN)));
+        assertThat(pp.getExtraInformation(), is(equalTo(TEST_EXTRA_INFO)));
+        thrown.expect(IllegalArgumentException.class);
+        new PeerProperties(TEST_MAC, PeerProperties.NO_EXTRA_INFORMATION);
     }
 
     @Test
@@ -108,8 +123,8 @@ public class PeerPropertiesTest {
         assertThat(pp.isValid(), is(false));
         pp = new PeerProperties(TEST_MAC, TEST_EXTRA_INFO);
         assertThat(pp.isValid(), is(true));
-        pp = new PeerProperties(TEST_MAC, PeerProperties.NO_EXTRA_INFORMATION);
-        assertThat(pp.isValid(), is(false));
+        thrown.expect(IllegalArgumentException.class);
+        new PeerProperties(TEST_MAC, PeerProperties.NO_EXTRA_INFORMATION);
     }
 
     @Test
