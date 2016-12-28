@@ -284,10 +284,8 @@ public class DiscoveryManager
     }
 
     private void setupManager(Context context, SharedPreferences preferences) {
-
         if (preferences == null) {
             mSettings = DiscoveryManagerSettings.getInstance(context);
-
         } else {
             mSettings = DiscoveryManagerSettings.getInstance(context, preferences);
         }
@@ -509,7 +507,7 @@ public class DiscoveryManager
         if (discoveryMode == DiscoveryMode.WIFI || discoveryMode == DiscoveryMode.BLE_AND_WIFI) {
             wifiEnabled = mWifiDirectManager.isWifiEnabled();
             if (wifiEnabled) {
-                if (verifyIdentityString()) {
+                if (verifyIdentityString() || tryToCreateIdentityString()) {
                     // Try to start Wi-Fi Direct based discovery
                     wifiDiscoveryStarted = startWifiPeerDiscovery();
                 } else {
@@ -722,6 +720,11 @@ public class DiscoveryManager
                     mSettings.getScanMode(),
                     mSettings.getScanReportDelay());
         }
+    }
+
+    @Override
+    public void onPeerExtraInfoChanged(int newExtraInfo) {
+        onAdvertiseScanSettingsChanged();
     }
 
     /**

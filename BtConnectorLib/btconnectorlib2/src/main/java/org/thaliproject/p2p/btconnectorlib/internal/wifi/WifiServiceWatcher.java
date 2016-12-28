@@ -165,13 +165,12 @@ class WifiServiceWatcher {
                     + "\", service type: \"" + serviceType + "\"");
 
             if (serviceType.startsWith(mServiceType)) {
-                PeerProperties peerProperties = new PeerProperties();
+                PeerProperties peerProperties = null;
                 boolean resolvedPropertiesOk = false;
-
                 try {
-                    resolvedPropertiesOk =
-                            AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
-                                    identityString, peerProperties);
+                    peerProperties = AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                            identityString);
+                    resolvedPropertiesOk = peerProperties != null && peerProperties.isValid();
                 } catch (JSONException e) {
                     Log.e(TAG, "onDnsSdServiceAvailable: Failed to resolve peer properties: " + e.getMessage(), e);
                 }

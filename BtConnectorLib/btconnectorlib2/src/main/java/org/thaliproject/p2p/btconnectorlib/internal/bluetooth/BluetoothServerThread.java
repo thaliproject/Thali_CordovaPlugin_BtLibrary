@@ -7,8 +7,10 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
 import java.io.IOException;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -26,7 +28,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
          * Note that the responsibility over the Bluetooth socket is transferred to the listener.
          *
          * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
-         * @param peerProperties The peer properties.
+         * @param peerProperties  The peer properties.
          */
         void onIncomingConnectionConnected(BluetoothSocket bluetoothSocket, PeerProperties peerProperties);
 
@@ -63,14 +65,14 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Constructor.
      *
-     * @param listener The listener.
-     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param listener          The listener.
+     * @param bluetoothAdapter  The Bluetooth adapter.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
-     * @param myBluetoothName Our Bluetooth name for the server socket.
-     * @param myIdentityString Our identity (possible name and the Bluetooth MAC address). Used for
-     *                         handshake (if required).
+     * @param myBluetoothName   Our Bluetooth name for the server socket.
+     * @param myIdentityString  Our identity (possible name and the Bluetooth MAC address). Used for
+     *                          handshake (if required).
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
-     * @throws IOException Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
+     * @throws IOException          Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
      */
     public BluetoothServerThread(
             Listener listener, BluetoothAdapter bluetoothAdapter,
@@ -89,7 +91,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
 
     /**
      * From Thread.
-     *
+     * <p>
      * Waits for the incoming connections and once received, will construct IO threads for each
      * connection to handle them.
      */
@@ -220,8 +222,8 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
      * try to respond with our own identity.
      *
      * @param bytes The array of bytes read.
-     * @param size The size of the array.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param size  The size of the array.
+     * @param who   The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
@@ -230,10 +232,8 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
         if (who.getPeerProperties() != null) {
             Log.d(TAG, "onBytesRead:  Peer props = " + who.getPeerProperties().toString());
         }
-
         PeerProperties peerProperties =
                 BluetoothUtils.validateReceivedHandshakeMessage(bytes, size, who.getSocket());
-
         if (peerProperties != null) {
             Log.i(TAG, "Got valid identity from " + peerProperties.toString());
 
@@ -256,15 +256,15 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
      * assume we have initiated a connection.
      *
      * @param bytes The array of bytes written.
-     * @param size The size of the array.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param size  The size of the array.
+     * @param who   The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onBytesWritten(byte[] bytes, int size, BluetoothSocketIoThread who) {
         final long threadId = who.getId();
         Log.d(TAG, "onBytesWritten: " + size + " bytes successfully written (thread ID: " + threadId + ")");
         if (who.getPeerProperties() != null) {
-            Log.d(TAG, "onBytesRead:  Peer props = " + who.getPeerProperties().toString());
+            Log.d(TAG, "onBytesWritten:  Peer props = " + who.getPeerProperties().toString());
         }
 
         // Remove the thread from the list, but do not close the socket associated with it, since
@@ -276,7 +276,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
         } else {
             Log.e(TAG, "Failed to find the thread from the list (thread ID: " + threadId + ")");
         }
-        Log.d(TAG, "onIncomingConnectionConnected socket:" +  who.getSocket() + ", properties: "   + who.getPeerProperties());
+        Log.d(TAG, "onIncomingConnectionConnected socket:" + who.getSocket() + ", properties: " + who.getPeerProperties());
         mListener.onIncomingConnectionConnected(who.getSocket(), who.getPeerProperties());
     }
 
@@ -286,7 +286,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
      * that the reason for the disconnect was an error.
      *
      * @param reason The reason why we got disconnected. Contains an exception message in case of failure.
-     * @param who The related BluetoothSocketIoThread instance.
+     * @param who    The related BluetoothSocketIoThread instance.
      */
     @Override
     public void onDisconnected(String reason, BluetoothSocketIoThread who) {
@@ -294,7 +294,9 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
         boolean threadFound = removeThreadFromList(who, true);
 
         if (threadFound) {
-            Log.e(TAG, "onDisconnected (handshake failed) socket:" +  who.getSocket() + ", properties: "   + who.getPeerProperties());
+            if (who.getPeerProperties() != null) {
+                Log.e(TAG, "onDisconnected (handshake failed) socket:" + who.getSocket() + ", properties: " + who.getPeerProperties());
+            }
             Log.e(TAG, "Handshake failed (thread ID: " + threadId + ")");
         }
     }
@@ -321,7 +323,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Removes the given socket IO thread from the list of threads.
      *
-     * @param threadId The ID of the thread to remove.
+     * @param threadId              The ID of the thread to remove.
      * @param closeSocketAndStreams If true, will close the socket and streams associated with the thread.
      * @return True, if the thread was removed from the list. False, if not found.
      */
@@ -350,7 +352,7 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     /**
      * Removes the given socket IO thread from the list of threads.
      *
-     * @param threadToRemove The thread to remove.
+     * @param threadToRemove        The thread to remove.
      * @param closeSocketAndStreams If true, will close the socket and streams associated with the thread.
      * @return True, if the thread was removed from the list. False, if not found.
      */

@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.annotation.Nullable;
 import android.util.Log;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
@@ -21,13 +22,13 @@ import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
  */
 public abstract class AbstractBluetoothConnectivityAgent implements BluetoothManager.BluetoothManagerListener {
     protected static String TAG = AbstractBluetoothConnectivityAgent.class.getName();
-    protected static final String JSON_ID_PEER_NAME = "name";
+    protected static final String JSON_ID_PEER_GENERATION = "generation";
     protected static final String JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS = "address";
     protected final Context mContext;
     protected final BluetoothManager mBluetoothManager;
-    protected String mMyPeerName = PeerProperties.NO_PEER_NAME_STRING;
-    protected String mMyIdentityString = "";
+    protected String mMyIdentityString = null;
     protected boolean mEmulateMarshmallow = false;
+    protected int myExtraInfo = PeerProperties.NO_EXTRA_INFORMATION;
 
     /**
      * Constructor.
@@ -41,7 +42,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     /**
      * Constructor.
      *
-     * @param context The application context.
+     * @param context          The application context.
      * @param bluetoothManager The bluetooth manager.
      */
     public AbstractBluetoothConnectivityAgent(Context context, BluetoothManager bluetoothManager) {
@@ -60,29 +61,22 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
         return mBluetoothManager;
     }
 
-    /**
-     * Sets the peer name. Not mandatory - the functionality is 100 % even when not set.
-     * The name is used in the identity string.
-     *
-     * @param myPeerName Our peer name.
-     */
-    public void setPeerName(String myPeerName) {
-        if (myPeerName == null) {
-            throw new NullPointerException("Peer name is null");
-        }
-        if (!mMyPeerName.equals(myPeerName)) {
-            Log.i(TAG, "setPeerName: " + myPeerName);
-            mMyPeerName = myPeerName;
+    public int getExtraInfo() {
+        return myExtraInfo;
+    }
 
-            // Recreate the identity string
-            mMyIdentityString = null;
-            verifyIdentityString();
+    public boolean setExtraInfo(int extraInfo) {
+        if (extraInfo >= 0 && extraInfo < PeerProperties.NO_EXTRA_INFORMATION) {
+            this.myExtraInfo = extraInfo;
+            clearIdentityString();
+            return tryToCreateIdentityString();
         }
+        return false;
     }
 
     /**
      * Releases resources.
-     *
+     * <p>
      * Should be called when getting rid of the instance. Note that after calling this method you
      * should not use the instance anymore. Instead, if needed again, you must reconstruct the
      * instance.
@@ -93,7 +87,7 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     /**
      * Used for testing purposes.
-     *
+     * <p>
      * Turns Marshmallow emulation on/off. Basically what this does is that if enabled, will not be
      * able to resolve the Bluetooth MAC address of the device from the Bluetooth adapter.
      *
@@ -157,106 +151,78 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     @Override
     abstract public void onBluetoothAdapterScanModeChanged(int mode);
 
-    /**
-     * Resolves the peer properties from the given identity string.
-     *
-     * @param identityString The identity string.
-     * @param peerProperties The peer properties to contain the resolved values.
-     * @return True, if all the properties contain data (not validated though). False otherwise.
-     * @throws JSONException
-     */
-    public static boolean getPropertiesFromIdentityString(
-            String identityString, PeerProperties peerProperties)
+    public static PeerProperties getPropertiesFromIdentityString(String identityString)
             throws JSONException {
-
         JSONObject jsonObject = new JSONObject(identityString);
-        peerProperties.setName(jsonObject.getString(JSON_ID_PEER_NAME));
-        peerProperties.setBluetoothMacAddress(jsonObject.getString(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS));
-
-        return peerProperties.isValid();
+        return new PeerProperties(jsonObject.getString(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS),
+                jsonObject.getInt(JSON_ID_PEER_GENERATION));
     }
 
     /**
-     * Verifies the validity of our identity string. If not yet created, will try to create it.
-     * If the identity string already exists, it won't be recreated.
+     * Verifies the validity of our identity string.
      *
      * @return True, if the identity string is OK (i.e. not empty). False otherwise.
      */
     protected boolean verifyIdentityString() {
+        return verifyIdentityStringImp();
+    }
+
+    protected boolean tryToCreateIdentityString() {
         String bluetoothMacAddress = getBluetoothMacAddress();
-
-        return verifyIdentityStringImp(bluetoothMacAddress);
+        return tryToCreateIdentityString(bluetoothMacAddress);
     }
 
-    /**
-     * Verifies the validity of our identity string. If not yet created, will try to create it.
-     * If the identity string already exists, it won't be recreated.
-     *
-     * @param preferences The shared preferences.
-     * @return True, if the identity string is OK (i.e. not empty). False otherwise.
-     */
-    protected boolean verifyIdentityString(SharedPreferences preferences) {
+    private boolean verifyIdentityStringImp() {
+        return CommonUtils.isNonEmptyString(mMyIdentityString);
+    }
+
+    protected boolean tryToCreateIdentityString(SharedPreferences preferences) {
         String bluetoothMacAddress = getBluetoothMacAddress(preferences);
-
-        return verifyIdentityStringImp(bluetoothMacAddress);
+        return tryToCreateIdentityString(bluetoothMacAddress);
     }
 
-    private boolean verifyIdentityStringImp(String bluetoothMacAddress) {
-        if (!CommonUtils.isNonEmptyString(mMyIdentityString)) {
-            if (CommonUtils.isNonEmptyString(mMyPeerName)
-                    && !mMyPeerName.equals(PeerProperties.NO_PEER_NAME_STRING)
-                    && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
-                try {
-                    mMyIdentityString = createIdentityString(mMyPeerName, bluetoothMacAddress);
-                    Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
-                } catch (JSONException e) {
-                    Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
-                }
-            } else {
-                Log.d(TAG, "verifyIdentityString: One or more of the following values are invalid: "
-                        + "Peer name: \"" + mMyPeerName
-                        + "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"");
+    private boolean tryToCreateIdentityString(String bluetoothMacAddress) {
+        if (verifyIdentityStringImp()) {
+            return true;
+        }
+        if (canCreateIdentityString(bluetoothMacAddress)) {
+            try {
+                mMyIdentityString = createIdentityString(bluetoothMacAddress, myExtraInfo);
+                Log.i(TAG, "verifyIdentityString: Identity string created: " + mMyIdentityString);
+                return true;
+            } catch (JSONException e) {
+                Log.e(TAG, "verifyIdentityString: Failed create an identity string: " + e.getMessage(), e);
             }
         }
-
-        return (mMyIdentityString != null && mMyIdentityString.length() > 0);
+        return false;
     }
 
-    /**
-     * Creates an identity string based on the given arguments.
-     *
-     * @param peerName The peer name.
-     * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
-     * @return An identity string or null in case of a failure.
-     * @throws JSONException
-     */
-    private String createIdentityString(String peerName, String bluetoothMacAddress)
-            throws JSONException {
+    private boolean canCreateIdentityString(String bluetoothMacAddress) {
+        if (myExtraInfo != PeerProperties.NO_EXTRA_INFORMATION
+                && BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress)) {
+            return true;
+        } else {
+            Log.d(TAG, "verifyIdentityString: One or more of the following values are invalid: " +
+                    "\", Bluetooth MAC address: \"" + bluetoothMacAddress + "\"" +
+                    "Peer extra info: \"" + myExtraInfo);
+        }
+        return false;
+    }
 
-        String identityString = null;
+    private String createIdentityString(String bluetoothMacAddress, int extraInformation) throws JSONException {
+        String identityString;
         JSONObject jsonObject = new JSONObject();
 
         try {
-            jsonObject.put(JSON_ID_PEER_NAME, peerName);
+            jsonObject.put(JSON_ID_PEER_GENERATION, extraInformation);
             jsonObject.put(JSON_ID_PEER_BLUETOOTH_MAC_ADDRESS, bluetoothMacAddress);
             identityString = jsonObject.toString();
         } catch (JSONException e) {
             Log.e(TAG, "createIdentityString: Failed to construct a JSON object (from data "
-                    + peerName + " " + bluetoothMacAddress + "): " + e.getMessage(), e);
+                    + extraInformation + " " + bluetoothMacAddress + "): " + e.getMessage(), e);
             throw e;
         }
 
         return identityString;
-    }
-
-    /**
-     * Creates an identity string based on the given properties.
-     *
-     * @param peerProperties The peer properties.
-     * @return An identity string or null in case of a failure.
-     * @throws JSONException
-     */
-    public String createIdentityString(PeerProperties peerProperties) throws JSONException {
-        return createIdentityString(peerProperties.getName(), peerProperties.getBluetoothMacAddress());
     }
 }

@@ -79,9 +79,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         toggleBluetooth(true);
         MockitoAnnotations.initMocks(this);
         mContext = InstrumentationRegistry.getContext();
-        mConnectionManager = new ConnectionManager(mContext,
-                                                   mConnectionManagerListener,
-                                                   UUID.randomUUID(), "MOCK_NAME");
+        mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
+                UUID.randomUUID(), "MOCK_NAME");
     }
 
     @After
@@ -297,7 +296,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-     public void testDispose() throws Exception {
+    public void testDispose() throws Exception {
         toggleBluetooth(false);
         mConnectionManager.startListeningForIncomingConnections();
         checkStateWithTimeout(ConnectionManager.ConnectionManagerState.WAITING_FOR_SERVICES_TO_BE_ENABLED);
@@ -317,7 +316,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     }
 
     @Test
-    public void testSetPeerName() throws Exception {
+    public void testSetExtraInfo() throws Exception {
         String btAddress;
         if (!CommonUtils.isMarshmallowOrHigher()) {
             BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -326,10 +325,10 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
             btAddress = android.provider.Settings.Secure.getString(
                     mContext.getContentResolver(), "bluetooth_address");
         }
-        String expected = "{\"name\":\"TEST_NAME\",\"address\":\"" + btAddress + "\"}";
+        int extraInfo = 12;
+        String expected = "{\"generation\":" + extraInfo + ",\"address\":\"" + btAddress + "\"}";
 
-        // correct peer name
-        mConnectionManager.setPeerName("TEST_NAME");
+        mConnectionManager.setExtraInfo(extraInfo);
         Field bluetoothConnectorField = mConnectionManager.getClass()
                 .getDeclaredField("mBluetoothConnector");
         bluetoothConnectorField.setAccessible(true);
@@ -338,10 +337,6 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         Field identityField = bluetoothConnector.getClass().getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
         assertThat((String) identityField.get(bluetoothConnector), is(expected));
-
-        // null peer name
-        thrown.expect(NullPointerException.class);
-        mConnectionManager.setPeerName(null);
     }
 
     @Test
@@ -392,7 +387,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mConnectionManager.connect(null), is(false));
 
         // incorrect MAC address of target device - connection initialization fails
-        PeerProperties peerProperties =  new PeerProperties("BAD MAC");
+        PeerProperties peerProperties = new PeerProperties("BAD MAC");
         assertThat(mConnectionManager.connect(peerProperties), is(false));
 
         // correct MAC address of target device
@@ -417,6 +412,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                     public void onTick(long millisUntilFinished) {
                         // not used
                     }
+
                     public void onFinish() {
                         Looper.myLooper().quitSafely();
                     }
@@ -432,7 +428,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         ConnectionManagerSettings cmSettings = ConnectionManagerSettings.getInstance(mContext);
         cmSettings.setConnectionTimeout(timeout);
         mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
-                                                   UUID.randomUUID(), "MOCK_NAME");
+                UUID.randomUUID(), "MOCK_NAME");
         (new ConnectionThread(
                 mConnectionManager,
                 peerProperties,
@@ -446,7 +442,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testCancelConnectionAttempt() throws Exception {
-        PeerProperties peerProperties =  new PeerProperties("02:00:00:00:00:00");
+        PeerProperties peerProperties = new PeerProperties("02:00:00:00:00:00");
 
         // no connection initialization started - cannot cancel
         assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(false));
@@ -500,29 +496,32 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testGetPropertiesFromIdentityString() throws Exception {
-        PeerProperties peerProperties = new PeerProperties();
+        PeerProperties peerProperties;
         String jsonString = "";
 
         // wrong JSON
         thrown.expect(org.json.JSONException.class);
-        ConnectionManager.getPropertiesFromIdentityString(jsonString, peerProperties);
+        ConnectionManager.getPropertiesFromIdentityString(jsonString);
 
-        // empty name
-        jsonString = "{\"name\":\"\",\"address\":\"DUMMY_MAC\"}";
-        assertThat(ConnectionManager.getPropertiesFromIdentityString(jsonString, peerProperties), is(false));
-        assertThat(peerProperties.getName(), is(""));
+        // empty gen
+        jsonString = "{\"name\":" + (PeerProperties.NO_EXTRA_INFORMATION + 1) + ",\"address\":\"DUMMY_MAC\"}";
+        peerProperties = ConnectionManager.getPropertiesFromIdentityString(jsonString);
+        assertThat(peerProperties.isValid(), is(false));
         assertThat(peerProperties.getBluetoothMacAddress(), is("DUMMY_MAC"));
+        assertThat(peerProperties.getExtraInformation(), is(PeerProperties.NO_EXTRA_INFORMATION));
 
         // empty mac address
-        jsonString = "{\"name\":\"DUMMY_NAME\",\"address\":\"\"}";
-        assertThat(ConnectionManager.getPropertiesFromIdentityString(jsonString, peerProperties), is(false));
-        assertThat(peerProperties.getName(), is("DUMMY_NAME"));
-        assertThat(peerProperties.getBluetoothMacAddress(), is(""));
+        jsonString = "{\"name\":0,\"address\":\"\"}";
+        peerProperties = ConnectionManager.getPropertiesFromIdentityString(jsonString);
+        assertThat(peerProperties.isValid(), is(false));
+        assertThat(peerProperties.getExtraInformation(), is(0));
+        assertThat(peerProperties.getBluetoothMacAddress(), is(PeerProperties.BLUETOOTH_MAC_ADDRESS_UNKNOWN));
 
         // mac address and name set
-        jsonString = "{\"name\":\"DUMMY_NAME\",\"address\":\"DUMMY_MAC\"}";
-        assertThat(ConnectionManager.getPropertiesFromIdentityString(jsonString, peerProperties), is(true));
-        assertThat(peerProperties.getName(), is("DUMMY_NAME"));
+        jsonString = "{\"name\":1,\"address\":\"DUMMY_MAC\"}";
+        peerProperties = ConnectionManager.getPropertiesFromIdentityString(jsonString);
+        assertThat(peerProperties.isValid(), is(true));
+        assertThat(peerProperties.getExtraInformation(), is(1));
         assertThat(peerProperties.getBluetoothMacAddress(), is("DUMMY_MAC"));
     }
 
@@ -532,29 +531,24 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
 
-        // peer name is empty string
-        mConnectionManager.setPeerName("");
+        mConnectionManager.setExtraInfo(PeerProperties.NO_EXTRA_INFORMATION + 1);
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
 
-        // peer name is set to reserved key
-        mConnectionManager.setPeerName(PeerProperties.NO_PEER_NAME_STRING);
+        mConnectionManager.setExtraInfo(PeerProperties.NO_EXTRA_INFORMATION);
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
 
-        // peer name is set but bluetooth address is not valid
+        // correct extra info and bluetooth address
         DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
         mConnectionManager.setEmulateMarshmallow(true);
         Field macAddressField = settings.getClass()
                 .getDeclaredField("mBluetoothMacAddress");
         macAddressField.setAccessible(true);
-        macAddressField.set(settings, "WRONG_MAC");
-        mConnectionManager.setPeerName("DUMMY_NAME");
-        assertThat(identityField.get(mConnectionManager), is(nullValue()));
-
-        // correct peer name and bluetooth address
-        macAddressField.set(settings, "AA:BB:CC:DD:EE:FF");
-        mConnectionManager.setPeerName("OTHER_DUMMY_NAME");
+        String address = "AA:BB:CC:DD:EE:FF";
+        int generation = 4;
+        macAddressField.set(settings, address);
+        mConnectionManager.setExtraInfo(generation);
         assertThat((String) identityField.get(mConnectionManager),
-                   is("{\"name\":\"OTHER_DUMMY_NAME\",\"address\":\"AA:BB:CC:DD:EE:FF\"}"));
+                is("{\"generation\":" + generation + ",\"address\":\"" + address + "\"}"));
     }
 
     @Test
@@ -563,7 +557,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
                 .getDeclaredField("mMyIdentityString");
         identityField.setAccessible(true);
 
-        mConnectionManager.setPeerName("DUMMY_NAME");
+        mConnectionManager.setExtraInfo(2);
         assertThat(identityField.get(mConnectionManager), is(notNullValue()));
         mConnectionManager.clearIdentityString();
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
@@ -613,6 +607,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         bluetoothConnectorField.set(mConnectionManager, bluetoothConnectorSpy);
         doAnswer(new Answer<Void>() {
             private boolean called = false;
+
             @Override
             public Void answer(InvocationOnMock invocation) throws Throwable {
                 if (!called) {

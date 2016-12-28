@@ -7,9 +7,11 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
+
 import org.json.JSONException;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -36,10 +38,10 @@ public class BluetoothUtils {
 
     /**
      * Checks if the given Bluetooth MAC address is unknown (as in not set/missing).
-     *
+     * <p>
      * In addition, will check for false addresses introduced in Android 6.0;
      * From http://developer.android.com/about/versions/marshmallow/android-6.0-changes.html:
-     *
+     * <p>
      * "To provide users with greater data protection, starting in this release, Android removes
      * programmatic access to the device’s local hardware identifier for apps using the Wi-Fi and
      * Bluetooth APIs. The WifiInfo.getMacAddress() and the BluetoothAdapter.getAddress() methods
@@ -56,7 +58,7 @@ public class BluetoothUtils {
 
     /**
      * Checks whether the given Bluetooth MAC address has the proper form or not.
-     *
+     * <p>
      * A valid Bluetooth MAC address has form of: 01:23:45:67:89:AB
      * Note that the possible alphabets in the string have to be upper case.
      *
@@ -96,6 +98,7 @@ public class BluetoothUtils {
 
     /**
      * Extracts the Bluetooth MAC address of the peer from the given Bluetooth socket instance.
+     *
      * @param bluetoothSocket The Bluetooth socket.
      * @return The Bluetooth MAC address or null in case of an error.
      */
@@ -115,8 +118,9 @@ public class BluetoothUtils {
 
     /**
      * Checks the validity of the received handshake message.
-     * @param handshakeMessage The received handshake message as a byte array.
-     * @param handshakeMessageLength The length of the handshake message.
+     *
+     * @param handshakeMessage        The received handshake message as a byte array.
+     * @param handshakeMessageLength  The length of the handshake message.
      * @param bluetoothSocketOfSender The Bluetooth socket of the sender.
      * @return The resolved peer properties of the sender, if the handshake was valid. Null otherwise.
      */
@@ -144,13 +148,11 @@ public class BluetoothUtils {
                     }
                 }
             } else {
-                // Long handshake message with peer name and Bluetooth MAC address
-                peerProperties = new PeerProperties();
-
+                // Long handshake message with id and Bluetooth MAC address
                 try {
-                    receivedHandshakeMessageValidated =
-                            AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
-                                    handshakeMessageAsString, peerProperties);
+                    peerProperties = AbstractBluetoothConnectivityAgent.getPropertiesFromIdentityString(
+                            handshakeMessageAsString);
+                    receivedHandshakeMessageValidated = peerProperties != null && peerProperties.isValid();
                 } catch (JSONException e) {
                     Log.e(TAG, "validateReceivedHandshakeMessage: Failed to resolve peer properties: "
                             + e.getMessage(), e);
@@ -184,6 +186,7 @@ public class BluetoothUtils {
 
     /**
      * Sets the next alternative RFCOMM channel or L2CAP psm to use.
+     *
      * @param channelOrPort The next alternative RFCOMM channel or L2CAP psm to use.
      */
     public static void setNextAlternativeChannelOrPort(int channelOrPort) {
@@ -195,10 +198,11 @@ public class BluetoothUtils {
 
     /**
      * Creates a new Bluetooth socket with the given service record UUID and the given channel/port.
-     * @param bluetoothDevice The Bluetooth device.
+     *
+     * @param bluetoothDevice   The Bluetooth device.
      * @param serviceRecordUuid The service record UUID.
-     * @param channelOrPort The RFCOMM channel or L2CAP psm to use.
-     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @param channelOrPort     The RFCOMM channel or L2CAP psm to use.
+     * @param secure            If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
      * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocketToServiceRecord(
@@ -231,7 +235,7 @@ public class BluetoothUtils {
         //      int port, ParcelUuid uuid) throws IOException
 
         // Create the parameters for the constructor
-        Object[] parameters = new Object[] {
+        Object[] parameters = new Object[]{
                 Integer.valueOf(1), // BluetoothSocket.TYPE_RFCOMM
                 Integer.valueOf(-1),
                 Boolean.valueOf(secure),
@@ -245,7 +249,7 @@ public class BluetoothUtils {
         BluetoothSocket bluetoothSocket = null;
 
         try {
-            bluetoothSocket = (BluetoothSocket)bluetoothSocketConstructor.newInstance(parameters);
+            bluetoothSocket = (BluetoothSocket) bluetoothSocketConstructor.newInstance(parameters);
             Log.d(TAG, "createBluetoothSocketToServiceRecord: Socket created with channel/port " + channelOrPort);
         } catch (Exception e) {
             Log.e(TAG, "createBluetoothSocketToServiceRecord: Failed to create a new Bluetooth socket instance: " + e.getMessage(), e);
@@ -256,9 +260,10 @@ public class BluetoothUtils {
 
     /**
      * Creates a new Bluetooth socket with the given service record UUID using a rotating channel/port.
-     * @param bluetoothDevice The Bluetooth device.
+     *
+     * @param bluetoothDevice   The Bluetooth device.
      * @param serviceRecordUuid The service record UUID.
-     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @param secure            If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
      * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocketToServiceRecordWithNextPort(
@@ -272,16 +277,17 @@ public class BluetoothUtils {
 
     /**
      * Creates a new Bluetooth socket based on the given one using the given channel.
+     *
      * @param originalBluetoothSocket The original Bluetooth socket.
-     * @param channelOrPort The RFCOMM channel or L2CAP psm to use.
-     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @param channelOrPort           The RFCOMM channel or L2CAP psm to use.
+     * @param secure                  If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
      * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocket(
             BluetoothSocket originalBluetoothSocket, int channelOrPort, boolean secure) {
         Log.d(TAG, "createBluetoothSocketWithSpecifiedChannel: Channel/port: " + channelOrPort + ", secure: " + secure);
         Class<?> bluetoothDeviceClass = originalBluetoothSocket.getRemoteDevice().getClass();
-        Class<?>[] parameterTypes = new Class<?>[] { Integer.TYPE };
+        Class<?>[] parameterTypes = new Class<?>[]{Integer.TYPE};
 
         String methodName = secure
                 ? METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET
@@ -291,7 +297,7 @@ public class BluetoothUtils {
 
         try {
             Method createSocketMethod = bluetoothDeviceClass.getMethod(methodName, parameterTypes);
-            Object[] parameters = new Object[] { Integer.valueOf(channelOrPort) };
+            Object[] parameters = new Object[]{Integer.valueOf(channelOrPort)};
             newSocket = (BluetoothSocket) createSocketMethod.invoke(originalBluetoothSocket.getRemoteDevice(), parameters);
         } catch (Exception e) {
             Log.e(TAG, "createBluetoothSocketWithSpecifiedChannel: Failed to create a new Bluetooth socket: " + e.getMessage(), e);
@@ -302,8 +308,9 @@ public class BluetoothUtils {
 
     /**
      * Creates a new Bluetooth socket based on the given one using a rotating channel/port.
+     *
      * @param originalBluetoothSocket The original Bluetooth socket.
-     * @param secure If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
+     * @param secure                  If true, will try to create a secure RFCOMM socket. If false, will try to create an insecure one.
      * @return A new Bluetooth socket with the specified channel/port or null in case of a failure.
      */
     public static BluetoothSocket createBluetoothSocketWithNextChannel(

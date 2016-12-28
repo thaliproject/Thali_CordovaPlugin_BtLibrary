@@ -3,15 +3,16 @@
  */
 package org.thaliproject.p2p.btconnectorlib;
 
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
+
 /**
  * Contains properties of a peer.
  * The ID of the peer is its Bluetooth MAC address.
  */
 public class PeerProperties {
-    public static final String NO_PEER_NAME_STRING = "<no peer name>";
     public static final String BLUETOOTH_MAC_ADDRESS_UNKNOWN = "0:0:0:0:0:0";
-    public static final int NO_EXTRA_INFORMATION = 0;
-    private String mName; // The peer name
+    public static final int NO_EXTRA_INFORMATION = 256; // opportunity to use 0 value in generation
+    // Removing name could affect our wifi code. But for now we don't use wifi in that lib at all
     private String mBluetoothMacAddress;
     private String mServiceType;
     private String mDeviceName;
@@ -20,54 +21,15 @@ public class PeerProperties {
 
     /**
      * Constructor.
-     * Not recommended to be used.
-     */
-    public PeerProperties() {
-    }
-
-    /**
-     * Constructor.
      *
      * @param bluetoothMacAddress The Bluetooth MAC address.
      */
     public PeerProperties(String bluetoothMacAddress) {
         setDefaultValues();
-        mBluetoothMacAddress = bluetoothMacAddress;
+        tryToSetMacAddress(bluetoothMacAddress);
     }
 
-    /**
-     * Constructor.
-     *
-     * @param name                The peer name.
-     * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
-     */
-    public PeerProperties(String name, String bluetoothMacAddress) {
-        setDefaultValues();
-        mName = name;
-        mBluetoothMacAddress = bluetoothMacAddress;
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param name                The peer name.
-     * @param bluetoothMacAddress The Bluetooth MAC address of the peer.
-     * @param serviceType         The service type of the peer.
-     * @param deviceAddress       The device address of the peer.
-     * @param deviceName          The device name of the peer.
-     */
-    public PeerProperties(
-            String name, String bluetoothMacAddress,
-            String serviceType, String deviceAddress, String deviceName) {
-        mName = name;
-        mBluetoothMacAddress = bluetoothMacAddress;
-        mServiceType = serviceType;
-        mDeviceName = deviceName;
-        mDeviceAddress = deviceAddress;
-        mExtraInformation = NO_EXTRA_INFORMATION;
-    }
-
-    public PeerProperties(String serviceType, String deviceName, String deviceAddress) {
+    public PeerProperties(String serviceType, String deviceName, String deviceAddress) { //uses only for wifi
         setDefaultValues();
         mServiceType = serviceType;
         mDeviceName = deviceName;
@@ -76,17 +38,28 @@ public class PeerProperties {
 
     public PeerProperties(String bluetoothMacAddress, int extraInformation) {
         setDefaultValues();
-        mBluetoothMacAddress = bluetoothMacAddress;
-        mExtraInformation = extraInformation;
+        tryToSetMacAddress(bluetoothMacAddress);
+        tryToSetExtraInfo(extraInformation);
     }
 
     private void setDefaultValues() {
-        mName = NO_PEER_NAME_STRING;
-        mBluetoothMacAddress = "";
-        mServiceType = "";
-        mDeviceName = "";
-        mDeviceAddress = "";
+        mBluetoothMacAddress = BLUETOOTH_MAC_ADDRESS_UNKNOWN;
         mExtraInformation = NO_EXTRA_INFORMATION;
+    }
+
+    private void tryToSetMacAddress(String bluetoothMacAddress) {
+        if (CommonUtils.isNonEmptyString(bluetoothMacAddress)) {
+            mBluetoothMacAddress = bluetoothMacAddress;
+        }
+    }
+
+    private void tryToSetExtraInfo(int extraInformation) {
+        if (extraInformation >= 0 && extraInformation < PeerProperties.NO_EXTRA_INFORMATION) {
+            mExtraInformation = extraInformation;
+            return;
+        }
+        throw new IllegalArgumentException("Extra information should be in range[0..255]. " +
+                "Provided extra information is " + extraInformation);
     }
 
     /**
@@ -96,44 +69,20 @@ public class PeerProperties {
         return mBluetoothMacAddress;
     }
 
-    public String getName() {
-        return mName;
-    }
-
-    public void setName(final String name) {
-        mName = name;
-    }
-
     public String getBluetoothMacAddress() {
         return mBluetoothMacAddress;
-    }
-
-    public void setBluetoothMacAddress(final String bluetoothAddress) {
-        mBluetoothMacAddress = bluetoothAddress;
     }
 
     String getServiceType() {
         return mServiceType;
     }
 
-    public void setServiceType(final String serviceType) {
-        mServiceType = serviceType;
-    }
-
     public String getDeviceName() {
         return mDeviceName;
     }
 
-    public void setDeviceName(final String deviceName) {
-        mDeviceName = deviceName;
-    }
-
     public String getDeviceAddress() {
         return mDeviceAddress;
-    }
-
-    public void setDeviceAddress(final String deviceAddress) {
-        mDeviceAddress = deviceAddress;
     }
 
     public int getExtraInformation() {
@@ -147,7 +96,6 @@ public class PeerProperties {
      */
     public void copyFrom(PeerProperties sourcePeerProperties) {
         if (sourcePeerProperties != null) {
-            mName = sourcePeerProperties.mName;
             mBluetoothMacAddress = sourcePeerProperties.mBluetoothMacAddress;
             mServiceType = sourcePeerProperties.mServiceType;
             mDeviceName = sourcePeerProperties.mDeviceName;
@@ -162,8 +110,8 @@ public class PeerProperties {
      * @return True, if the values are not empty (or null). False otherwise.
      */
     public boolean isValid() {
-        return (mName != null && !mName.isEmpty()
-                && mBluetoothMacAddress != null && !mBluetoothMacAddress.isEmpty());
+        return mExtraInformation != PeerProperties.NO_EXTRA_INFORMATION
+                && mBluetoothMacAddress != null && !mBluetoothMacAddress.isEmpty();
     }
 
     /**
@@ -191,13 +139,6 @@ public class PeerProperties {
         boolean dataWasCopied = false;
 
         if (oldPeerProperties != null && newPeerProperties != null) {
-            if (!isNullOrEmpty(oldPeerProperties.mName)
-                    && !oldPeerProperties.mName.equals(NO_PEER_NAME_STRING)
-                    && (isNullOrEmpty(newPeerProperties.mName)
-                    || newPeerProperties.mName.equals(NO_PEER_NAME_STRING))) {
-                newPeerProperties.mName = oldPeerProperties.mName;
-                dataWasCopied = true;
-            }
 
             if (!isNullOrEmpty(oldPeerProperties.mBluetoothMacAddress)
                     && isNullOrEmpty(newPeerProperties.mBluetoothMacAddress)) {
@@ -240,7 +181,7 @@ public class PeerProperties {
 
     @Override
     public String toString() {
-        return "[" + mName + " " + mBluetoothMacAddress
+        return "[" + mBluetoothMacAddress
                 + ((mExtraInformation == NO_EXTRA_INFORMATION) ? "]" : (" " + mExtraInformation + "]"));
     }
 
@@ -250,11 +191,8 @@ public class PeerProperties {
     private int fieldsWithData() {
         int count = 0;
 
-        if (!isNullOrEmpty(mName) && !mName.equals(NO_PEER_NAME_STRING)) {
-            count++;
-        }
-
-        if (!isNullOrEmpty(mBluetoothMacAddress)) {
+        if (!isNullOrEmpty(mBluetoothMacAddress) &&
+                !mBluetoothMacAddress.equals(BLUETOOTH_MAC_ADDRESS_UNKNOWN)) {
             count++;
         }
 
