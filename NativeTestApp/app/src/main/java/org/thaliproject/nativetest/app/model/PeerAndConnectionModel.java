@@ -126,7 +126,7 @@ public class PeerAndConnectionModel {
         for (int i = 0; i < mPeers.size(); ++i) {
             try {
                 if (mPeers.get(i).equals(peerProperties)) {
-                    mPeers.get(i).setName(peerProperties.getName());
+//                    mPeers.get(i).setName(peerProperties.getName());
                     wasUpdated = true;
                     break;
                 }

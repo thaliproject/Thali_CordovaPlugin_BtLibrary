@@ -177,7 +177,7 @@ public class Connection implements BluetoothSocketIoThread.Listener {
 
     @Override
     public String toString() {
-        return "[" + mPeerId + " " + mPeerProperties.getName() + " " + mIsIncoming + "]";
+        return "[" + mPeerId + " " + mPeerProperties.getBluetoothMacAddress() + " " + mIsIncoming + "]";
     }
 
     @Override

@@ -190,7 +190,7 @@ public class ConnectionEngine implements
                 String errorMessageStub = "Failed to start connecting to peer ";
                 Log.e(TAG, "connect: " + errorMessageStub + peerProperties.toString());
                 LogFragment.logError(errorMessageStub + peerProperties.toString());
-                MainActivity.showToast(errorMessageStub + peerProperties.getName());
+                MainActivity.showToast(errorMessageStub + peerProperties.getBluetoothMacAddress());
             }
         }
     }
@@ -315,7 +315,7 @@ public class ConnectionEngine implements
         }
 
         if (connection != null) {
-            final String peerName = connection.getPeerProperties().getName();
+            final String peerName = connection.getPeerProperties().getBluetoothMacAddress();
             final boolean wasIncoming = connection.getIsIncoming();
 
             mModel.addOrRemoveConnection(connection, true);
@@ -369,7 +369,7 @@ public class ConnectionEngine implements
         if (peerProperties != null) {
             mModel.removePeerBeingConnectedTo(peerProperties);
 
-            MainActivity.showToast("Failed to connect to " + peerProperties.getName() + ": Connection timeout");
+            MainActivity.showToast("Failed to connect to " + peerProperties.getBluetoothMacAddress() + ": Connection timeout");
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString() + ": Connection timeout");
         } else {
             MainActivity.showToast("Failed to connect: Connection timeout");
@@ -386,7 +386,7 @@ public class ConnectionEngine implements
         if (peerProperties != null) {
             mModel.removePeerBeingConnectedTo(peerProperties);
 
-            MainActivity.showToast("Failed to connect to " + peerProperties.getName()
+            MainActivity.showToast("Failed to connect to " + peerProperties.getBluetoothMacAddress()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
             LogFragment.logError("Failed to connect to peer " + peerProperties.toString()
                     + ((errorMessage != null) ? (": " + errorMessage) : ""));
@@ -498,7 +498,7 @@ public class ConnectionEngine implements
         Log.i(TAG, "onDisconnected: Peer " + connection.getPeerProperties().toString()
                 + " disconnected: " + reason);
         final PeerProperties peerProperties = connection.getPeerProperties();
-        final String peerName = peerProperties.getName();
+        final String peerName = peerProperties.getBluetoothMacAddress();
         final boolean wasIncoming = connection.getIsIncoming();
 
         synchronized (this) {
@@ -547,7 +547,7 @@ public class ConnectionEngine implements
 
         Log.i(TAG, "onDataSent: " + message + " to peer " + receivingPeer);
         LogFragment.logMessage(message + " to peer " + receivingPeer);
-        MainActivity.showToast(message + " to peer " + receivingPeer.getName());
+        MainActivity.showToast(message + " to peer " + receivingPeer.getBluetoothMacAddress());
         mModel.notifyListenersOnDataChanged(); // To update the progress bar
         MainActivity.updateOptionsMenu();
     }

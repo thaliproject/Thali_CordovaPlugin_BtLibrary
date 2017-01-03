@@ -269,7 +269,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             PeerProperties peerProperties = mModel.getPeers().get(position);
 
             TextView textView = (TextView) view.findViewById(R.id.peerName);
-            textView.setText(peerProperties.getName());
+            textView.setText(peerProperties.getBluetoothMacAddress());
 
             textView = (TextView) view.findViewById(R.id.peerId);
             textView.setText(peerProperties.getId());

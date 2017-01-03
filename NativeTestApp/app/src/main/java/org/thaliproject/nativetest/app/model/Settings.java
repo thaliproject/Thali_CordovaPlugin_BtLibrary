@@ -118,8 +118,8 @@ public class Settings {
                     + "\n    - Auto connect enabled: " + mAutoConnect
                     + "\n    - Auto connect even when incoming connection established: " + mAutoConnectEvenWhenIncomingConnectionEstablished);
 
-            mConnectionManager.setPeerName(mPeerName);
-            mDiscoveryManager.setPeerName(mPeerName);
+//            mConnectionManager.setPeerName(mPeerName);
+//            mDiscoveryManager.setPeerName(mPeerName);
 
             DiscoveryManager.DiscoveryMode discoveryMode = getDesiredDiscoveryMode();
 
@@ -314,18 +314,18 @@ public class Settings {
         mDiscoveryManagerSettings.setScanMode(scanMode);
     }
 
-    public String getPeerName() {
-        return mPeerName;
-    }
+//    public String getPeerName() {
+//        return mPeerName;
+//    }
 
-    public void setPeerName(String peerName) {
-        if (mPeerName != peerName) {
-            mPeerName = peerName;
-            mSharedPreferencesEditor.putString(KEY_PEER_NAME, mPeerName);
-            mSharedPreferencesEditor.apply();
-            mConnectionManager.setPeerName(mPeerName);
-        }
-    }
+//    public void setPeerName(String peerName) {
+//        if (mPeerName != peerName) {
+//            mPeerName = peerName;
+//            mSharedPreferencesEditor.putString(KEY_PEER_NAME, mPeerName);
+//            mSharedPreferencesEditor.apply();
+//            mConnectionManager.setPeerName(mPeerName);
+//        }
+//    }
 
     /**
      * @return The data amount to send, in bytes.
