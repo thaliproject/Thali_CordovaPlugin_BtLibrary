@@ -8,13 +8,16 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.*;
 import android.widget.*;
+
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.R;
+import org.thaliproject.nativetest.app.test.ConnectDurationTest;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
@@ -25,7 +28,9 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 public class PeerListFragment extends Fragment implements PeerAndConnectionModel.Listener {
     public interface Listener {
         void onPeerSelected(PeerProperties peerProperties);
+
         void onConnectRequest(PeerProperties peerProperties);
+
         void onSendDataRequest(PeerProperties peerProperties);
     }
 
@@ -53,24 +58,14 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemClick: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(view, index);
                 }
             });
 
             mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemLongClick: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(view, index);
 
                     return false; // Let the event propagate
                 }
@@ -79,12 +74,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(view, index);
                 }
 
                 @Override
@@ -92,6 +82,44 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 }
             });
         }
+    }
+
+    private void processSelectedPeer(View view, int position) {
+        mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(position);
+        Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
+
+        if (mListener != null) {
+            mListener.onPeerSelected(mSelectedPeerProperties);
+        }
+        enableTestConnect(view, mSelectedPeerProperties);
+    }
+
+    private void enableTestConnect(View view, final PeerProperties peerProperties) {
+        final View btnTestConnect = view.findViewById(R.id.peer_btn_test_connect);
+        btnTestConnect.setVisibility(View.VISIBLE);
+        btnTestConnect.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                btnTestConnect.setVisibility(View.GONE);
+                runTestConnect(peerProperties);
+            }
+        });
+    }
+
+    private void runTestConnect(PeerProperties peerProperties) {
+        new ConnectDurationTest(getActivity(), new ConnectDurationTest.ConnectDurationTestListener() {
+            @Override
+            public void onFinished(ConnectDurationTest.Result result) {
+                final String message = "Average duration: " + (result.isSuccessful() ? result.averageDuration() : 0);
+                Log.d(TAG, result.toString());
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getActivity(), message, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }, peerProperties).start();
     }
 
     /**
@@ -123,7 +151,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
         mListAdapter = new ListAdapter(mContext);
 
-        mListView = (ListView)view.findViewById(R.id.listView);
+        mListView = (ListView) view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
         mListView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         registerForContextMenu(mListView);
@@ -148,7 +176,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         MenuInflater inflater = getActivity().getMenuInflater();
         inflater.inflate(R.menu.menu_peers, menu);
 
-        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
         int position = info.position;
         PeerProperties peerProperties = (PeerProperties) mListView.getItemAtPosition(position);
 
@@ -318,7 +346,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                     outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconDataFlowing);
                 }
 
-                progressBar.setProgress((int)(connectionResponsibleForSendingData.getSendDataProgress() * 100));
+                progressBar.setProgress((int) (connectionResponsibleForSendingData.getSendDataProgress() * 100));
 
                 connectionInformationText = "Sending "
                         + String.format("%.2f", connectionResponsibleForSendingData.getTotalDataAmountCurrentlySendingInMegaBytes())

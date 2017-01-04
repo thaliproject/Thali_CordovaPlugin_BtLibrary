@@ -37,12 +37,6 @@ public class ConnectionEngine implements
         Connection.Listener {
     protected static final String TAG = ConnectionEngine.class.getName();
 
-    // Service type and UUID has to be application/service specific.
-    // The app will only connect to peers with the matching values.
-    protected static final String SERVICE_TYPE = "ThaliTestSampleApp._tcp";
-    protected static final String SERVICE_UUID_AS_STRING = "b6a44ad1-d319-4b3a-815d-8b805a47fb51";
-    protected static final String SERVICE_NAME = "Thali_Bluetooth";
-    protected static final UUID SERVICE_UUID = UUID.fromString(SERVICE_UUID_AS_STRING);
     protected static final long CHECK_CONNECTIONS_INTERVAL_IN_MILLISECONDS = 10000;
     protected static final long RESTART_CONNECTION_MANAGER_DELAY_IN_MILLISECONDS = 10000;
     protected static final long NOTIFY_STATE_CHANGED_DELAY_IN_MILLISECONDS = 500;
@@ -68,8 +62,10 @@ public class ConnectionEngine implements
         mActivity = activity;
         mModel = PeerAndConnectionModel.getInstance();
 
-        mConnectionManager = new ConnectionManager(mContext, this, SERVICE_UUID, SERVICE_NAME);
-        mDiscoveryManager = new DiscoveryManager(mContext, this, SERVICE_UUID, SERVICE_TYPE);
+        mConnectionManager = new ConnectionManager(mContext, this, ConnectionSettings.SERVICE_UUID,
+                ConnectionSettings.SERVICE_NAME);
+        mDiscoveryManager = new DiscoveryManager(mContext, this, ConnectionSettings.SERVICE_UUID,
+                ConnectionSettings.SERVICE_NAME);
     }
 
     /**
