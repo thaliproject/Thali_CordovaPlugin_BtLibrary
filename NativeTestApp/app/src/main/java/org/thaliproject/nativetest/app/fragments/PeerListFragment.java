@@ -11,15 +11,30 @@ import android.os.Handler;
 import android.os.Looper;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.*;
-import android.widget.*;
+import android.view.ContextMenu;
+import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
-import org.thaliproject.nativetest.app.R;
-import org.thaliproject.nativetest.app.test.ConnectDurationTest;
+import org.thaliproject.nativetest.app.test.connection.ConnectDurationTest;
+import org.thaliproject.nativetest.app.test.connection.Result;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
+import java.util.List;
 
 /**
  * A fragment containing the list of discovered peers.
@@ -58,14 +73,14 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    processSelectedPeer(view, index);
+                    processSelectedPeer(index);
                 }
             });
 
             mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    processSelectedPeer(view, index);
+                    processSelectedPeer(index);
 
                     return false; // Let the event propagate
                 }
@@ -74,7 +89,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
-                    processSelectedPeer(view, index);
+                    processSelectedPeer(index);
                 }
 
                 @Override
@@ -84,34 +99,22 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         }
     }
 
-    private void processSelectedPeer(View view, int position) {
+    private void processSelectedPeer(int position) {
         mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(position);
         Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
 
         if (mListener != null) {
             mListener.onPeerSelected(mSelectedPeerProperties);
         }
-        enableTestConnect(view, mSelectedPeerProperties);
     }
 
-    private void enableTestConnect(View view, final PeerProperties peerProperties) {
-        final View btnTestConnect = view.findViewById(R.id.peer_btn_test_connect);
-        btnTestConnect.setVisibility(View.VISIBLE);
-        btnTestConnect.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                btnTestConnect.setVisibility(View.GONE);
-                runTestConnect(peerProperties);
-            }
-        });
-    }
-
-    private void runTestConnect(PeerProperties peerProperties) {
+    private void runTestConnect(List<PeerProperties> peerProperties) {
         new ConnectDurationTest(getActivity(), new ConnectDurationTest.ConnectDurationTestListener() {
+
             @Override
-            public void onFinished(ConnectDurationTest.Result result) {
+            public void onFinished(PeerProperties peerProperties, Result result) {
                 final String message = "Average duration: " + (result.isSuccessful() ? result.averageDuration() : 0);
-                Log.d(TAG, result.toString());
+                Log.d(TAG, peerProperties.toString() + "\n" + result.toString());
                 new Handler(Looper.getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
@@ -159,7 +162,18 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
         mModel.setListener(this);
 
+        view.findViewById(R.id.peers_btn_test_connect).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                runTestConnect(getAllDiscoveredPeers());
+            }
+        });
+
         return view;
+    }
+
+    private List<PeerProperties> getAllDiscoveredPeers() {
+        return mModel.getPeers();
     }
 
     @Override

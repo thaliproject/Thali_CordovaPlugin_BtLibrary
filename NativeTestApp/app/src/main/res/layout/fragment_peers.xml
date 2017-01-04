@@ -3,15 +3,26 @@
                 xmlns:tools="http://schemas.android.com/tools"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:paddingBottom="0dp"
                 android:paddingLeft="0dp"
                 android:paddingRight="0dp"
                 android:paddingTop="0dp"
-                android:paddingBottom="0dp"
                 tools:mContext=".PeerListFragment">
 
+    <Button
+        android:id="@+id/peers_btn_test_connect"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:text="@string/run_test_connect_for_all"
+        android:layout_marginBottom="24dp"/>
+
     <ListView
-            android:id="@+id/listView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+        android:id="@+id/listView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/peers_btn_test_connect"
+        android:layout_alignParentTop="true"/>
 
 </RelativeLayout>

@@ -6,15 +6,15 @@ import android.os.SystemClock;
  * Created by evabishchevich on 1/4/17.
  */
 
-class Timer {
+public class Timer {
 
     private volatile long startTime;
 
-    void start() {
+    public void start() {
         startTime = SystemClock.elapsedRealtime();
     }
 
-    long finish() {
+    public long finish() {
         if (startTime == 0) {
             throw new IllegalArgumentException("\"Finish\" called before \"start\" method");
         }
