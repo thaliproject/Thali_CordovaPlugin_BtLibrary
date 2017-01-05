@@ -3,65 +3,75 @@
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
                 android:background="?android:attr/activatedBackgroundIndicator">
-                <!--android:foreground="?android:attr/colorActivatedHighlight"-->
+    <!--android:foreground="?android:attr/colorActivatedHighlight"-->
 
-    <LinearLayout android:id="@+id/textLayout"
-                  android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:layout_alignParentLeft="true"
-                  android:layout_alignParentTop="true"
-                  android:layout_alignWithParentIfMissing="true"
-                  android:orientation="vertical"
-                  android:paddingTop="@dimen/list_item_padding"
-                  android:paddingLeft="@dimen/list_item_padding"
-                  android:paddingRight="@dimen/list_item_padding">
-        <TextView
-                android:id="@+id/peerName"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:singleLine="true"
-                android:text="Peer name"
-                android:textSize="@dimen/text_size_medium" />
-        <TextView
-                android:id="@+id/peerId"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="marquee"
-                android:singleLine="true"
-                android:text="Peer ID"
-                android:textSize="@dimen/text_size_small" />
-        <TextView
-                android:id="@+id/connectionsInformation"
-                android:layout_width="fill_parent"
-                android:layout_height="wrap_content"
-                android:ellipsize="marquee"
-                android:singleLine="true"
-                android:text="Connection information"
-                android:textSize="@dimen/text_size_small" />
-    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/textLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:layout_alignWithParentIfMissing="true"
+        android:orientation="vertical"
+        android:paddingLeft="@dimen/list_item_padding"
+        android:paddingRight="@dimen/list_item_padding"
+        android:paddingTop="@dimen/list_item_padding">
 
-    <LinearLayout android:layout_width="wrap_content"
-                  android:layout_height="wrap_content"
-                  android:orientation="horizontal"
-                  android:layout_alignParentRight="true"
-                  android:layout_alignParentTop="true"
-                  android:padding="@dimen/list_item_padding">
-        <ImageView android:id="@+id/outgoingConnectionIconImageView"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:src="@drawable/ic_arrow_upward_gray_24dp" />
-        <ImageView android:id="@+id/incomingConnectionIconImageView"
-                   android:layout_width="wrap_content"
-                   android:layout_height="wrap_content"
-                   android:src="@drawable/ic_arrow_downward_gray_24dp" />
-    </LinearLayout>
-    <ProgressBar
-            android:id="@+id/sendDataProgressBar"
+        <TextView
+            android:id="@+id/peerName"
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@id/textLayout"
-            android:paddingLeft="@dimen/list_item_padding"
-            android:paddingRight="@dimen/list_item_padding"
-            android:paddingBottom="@dimen/list_item_padding"
-            style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Horizontal" />
+            android:singleLine="true"
+            android:text="Peer name"
+            android:textSize="@dimen/text_size_medium"/>
+
+        <TextView
+            android:id="@+id/peerId"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="marquee"
+            android:singleLine="true"
+            android:text="Peer ID"
+            android:textSize="@dimen/text_size_small"/>
+
+        <TextView
+            android:id="@+id/connectionsInformation"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="marquee"
+            android:singleLine="true"
+            android:text="Connection information"
+            android:textSize="@dimen/text_size_small"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:orientation="horizontal"
+        android:padding="@dimen/list_item_padding">
+
+        <ImageView
+            android:id="@+id/outgoingConnectionIconImageView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_arrow_upward_gray_24dp"/>
+
+        <ImageView
+            android:id="@+id/incomingConnectionIconImageView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/ic_arrow_downward_gray_24dp"/>
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/sendDataProgressBar"
+        style="@android:style/Widget.DeviceDefault.Light.ProgressBar.Horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/textLayout"
+        android:paddingBottom="@dimen/list_item_padding"
+        android:paddingLeft="@dimen/list_item_padding"
+        android:paddingRight="@dimen/list_item_padding"/>
 </RelativeLayout>

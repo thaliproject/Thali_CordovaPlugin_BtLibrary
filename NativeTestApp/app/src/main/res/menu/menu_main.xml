@@ -2,33 +2,40 @@
       xmlns:app="http://schemas.android.com/apk/res-auto"
       xmlns:tools="http://schemas.android.com/tools"
       tools:mContext=".MainActivity">
-    <item android:id="@+id/action_connect"
-          android:icon="@drawable/ic_compare_arrows_white_24dp"
-          android:title="@string/action_connect"
-          app:showAsAction="ifRoom"/>
-    <item android:id="@+id/action_send_data"
-          android:icon="@drawable/ic_send_white_24dp"
-          android:title="@string/action_send_data"
-          app:showAsAction="ifRoom"/>
-    <item android:id="@+id/action_disconnect"
-          android:icon="@drawable/ic_swap_horiz_white_24dp"
-          android:title="@string/action_disconnect"
-          android:orderInCategory="100"
-          app:showAsAction="never"/>
-    <item android:id="@+id/action_kill_all_connections"
-          android:title="@string/action_kill_all_connections"
-          android:orderInCategory="101"
-          app:showAsAction="never"/>
-    <item android:id="@+id/action_start_bluetooth_device_discovery"
-          android:title="@string/action_start_bluetooth_device_discovery"
-          android:orderInCategory="101"
-          app:showAsAction="never"/>
-    <item android:id="@+id/action_make_device_discoverable"
-          android:title="@string/action_make_device_discoverable"
-          android:orderInCategory="101"
-          app:showAsAction="never"/>
-    <item android:id="@+id/action_reset"
-          android:title="Reset"
-          android:orderInCategory="101"
-          app:showAsAction="never" />
+    <item
+        android:id="@+id/action_connect"
+        android:icon="@drawable/ic_compare_arrows_white_24dp"
+        android:title="@string/action_connect"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_send_data"
+        android:icon="@drawable/ic_send_white_24dp"
+        android:title="@string/action_send_data"
+        app:showAsAction="ifRoom"/>
+    <item
+        android:id="@+id/action_disconnect"
+        android:icon="@drawable/ic_swap_horiz_white_24dp"
+        android:orderInCategory="100"
+        android:title="@string/action_disconnect"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_kill_all_connections"
+        android:orderInCategory="101"
+        android:title="@string/action_kill_all_connections"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_start_bluetooth_device_discovery"
+        android:orderInCategory="101"
+        android:title="@string/action_start_bluetooth_device_discovery"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_make_device_discoverable"
+        android:orderInCategory="101"
+        android:title="@string/action_make_device_discoverable"
+        app:showAsAction="never"/>
+    <item
+        android:id="@+id/action_reset"
+        android:orderInCategory="101"
+        android:title="Reset"
+        app:showAsAction="never"/>
 </menu>
