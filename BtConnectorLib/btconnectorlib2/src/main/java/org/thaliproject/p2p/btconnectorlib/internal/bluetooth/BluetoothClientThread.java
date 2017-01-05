@@ -76,10 +76,9 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      * @throws NullPointerException Thrown, if either the listener or the Bluetooth device instance is null.
      * @throws IOException          Thrown, if BluetoothDevice.createInsecureRfcommSocketToServiceRecord fails.
      */
-    BluetoothClientThread(
-            Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
-            UUID serviceRecordUuid, String myIdentityString)
-            throws NullPointerException, IOException {
+    BluetoothClientThread(Listener listener, BluetoothDevice bluetoothDeviceToConnectTo,
+                          UUID serviceRecordUuid, String myIdentityString) throws NullPointerException,
+            IOException {
         super(serviceRecordUuid, myIdentityString);
 
         if (listener == null || bluetoothDeviceToConnectTo == null) {
@@ -89,7 +88,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         mListener = listener;
         mBluetoothDeviceToConnectTo = bluetoothDeviceToConnectTo;
         mServiceRecordUuid = serviceRecordUuid;
-        mPeerProperties = new PeerProperties();
+        mPeerProperties = new PeerProperties(mBluetoothDeviceToConnectTo.getAddress());
     }
 
     /**
@@ -107,59 +106,48 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     @Override
     public void run() {
-        Log.i(TAG, "Trying to connect to peer with address "
-                + mBluetoothDeviceToConnectTo.getAddress()
+        Log.i(TAG, "Trying to connect to peer with address " + mBluetoothDeviceToConnectTo.getAddress()
                 + " (thread ID: " + getId() + ")");
-
-        mTimeStarted = new Date().getTime();
+        mTimeStarted = System.currentTimeMillis();
         boolean socketConnectSucceeded = tryToConnect();
-        Log.i(TAG, "socketConnectSucceeded " + socketConnectSucceeded);
+        Log.i(TAG, "socket is " + (socketConnectSucceeded ? "connected" : "not connected"));
         final BluetoothSocket bluetoothSocket = mBluetoothSocket;
 
-        if (mHandshakeRequired && socketConnectSucceeded && bluetoothSocket != null && !mIsShuttingDown) {
-            String errorMessage = "";
+        if (mHandshakeRequired && socketConnectSucceeded && !mIsShuttingDown) {
             try {
-                mHandshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
-                mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
-                mHandshakeThread.setExitThreadAfterRead(true);
-                mHandshakeThread.setPeerProperties(mPeerProperties);
-                Log.d(TAG, "Strating handshake");
-                mHandshakeThread.start();
-                boolean handshakeSucceeded = mHandshakeThread.write(getHandshakeMessage()); // This does not throw exceptions
-
-                if (handshakeSucceeded) {
-                    Log.d(TAG, "Outgoing connection initialized (*handshake* thread ID: "
-                            + mHandshakeThread.getId() + ")");
-                } else if (!mIsShuttingDown) {
-                    Log.e(TAG, "Failed to initiate handshake");
-                    close();
-
-                    if (mListener != null) {
-                        mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-                    }
-                }
+                setUpHandshakeThread(bluetoothSocket);
+                doHandshake();
             } catch (IOException e) {
-                errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
+                String errorMessage = "Construction of a handshake thread failed: " + e.getMessage();
                 Log.e(TAG, errorMessage, e);
-
-                if (mListener != null) {
-                    mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-                }
-            } catch (NullPointerException e) {
-                errorMessage = "Unexpected error: " + e.getMessage();
-                Log.e(TAG, errorMessage, e);
-
-                if (mListener != null) {
-                    mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-                }
+                notifyOnConnectionFailed(errorMessage);
             }
         }
 
-        if (mIsShuttingDown) {
-            mIsShuttingDown = false;
-        }
-
         Log.i(TAG, "Exiting thread (thread ID: " + getId() + ")");
+    }
+
+    private void setUpHandshakeThread(BluetoothSocket bluetoothSocket) throws IOException {
+        mHandshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
+        mHandshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+        mHandshakeThread.setExitThreadAfterRead(true);
+        mHandshakeThread.setPeerProperties(mPeerProperties);
+    }
+
+    private void doHandshake() {
+        Log.d(TAG, "Starting handshake");
+        mHandshakeThread.start();
+        boolean handshakeSucceeded = mHandshakeThread.write(getHandshakeMessage()); // This does not throw exceptions
+
+        if (handshakeSucceeded) {
+            Log.d(TAG, "Outgoing connection initialized (*handshake* thread ID: "
+                    + mHandshakeThread.getId() + ")");
+        } else if (!mIsShuttingDown) {
+            String errorMessage = "Failed to initiate handshake";
+            Log.e(TAG, errorMessage);
+            close();
+            notifyOnConnectionFailed(errorMessage);
+        }
     }
 
     /**
@@ -217,44 +205,44 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     @Override
     public void onBytesRead(byte[] bytes, int size, BluetoothSocketIoThread who) {
-        final long threadId = who.getId();
         final BluetoothSocket bluetoothSocket = who.getSocket();
-
-        Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + threadId + ")");
+        Log.d(TAG, "onBytesRead: Read " + size + " bytes successfully (thread ID: " + who.getId() + ")");
         if (who.getPeerProperties() != null) {
-            Log.d(TAG, "onBytesWritten: Peer props = " + who.getPeerProperties().toString());
+            Log.d(TAG, "onBytesRead: Peer properties = " + who.getPeerProperties().toString());
         }
-
         PeerProperties peerProperties =
                 BluetoothUtils.validateReceivedHandshakeMessage(bytes, size, bluetoothSocket);
 
         if (peerProperties != null) {
-            Log.i(TAG, "Handshake succeeded with " + peerProperties.toString());
-
-            // Set the resolved properties to the associated thread
-            who.setPeerProperties(peerProperties);
-
-            if (mListener != null) {
-                // On successful handshake, we'll pass the socket for the listener, so it's now
-                // the listeners responsibility to close the socket once done. Thus, do not
-                // close the socket here. Do not either close the input and output streams,
-                // since that will invalidate the socket as well.
-                mListener.onHandshakeSucceeded(bluetoothSocket, peerProperties, this);
-                mHandshakeThread = null;
-            } else {
-                // No listener to deal with the socket, shut it down
-                shutdown();
-            }
+            processSuccessfulHandshake(who, peerProperties, bluetoothSocket);
         } else {
-            String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
-            Log.e(TAG, errorMessage);
+            processFailedHandshake();
+        }
+    }
 
-            if (mListener != null) {
-                mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-            }
-
+    private void processSuccessfulHandshake(BluetoothSocketIoThread who, PeerProperties peerProperties,
+                                            BluetoothSocket bluetoothSocket) {
+        Log.i(TAG, "Handshake succeeded with " + peerProperties.toString());
+        // Set the resolved properties to the associated thread
+        who.setPeerProperties(peerProperties);
+        if (mListener != null) {
+            // On successful handshake, we'll pass the socket for the listener, so it's now
+            // the listeners responsibility to close the socket once done. Thus, do not
+            // close the socket here. Do not either close the input and output streams,
+            // since that will invalidate the socket as well.
+            mListener.onHandshakeSucceeded(bluetoothSocket, peerProperties, this);
+            mHandshakeThread = null;
+        } else {
+            // No listener to deal with the socket, shut it down
             shutdown();
         }
+    }
+
+    private void processFailedHandshake() {
+        String errorMessage = "Handshake failed - unable to resolve peer properties, perhaps due to invalid identity";
+        Log.e(TAG, errorMessage);
+        notifyOnConnectionFailed(errorMessage);
+        shutdown();
     }
 
     /**
@@ -282,16 +270,13 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
      */
     @Override
     public void onDisconnected(String reason, BluetoothSocketIoThread who) {
-        final long threadId = who.getId();
         final PeerProperties peerProperties = who.getPeerProperties();
-        Log.i(TAG, "onDisconnected: " + peerProperties.toString() + " (thread ID: " + threadId + ")");
-
+        if (peerProperties != null) {
+            Log.i(TAG, "onDisconnected: " + peerProperties.toString() + " (thread ID: " + who.getId() + ")");
+        }
         // If we were successful, the handshake thread instance was set to null
         if (mHandshakeThread != null) {
-            if (mListener != null) {
-                mListener.onConnectionFailed(peerProperties, "Socket disconnected", this);
-            }
-
+            notifyOnConnectionFailed("Socket disconnected");
             shutdown();
         }
     }
@@ -304,17 +289,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         if (mHandshakeThread != null) {
             mHandshakeThread.close(true, false);
         }
-
-        if (mBluetoothSocket != null) {
-            try {
-                Log.d(TAG, "close: Trying to close the Bluetooth socket... (thread ID: " + getId() + ")");
-                mBluetoothSocket.close();
-                Log.d(TAG, "close: Bluetooth socket closed (thread ID: " + getId() + ")");
-            } catch (IOException | NullPointerException e) {
-                Log.w(TAG, "close: Failed to close the socket (thread ID: " + getId() + "): " + e.getMessage());
-            }
-        }
-
+        closeBluetoothSocket(mBluetoothSocket);
         finalizeClose();
     }
 
@@ -423,9 +398,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     private void processMaxNumberOfRetries(String errorMessage) {
         Log.d(TAG, "Maximum number of allowed retries (" + mMaxNumberOfRetries
                 + ") reached, giving up... (thread ID: " + getId() + ")");
-        if (mListener != null) {
-            mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
-        }
+        notifyOnConnectionFailed(errorMessage);
     }
 
     private BluetoothSocket createBluetoothSocket(int port) throws IOException {
@@ -459,11 +432,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
                 return true;
             } catch (IOException e) {
                 Log.e(TAG, " createSocketAndConnect: connect, " + e.getMessage());
-                try {
-                    socket.close();
-                } catch (IOException e2) {
-                    Log.e(TAG, " createSocketAndConnect: close, " + e.getMessage());
-                }
+                closeBluetoothSocket(socket);
                 return false;
             }
         }
@@ -484,9 +453,27 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         Log.i(TAG, logMessage);
     }
 
+    private void closeBluetoothSocket(BluetoothSocket bluetoothSocket) {
+        if (bluetoothSocket != null) {
+            try {
+                Log.d(TAG, "closeBluetoothSocket: Trying to close the bluetooth socket... (thread ID: " + getId() + ")");
+                bluetoothSocket.close();
+                Log.d(TAG, "closeBluetoothSocket: bluetooth socket closed (thread ID: " + getId() + ")");
+            } catch (IOException e) {
+                Log.w(TAG, "close: Failed to close the bluetooth socket (thread ID: " + getId() + "): " + e.getMessage());
+            }
+        }
+    }
+
     private void notifyOnConnected(BluetoothSocket bluetoothSocket) {
         if (mListener != null) {
             mListener.onSocketConnected(bluetoothSocket, mPeerProperties, this);
+        }
+    }
+
+    private void notifyOnConnectionFailed(String errorMessage) {
+        if (mListener != null) {
+            mListener.onConnectionFailed(mPeerProperties, errorMessage, this);
         }
     }
 
