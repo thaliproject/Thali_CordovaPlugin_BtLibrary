@@ -166,6 +166,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             @Override
             public void onClick(View v) {
                 runTestConnect(getAllDiscoveredPeers());
+                v.setEnabled(false);
             }
         });
 

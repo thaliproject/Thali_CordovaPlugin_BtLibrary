@@ -33,6 +33,7 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
     private final ConnectDurationTestListener listener;
     private List<PeerTestData> testPeers;
 
+
     public ConnectDurationTest(Context ctx, ConnectDurationTestListener listener, List<PeerProperties> peerProperties) {
         this.connectionManager = new ConnectionManager(ctx, this, ConnectionSettings.SERVICE_UUID,
                 ConnectionSettings.SERVICE_NAME);
@@ -81,6 +82,7 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
             @Override
             public void run() {
                 testPeer.startAttempt();
+                testPeer.increaseConnectCount();
                 connectionManager.connect(testPeer.peerProperties);
             }
         });
@@ -96,11 +98,13 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
         Log.d(TAG, "onConnected");
         try {
             bluetoothSocket.close();
+            Log.d(TAG, "onConnected, socket closed");
         } catch (IOException e) {
             Log.e(TAG, e.toString());
         }
         PeerTestData testPeer = findTestPeer(peerProperties);
         if (testPeer != null) {
+            Log.d(TAG, "onConnected, connect count " + testPeer.getConnectCount());
             processConnectionResult(testPeer, true);
         } else {
             throw new RuntimeException("Communicate with a wrong peer " + peerProperties.toString());
@@ -135,6 +139,7 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
     private boolean tryToReconnect(PeerProperties peerProperties) {
         PeerTestData testPeer = findTestPeer(peerProperties);
         if (testPeer != null) {
+            Log.d(TAG, "tryToReconnect, connect count " + testPeer.getConnectCount());
             reconnect(testPeer);
             return true;
         }
@@ -147,6 +152,7 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
             new Handler(Looper.getMainLooper()).post(new Runnable() {
                 @Override
                 public void run() {
+                    testPeer.increaseConnectCount();
                     connectionManager.connect(testPeer.peerProperties);
                 }
             });

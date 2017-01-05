@@ -1,5 +1,7 @@
 package org.thaliproject.nativetest.app.test.connection;
 
+import android.util.Log;
+
 import org.thaliproject.nativetest.app.test.Timer;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
@@ -7,13 +9,13 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
  * Created by evabishchevich on 1/4/17.
  */
 
-public class PeerTestData {
+class PeerTestData {
 
     private final Timer timer;
     final PeerProperties peerProperties;
     final Result result;
     final Object monitor = new Object();
-
+    private volatile int connectCount = 0;
     private volatile int retryCount;
 
 
@@ -30,7 +32,9 @@ public class PeerTestData {
 
     void finishAttempt(boolean success) {
         long duration = timer.finish();
-        result.addAttempt(new Attempt(success, duration));
+        Attempt attempt = new Attempt(success, duration, retryCount + 1);
+        Log.d("PeerTestData", attempt.toString());
+        result.addAttempt(attempt);
     }
 
     private void resetRetries() {
@@ -43,6 +47,14 @@ public class PeerTestData {
 
     void increaseRetries() {
         retryCount++;
+    }
+
+    int getConnectCount() {
+        return connectCount;
+    }
+
+    void increaseConnectCount() {
+        connectCount++;
     }
 
 }

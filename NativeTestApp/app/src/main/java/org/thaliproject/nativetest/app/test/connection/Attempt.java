@@ -7,14 +7,17 @@ package org.thaliproject.nativetest.app.test.connection;
 public class Attempt {
     final boolean isSuccessful;
     final long duration;
+    final int connectCount;
 
-    Attempt(boolean isSuccessful, long duration) {
+    public Attempt(boolean isSuccessful, long duration, int connectCount) {
         this.isSuccessful = isSuccessful;
         this.duration = duration;
+        this.connectCount = connectCount;
     }
 
     @Override
     public String toString() {
-        return "Attempt[" + (isSuccessful ? "succeed" : "failed") + ", duration: " + duration + "]";
+        return "Attempt[" + (isSuccessful ? "succeed" : "failed") + ", duration: " + duration +
+                ", connects: " + connectCount + "]";
     }
 }
