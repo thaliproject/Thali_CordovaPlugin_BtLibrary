@@ -316,6 +316,12 @@ public class MainActivity extends AppCompatActivity implements PeerListFragment.
                 case PEER_LIST_FRAGMENT:
                     mPeerListFragment = new PeerListFragment();
                     mPeerListFragment.setListener(mMainActivity);
+                    mPeerListFragment.setTestListener(new PeerListFragment.ConnectTimeTestListener() {
+                        @Override
+                        public void onTestStarted() {
+                            mConnectionEngine.mDiscoveryManager.stop();
+                        }
+                    });
                     return mPeerListFragment;
                 case LOG_FRAGMENT:
                     return mLogFragment;
@@ -323,7 +329,7 @@ public class MainActivity extends AppCompatActivity implements PeerListFragment.
                     return mSettingsFragment;
                 case TESTS_FRAGMENT:
                     mTestsFragment = new TestsFragment();
-                    mTestsFragment.setTestEngine((TestEngine) mTestEngine, (BatteryEngine) mBatteryEngine);
+                    mTestsFragment.setTestEngine(mTestEngine, mBatteryEngine);
                     return mTestsFragment;
             }
 

@@ -9,6 +9,7 @@ import android.util.Log;
 import org.thaliproject.nativetest.app.ConnectionSettings;
 import org.thaliproject.nativetest.app.test.Timer;
 import org.thaliproject.p2p.btconnectorlib.ConnectionManager;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.io.IOException;
@@ -25,7 +26,7 @@ public class ConnectDurationTest implements ConnectionManager.ConnectionManagerL
         void onFinished(PeerProperties peerProperties, Result result);
     }
 
-    static final int ATTEMPTS_COUNT = 20;
+    static final int ATTEMPTS_COUNT = 10;
     private static final int MAX_RETRY_COUNT = 5;
     private static final String TAG = "ConnectDurationTest";
 

@@ -94,7 +94,7 @@ public class Connection implements BluetoothSocketIoThread.Listener {
     public boolean isClosed() {
         return mIsClosed;
     }
-    
+
     public float getTotalDataAmountCurrentlySendingInMegaBytes() {
         if (mDataSenderHelper != null) {
             return mDataSenderHelper.getTotalDataAmountInMegaBytes();
@@ -177,7 +177,8 @@ public class Connection implements BluetoothSocketIoThread.Listener {
 
     @Override
     public String toString() {
-        return "[" + mPeerId + " " + mPeerProperties.getBluetoothMacAddress() + " " + mIsIncoming + "]";
+        return "[" + mPeerId + " " + mPeerProperties.getBluetoothMacAddress() + " " +
+                (mIsIncoming  ? "incoming" : "outgoing") + "]";
     }
 
     @Override

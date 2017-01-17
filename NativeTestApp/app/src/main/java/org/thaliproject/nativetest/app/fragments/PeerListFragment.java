@@ -32,6 +32,7 @@ import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
 import org.thaliproject.nativetest.app.test.connection.ConnectDurationTest;
 import org.thaliproject.nativetest.app.test.connection.Result;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.util.List;
@@ -49,6 +50,10 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         void onSendDataRequest(PeerProperties peerProperties);
     }
 
+    public interface ConnectTimeTestListener {
+        void onTestStarted();
+    }
+
     private static final String TAG = PeerListFragment.class.getName();
     private Context mContext = null;
     private Drawable mIncomingConnectionIconNotConnected = null;
@@ -62,6 +67,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     private PeerAndConnectionModel mModel = null;
     private Listener mListener = null;
     private PeerProperties mSelectedPeerProperties = null;
+
+    private ConnectTimeTestListener testListener = null;
 
     public PeerListFragment() {
     }
@@ -99,6 +106,10 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         }
     }
 
+    public void setTestListener(ConnectTimeTestListener listener) {
+        testListener = listener;
+    }
+
     private void processSelectedPeer(int position) {
         mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(position);
         Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
@@ -109,6 +120,9 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     }
 
     private void runTestConnect(List<PeerProperties> peerProperties) {
+        if (testListener != null) {
+            testListener.onTestStarted();
+        }
         new ConnectDurationTest(getActivity(), new ConnectDurationTest.ConnectDurationTestListener() {
 
             @Override
