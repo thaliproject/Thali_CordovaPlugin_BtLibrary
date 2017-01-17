@@ -278,7 +278,7 @@ public class BluetoothConnector
             try {
                 mServerThread = new BluetoothServerThread(
                         this, mBluetoothAdapter, mServiceRecordUuid, mMyBluetoothName, mMyIdentityString);
-            } catch (IOException e) {
+            } catch (NullPointerException e) {
                 Log.e(TAG, "Failed to create the socket listener thread: " + e.getMessage(), e);
                 mServerThread = null;
             }

@@ -11,7 +11,6 @@ import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 
 import java.io.IOException;
-import java.util.Date;
 import java.util.UUID;
 
 /**
@@ -402,6 +401,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
     }
 
     private BluetoothSocket createBluetoothSocket(int port) throws IOException {
+        Log.d(TAG, "createBluetoothSocket " + port);
         switch (port) {
             case SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT: {
                 // Use the standard method of creating a socket
@@ -428,7 +428,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
             try {
                 Log.e(TAG, " createSocketAndConnect: connecting");
                 socket.connect(); // Blocking call
-                Log.i(TAG, " createSocketAndConnect: connected");
+                Log.i(TAG, "createSocketAndConnect: connected. " + BluetoothUtils.portAndTypeToString(socket));
                 return true;
             } catch (IOException e) {
                 Log.e(TAG, " createSocketAndConnect: connect, " + e.getMessage());

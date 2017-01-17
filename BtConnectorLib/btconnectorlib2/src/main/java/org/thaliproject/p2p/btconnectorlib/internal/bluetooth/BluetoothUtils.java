@@ -4,7 +4,9 @@
 package org.thaliproject.p2p.btconnectorlib.internal.bluetooth;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
+import android.net.LocalSocket;
 import android.os.ParcelUuid;
 import android.util.Log;
 
@@ -13,6 +15,7 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.internal.AbstractBluetoothConnectivityAgent;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -33,7 +36,7 @@ public class BluetoothUtils {
     private static final String UPPER_CASE_HEX_REGEXP_CONDITION = "-?[0-9A-F]+";
     private static final String METHOD_NAME_FOR_CREATING_SECURE_RFCOMM_SOCKET = "createRfcommSocket";
     private static final String METHOD_NAME_FOR_CREATING_INSECURE_RFCOMM_SOCKET = "createInsecureRfcommSocket";
-    private static final int MAX_ALTERNATIVE_CHANNEL = 30;
+    private static final int MAX_ALTERNATIVE_CHANNEL = 30; //from BluetoothSocket.MAX_RFCOMM_CHANNEL
     private static int mAlternativeChannel = 0;
 
     /**
@@ -320,5 +323,62 @@ public class BluetoothUtils {
         }
 
         return createBluetoothSocket(originalBluetoothSocket, ++mAlternativeChannel, secure);
+    }
+
+    // Test stuff
+    static String portAndTypeToString(BluetoothSocket socket) {
+        try {
+            int port = BluetoothUtils.ejectPort(socket);
+            int type = BluetoothUtils.ejectType(socket);
+            LocalSocket localSocket = ejectLocalSocket(socket);
+            int socketType = ejectSocketType(localSocket);
+            return "Socket " + socket.toString() + ", port: " + port + ", type: " + type +
+                    ", local socket address: " + localSocket.getLocalSocketAddress() + ", socket type: " +
+                    socketType;
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            Log.e(TAG, "No such fields in bluetooth socket");
+        }
+        return "";
+    }
+
+    static String portAndTypeToString(BluetoothServerSocket socket) {
+        try {
+            Log.d(TAG, "portAndTypeToString");
+            BluetoothSocket bSock = ejectBluetoothSocket(socket);
+            return portAndTypeToString(bSock);
+        } catch (IllegalAccessException | NoSuchFieldException e) {
+            Log.e(TAG, "No such fields in bluetooth socket");
+        }
+        return "";
+    }
+
+    private static BluetoothSocket ejectBluetoothSocket(BluetoothServerSocket socket) throws NoSuchFieldException, IllegalAccessException {
+        Field f = socket.getClass().getDeclaredField("mSocket");
+        f.setAccessible(true);
+        return (BluetoothSocket) f.get(socket);
+    }
+
+    private static int ejectSocketType(LocalSocket socket) throws NoSuchFieldException, IllegalAccessException {
+        Field f = socket.getClass().getDeclaredField("sockType");
+        f.setAccessible(true);
+        return (int) f.get(socket);
+    }
+
+    private static LocalSocket ejectLocalSocket(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+        Field f = socket.getClass().getDeclaredField("mSocket");
+        f.setAccessible(true);
+        return (LocalSocket) f.get(socket);
+    }
+
+    private static int ejectPort(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+        Field f = socket.getClass().getDeclaredField("mPort");
+        f.setAccessible(true);
+        return (int) f.get(socket);
+    }
+
+    private static int ejectType(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+        Field f = socket.getClass().getDeclaredField("mType");
+        f.setAccessible(true);
+        return (int) f.get(socket);
     }
 }
