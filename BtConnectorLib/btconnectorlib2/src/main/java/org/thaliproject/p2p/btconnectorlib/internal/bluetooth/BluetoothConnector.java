@@ -619,7 +619,7 @@ public class BluetoothConnector
         }
 
         if (!mIsShuttingDown) {
-            boolean posted = mHandler.post(new Runnable() {
+            mHandler.post(new Runnable() {
                 @Override
                 public void run() {
                     Log.d(TAG, "handleSuccessfulClientThread run. " + ThreadUtils.currentThreadToString());
@@ -632,7 +632,6 @@ public class BluetoothConnector
                     }
                 }
             });
-            Log.d(TAG, "Posted: " + posted);
         }
     }
 
