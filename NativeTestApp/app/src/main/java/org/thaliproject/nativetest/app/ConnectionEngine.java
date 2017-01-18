@@ -323,10 +323,6 @@ public class ConnectionEngine implements
                 mModel.addOrUpdatePeer(peerProperties);
                 mDiscoveryManager.getPeerModel().addOrUpdateDiscoveredPeer(peerProperties);
             }
-
-            // Update the peer name, if already in the model
-            mModel.updatePeerName(peerProperties);
-
             LogFragment.logMessage((isIncoming ? "Incoming" : "Outgoing") + " connection established to peer " + peerProperties.toString());
         }
 
