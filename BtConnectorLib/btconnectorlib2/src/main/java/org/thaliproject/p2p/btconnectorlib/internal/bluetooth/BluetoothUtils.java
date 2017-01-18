@@ -328,10 +328,10 @@ public class BluetoothUtils {
     // Test stuff
     static String portAndTypeToString(BluetoothSocket socket) {
         try {
-            int port = BluetoothUtils.ejectPort(socket);
-            int type = BluetoothUtils.ejectType(socket);
-            LocalSocket localSocket = ejectLocalSocket(socket);
-            int socketType = ejectSocketType(localSocket);
+            int port = BluetoothUtils.extractPort(socket);
+            int type = BluetoothUtils.extractType(socket);
+            LocalSocket localSocket = extractLocalSocket(socket);
+            int socketType = extractSocketType(localSocket);
             return "Socket " + socket.toString() + ", port: " + port + ", type: " + type +
                     ", local socket address: " + localSocket.getLocalSocketAddress() + ", socket type: " +
                     socketType;
@@ -344,7 +344,7 @@ public class BluetoothUtils {
     static String portAndTypeToString(BluetoothServerSocket socket) {
         try {
             Log.d(TAG, "portAndTypeToString");
-            BluetoothSocket bSock = ejectBluetoothSocket(socket);
+            BluetoothSocket bSock = extractBluetoothSocket(socket);
             return portAndTypeToString(bSock);
         } catch (IllegalAccessException | NoSuchFieldException e) {
             Log.e(TAG, "No such fields in bluetooth socket");
@@ -352,31 +352,31 @@ public class BluetoothUtils {
         return "";
     }
 
-    private static BluetoothSocket ejectBluetoothSocket(BluetoothServerSocket socket) throws NoSuchFieldException, IllegalAccessException {
+    private static BluetoothSocket extractBluetoothSocket(BluetoothServerSocket socket) throws NoSuchFieldException, IllegalAccessException {
         Field f = socket.getClass().getDeclaredField("mSocket");
         f.setAccessible(true);
         return (BluetoothSocket) f.get(socket);
     }
 
-    private static int ejectSocketType(LocalSocket socket) throws NoSuchFieldException, IllegalAccessException {
+    private static int extractSocketType(LocalSocket socket) throws NoSuchFieldException, IllegalAccessException {
         Field f = socket.getClass().getDeclaredField("sockType");
         f.setAccessible(true);
         return (int) f.get(socket);
     }
 
-    private static LocalSocket ejectLocalSocket(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+    private static LocalSocket extractLocalSocket(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
         Field f = socket.getClass().getDeclaredField("mSocket");
         f.setAccessible(true);
         return (LocalSocket) f.get(socket);
     }
 
-    private static int ejectPort(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+    private static int extractPort(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
         Field f = socket.getClass().getDeclaredField("mPort");
         f.setAccessible(true);
         return (int) f.get(socket);
     }
 
-    private static int ejectType(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
+    private static int extractType(BluetoothSocket socket) throws NoSuchFieldException, IllegalAccessException {
         Field f = socket.getClass().getDeclaredField("mType");
         f.setAccessible(true);
         return (int) f.get(socket);
