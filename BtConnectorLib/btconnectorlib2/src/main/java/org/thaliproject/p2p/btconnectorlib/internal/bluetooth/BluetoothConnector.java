@@ -12,6 +12,7 @@ import android.os.CountDownTimer;
 import android.os.Handler;
 import android.preference.PreferenceManager;
 import android.util.Log;
+
 import org.thaliproject.p2p.btconnectorlib.ConnectionManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 import org.thaliproject.p2p.btconnectorlib.utils.ThreadUtils;
@@ -42,7 +43,7 @@ public class BluetoothConnector
         /**
          * Called when connecting to a Bluetooth device.
          *
-         * @param bluetoothDeviceName The name of the Bluetooth device connecting to.
+         * @param bluetoothDeviceName    The name of the Bluetooth device connecting to.
          * @param bluetoothDeviceAddress The address of the Bluetooth device connecting to.
          */
         void onConnecting(String bluetoothDeviceName, String bluetoothDeviceAddress);
@@ -51,8 +52,8 @@ public class BluetoothConnector
          * Called when connected to a Bluetooth device.
          *
          * @param bluetoothSocket The Bluetooth socket.
-         * @param isIncoming True, if the connection was incoming. False, if it was outgoing.
-         * @param peerProperties The properties of the peer connected to.
+         * @param isIncoming      True, if the connection was incoming. False, if it was outgoing.
+         * @param peerProperties  The properties of the peer connected to.
          */
         void onConnected(BluetoothSocket bluetoothSocket, boolean isIncoming, PeerProperties peerProperties);
 
@@ -67,7 +68,7 @@ public class BluetoothConnector
          * Called when a connection fails.
          *
          * @param peerProperties The properties of the peer we we're trying to connect to. Note: Can be null.
-         * @param errorMessage The error message. Note: Can be null.
+         * @param errorMessage   The error message. Note: Can be null.
          */
         void onConnectionFailed(PeerProperties peerProperties, String errorMessage);
     }
@@ -102,13 +103,13 @@ public class BluetoothConnector
     /**
      * Constructor.
      *
-     * @param context The application context.
-     * @param listener The listener.
-     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param context           The application context.
+     * @param listener          The listener.
+     * @param bluetoothAdapter  The Bluetooth adapter.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
-     * @param myBluetoothName Our Bluetooth name.
-     * @param myIdentityString A string containing our identity.
-     *                         See AbstractBluetoothConnectivityAgent.createIdentityString()
+     * @param myBluetoothName   Our Bluetooth name.
+     * @param myIdentityString  A string containing our identity.
+     *                          See AbstractBluetoothConnectivityAgent.createIdentityString()
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
@@ -121,14 +122,14 @@ public class BluetoothConnector
      * Constructor used in unit tests. It allows to provide initialized
      * shared preferences.
      *
-     * @param context The application context.
-     * @param listener The listener.
-     * @param bluetoothAdapter The Bluetooth adapter.
+     * @param context           The application context.
+     * @param listener          The listener.
+     * @param bluetoothAdapter  The Bluetooth adapter.
      * @param serviceRecordUuid Our UUID (service record UUID to lookup RFCOMM channel).
-     * @param myBluetoothName Our Bluetooth name.
-     * @param myIdentityString A string containing our identity.
-     *                         See AbstractBluetoothConnectivityAgent.createIdentityString()
-     * @param preferences The shared preferences.
+     * @param myBluetoothName   Our Bluetooth name.
+     * @param myIdentityString  A string containing our identity.
+     *                          See AbstractBluetoothConnectivityAgent.createIdentityString()
+     * @param preferences       The shared preferences.
      */
     public BluetoothConnector(
             Context context, BluetoothConnectorListener listener, BluetoothAdapter bluetoothAdapter,
@@ -277,7 +278,7 @@ public class BluetoothConnector
             try {
                 mServerThread = new BluetoothServerThread(
                         this, mBluetoothAdapter, mServiceRecordUuid, mMyBluetoothName, mMyIdentityString);
-            } catch (IOException e) {
+            } catch (NullPointerException e) {
                 Log.e(TAG, "Failed to create the socket listener thread: " + e.getMessage(), e);
                 mServerThread = null;
             }
@@ -339,7 +340,7 @@ public class BluetoothConnector
      * but the connection process is merely initiated.
      *
      * @param bluetoothDeviceToConnectTo The Bluetooth device to connect to.
-     * @param peerProperties The properties of the peer to connect to.
+     * @param peerProperties             The properties of the peer to connect to.
      * @return True, if started trying to connect successfully. False otherwise.
      */
     public synchronized boolean connect(
@@ -470,7 +471,7 @@ public class BluetoothConnector
      * Forward the event to the listener.
      *
      * @param bluetoothSocket The Bluetooth socket associated with the incoming connection.
-     * @param peerProperties The peer properties.
+     * @param peerProperties  The peer properties.
      */
     @Override
     public void onIncomingConnectionConnected(
@@ -546,8 +547,8 @@ public class BluetoothConnector
      * Does nothing but logs the event.
      *
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
-     * @param peerProperties The peer properties.
-     * @param who The Bluetooth client thread instance calling this callback.
+     * @param peerProperties  The peer properties.
+     * @param who             The Bluetooth client thread instance calling this callback.
      */
     @Override
     public void onSocketConnected(
@@ -563,8 +564,8 @@ public class BluetoothConnector
      * The connection is now established and validated by handshake protocol.
      *
      * @param bluetoothSocket The Bluetooth socket associated with the connection.
-     * @param peerProperties The peer properties.
-     * @param who The Bluetooth client thread instance calling this callback.
+     * @param peerProperties  The peer properties.
+     * @param who             The Bluetooth client thread instance calling this callback.
      */
     @Override
     public void onHandshakeSucceeded(
@@ -577,8 +578,8 @@ public class BluetoothConnector
      * Forward the event to the listener.
      *
      * @param peerProperties The peer properties.
-     * @param errorMessage The error message.
-     * @param who The Bluetooth client thread instance calling this callback.
+     * @param errorMessage   The error message.
+     * @param who            The Bluetooth client thread instance calling this callback.
      */
     @Override
     public void onConnectionFailed(PeerProperties peerProperties, String errorMessage, BluetoothClientThread who) {
@@ -601,8 +602,8 @@ public class BluetoothConnector
      * Notifies the listener that we are now fully connected.
      *
      * @param bluetoothClientThread The Bluetooth client thread instance.
-     * @param bluetoothSocket The Bluetooth socket.
-     * @param peerProperties The peer properties.
+     * @param bluetoothSocket       The Bluetooth socket.
+     * @param peerProperties        The peer properties.
      */
     private synchronized void handleSuccessfulClientThread(
             final BluetoothClientThread bluetoothClientThread,
@@ -698,7 +699,7 @@ public class BluetoothConnector
     /**
      * Shuts down the given Bluetooth client thread instance and removes it from the list of
      * client threads.
-     *
+     * <p>
      * Shutting down is safer to do in its own thread, because closing the socket of the client
      * thread may block (and in worst case freeze the device), if the socket is still trying to
      * connect.

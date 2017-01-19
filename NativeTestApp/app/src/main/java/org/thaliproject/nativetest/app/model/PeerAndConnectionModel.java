@@ -114,33 +114,6 @@ public class PeerAndConnectionModel {
         return !alreadyInTheList;
     }
 
-
-    /**
-     * Updates the name of the peer in the list. Notifies the listener, if updated.
-     * @param peerProperties The peer properties containing the new name.
-     * @return True, if the name was updated. False, if not found.
-     */
-    public synchronized boolean updatePeerName(final PeerProperties peerProperties) {
-        boolean wasUpdated = false;
-
-        for (int i = 0; i < mPeers.size(); ++i) {
-            try {
-                if (mPeers.get(i).equals(peerProperties)) {
-                    mPeers.get(i).setName(peerProperties.getName());
-                    wasUpdated = true;
-                    break;
-                }
-            } catch (Exception e) {
-            }
-        }
-
-        if (wasUpdated && mListener != null) {
-            mListener.onDataChanged();
-        }
-
-        return wasUpdated;
-    }
-
     /**
      * Tries to remove a peer with the given properties from the list of discovered peers.
      * Notifies the listener, if removed.

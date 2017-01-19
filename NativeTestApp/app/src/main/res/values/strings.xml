@@ -45,4 +45,5 @@
 
     <string name="battery_test">Battery test</string>
     <string name="stop_battery_test">Stop battery test</string>
+    <string name="run_test_connect_for_all">Run test connect for all peers</string>
 </resources>

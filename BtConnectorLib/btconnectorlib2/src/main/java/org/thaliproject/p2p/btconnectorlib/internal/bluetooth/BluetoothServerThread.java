@@ -8,8 +8,8 @@ import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
-import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -72,12 +72,11 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
      * @param myIdentityString  Our identity (possible name and the Bluetooth MAC address). Used for
      *                          handshake (if required).
      * @throws NullPointerException Thrown, if either the given listener or the Bluetooth adapter instance is null.
-     * @throws IOException          Thrown, if BluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord fails.
      */
     public BluetoothServerThread(
             Listener listener, BluetoothAdapter bluetoothAdapter,
             UUID serviceRecordUuid, String myBluetoothName, String myIdentityString)
-            throws NullPointerException, IOException {
+            throws NullPointerException {
         super(serviceRecordUuid, myIdentityString);
 
         if (listener == null || bluetoothAdapter == null) {
@@ -99,66 +98,14 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
     public void run() {
         Log.d(TAG, "Entering thread");
         while (!mStopThread) {
-            try {
-                mBluetoothServerSocket =
-                        mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(
-                                mBluetoothName, mServiceRecordUuid);
-                resetBluetoothServerSocketConsecutiveCreationFailureCount();
-            } catch (IOException e) {
-                Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
-                mBluetoothServerSocketConsecutiveCreationFailureCount++;
-                Log.d(TAG, "run: Bluetooth server socket consecutive creation failure count is now "
-                        + mBluetoothServerSocketConsecutiveCreationFailureCount);
-                //give bluetooth a chance to restore internal state and to be up
-                try {
-                    Thread.sleep(300L);
-                } catch (InterruptedException e1) {
-                    e1.printStackTrace();
-                }
-                if (mBluetoothServerSocketConsecutiveCreationFailureCount >=
-                        BLUETOOTH_SERVER_SOCKET_CONSECUTIVE_CREATION_FAILURE_COUNT_LIMIT) {
-                    final int failureCount = mBluetoothServerSocketConsecutiveCreationFailureCount;
-                    resetBluetoothServerSocketConsecutiveCreationFailureCount();
-                    mListener.onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(failureCount);
-                    mStopThread = true;
-                }
-
-            }
-
+            mBluetoothServerSocket = createServerSocket();
             if (mBluetoothServerSocket != null && !mStopThread) {
-                Log.i(TAG, "Waiting for incoming connections...");
-                BluetoothSocket bluetoothSocket = null;
-
-                try {
-                    bluetoothSocket = mBluetoothServerSocket.accept(); // Blocking call
-                    Log.i(TAG, "Incoming connection accepted");
-                } catch (IOException | NullPointerException e) {
-                    if (!mStopThread) {
-                        Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
-                        mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
-                        mStopThread = true;
-                    }
-
-                    bluetoothSocket = null;
-                }
-
+                Log.i(TAG, "Waiting for incoming connections... Server socket = " +
+                        BluetoothUtils.portAndTypeToString(mBluetoothServerSocket));
+                BluetoothSocket bluetoothSocket = acceptIncomingSocket();
                 if (bluetoothSocket != null) {
                     if (mHandshakeRequired) {
-                        BluetoothSocketIoThread handshakeThread = null;
-
-                        try {
-                            handshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
-                        } catch (IOException e) {
-                            Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
-                        }
-
-                        if (handshakeThread != null) {
-                            handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
-                            handshakeThread.setExitThreadAfterRead(true);
-                            mSocketIoThreads.add(handshakeThread);
-                            handshakeThread.start();
-                            Log.d(TAG, "Incoming connection initialized with handshake (thread ID: " + handshakeThread.getId() + ")");
-                        }
+                        doHandshake(bluetoothSocket);
                     } else {
                         // No handshake required
                         String bluetoothMacAddress = BluetoothUtils.getBluetoothMacAddressFromSocket(bluetoothSocket);
@@ -186,8 +133,69 @@ class BluetoothServerThread extends AbstractBluetoothThread implements Bluetooth
         mListener.onServerStopped();
     }
 
-    public void resetBluetoothServerSocketConsecutiveCreationFailureCount() {
+    private void resetBluetoothServerSocketConsecutiveCreationFailureCount() {
         mBluetoothServerSocketConsecutiveCreationFailureCount = 0;
+    }
+
+    private BluetoothServerSocket createServerSocket() {
+        try {
+            BluetoothServerSocket serverSocket = mBluetoothAdapter.listenUsingInsecureRfcommWithServiceRecord(
+                    mBluetoothName, mServiceRecordUuid);
+            resetBluetoothServerSocketConsecutiveCreationFailureCount();
+            return serverSocket;
+        } catch (IOException e) {
+            Log.e(TAG, "run: Failed to start listening: " + e.getMessage(), e);
+            mBluetoothServerSocketConsecutiveCreationFailureCount++;
+            Log.d(TAG, "run: Bluetooth server socket consecutive creation failure count is now "
+                    + mBluetoothServerSocketConsecutiveCreationFailureCount);
+            //give bluetooth a chance to restore internal state and to be up
+            try {
+                Thread.sleep(300L);
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            if (mBluetoothServerSocketConsecutiveCreationFailureCount >=
+                    BLUETOOTH_SERVER_SOCKET_CONSECUTIVE_CREATION_FAILURE_COUNT_LIMIT) {
+                final int failureCount = mBluetoothServerSocketConsecutiveCreationFailureCount;
+                resetBluetoothServerSocketConsecutiveCreationFailureCount();
+                mListener.onBluetoothServerSocketConsecutiveCreationFailureCountLimitExceeded(failureCount);
+                mStopThread = true;
+            }
+        }
+        return null;
+    }
+
+    private BluetoothSocket acceptIncomingSocket() {
+        BluetoothSocket bluetoothSocket;
+        try {
+            bluetoothSocket = mBluetoothServerSocket.accept(); // Blocking call
+            Log.i(TAG, "Incoming connection accepted: " +
+                    BluetoothUtils.portAndTypeToString(bluetoothSocket));
+        } catch (IOException e) {
+            if (!mStopThread) {
+                Log.e(TAG, "Failed to accept socket: " + e.getMessage(), e);
+                mListener.onIncomingConnectionFailed("Failed to accept socket: " + e.getMessage());
+                mStopThread = true;
+            }
+            bluetoothSocket = null;
+        }
+        return bluetoothSocket;
+    }
+
+    private void doHandshake(BluetoothSocket bluetoothSocket) {
+        BluetoothSocketIoThread handshakeThread = null;
+        try {
+            handshakeThread = new BluetoothSocketIoThread(bluetoothSocket, this);
+        } catch (IOException | NullPointerException e) {
+            Log.e(TAG, "Failed to create a handshake thread instance: " + e.getMessage(), e);
+        }
+        if (handshakeThread != null) {
+            handshakeThread.setUncaughtExceptionHandler(this.getUncaughtExceptionHandler());
+            handshakeThread.setExitThreadAfterRead(true);
+            mSocketIoThreads.add(handshakeThread);
+            handshakeThread.start();
+            Log.d(TAG, "Incoming connection initialized with handshake (thread ID: " + handshakeThread.getId() + ")");
+        }
     }
 
     /**

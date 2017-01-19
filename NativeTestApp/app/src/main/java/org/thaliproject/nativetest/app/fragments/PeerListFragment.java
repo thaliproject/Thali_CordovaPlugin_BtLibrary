@@ -8,15 +8,34 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.*;
-import android.widget.*;
+import android.view.ContextMenu;
+import android.view.LayoutInflater;
+import android.view.MenuInflater;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AbsListView;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import org.thaliproject.nativetest.app.R;
 import org.thaliproject.nativetest.app.model.Connection;
 import org.thaliproject.nativetest.app.model.PeerAndConnectionModel;
-import org.thaliproject.nativetest.app.R;
+import org.thaliproject.nativetest.app.test.connection.ConnectDurationTest;
+import org.thaliproject.nativetest.app.test.connection.Result;
 import org.thaliproject.nativetest.app.utils.MenuUtils;
+import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+
+import java.util.List;
 
 /**
  * A fragment containing the list of discovered peers.
@@ -25,8 +44,14 @@ import org.thaliproject.p2p.btconnectorlib.PeerProperties;
 public class PeerListFragment extends Fragment implements PeerAndConnectionModel.Listener {
     public interface Listener {
         void onPeerSelected(PeerProperties peerProperties);
+
         void onConnectRequest(PeerProperties peerProperties);
+
         void onSendDataRequest(PeerProperties peerProperties);
+    }
+
+    public interface ConnectTimeTestListener {
+        void onTestStarted();
     }
 
     private static final String TAG = PeerListFragment.class.getName();
@@ -43,6 +68,8 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
     private Listener mListener = null;
     private PeerProperties mSelectedPeerProperties = null;
 
+    private ConnectTimeTestListener testListener = null;
+
     public PeerListFragment() {
     }
 
@@ -53,24 +80,14 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                 @Override
                 public void onItemClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemClick: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(index);
                 }
             });
 
             mListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
                 @Override
                 public boolean onItemLongClick(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemLongClick: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(index);
 
                     return false; // Let the event propagate
                 }
@@ -79,12 +96,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             mListView.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
                 @Override
                 public void onItemSelected(AdapterView<?> adapterView, View view, int index, long l) {
-                    mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(index);
-                    Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
-
-                    if (mListener != null) {
-                        mListener.onPeerSelected(mSelectedPeerProperties);
-                    }
+                    processSelectedPeer(index);
                 }
 
                 @Override
@@ -92,6 +104,39 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                 }
             });
         }
+    }
+
+    public void setTestListener(ConnectTimeTestListener listener) {
+        testListener = listener;
+    }
+
+    private void processSelectedPeer(int position) {
+        mSelectedPeerProperties = (PeerProperties) mListView.getItemAtPosition(position);
+        Log.i(TAG, "onItemSelected: " + mSelectedPeerProperties.toString());
+
+        if (mListener != null) {
+            mListener.onPeerSelected(mSelectedPeerProperties);
+        }
+    }
+
+    private void runTestConnect(List<PeerProperties> peerProperties) {
+        if (testListener != null) {
+            testListener.onTestStarted();
+        }
+        new ConnectDurationTest(getActivity(), new ConnectDurationTest.ConnectDurationTestListener() {
+
+            @Override
+            public void onFinished(PeerProperties peerProperties, Result result) {
+                final String message = "Average duration: " + (result.isSuccessful() ? result.averageDuration() : 0);
+                Log.d(TAG, peerProperties.toString() + "\n" + result.toString());
+                new Handler(Looper.getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getActivity(), message, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }, peerProperties).start();
     }
 
     /**
@@ -123,7 +168,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
         mListAdapter = new ListAdapter(mContext);
 
-        mListView = (ListView)view.findViewById(R.id.listView);
+        mListView = (ListView) view.findViewById(R.id.listView);
         mListView.setAdapter(mListAdapter);
         mListView.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         registerForContextMenu(mListView);
@@ -131,7 +176,19 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
 
         mModel.setListener(this);
 
+        view.findViewById(R.id.peers_btn_test_connect).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                runTestConnect(getAllDiscoveredPeers());
+                v.setEnabled(false);
+            }
+        });
+
         return view;
+    }
+
+    private List<PeerProperties> getAllDiscoveredPeers() {
+        return mModel.getPeers();
     }
 
     @Override
@@ -148,7 +205,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
         MenuInflater inflater = getActivity().getMenuInflater();
         inflater.inflate(R.menu.menu_peers, menu);
 
-        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+        AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo) menuInfo;
         int position = info.position;
         PeerProperties peerProperties = (PeerProperties) mListView.getItemAtPosition(position);
 
@@ -269,7 +326,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
             PeerProperties peerProperties = mModel.getPeers().get(position);
 
             TextView textView = (TextView) view.findViewById(R.id.peerName);
-            textView.setText(peerProperties.getName());
+            textView.setText(peerProperties.getBluetoothMacAddress());
 
             textView = (TextView) view.findViewById(R.id.peerId);
             textView.setText(peerProperties.getId());
@@ -318,7 +375,7 @@ public class PeerListFragment extends Fragment implements PeerAndConnectionModel
                     outgoingConnectionIconImageView.setImageDrawable(mOutgoingConnectionIconDataFlowing);
                 }
 
-                progressBar.setProgress((int)(connectionResponsibleForSendingData.getSendDataProgress() * 100));
+                progressBar.setProgress((int) (connectionResponsibleForSendingData.getSendDataProgress() * 100));
 
                 connectionInformationText = "Sending "
                         + String.format("%.2f", connectionResponsibleForSendingData.getTotalDataAmountCurrentlySendingInMegaBytes())

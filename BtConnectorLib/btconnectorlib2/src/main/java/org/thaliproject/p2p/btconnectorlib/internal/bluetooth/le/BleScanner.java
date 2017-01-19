@@ -234,7 +234,7 @@ class BleScanner extends ScanCallback {
 
     @Override
     public void onBatchScanResults(List<ScanResult> scanResults) {
-        Log.d(TAG, "onBatchScanResults: results count  = " + scanResults.size() + ". " + ThreadUtils.currentThreadToString());
+//        Log.d(TAG, "onBatchScanResults: results count  = " + scanResults.size() + ". " + ThreadUtils.currentThreadToString());
         if (mListener != null) {
             mListener.onBatchScanResults(scanResults);
         } else {
