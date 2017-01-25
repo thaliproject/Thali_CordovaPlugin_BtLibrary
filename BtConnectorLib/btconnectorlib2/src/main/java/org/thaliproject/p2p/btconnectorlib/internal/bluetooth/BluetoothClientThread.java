@@ -7,8 +7,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
-import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.utils.BluetoothSocketIoThread;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -288,7 +288,7 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         if (mHandshakeThread != null) {
             mHandshakeThread.close(true, false);
         }
-        closeBluetoothSocket(mBluetoothSocket);
+        closeBluetoothSocket();
         finalizeClose();
     }
 
@@ -368,10 +368,10 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         try {
             mBluetoothSocket = createBluetoothSocket(port);
         } catch (IOException e) {
-            Log.e(TAG, " createSocketAndConnect: " + e.getMessage());
+            Log.e(TAG, "createSocketAndConnect: " + e.getMessage());
             return false;
         }
-        return connect(mBluetoothSocket);
+        return connect();
     }
 
     private boolean processSocketCreatedEvent(int portNumber, int attemptNumber) {
@@ -405,34 +405,34 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         switch (port) {
             case SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT: {
                 // Use the standard method of creating a socket
-                Log.d(TAG, " createBluetoothSocket: SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT");
+                Log.d(TAG, "createBluetoothSocket: SYSTEM_DECIDED_INSECURE_RFCOMM_SOCKET_PORT");
                 return mBluetoothDeviceToConnectTo.createInsecureRfcommSocketToServiceRecord(mServiceRecordUuid);
             }
             case 0: {
                 // Use a rotating port number
-                Log.d(TAG, " createBluetoothSocket: port == 0");
+                Log.d(TAG, "createBluetoothSocket: port == 0");
                 return BluetoothUtils.createBluetoothSocketToServiceRecordWithNextPort(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, false);
             }
             default: {
                 // Use the given port number
-                Log.d(TAG, " createBluetoothSocket: given port");
+                Log.d(TAG, "createBluetoothSocket: given port");
                 return BluetoothUtils.createBluetoothSocketToServiceRecord(
                         mBluetoothDeviceToConnectTo, mServiceRecordUuid, port, false);
             }
         }
     }
 
-    private boolean connect(BluetoothSocket socket) {
-        if (socket != null) {
+    private boolean connect() {
+        if (mBluetoothSocket != null) {
             try {
-                Log.e(TAG, " createSocketAndConnect: connecting");
-                socket.connect(); // Blocking call
-                Log.i(TAG, "createSocketAndConnect: connected. " + BluetoothUtils.portAndTypeToString(socket));
+                Log.e(TAG, " connect: connecting");
+                mBluetoothSocket.connect(); // Blocking call
+                Log.i(TAG, "connect: connected. " + BluetoothUtils.portAndTypeToString(mBluetoothSocket));
                 return true;
             } catch (IOException e) {
-                Log.e(TAG, " createSocketAndConnect: connect, " + e.getMessage());
-                closeBluetoothSocket(socket);
+                Log.e(TAG, " connect: " + e.getMessage());
+                closeBluetoothSocket();
                 return false;
             }
         }
@@ -453,11 +453,12 @@ class BluetoothClientThread extends AbstractBluetoothThread implements Bluetooth
         Log.i(TAG, logMessage);
     }
 
-    private void closeBluetoothSocket(BluetoothSocket bluetoothSocket) {
-        if (bluetoothSocket != null) {
+    private void closeBluetoothSocket() {
+        if (mBluetoothSocket != null) {
             try {
                 Log.d(TAG, "closeBluetoothSocket: Trying to close the bluetooth socket... (thread ID: " + getId() + ")");
-                bluetoothSocket.close();
+                mBluetoothSocket.close();
+                mBluetoothSocket = null;
                 Log.d(TAG, "closeBluetoothSocket: bluetooth socket closed (thread ID: " + getId() + ")");
             } catch (IOException e) {
                 Log.w(TAG, "close: Failed to close the bluetooth socket (thread ID: " + getId() + "): " + e.getMessage());
