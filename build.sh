@@ -16,7 +16,7 @@ LOG() {
   echo -e "${COLOR}$TEXT ${NORMAL_COLOR}"
 }
 
-
+# Test
 ERROR_ABORT() {
   if [[ $? != 0 ]]
   then

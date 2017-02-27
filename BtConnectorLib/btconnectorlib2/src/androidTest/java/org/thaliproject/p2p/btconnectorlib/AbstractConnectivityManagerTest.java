@@ -4,8 +4,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.net.wifi.WifiManager;
 import android.support.test.InstrumentationRegistry;
 
-import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
-
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -74,14 +72,14 @@ public class AbstractConnectivityManagerTest {
         long currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             if (wifiManager.getWifiState() == WifiManager.WIFI_STATE_ENABLED ||
-                    wifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
+                wifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
                 break;
             }
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
         }
         assertThat(wifiManager.getWifiState(), anyOf(is(WifiManager.WIFI_STATE_ENABLED),
-                is(WifiManager.WIFI_STATE_DISABLED)));
+                                                     is(WifiManager.WIFI_STATE_DISABLED)));
 
         if (turnOn && wifiManager.getWifiState() == WifiManager.WIFI_STATE_DISABLED) {
             wifiManager.setWifiEnabled(true);

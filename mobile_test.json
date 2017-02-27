@@ -9,5 +9,5 @@
     "android": "org.thaliproject.p2p.btconnectorlib.test"
   },
   "instrumentationTestRunner": "android.support.test.runner.AndroidJUnitRunner",
-  "timeout": 1200
+  "timeout": 1206
 }
