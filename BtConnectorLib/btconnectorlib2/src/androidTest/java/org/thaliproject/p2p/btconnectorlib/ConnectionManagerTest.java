@@ -6,6 +6,7 @@ import android.os.CountDownTimer;
 import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
 import android.support.test.runner.AndroidJUnit4;
+import android.util.Log;
 
 import org.junit.After;
 import org.junit.Before;
@@ -23,6 +24,8 @@ import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
 import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
@@ -317,13 +320,21 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testSetExtraInfo() throws Exception {
-        String btAddress;
+        String btAddress = "";
+        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+
         if (!CommonUtils.isMarshmallowOrHigher()) {
-            BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
             btAddress = btAdapter.getAddress();
         } else {
-            btAddress = android.provider.Settings.Secure.getString(
-                    mContext.getContentResolver(), "bluetooth_address");
+            try {
+                Field mServiceField = btAdapter.getClass().getDeclaredField("mService");
+                mServiceField.setAccessible(true);
+
+                Object btManagerService = mServiceField.get(btAdapter);
+                btAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+            } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                Log.e("ConnectionManagerTest: ", "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
+            }
         }
         int extraInfo = 12;
         String expected = "{\"generation\":" + extraInfo + ",\"address\":\"" + btAddress + "\"}";
@@ -467,30 +478,44 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testGetBluetoothMacAddress() throws Exception {
         // read device mac address
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
         mConnectionManager.setEmulateMarshmallow(false);
-        String btAddress;
+        String btAddress = "";
+        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
+        Field mServiceField, mAddressField;
+        Object btManagerService = null;
+
         if (!CommonUtils.isMarshmallowOrHigher()) {
-            BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
             btAddress = btAdapter.getAddress();
         } else {
-            btAddress = android.provider.Settings.Secure.getString(
-                    mContext.getContentResolver(), "bluetooth_address");
+            try {
+                mServiceField = btAdapter.getClass().getDeclaredField("mService");
+                mServiceField.setAccessible(true);
+
+                btManagerService = mServiceField.get(btAdapter);
+                btAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+            } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                Log.e("ConnectionManagerTest: ", "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
+            }
         }
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(btAddress));
-        assertThat(settings.getBluetoothMacAddress(), is(btAddress));
 
         // now emulate marshmallow (use BT address stored in settings)
         mConnectionManager.setEmulateMarshmallow(true);
         btAddress = "AA:BB:CC:DD:EE:FF";
-        settings.setBluetoothMacAddress(btAddress);
+
+        if (btManagerService != null) {
+            mAddressField = btManagerService.getClass().getDeclaredField("mAddress");
+            mAddressField.setAccessible(true);
+            mAddressField.set(btManagerService, btAddress);
+        }
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(btAddress));
 
         // now let's check if returned mac address is verified
-        Field macAddressField = settings.getClass()
-                .getDeclaredField("mBluetoothMacAddress");
-        macAddressField.setAccessible(true);
-        macAddressField.set(settings, "WRONG_MAC");
+        if (btManagerService != null) {
+            mAddressField = btManagerService.getClass().getDeclaredField("mAddress");
+            mAddressField.setAccessible(true);
+            mAddressField.set(btManagerService, "WRONG_MAC");
+        }
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(nullValue()));
     }
 
