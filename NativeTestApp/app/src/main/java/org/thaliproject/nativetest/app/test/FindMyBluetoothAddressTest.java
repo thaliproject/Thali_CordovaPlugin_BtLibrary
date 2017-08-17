@@ -4,12 +4,16 @@
 package org.thaliproject.nativetest.app.test;
 
 //import android.os.Build;
+import android.bluetooth.BluetoothAdapter;
 import android.util.Log;
-import org.thaliproject.nativetest.app.ConnectionEngine;
 import org.thaliproject.nativetest.app.TestEngine;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManager;
 import org.thaliproject.p2p.btconnectorlib.DiscoveryManagerSettings;
 import org.thaliproject.p2p.btconnectorlib.PeerProperties;
+import org.thaliproject.p2p.btconnectorlib.internal.BluetoothMacAddressResolutionHelper;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 
 /**
  * A test for requesting a peer to provide us our Bluetooth MAC address.
@@ -47,7 +51,25 @@ public class FindMyBluetoothAddressTest
         //}
 
         DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
-        mStoredBluetoothMacAddress = settings.getBluetoothMacAddress();
+
+        try {
+            Field mBluetoothMacAddressResolutionHelperField = mDiscoveryManager.getClass().getDeclaredField("mBluetoothMacAddressResolutionHelper");
+            mBluetoothMacAddressResolutionHelperField.setAccessible(true);
+            BluetoothMacAddressResolutionHelper mBluetoothMacAddressResolutionHelper =
+                    (BluetoothMacAddressResolutionHelper) mBluetoothMacAddressResolutionHelperField.get(mDiscoveryManager);
+
+            Field mBluetoothAdapterField = mBluetoothMacAddressResolutionHelper.getClass().getDeclaredField("mBluetoothAdapter");
+            mBluetoothAdapterField.setAccessible(true);
+            BluetoothAdapter mBluetoothAdapter = (BluetoothAdapter) mBluetoothAdapterField.get(mBluetoothMacAddressResolutionHelper);
+
+            Field mServiceField = mBluetoothAdapter.getClass().getDeclaredField("mService");
+            mServiceField.setAccessible(true);
+
+            Object btManagerService = mServiceField.get(mBluetoothAdapter);
+            mStoredBluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+        } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
+            e.printStackTrace();
+        }
 
         if (mStoredBluetoothMacAddress != null) {
             // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
