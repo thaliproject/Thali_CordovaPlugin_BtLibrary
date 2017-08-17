@@ -27,7 +27,7 @@ public class CommonUtils {
     }
 
     /**
-     * @return True, if we are running on Marshmallow (Android version 6.x) or higher. False otehrwise.
+     * @return True, if we are running on Marshmallow (Android version 6.x) or higher. False otherwise.
      */
     public static boolean isMarshmallowOrHigher() {
         return (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1);
