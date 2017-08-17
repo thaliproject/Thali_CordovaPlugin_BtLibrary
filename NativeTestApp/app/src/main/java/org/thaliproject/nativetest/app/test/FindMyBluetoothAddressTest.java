@@ -50,8 +50,6 @@ public class FindMyBluetoothAddressTest
         mDiscoveryManager.setEmulateMarshmallow(true);
         //}
 
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(null);
-
         try {
             Field mBluetoothMacAddressResolutionHelperField = mDiscoveryManager.getClass().getDeclaredField("mBluetoothMacAddressResolutionHelper");
             mBluetoothMacAddressResolutionHelperField.setAccessible(true);
@@ -69,12 +67,6 @@ public class FindMyBluetoothAddressTest
             mStoredBluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
         } catch (NoSuchFieldException | NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
             e.printStackTrace();
-        }
-
-        if (mStoredBluetoothMacAddress != null) {
-            // Clear the Bluetooth MAC address, but store it so it can be restored later in case the
-            // test fails
-            settings.clearBluetoothMacAddress();
         }
 
         mDiscoveryManager.clearIdentityString();
