@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     private DiscoveryManager mDiscoveryManager = null;
+    private BluetoothAdapter mBluetoothAdapter = null;
     private static DiscoveryManager.DiscoveryMode defaultDiscoveryMode;
     private static boolean defaultBTStatus;
     private static boolean defaultWifiStatus;
@@ -141,6 +142,10 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        // Make sure that BluetoothManagerService is initialized
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         toggleBluetooth(false);
         toggleWifi(false);
 

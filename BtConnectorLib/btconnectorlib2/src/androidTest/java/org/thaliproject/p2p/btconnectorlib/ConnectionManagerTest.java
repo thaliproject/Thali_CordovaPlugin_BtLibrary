@@ -41,6 +41,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     private ConnectionManager mConnectionManager = null;
+    private BluetoothAdapter mBluetoothAdapter = null;
     private Context mContext = null;
     private final long MAX_TIMEOUT = 20000;
     private final long CHECK_INTERVAL = 500;
@@ -78,6 +79,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Before
     public void setUp() throws Exception {
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         toggleBluetooth(true);
         MockitoAnnotations.initMocks(this);
         mContext = InstrumentationRegistry.getContext();
@@ -320,16 +323,15 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
     @Test
     public void testSetExtraInfo() throws Exception {
         String btAddress = "";
-        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
 
         if (!CommonUtils.isMarshmallowOrHigher()) {
-            btAddress = btAdapter.getAddress();
+            btAddress = mBluetoothAdapter.getAddress();
         } else {
             try {
-                Field mServiceField = btAdapter.getClass().getDeclaredField("mService");
+                Field mServiceField = mBluetoothAdapter.getClass().getDeclaredField("mService");
                 mServiceField.setAccessible(true);
 
-                Object btManagerService = mServiceField.get(btAdapter);
+                Object btManagerService = mServiceField.get(mBluetoothAdapter);
                 btAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
             } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 Log.e("ConnectionManagerTest: ", "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
@@ -479,18 +481,17 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         // read device mac address
         mConnectionManager.setEmulateMarshmallow(false);
         String btAddress = "";
-        BluetoothAdapter btAdapter = BluetoothAdapter.getDefaultAdapter();
         Field mServiceField, mAddressField;
         Object btManagerService = null;
 
         if (!CommonUtils.isMarshmallowOrHigher()) {
-            btAddress = btAdapter.getAddress();
+            btAddress = mBluetoothAdapter.getAddress();
         } else {
             try {
-                mServiceField = btAdapter.getClass().getDeclaredField("mService");
+                mServiceField = mBluetoothAdapter.getClass().getDeclaredField("mService");
                 mServiceField.setAccessible(true);
 
-                btManagerService = mServiceField.get(btAdapter);
+                btManagerService = mServiceField.get(mBluetoothAdapter);
                 btAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
             } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 Log.e("ConnectionManagerTest: ", "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
@@ -503,17 +504,13 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         btAddress = "AA:BB:CC:DD:EE:FF";
 
         if (btManagerService != null) {
-            mAddressField = btManagerService.getClass().getDeclaredField("mAddress");
-            mAddressField.setAccessible(true);
-            mAddressField.set(btManagerService, btAddress);
+            when(btManagerService.getAddress()).thenReturn(btAddress);
         }
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(btAddress));
 
         // now let's check if returned mac address is verified
         if (btManagerService != null) {
-            mAddressField = btManagerService.getClass().getDeclaredField("mAddress");
-            mAddressField.setAccessible(true);
-            mAddressField.set(btManagerService, "WRONG_MAC");
+            when(btManagerService.getAddress()).thenReturn("WRONG_MAC");
         }
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(nullValue()));
     }
