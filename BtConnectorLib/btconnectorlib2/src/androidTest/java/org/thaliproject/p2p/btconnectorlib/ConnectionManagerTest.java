@@ -1,7 +1,6 @@
 package org.thaliproject.p2p.btconnectorlib;
 
 import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.IBluetooth;
 import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Looper;
