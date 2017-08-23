@@ -5,7 +5,6 @@ import android.content.Context;
 import android.os.CountDownTimer;
 import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
 import android.util.Log;
 
 import org.junit.After;
@@ -18,6 +17,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.mockito.stubbing.Answer;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothConnector;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
-@RunWith(AndroidJUnit4.class)
+@RunWith(MockitoJUnitRunner.class)
 public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     private ConnectionManager mConnectionManager = null;
@@ -68,6 +68,8 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
 
     @Mock
     private ConnectionManager.ConnectionManagerListener mConnectionManagerListener;
+    @Mock
+    BluetoothManager mMockBluetoothManager;
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
@@ -88,6 +90,7 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         mContext = InstrumentationRegistry.getContext();
         mConnectionManager = new ConnectionManager(mContext, mConnectionManagerListener,
                 UUID.randomUUID(), "MOCK_NAME");
+
     }
 
     @After
@@ -466,56 +469,55 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(mConnectionManager.cancelConnectionAttempt(peerProperties), is(true));
     }
 
-    @Test
-    public void testSetEmulateMarshmallow() throws Exception {
-        mConnectionManager.setEmulateMarshmallow(true);
-        Field emulateMarshmallowField = mConnectionManager.getClass().getSuperclass()
-                .getDeclaredField("mEmulateMarshmallow");
-        emulateMarshmallowField.setAccessible(true);
-        assertThat(emulateMarshmallowField.getBoolean(mConnectionManager), is(true));
-
-        mConnectionManager.setEmulateMarshmallow(false);
-        assertThat(emulateMarshmallowField.getBoolean(mConnectionManager), is(false));
+    /**
+     * Sets our mocked BluetoothManager as mBluetoothManager field from
+     * AbstractBluetoothConnectivityAgent class.
+     *
+     * @throws Exception
+     */
+    private void setMockedBluetoothManager() throws Exception {
+        Field bluetoothManagerField = mConnectionManager.getClass().getSuperclass().getDeclaredField("mBluetoothManager");
+        CommonUtils.setMockedValue(bluetoothManagerField, mConnectionManager, mMockBluetoothManager);
     }
 
     @Test
     public void testGetBluetoothMacAddress() throws Exception {
-        // read device mac address
-        mConnectionManager.setEmulateMarshmallow(false);
         String btAddress = "";
-        Field mServiceField;
-        Object btManagerService = null;
-        Method mGetAddressMethod = null;
 
         if (!CommonUtils.isMarshmallowOrHigher()) {
             btAddress = mBluetoothAdapter.getAddress();
         } else {
+            Field mServiceField;
+            Object btManagerService;
+            Method mGetAddressMethod;
+
             try {
                 mServiceField = mBluetoothAdapter.getClass().getDeclaredField("mService");
                 mServiceField.setAccessible(true);
 
-                mGetAddressMethod = btManagerService.getClass().getMethod("getAddress");
                 btManagerService = mServiceField.get(mBluetoothAdapter);
+                mGetAddressMethod = btManagerService.getClass().getMethod("getAddress");
+
                 btAddress = (String) mGetAddressMethod.invoke(btManagerService);
             } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 Log.e("ConnectionManagerTest: ", "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
             }
         }
+
+        // Set mBluetoothManager to our mocked bluetooth manager, so we will be able
+        // to overwrite default implementation
+        setMockedBluetoothManager();
+
+        // Use reflection
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(btAddress));
 
-        // now emulate marshmallow (use BT address stored in settings)
-        mConnectionManager.setEmulateMarshmallow(true);
+        // Mock
         btAddress = "AA:BB:CC:DD:EE:FF";
-
-        if (mGetAddressMethod != null) {
-            when(mGetAddressMethod.invoke(btManagerService)).thenReturn(btAddress);
-        }
+        when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn(btAddress);
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(btAddress));
 
         // now let's check if returned mac address is verified
-        if (mGetAddressMethod != null) {
-            when(mGetAddressMethod.invoke(btManagerService)).thenReturn("WRONG_MAC");
-        }
+        when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("WRONG_MAC");
         assertThat(mConnectionManager.getBluetoothMacAddress(), is(nullValue()));
     }
 
@@ -563,14 +565,12 @@ public class ConnectionManagerTest extends AbstractConnectivityManagerTest {
         assertThat(identityField.get(mConnectionManager), is(nullValue()));
 
         // correct extra info and bluetooth address
-        DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext);
-        mConnectionManager.setEmulateMarshmallow(true);
-        Field macAddressField = settings.getClass()
-                .getDeclaredField("mBluetoothMacAddress");
-        macAddressField.setAccessible(true);
+        setMockedBluetoothManager();
+
         String address = "AA:BB:CC:DD:EE:FF";
         int generation = 4;
-        macAddressField.set(settings, address);
+        when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn(address);
+
         mConnectionManager.setExtraInfo(generation);
         assertThat((String) identityField.get(mConnectionManager),
                 is("{\"generation\":" + generation + ",\"address\":\"" + address + "\"}"));

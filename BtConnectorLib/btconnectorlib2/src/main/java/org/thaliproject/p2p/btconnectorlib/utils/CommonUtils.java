@@ -11,6 +11,8 @@ import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothUtils;
 
+import java.lang.reflect.Field;
+
 /**
  * Commonly used utils and constants.
  */
@@ -65,6 +67,24 @@ public class CommonUtils {
      */
     public static boolean isValidBluetoothMacAddress(String bluetoothMacAddress) {
         return BluetoothUtils.isValidBluetoothMacAddress(bluetoothMacAddress);
+    }
+
+    /**
+     * Used to replace original instance with our mocked one. Assumes that field has
+     * modifiers such as final, static or private and by setting proper accessFlags,
+     * gets rid of them. This allows to replace it using reflection mechnisms.
+     * @throws Exception
+     */
+    public static void setMockedValue(Field originalField, Object parentObject, Object newValue) throws Exception {
+        //Field field = mConnectionManager.getClass().getSuperclass().getDeclaredField("mBluetoothManager");
+        originalField.setAccessible(true);
+
+        // Makes field only 'public'
+        Field slotField = Field.class.getDeclaredField("accessFlags");
+        slotField.setAccessible(true);
+        slotField.set(originalField, 1);
+
+        originalField.set(parentObject, newValue);
     }
 
     /**

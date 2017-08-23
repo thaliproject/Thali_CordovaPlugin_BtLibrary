@@ -493,7 +493,6 @@ public class DiscoveryManager
             if (bluetoothEnabled) {
                 // Try to start BLE based discovery
                 mBluetoothMacAddressResolutionHelper.stopBluetoothDeviceDiscovery();
-
                 if (mBluetoothManager.isBleSupported()) {
                     bleDiscoveryStarted = startBlePeerDiscoverer();
                 } else {

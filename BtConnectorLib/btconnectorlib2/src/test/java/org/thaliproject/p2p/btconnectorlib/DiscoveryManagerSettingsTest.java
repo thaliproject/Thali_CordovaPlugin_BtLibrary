@@ -89,7 +89,6 @@ public class DiscoveryManagerSettingsTest {
 
             @Override
             public SharedPreferences.Editor putLong(String key, long value) {
-
                 mSharedPreferencesMap.put(key, value);
 
                 return null;

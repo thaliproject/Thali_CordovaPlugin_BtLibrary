@@ -6,7 +6,7 @@ group = gradle.ext.group
 
 android {
     compileSdkVersion 23
-    buildToolsVersion "25"
+    buildToolsVersion '26.0.1'
 
     defaultConfig {
         minSdkVersion 21
@@ -25,7 +25,7 @@ android {
         unitTests.returnDefaultValues = true
     }
 
-    testBuildType "release"
+    testBuildType "debug"
 }
 
 dependencies {
@@ -34,6 +34,7 @@ dependencies {
     testCompile 'junit:junit:4.12'
     testCompile "org.mockito:mockito-core:1.9.5"
 
+    androidTestCompile 'com.android.support:support-annotations:24.0.0'
     androidTestCompile 'junit:junit:4.12'
     androidTestCompile 'com.android.support.test:runner:0.5'
     // dependency to use JUnit 4 rules

@@ -4,8 +4,6 @@ import android.bluetooth.BluetoothAdapter;
 import android.net.wifi.WifiManager;
 import android.support.test.InstrumentationRegistry;
 
-import org.thaliproject.p2p.btconnectorlib.internal.wifi.WifiDirectManager;
-
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
@@ -27,14 +25,14 @@ public class AbstractConnectivityManagerTest {
         long currentTimeout = 0;
         while (currentTimeout < MAX_MEDIA_TIMEOUT) {
             if (btAdapter.getState() == BluetoothAdapter.STATE_ON ||
-                btAdapter.getState() == BluetoothAdapter.STATE_OFF) {
+                    btAdapter.getState() == BluetoothAdapter.STATE_OFF) {
                 break;
             }
             Thread.sleep(CHECK_MEDIA_INTERVAL);
             currentTimeout += CHECK_MEDIA_INTERVAL;
         }
         assertThat(btAdapter.getState(), anyOf(is(BluetoothAdapter.STATE_ON),
-                                               is(BluetoothAdapter.STATE_OFF)));
+                is(BluetoothAdapter.STATE_OFF)));
 
         if (turnOn && btAdapter.getState() == BluetoothAdapter.STATE_OFF) {
             btAdapter.enable();
@@ -62,7 +60,7 @@ public class AbstractConnectivityManagerTest {
 
     protected static void toggleWifi(boolean turnOn) throws Exception {
 
-        WifiManager wifiManager = (WifiManager) InstrumentationRegistry.getContext().getSystemService(
+        WifiManager wifiManager = (WifiManager) InstrumentationRegistry.getContext().getApplicationContext().getSystemService(
                 InstrumentationRegistry.getContext().WIFI_SERVICE);
 
         if (wifiManager == null) {
