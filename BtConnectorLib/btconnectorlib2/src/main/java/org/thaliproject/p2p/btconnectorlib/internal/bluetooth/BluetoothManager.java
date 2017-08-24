@@ -419,7 +419,9 @@ public class BluetoothManager {
 
                 Object btManagerService = mServiceField.get(mBluetoothAdapter);
 
-                bluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+                if (btManagerService != null) {
+                    bluetoothMacAddress = (String) btManagerService.getClass().getMethod("getAddress").invoke(btManagerService);
+                }
             } catch (NoSuchFieldException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
                 Log.e(TAG, "getBluetoothMacAddress: Failed to get Bluetooth address " + e.getMessage(), e);
             }

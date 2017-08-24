@@ -1024,8 +1024,6 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
         Field mBlePeerDiscovererField = mDiscoveryManager.getClass().getDeclaredField("mBlePeerDiscoverer");
         CommonUtils.setMockedValue(mBlePeerDiscovererField, mDiscoveryManager, mMockBlePeerDiscoverer);
 
-        // We skip AbstractBluetoothConnectivityAgent.verifyBluetoothMacAddress and return
-        // wrong mac address directly
         when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("0:0:0:0:0:0");
         when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
         when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
