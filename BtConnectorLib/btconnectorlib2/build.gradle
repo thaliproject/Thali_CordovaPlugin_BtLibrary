@@ -25,7 +25,7 @@ android {
         unitTests.returnDefaultValues = true
     }
 
-    testBuildType "debug"
+    testBuildType "release"
 }
 
 dependencies {
