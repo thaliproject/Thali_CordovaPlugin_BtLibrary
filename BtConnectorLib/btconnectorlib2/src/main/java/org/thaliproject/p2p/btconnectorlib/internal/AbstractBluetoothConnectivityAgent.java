@@ -27,7 +27,6 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     protected final Context mContext;
     protected final BluetoothManager mBluetoothManager;
     protected String mMyIdentityString = null;
-    protected boolean mEmulateMarshmallow = false;
     protected int myExtraInfo = PeerProperties.NO_EXTRA_INFORMATION;
 
     /**
@@ -86,21 +85,6 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
     }
 
     /**
-     * Used for testing purposes.
-     * <p>
-     * Turns Marshmallow emulation on/off. Basically what this does is that if enabled, will not be
-     * able to resolve the Bluetooth MAC address of the device from the Bluetooth adapter.
-     *
-     * @param emulate If true, will turn on Marshmallow emulation.
-     */
-    public void setEmulateMarshmallow(boolean emulate) {
-        if (mEmulateMarshmallow != emulate) {
-            mEmulateMarshmallow = emulate;
-            Log.i(TAG, "setEmulateMarshmallow: " + mEmulateMarshmallow);
-        }
-    }
-
-    /**
      * @return The Bluetooth MAC address or null, if not available.
      */
     public String getBluetoothMacAddress() {
@@ -114,7 +98,6 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
      * @return The Bluetooth MAC address or null, if not available.
      */
     public String getBluetoothMacAddress(SharedPreferences preferences) {
-
         DiscoveryManagerSettings settings = DiscoveryManagerSettings.getInstance(mContext, preferences);
 
         return verifyBluetoothMacAddress(settings);
@@ -122,7 +105,8 @@ public abstract class AbstractBluetoothConnectivityAgent implements BluetoothMan
 
     @Nullable
     private String verifyBluetoothMacAddress(DiscoveryManagerSettings settings) {
-        String bluetoothMacAddress = mEmulateMarshmallow ? null : mBluetoothManager.getBluetoothMacAddress();
+        String bluetoothMacAddress = mBluetoothManager.getBluetoothMacAddress();
+
         if (settings != null) {
             if (bluetoothMacAddress == null) {
                 bluetoothMacAddress = settings.getBluetoothMacAddress();

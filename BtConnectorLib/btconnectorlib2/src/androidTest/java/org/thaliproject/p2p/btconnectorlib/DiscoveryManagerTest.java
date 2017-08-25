@@ -3,7 +3,6 @@ package org.thaliproject.p2p.btconnectorlib;
 import android.bluetooth.BluetoothAdapter;
 import android.os.Looper;
 import android.support.test.InstrumentationRegistry;
-import android.support.test.runner.AndroidJUnit4;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -15,27 +14,33 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.runners.MockitoJUnitRunner;
 import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.BluetoothManager;
+import org.thaliproject.p2p.btconnectorlib.internal.bluetooth.le.BlePeerDiscoverer;
+import org.thaliproject.p2p.btconnectorlib.utils.CommonUtils;
 
 import java.lang.reflect.Field;
+import java.util.EnumSet;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
-import static org.junit.Assume.*;
+import static org.junit.Assume.assumeThat;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.when;
 
-@RunWith(AndroidJUnit4.class)
+@RunWith(MockitoJUnitRunner.class)
 public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     private DiscoveryManager mDiscoveryManager = null;
+    private BluetoothAdapter mBluetoothAdapter = null;
     private static DiscoveryManager.DiscoveryMode defaultDiscoveryMode;
     private static boolean defaultBTStatus;
     private static boolean defaultWifiStatus;
     private final long MAX_TIMEOUT = 20000;
-    private final long CHECK_INTERVAL = 500;
+    private final long CHECK_INTERVAL = 1000;
 
     private static void setDiscoveryMode(DiscoveryManager.DiscoveryMode mode) {
         DiscoveryManagerSettings settings = DiscoveryManagerSettings
@@ -123,6 +128,10 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Mock
     DiscoveryManager.DiscoveryManagerListener mMockDiscoveryManagerListener;
+    @Mock
+    BluetoothManager mMockBluetoothManager;
+    @Mock
+    BlePeerDiscoverer mMockBlePeerDiscoverer;
 
     @BeforeClass
     public static void init() throws Exception {
@@ -141,6 +150,10 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
     @Before
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
+
+        // Make sure that BluetoothManagerService is initialized
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+
         toggleBluetooth(false);
         toggleWifi(false);
 
@@ -987,28 +1000,42 @@ public class DiscoveryManagerTest extends AbstractConnectivityManagerTest {
 
     @Test
     public void testUnknownBluetoothMacAddress() throws Exception {
+        mDiscoveryManager = new DiscoveryManager(InstrumentationRegistry.getContext(),
+                mMockDiscoveryManagerListener,
+                UUID.randomUUID(), "MOCK_NAME");
+
+        EnumSet<BlePeerDiscoverer.BlePeerDiscovererStateSet> deducedStateSet =
+                EnumSet.noneOf(BlePeerDiscoverer.BlePeerDiscovererStateSet.class);
+        deducedStateSet.add(BlePeerDiscoverer.BlePeerDiscovererStateSet.SCANNING);
+
         assumeThat(isWifiDirectSupported() && isBleDiscoverySupported() &&
                 isBleAdvertisementSupported(), is(true));
         setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE);
+
         when(mMockDiscoveryManagerListener.onPermissionCheckRequired(anyString())).thenReturn(true);
-        mDiscoveryManager.setEmulateMarshmallow(true);
+
         mDiscoveryManager.setExtraInfo(1);
         toggleBluetooth(true);
         toggleWifi(true);
 
-        DiscoveryManagerSettings dmSettings =
-                DiscoveryManagerSettings.getInstance(InstrumentationRegistry.getContext());
-        Field blMacAddressField = dmSettings.getClass().getDeclaredField("mBluetoothMacAddress");
-        blMacAddressField.setAccessible(true);
-        blMacAddressField.set(dmSettings, "");
+        Field bluetoothManagerField = mDiscoveryManager.getClass().getSuperclass().getDeclaredField("mBluetoothManager");
+        CommonUtils.setMockedValue(bluetoothManagerField, mDiscoveryManager, mMockBluetoothManager);
+
+        Field mBlePeerDiscovererField = mDiscoveryManager.getClass().getDeclaredField("mBlePeerDiscoverer");
+        CommonUtils.setMockedValue(mBlePeerDiscovererField, mDiscoveryManager, mMockBlePeerDiscoverer);
+
+        when(mMockBluetoothManager.getBluetoothMacAddress()).thenReturn("0:0:0:0:0:0");
+        when(mMockBluetoothManager.isBluetoothEnabled()).thenReturn(true);
+        when(mMockBluetoothManager.isBleSupported()).thenReturn(true);
+        when(mMockBluetoothManager.getBluetoothAdapter()).thenReturn(BluetoothAdapter.getDefaultAdapter());
+        when(mMockBluetoothManager.bind(any(BluetoothManager.BluetoothManagerListener.class))).thenReturn(true);
+        when(mMockBlePeerDiscoverer.getState()).thenReturn(deducedStateSet);
 
         mDiscoveryManager.start(true, true);
         checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
         checkAllStatesWithTimeout(true, true, false, false, false);
 
-        setDiscoveryMode(DiscoveryManager.DiscoveryMode.BLE_AND_WIFI);
-        checkStateWithTimeout(DiscoveryManager.DiscoveryManagerState.WAITING_FOR_BLUETOOTH_MAC_ADDRESS);
-        checkAllStatesWithTimeout(true, true, false, true, true);
+        // TODO: Test case with discovery mode set to BLE_WIFI
     }
 
     @Test
